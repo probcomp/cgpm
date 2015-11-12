@@ -1,0 +1,129 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{mathtools}
+\usepackage[margin=1.0in]{geometry}
+
+\begin{document}
+
+	\title{Conjugate Bayesian Inference of the Von Mises Distribution with Known Concentration Parameter}
+	\author{Baxter S. Eaves Jr.}
+
+	\maketitle
+
+
+	\section{Likelihood and Prior}
+
+	The likelihood of some data, $X$, where all the member of $X$ are in a $2\pi$ range under the Von Mises distribution with mean $\mu$ and concentration $\kappa$ is
+
+	\begin{equation}
+		P(X|\mu,\kappa) = \frac{1}{ \left(2\pi I_0(\kappa)\right)^n}\exp\left( \kappa \sum_{i=1}^n \cos(x_i-\mu)\right).
+	\end{equation}
+
+	\noindent
+	Where $I_0(\cdot)$ is the zero-order modified bessel function.
+
+	The conjugate prior distribution on the mean, $\mu$ is also Von Mises,
+
+	\begin{equation}
+		\label{eqn:prior}
+		P(\mu|a,b) = \frac{1}{2\pi I_0(a)}\exp\left( a \cos(\mu-b)\right).
+	\end{equation}
+
+
+	\section{Posterior}
+
+	First, some trigonometric identities:
+
+	\begin{equation}
+		\cos(\alpha - \beta) = \cos\alpha\cos\beta + \sin\alpha\sin\beta
+	\end{equation}
+
+	\begin{equation}
+		\label{eqn:lincomb}
+		\alpha\sin x + \beta\cos x = \sqrt{ \alpha^2 + \beta^2} \cdot \sin(x+\phi)
+	\end{equation}
+
+	\noindent
+	where
+
+	\begin{equation}
+		\label{eqn:phi}
+		\phi = \text{atan2}\left(\beta,\alpha \right)
+	\end{equation}
+
+
+	The posterior probability of $\mu$ is then,
+
+	\begin{eqnarray}
+		P(\mu|X) & \propto & \exp \left( \kappa \sum_{i=1}^n \cos(x_i-\mu) +  a \cos(\mu-b)\right)\\
+		&=& \exp \left( \cos\mu \left( \kappa\sum_{i=1}^n \cos(x_i)+a\cos b\right) + \sin\mu \left( \kappa\sum_{i=1}^n \sin(x_i)+a\sin b\right)\right)\\
+	\end{eqnarray}
+
+	\noindent
+	By (\ref{eqn:lincomb}) and if we take
+
+	\begin{equation}
+		\alpha := \kappa\sum_{i=1}^n \sin(x_i)+a\sin b,
+	\end{equation}
+
+	\begin{equation}
+		\beta :=   \kappa\sum_{i=1}^n \cos(x_i)+a\cos b,
+	\end{equation}
+	\noindent
+	and $\phi$ is as in Equation \ref{eqn:phi}, 
+
+	\begin{eqnarray}
+		P(\mu|X) & \propto & \exp \left(\sqrt{ \alpha^2 + \beta^2} \sin(\mu + \phi) \right)\\
+		&=& \exp \left(\sqrt{ \alpha^2 + \beta^2} \cos(\mu - (-\phi + \pi/2)) \right)
+	\end{eqnarray}
+
+
+	\noindent
+	Thus the posterior is as in Equation \ref{eqn:prior}
+
+	\begin{equation}
+		P(\mu|X) = \frac{1}{2\pi I_0(a')}\exp\left( a' \cos(\mu-b')\right)
+	\end{equation}
+
+	\noindent
+	 with update parameters,
+
+	
+	\begin{equation}
+		a' = \sqrt{ \left( \kappa\sum_{i=1}^n \cos(x_i)+a\cos b \right)^2 + \left( \kappa\sum_{i=1}^n \sin(x_i)+a\sin b \right)^2} 
+	\end{equation}
+
+	\noindent
+	and
+
+	\begin{equation}
+		b' =   -\text{atan2}(\beta, \alpha) + \frac{\pi}{2}.
+	\end{equation}
+
+
+	\noindent
+	The sufficient statistics are $\sum_{i=1}^n \cos(x_i)$ and $\sum_{i=1}^n \sin(x_i)$.
+
+
+	\section{Marginal likelihood}
+
+	We derive the marginal likelihood as follows:
+	\begin{eqnarray}
+		P(X) & = & \frac{P(X|\mu)P(\mu)}{P(\mu|X)}\\
+		& = & \frac{2\pi I_0(a') \exp\left( \kappa \sum_{i=1}^n \cos(x_i-\mu)\right) \exp\left( a \cos(\mu-b)\right)}{ \left(2\pi I_0(\kappa)\right)^n 2\pi I_0(a) \exp\left( a' \cos(\mu-b')\right)} \\
+		& = & \frac{I_0(a')}{\left(2\pi I_0(\kappa)\right)^{n}I_0(a)}
+	\end{eqnarray}
+
+	\section{Posterior Predictive}
+
+	\begin{eqnarray}
+		P(y|X) & = & \frac{P(y,X)}{P(X)}\\
+		&=& \frac{I_0(a'')}{2\pi I_0(\kappa) I_0(a')}
+	\end{eqnarray}
+
+	\section{Implemntation Notes}
+
+	Calculating $I_0(a')$ will lead to numerical overflow with relatively small $n$, however for large $a'$, $I_0(a') \sim \frac{e^{a'}}{\sqrt{2\pi a'}}$, the log of which is $a' - \frac{1}{2}\log(2\pi a')$.
+
+
+\end{document}
