@@ -14,7 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from gpmcc.utils import cc_test_utils as tu
+from gpmcc.utils import test as tu
 from gpmcc import state
 import numpy
 
