@@ -1,20 +1,37 @@
-from baxcat import cc_state
-from baxcat.utils import cc_test_utils as tu
-from baxcat.utils import cc_sample_utils as su
-from baxcat.utils import cc_general_utils as utils
+# -*- coding: utf-8 -*-
 
-import sys
-import random
-import numpy
+#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 import pylab
+import random
+import sys
+
+import numpy as np
+
+from gpmcc.state import State
+from gpmcc.utils import test as tu
+from gpmcc.utils import sampling as su
 
 _all_kernels = ['column_hypers','view_alphas','row_z','state_alpha','column_z']
 
-def forward_sample(X, n_iters, Zv=None, Zrcv=None, n_grid=30, n_chains=1, ct_kernel=0):
-    total_iters = n_chains*n_iters
+def forward_sample(X, n_iters, Zv=None, Zrcv=None, n_grid=30, n_chains=1,
+        ct_kernel=0):
+    total_iters = n_chains * n_iters
     n_cols = len(X)
-    cctypes = ['normal']*n_cols
-    distargs = [None]*n_cols
+    cctypes = ['normal'] * n_cols
+    distargs = [None] * n_cols
     forward_samples = dict()
     stats = []
     i = 0
@@ -22,7 +39,8 @@ def forward_sample(X, n_iters, Zv=None, Zrcv=None, n_grid=30, n_chains=1, ct_ker
         forward_samples[chain] = []
         for itr in range(n_iters):
             i += 1
-            state = cc_state.cc_state(X, cctypes, distargs, Zv=Zv, Zrcv=Zrcv, n_grid=n_grid, ct_kernel=ct_kernel)
+            state = State(X, cctypes, distargs, Zv=Zv, Zrcv=Zrcv,
+                n_grid=n_grid)
             Y = su.resample_data(state)
             forward_samples[chain].append(Y)
             stats.append(get_data_stats(Y, state))
@@ -32,16 +50,18 @@ def forward_sample(X, n_iters, Zv=None, Zrcv=None, n_grid=30, n_chains=1, ct_ker
 
     return stats, forward_samples
 
-def posterior_sample(X, n_iters, kernels=_all_kernels, Zv=None, Zrcv=None, n_grid=30, n_chains=1, ct_kernel=0):
+def posterior_sample(X, n_iters, kernels=_all_kernels, Zv=None, Zrcv=None,
+        n_grid=30, n_chains=1, ct_kernel=0):
     n_cols = len(X)
-    cctypes = ['normal']*n_cols
-    distargs = [None]*n_cols
+    cctypes = ['normal'] * n_cols
+    distargs = [None] * n_cols
     stats = []
     posterior_samples = dict()
     i = 0.0;
     total_iters = n_chains*n_iters
     for chain in range(n_chains):
-        state = cc_state.cc_state(X, cctypes, distargs, Zv=Zv, Zrcv=Zrcv, n_grid=n_grid, ct_kernel=ct_kernel)
+        state = State(X, cctypes, distargs, Zv=Zv, Zrcv=Zrcv,
+            n_grid=n_grid)
         Y = su.resample_data(state)
         posterior_samples[chain] = Y
         for _ in range(n_iters):
@@ -53,21 +73,19 @@ def posterior_sample(X, n_iters, kernels=_all_kernels, Zv=None, Zrcv=None, n_gri
             string = "\r%1.2f  " % (i*100.0/float(total_iters))
             sys.stdout.write(string)
             sys.stdout.flush()
-            
     return stats, posterior_samples
 
 def get_data_stats(X, state):
     # Only get's stats for first column
     stats = dict()
-    stats['std'] = numpy.std(X[0])
-    stats['mean'] = numpy.mean(X[0])
+    stats['std'] = np.std(X[0])
+    stats['mean'] = np.mean(X[0])
     stats['col_alpha'] = state.alpha
     stats['row_alpha'] = state.views[0].alpha
     stats['hyper_s'] = state.dims[0].hypers['s']
     stats['hyper_m'] = state.dims[0].hypers['m']
     stats['hyper_r'] = state.dims[0].hypers['r']
     stats['hyper_nu'] = state.dims[0].hypers['nu']
-
     return stats
 
 def prep_stats_for_plotting(stats):
@@ -107,19 +125,19 @@ def pp_plot(f, p, nbins):
         bins = sorted(combine)
         bins.append( bins[-1]+bins[-1]-bins[-2] )
 
-    ff, edges = numpy.histogram(f, bins=bins, density=True)
-    fp, _ = numpy.histogram(p, bins=edges, density=True)
+    ff, edges = np.histogram(f, bins=bins, density=True)
+    fp, _ = np.histogram(p, bins=edges, density=True)
 
-    Ff = numpy.cumsum(ff*(edges[1:]-edges[:-1]))
-    Fp = numpy.cumsum(fp*(edges[1:]-edges[:-1]))
+    Ff = np.cumsum(ff*(edges[1:]-edges[:-1]))
+    Fp = np.cumsum(fp*(edges[1:]-edges[:-1]))
 
     pylab.plot([0,1],[0,1],c='red', lw=2)
     pylab.plot(Ff,Fp, c='black', lw=1)
     pylab.xlim([0,1])
     pylab.ylim([0,1])
 
-def binned_hist_pair(x_plots, stat_f, stat_p, index, nbins, stat_name, log_scale_x=False, log_scale_y=False):
-
+def binned_hist_pair(x_plots, stat_f, stat_p, index, nbins, stat_name,
+        log_scale_x=False, log_scale_y=False):
     uniqe_vals_f = list(set(stat_f))
     uniqe_vals_p = list(set(stat_p))
     combine = uniqe_vals_f
@@ -132,7 +150,8 @@ def binned_hist_pair(x_plots, stat_f, stat_p, index, nbins, stat_name, log_scale
         bins.append( bins[-1]+bins[-1]-bins[-2] )
 
     ax1 = pylab.subplot(2,x_plots,index)
-    _, bins_f, _ = pylab.hist(stat_f, bins=bins, normed=True, histtype='stepfilled', alpha=.7,color='blue')
+    _, bins_f, _ = pylab.hist(stat_f, bins=bins, normed=True,
+        histtype='stepfilled', alpha=.7,color='blue')
     pylab.title('%s (forward)' % stat_name)
     pylab.xlim([min(bins_f), max(bins_f)])
     y1 = ax1.get_ylim()
@@ -143,7 +162,8 @@ def binned_hist_pair(x_plots, stat_f, stat_p, index, nbins, stat_name, log_scale
         ax1.set_yscale('log')
 
     ax2 = pylab.subplot(2,x_plots,x_plots+index)
-    pylab.hist(stat_p, bins=bins_f, normed=True, histtype='stepfilled',alpha=.7,color='red')
+    pylab.hist(stat_p, bins=bins_f, normed=True, histtype='stepfilled',
+        alpha=.7,color='red')
     pylab.title('%s (posterior)'% stat_name)
     pylab.xlim([min(bins_f), max(bins_f)])
     y2 = ax1.get_ylim()
@@ -164,30 +184,33 @@ def plot_stats(stats_f, stats_p, hbins=30):
     stats_p = prep_stats_for_plotting(stats_p)
 
     # data
-    print("plotting data stats")
-    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False, tight_layout=True)
+    print "Plotting data stats"
+    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False,
+        tight_layout=True)
 
     ax = pylab.subplot(2,2,1)
-    _, bins_f, _ = pylab.hist(stats_f['mean'], bins=numpy.linspace(-5,5), normed=True, histtype='stepfilled')
+    _, bins_f, _ = pylab.hist(stats_f['mean'], bins=np.linspace(-5,5),
+        normed=True, histtype='stepfilled')
     pylab.title('col 0 data mean (forward)')
     ax = pylab.subplot(2,2,3)
     pylab.hist(stats_p['mean'], bins=bins_f, normed=True, histtype='stepfilled')
     pylab.title('col 0 data mean (posterior)')
 
-    
     ax = pylab.subplot(2,2,2)
-    _, bins_f, _ = pylab.hist(stats_f['std'], bins=numpy.linspace(0,5), normed=True, histtype='stepfilled')
+    _, bins_f, _ = pylab.hist(stats_f['std'], bins=np.linspace(0,5),
+        normed=True, histtype='stepfilled')
     pylab.title('col 0 data std (forward)')
     ax = pylab.subplot(2,2,4)
-    pylab.hist(stats_p['std'], bins=bins_f, normed=True,histtype='stepfilled')
+    pylab.hist(stats_p['std'], bins=bins_f, normed=True,
+        histtype='stepfilled')
     pylab.title('col 0 data std (posterior)')
-
 
     # hypers
     pylab.show()
     print("plotting prior stats")
 
-    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False, tight_layout=True)
+    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False,
+        tight_layout=True)
 
     pylab.clf()
     ax = pylab.subplot(2,3,1)
@@ -228,18 +251,22 @@ def plot_stats(stats_f, stats_p, hbins=30):
 
     pylab.show()
 
-    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False, tight_layout=True)
-
- 
-    binned_hist_pair(6, stats_f['hyper_m'], stats_p['hyper_m'], 1, hbins, 'col 0 hyper mu')
-    binned_hist_pair(6, stats_f['hyper_s'], stats_p['hyper_s'], 2, hbins, 'col 0 hyper s', log_scale_x=True)
-    binned_hist_pair(6, stats_f['hyper_r'], stats_p['hyper_r'], 3, hbins, 'col 0 hyper r', log_scale_x=True)
-    binned_hist_pair(6, stats_f['hyper_nu'], stats_p['hyper_nu'], 4, hbins, 'col 0 hyper nu', log_scale_x=True)
-    binned_hist_pair(6, stats_f['col_alpha'], stats_p['col_alpha'], 5, hbins, 'colum crp alpha', log_scale_x=True)
-    binned_hist_pair(6, stats_f['row_alpha'], stats_p['row_alpha'], 6, hbins, 'view_0 row crp alpha', log_scale_x=True)
-
-
+    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False,
+        tight_layout=True)
+    binned_hist_pair(6, stats_f['hyper_m'], stats_p['hyper_m'], 1, hbins,
+        'col 0 hyper mu')
+    binned_hist_pair(6, stats_f['hyper_s'], stats_p['hyper_s'], 2, hbins,
+        'col 0 hyper s', log_scale_x=True)
+    binned_hist_pair(6, stats_f['hyper_r'], stats_p['hyper_r'], 3, hbins,
+        'col 0 hyper r', log_scale_x=True)
+    binned_hist_pair(6, stats_f['hyper_nu'], stats_p['hyper_nu'], 4, hbins,
+        'col 0 hyper nu', log_scale_x=True)
+    binned_hist_pair(6, stats_f['col_alpha'], stats_p['col_alpha'], 5, hbins,
+        'colum crp alpha', log_scale_x=True)
+    binned_hist_pair(6, stats_f['row_alpha'], stats_p['row_alpha'], 6, hbins,
+        'view_0 row crp alpha', log_scale_x=True)
     pylab.show()
+
 def _contstruct_transition_list(t_col_z, t_row_z, t_state_alpha, t_view_alpha, t_col_hyper):
     kernels = [];
     if t_col_hyper:
@@ -252,9 +279,6 @@ def _contstruct_transition_list(t_col_z, t_row_z, t_state_alpha, t_view_alpha, t
         kernels.append('column_z')
     if t_row_z:
         kernels.append('row_z')
-    
-    
-
     return kernels
 
 def _construct_state_args(t_col_z, t_row_z, n_rows, n_cols):
@@ -267,19 +291,16 @@ def _construct_state_args(t_col_z, t_row_z, n_rows, n_cols):
         Zrcv = None
 
     if not t_col_z:
-        Zv = numpy.zeros(n_cols, dtype=int)
+        Zv = np.zeros(n_cols, dtype=int)
     else:
         Zv = None
 
     return Zv, Zrcv
 
-
 if __name__ == '__main__':
     random.seed(0)
-    numpy.random.seed(0)
-
+    np.random.seed(0)
     import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_rows', default=10, type=int)
     parser.add_argument('--num_cols', default=10, type=int)
@@ -299,32 +320,30 @@ if __name__ == '__main__':
     n_cols = args.num_cols
     n_chains = args.num_chains
     n_iters = args.num_iters
-    t_col_z = args.no_col_z;
-    t_row_z = args.no_row_z;
-    t_state_alpha = args.no_state_alpha;
-    t_col_hyper = args.no_col_hyper;
-    t_view_alpha = args.no_view_alpha;
+    t_col_z = args.no_col_z
+    t_row_z = args.no_row_z
+    t_state_alpha = args.no_state_alpha
+    t_col_hyper = args.no_col_hyper
+    t_view_alpha = args.no_view_alpha
     n_grid = args.n_grid
     ct_kernel = args.ct_kernel
 
     # python geweke_test.py --num_rows 40 --num_cols 1 --num_iters 1000 --num_chains 1 --no_col_z --no_row_z
 
-    kernels = _contstruct_transition_list(t_col_z, t_row_z, t_state_alpha, t_view_alpha, t_col_hyper);
+    kernels = _contstruct_transition_list(t_col_z, t_row_z, t_state_alpha,
+        t_view_alpha, t_col_hyper)
     Zv, Zrcv = _construct_state_args(t_col_z, t_row_z, n_rows, n_cols)
 
-    # X = [numpy.random.normal(size=(n_rows)) for _ in range(n_cols)]
-    X = [numpy.ones(n_rows) * float('nan') for _ in range(n_cols)]
+    # X = [np.random.normal(size=(n_rows)) for _ in range(n_cols)]
+    X = [np.ones(n_rows) * float('nan') for _ in range(n_cols)]
 
     print("Generating forward samples")
-    forward_sample_stats, fs = forward_sample(X, n_iters, Zv, Zrcv, n_grid, n_chains, ct_kernel)
+    forward_sample_stats, fs = forward_sample(X, n_iters, Zv, Zrcv, n_grid,
+        n_chains, ct_kernel)
     print(" ")
     print("Generating posterior samples")
-    postertior_sample_stats, ps = posterior_sample(X, n_iters, kernels, Zv, Zrcv, n_grid, n_chains, ct_kernel)
+    postertior_sample_stats, ps = posterior_sample(X, n_iters, kernels, Zv,
+        Zrcv, n_grid, n_chains, ct_kernel)
     print(" ")
     print("Plotting samples")
-
     plot_stats(forward_sample_stats , postertior_sample_stats, hbins=n_grid)
-
-
-
-    

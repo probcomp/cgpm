@@ -39,7 +39,8 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     ... lag: moves between samples
 
     Returns:
-    ... If num_samples == 1, returns a float, else resturns an num_samples length list
+    ... If num_samples == 1, returns a float, else resturns an num_samples length
+        list
 
     Example:
     >>> # Sample from posterior of CRP(x) with exponential(1) prior
@@ -53,7 +54,7 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     iters = 0
     samples = []
 
-    t_samples = num_samples*lag+burn
+    t_samples = num_samples * lag + burn
 
     checkevery = max(20, int(t_samples/100.0))
     accepted = 0.0
@@ -103,7 +104,6 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
             acceptance_rate = 0.0
             aiters = 0.0
 
-
         iters += 1.0
         aiters += 1.0
 
@@ -113,18 +113,21 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
         return samples
 
 def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1, w=1.0):
-    """
-    slice samples from the disitrbution defined by log_pdf_lambda
+    """Slice samples from the disitrbution defined by log_pdf_lambda.
+
     Arguments:
     ... proposal_fun: function that draws the initial point e.g. random.random
     ... log_pdf_lambda: function that evaluates the log pdf at x
     ... D: tuple. The domain.
+
     Keyword arguments:
     ... num_samples: number of samples to take
     ... burn: samples to throw out before any are collected
     ... lag: moves between samples
+
     Returns:
     ... If num_samples == 1, returns a float, else resturns an num_samples length list
+
     Example:
     >>> # Sample from posterior of CRP(x) with exponential(x) prior
     >>> log_pdf_lambda = lambda x : gu.lcrp(10, [5,3,2] , x) - x
@@ -161,8 +164,8 @@ def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1, 
         return samples
 
 def _find_slice_interval(f, x, u, D, w=1.0):
-    """
-    Given a point u between 0 and f(x), returns an approximated interval under f(x) at height u
+    """Given a point u between 0 and f(x), returns an approximated interval
+    under f(x) at height u.
     """
     r = random.random();
     a = x - r*w;
@@ -188,9 +191,7 @@ def _find_slice_interval(f, x, u, D, w=1.0):
     return a, b
 
 def simple_predictive_probability(state, row, col, X):
-
     logps = np.zeros(len(X))
-
     i = 0
     for x in X:
         is_observed = row > state.n_rows
@@ -201,28 +202,23 @@ def simple_predictive_probability(state, row, col, X):
 
         logps[i] = logp
         i += 1
-
     if i == 1:
         return logps[0]
     else:
         return logps
 
 def _simple_predictive_probability_observed(state, row, cols, x):
-    cluster = create_single_cluster_copy(state, row, cols)
+    cluster = _create_single_cluster_copy(state, row, cols)
     logp = cluster.predictive_logp(x)
     return logp
-
 
 def _simple_predictive_probability_unobserved(state, col, x):
     log_pK = get_cluster_crps(state, col)
     clusters = create_cluster_set(state, col)
-
     logps = []
     for cluster in clusters:
         logps.append(cluster.predictive_logp(x))
-
     logps = np.array(logps) + log_pK
-
     return logsumexp(logps)
 
 def simple_predictive_sample(state, row, cols, N=1):
@@ -285,7 +281,6 @@ def _simple_predictive_sample_unobserved(state, cols, N=1):
             for col in cols_v:
                 x = cluster_sets[col][k].predictive_draw()
                 row_data.append(x)
-
         draws.append(row_data)
 
     return draws
@@ -293,16 +288,13 @@ def _simple_predictive_sample_unobserved(state, cols, N=1):
 def get_cluster_crps(state, view):
     log_crp_numer = state.views[view].Nk[:]
     log_crp_numer.append(state.views[view].alpha)   # singleton cluster
-    log_crp_denom = log(state.n_rows+state.views[view].alpha)
+    log_crp_denom = log(state.n_rows + state.views[view].alpha)
     cluster_crps = np.log(np.array(log_crp_numer))-log_crp_denom
-
     return cluster_crps
 
 def create_cluster_set(state, col):
     hypers = state.dims[col].hypers
-
     clusters = copy.deepcopy(state.dims[col].clusters)
-
     # append empty model and set hypers (singleton)
     clusters.append(state.dims[col].model())
     clusters[-1].set_hypers(hypers)
@@ -355,15 +347,15 @@ def resample_data(state):
 
 
 def rejection_sampling(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
-    """
-    Samples from target pdf using rejection sampling.
+    """Samples from target pdf using rejection sampling.
+
     Input arguments:
     -- target_pdf_fn: the target distribution pdf. Should take a single
     argument, x.
     -- proposal_pdf_fn: the propsal distribution pdf. Should take a single
-    argument, x. Should also contain the target for all x, that is, 
+    argument, x. Should also contain the target for all x, that is,
     proposal_pdf_fn(x) >= target_pdf_fn(x)
-    -- proposal_draw_fn: draws x randomly from the domain of the target pdf 
+    -- proposal_draw_fn: draws x randomly from the domain of the target pdf
     according to the proposal distribution.
 
     Keyword Arguments:
@@ -371,11 +363,10 @@ def rejection_sampling(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
 
     NOTES:
     This was specifically implemented for the VonMiese predictive distribution
-    which, because it is cyclic, is not super obvious to me how to apply 
+    which, because it is cyclic, is not super obvious to me how to apply
     adaptive rejection sampling strategies. This is wasteful, but it's correct
     and quicker than esitimating the CDF for inversion sampling.
     """
-
     samples = []
 
     while len(samples) < N:
