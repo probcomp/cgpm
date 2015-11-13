@@ -1,9 +1,27 @@
-from baxcat.utils import cc_inference_utils as iu
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+import pylab
 import numpy
 import random
-from baxcat import cc_state
 import math
-import pylab
+
+from gpmcc import state
+from gpmcc.utils import inference as iu
+
 
 W_list = [.9, .75, .5, .25, .1]
 n_data_sets = 3
@@ -11,11 +29,9 @@ n_samples = 5
 
 N = 250
 mu = numpy.zeros(2)
-
 i = 0
 
 def _gen_ring(n,w):
-
     X = numpy.zeros((n,2))
     for i in range(n):
         angle = random.uniform(0,2*math.pi)
@@ -24,7 +40,6 @@ def _gen_ring(n,w):
         X[i,1] = math.sin(angle)*distance
 
     return X+100
-
 
 for kernel in range(2):
     MI = numpy.zeros((n_data_sets*n_samples, len(W_list)))
@@ -35,18 +50,13 @@ for kernel in range(2):
             # seed control so that data is always the same
             numpy.random.seed(r+ds)
             random.seed(r+ds)
-
             X = _gen_ring(N,w)
-
-
             for _ in range(n_samples):
-
-                S = cc_state.cc_state([X[:,0], X[:,1]], ['normal']*2, ct_kernel=kernel, distargs=[None]*2)
+                S = state.State([X[:,0], X[:,1]], ['normal']*2,
+                    ct_kernel=kernel, distargs=[None]*2)
                 S.transition(N=200)
-
                 mi = iu.mutual_information(S, 0, 1)
                 # linfoot = iu.mutual_information_to_linfoot(MI)
-
                 MI[r,c] = mi
 
                 print("w: %1.2f, MI: %1.6f" % (w, mi))
@@ -59,7 +69,6 @@ for kernel in range(2):
         c += 1
 
     w_labs = [str(w) for w in W_list]
-
 
     ax = pylab.subplot(1,2,kernel+1)
     pylab.boxplot(MI)

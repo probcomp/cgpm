@@ -1,6 +1,22 @@
-from baxcat.utils import cc_test_utils as tu
-from baxcat.utils import cc_sample_utils as su
-from baxcat import cc_state
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+from gpmcc.utils import test as tu
+from gpmcc.utils import sampling as su
+from gpmcc import state
 
 import numpy
 import pylab
@@ -24,8 +40,8 @@ def run_test(argsin):
     n_chains = args["num_chains"]
     ct_kernel = args["ct_kernel"]
 
-    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False, tight_layout=True)
-
+    fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False,
+        tight_layout=True)
 
     plt = 0
     data = {'x':[], 'sin':[], 'ring':[], 'dots':[]}
@@ -36,7 +52,8 @@ def run_test(argsin):
         data[shape] = gen_function[shape](n_rows)
 
         ax = pylab.subplot(n_chains+1,4,plt)
-        pylab.scatter( data[shape][0], data[shape][1], s=10, color='blue', edgecolor='none', alpha=.2 )
+        pylab.scatter( data[shape][0], data[shape][1], s=10, color='blue',
+            edgecolor='none', alpha=.2 )
         # pylab.ylabel("X")
         # pylab.ylabel("Y")
         # pylab.title("%s original" % shape)
@@ -56,21 +73,21 @@ def run_test(argsin):
             print("\tWorking on %s." % shape)
             plt += 1
             T = data[shape]
-            S = cc_state.cc_state(T, cctypes, ct_kernel=ct_kernel, distargs=distargs)
+            S = state.State(T, cctypes, ct_kernel=ct_kernel, distargs=distargs)
             S.transition(N=n_iters)
-            T_chain = numpy.array(su.simple_predictive_sample(S, n_rows, [0,1], N=n_rows))
-
+            T_chain = numpy.array(su.simple_predictive_sample(S, n_rows, [0,1],
+                N=n_rows))
             ax = pylab.subplot(n_chains+1,4,chain*4+4+plt)
             ax.set_xticks([])
             ax.set_yticks([])
-            pylab.scatter( T_chain[:,0], T_chain[:,1], s=10, color='red', edgecolor='none', alpha=.2 )
+            pylab.scatter( T_chain[:,0], T_chain[:,1], s=10, color='red',
+                edgecolor='none', alpha=.2 )
             pylab.xlim(xlims[shape])
             pylab.ylim(ylims[shape])
             # pylab.title("%s simulated (%i)" % (shape, chain))
 
-    print("Done.")
+    print "Done."
     pylab.show()
-
 
 if __name__ == "__main__":
     # python shape_test_chains.py --num_chains 20 --num_rows 500 --ct_kernel 0
@@ -86,10 +103,6 @@ if __name__ == "__main__":
     num_rows = args.num_rows
     ct_kernel = args.ct_kernel
 
-    args = dict(
-        num_rows=num_rows,
-        num_iters=num_iters,
-        num_chains=num_chains,
-        ct_kernel=ct_kernel
-        )
+    args = dict(num_rows=num_rows, num_iters=num_iters, num_chains=num_chains,
+        ct_kernel=ct_kernel)
     run_test(args)

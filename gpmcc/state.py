@@ -22,7 +22,7 @@ import numpy as np
 import pylab
 
 import gpmcc.utils.general as utils
-import gpmcc.utils.cc_plot_utils as pu
+import gpmcc.utils.plots as pu
 
 from gpmcc.cc_types import normal_uc
 from gpmcc.cc_types import beta_uc

@@ -18,7 +18,6 @@ import random
 import copy
 from math import fabs, log
 
-
 import numpy as np
 from numpy.random import normal
 from scipy.misc import logsumexp

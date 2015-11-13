@@ -1,10 +1,26 @@
-from baxcat.utils import cc_sample_utils as su
-from baxcat.cc_types import cc_normal_model
-from baxcat import cc_state
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+from gpmcc.utils import sampling as su
+from gpmcc.cc_types import normal
+from gpmcc import state
 
 import numpy
 import random
-#                                   ________        
+#                                   ________
 #                                 ||.     . ||
 #                                 ||   -    ||
 # _|_|_|    _|      _|    _|_|    ||        ||
@@ -27,21 +43,17 @@ class BaxCatEngine(object):
     def initialize(self, M_c, M_r, T, initialization='from_the_prior',
             specified_s_grid=None, specified_mu_grid=None,
             row_initialization=-1, n_chains=1):
-        
-        # assumes all columns are normal data
+        # Assumes all columns are Normal data.
         T = numpy.array(T)
         n_rows, n_cols = T.shape
-
         X = [ T[:,c] for c in range(n_cols) ]
         cctypes = ['normal']*n_cols
         distargs = [None]*n_cols
-
-        # it don't use M_r
+        # It don't use M_r.
         X_L_list = []
         X_D_list = []
         for chain in range(n_chains):
-            state = cc_state.cc_state(X, cctypes, distargs)
-
+            state = state.State(X, cctypes, distargs)
             if specified_mu_grid is not None:
                 if len(specified_mu_grid) > 0:
                     for dim in state.dims:
@@ -49,7 +61,6 @@ class BaxCatEngine(object):
                         dim.hypers['m'] = random.sample(specified_mu_grid, 1)[0]
                         for cluster in dim.clusters:
                             cluster.set_hypers(dim.hypers)
-
             if specified_s_grid is not None:
                 if len(specified_s_grid) > 0:
                     for dim in state.dims:
@@ -57,34 +68,26 @@ class BaxCatEngine(object):
                         dim.hypers['s'] = random.sample(specified_s_grid, 1)[0]
                         for cluster in dim.clusters:
                             cluster.set_hypers(dim.hypers)
-
             _, X_L, X_D = get_legacy_metadata(state)
-
             X_L_list.append(X_L)
             X_D_list.append(X_D)
-
         if n_chains == 1:
             X_L_list, X_D_list = X_L_list[0], X_D_list[0]
-
         return X_L_list, X_D_list
 
-    def analyze(self, M_c, T, X_L, X_D, 
-        specified_s_grid=None, specified_mu_grid=None ):
-
+    def analyze(self, M_c, T, X_L, X_D, specified_s_grid=None,
+            specified_mu_grid=None ):
         # is X_L is a list, then we are running multiple chains (states)
         is_multistate = isinstance(X_L, list)
-
         if is_multistate:
             n_states = len(X_L)
         else:
             X_L = [X_L]
             X_D = [X_D]
             n_states = 1
-
         X_L_list = []
         X_D_list = []
         for chain in range(n_states):
-            
             state = construct_state_from_legacy_metadata(T, M_c,
                      X_L[chain], X_D[chain])
             # check if we need to update the hyperparameter grids
@@ -92,31 +95,22 @@ class BaxCatEngine(object):
                 if len(specified_mu_grid) > 0:
                     for dim in state.dims:
                         dim.hypers_grids['m'] = numpy.array(specified_mu_grid)
-
             if specified_s_grid is not None:
                 if len(specified_s_grid) > 0:
                     for dim in state.dims:
                         dim.hypers_grids['s'] = numpy.array(specified_s_grid)
-
             state.transition()
-
             _, X_Li, X_Di = get_legacy_metadata(state)
-
             X_L_list.append(X_Li)
             X_D_list.append(X_Di)
-
-
         if not is_multistate:
             X_L_list, X_D_list = X_L_list[0], X_D_list[0]
-
         return X_L_list, X_D_list
 
     def simple_predictive_sample(self, M_c, X_L, X_D, Y, Q, n=1):
         is_multistate = isinstance(X_L, list)
-
         # gnseed = lambda : random.randrange(200000)
         # return ccsu.simple_predictive_sample(M_c, X_L, X_D, Y, Q, gnseed)
-
         if is_multistate:
             # this isn't quite right
             # n_states = len(X_L)
@@ -135,7 +129,6 @@ class BaxCatEngine(object):
 def _do_predictive_sample_legacy(M_c, X_L, X_D, Y, Q):
     # Y is not used. No constrained sampling yet
     # state = construct_state_from_legacy_metadata(T, M_c, X_L, X_D)
-
     samples = []
     for q in Q:
         row = q[0]
@@ -143,17 +136,14 @@ def _do_predictive_sample_legacy(M_c, X_L, X_D, Y, Q):
         model = _get_normal_model_from_legacy_metadata(row, col, X_L, X_D)
         x = model.predictive_draw()
         samples.append(x)
-
     return [samples]
 
 def _get_normal_model_from_legacy_metadata(row, col, X_L, X_D):
-    """ If row is in n_rows, returns a specific component model """
+    """If row is in n_rows, returns a specific component model."""
     # get view
     view = X_L['column_partition']['assignments'][col]
-
     # get cluster
     cluster = X_D[view][row]
-
     # get suffstats and hypers
     hypers = X_L['column_hypers'][col]
     suffstats = None
@@ -162,28 +152,22 @@ def _get_normal_model_from_legacy_metadata(row, col, X_L, X_D):
             idx = view_state['column_names'].index(col)
         except ValueError:
             idx = None
-
-        if idx is not None:    
+        if idx is not None:
             suffstats = view_state['column_component_suffstats'][idx][cluster]
-
     assert suffstats is not None
-
-    model = cc_normal_model.cc_normal(
+    model = normal.cc_normal(
             N=suffstats['N'],
-            sum_x=suffstats['sum_x'], 
-            sum_x_sq=suffstats['sum_x_squared'], 
-            m=hypers['mu'], 
-            r=hypers['r'], 
-            s=hypers['s'], 
+            sum_x=suffstats['sum_x'],
+            sum_x_sq=suffstats['sum_x_squared'],
+            m=hypers['mu'],
+            r=hypers['r'],
+            s=hypers['s'],
             nu=hypers['nu'])
 
     return model
- 
 
 def get_legacy_metadata(state_object):
-    """
-    get_legacy_metadata. Returns M_c, X_L, and X_D for CrossCat
-    """
+    """Get_legacy_metadata. Returns M_c, X_L, and X_D for crosscat."""
     n_cols = state_object.n_cols
     n_rows = state_object.n_rows
     n_views = state_object.V
@@ -220,22 +204,16 @@ def get_legacy_metadata(state_object):
     return M_c, X_L, X_D
 
 def construct_state_from_legacy_metadata(T, M_c, X_L, X_D):
-    """
-    Generates a state from CrossCat-formated data, T, and metadata
-    """
-    # ignores suffstats, calculates them manually
+    """Generates a state from CrossCat-formated data, T, and metadata."""
+    # Ignores suffstats, calculates them manually.
     Zv = X_L['column_partition']['assignments']
-    Zrcv = [ Z for Z in X_D ]
+    Zrcv = [Z for Z in X_D]
     T_array = numpy.array(T)
-
-    X = [ T_array[:,col].flatten(1) for col in range(T_array.shape[1]) ]
-
+    X = [T_array[:,col].flatten(1) for col in range(T_array.shape[1])]
     cctypes = ['normal']*len(X)
     distargs = [None]*len(X)
-
-    state = cc_state.cc_state(X, cctypes, distargs, Zv=Zv, Zrcv=Zrcv)
-
-    # set Column alpha
+    state = state.State(X, cctypes, distargs, Zv=Zv, Zrcv=Zrcv)
+    # Set column alpha.
     state.alpha = X_L['column_partition']['hypers']['alpha']
 
     for v in range(state.V):
@@ -246,12 +224,11 @@ def construct_state_from_legacy_metadata(T, M_c, X_L, X_D):
             hypers = X_L['column_hypers'][index]
             model_type = M_c['column_metadata'][index]['modeltype']
             _set_dim_hypers_from_legacy(dim, hypers, model_type)
-
     return state
 
-
 def _set_dim_hypers_from_legacy(dim_object, hypers, model_type):
-    update_hypers = _get_hypers_for_cc_dim_from_legacy[model_type](dim_object, hypers)
+    update_hypers = _get_hypers_for_cc_dim_from_legacy[model_type](
+        dim_object, hypers)
     dim_object.hypers = update_hypers
     for cluster in dim_object.clusters:
         cluster.set_hypers(update_hypers)
@@ -264,7 +241,7 @@ def _ghccfl_normal(dim_object, hypers):
         'nu' : hypers['nu'],
     }
     return update_hypers
-    
+
 def _get_view_state_for_X_L(view_object):
     view_state = dict()
     view_state['row_partition_model'] = {
@@ -297,7 +274,7 @@ def _gen_M_c(state_object):
         M_c['name_to_idx'][col] = col
         M_c['idx_to_name'][col] = col
         M_c['column_metadata'].append(
-            { 
+            {
                 'modeltype'    : _cctype_to_legacy_modeltype[cctype],
                 'value_to_code': {},
                 'code_to_value': {},
@@ -329,8 +306,8 @@ def _fxlh_normal(hypers):
     hypers_out = {
         'fixed' : False,
         'mu' : hypers['m'],
-        's'  : hypers['s'], 
-        'r'  : hypers['r'], 
+        's'  : hypers['s'],
+        'r'  : hypers['r'],
         'nu' : hypers['nu'] }
     return hypers_out
 
