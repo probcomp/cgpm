@@ -1,6 +1,6 @@
-from baxcat.utils import cc_test_utils as tu
-from baxcat.utils import cc_sample_utils as su
-from baxcat import cc_state
+from gpmcc.utils import cc_test_utils as tu
+from gpmcc.utils import sampling as su
+from gpmcc import cc_state
 
 import numpy
 import pylab
@@ -12,8 +12,8 @@ gen_function = {
     'dots' : tu.gen_four_dots
 }
 
-cctypes = ['normal']*2
-distargs = [None]*2
+cctypes = ['normal', 'normal']
+distargs = [None, None]
 
 shapes = ['x', 'sin', 'ring', 'dots']
 
@@ -32,7 +32,7 @@ def run_test(argsin):
         T_i = []
         for chain in range(n_chains):
             print "chain %i of %i" % (chain+1, n_chains)
-            S = cc_state.cc_state(T_o, cctypes, ct_kernel=1, distargs=distargs)
+            S = cc_state.cc_state(T_o, cctypes, distargs=distargs)
             S.transition(N=n_iters)
 
             T_i.extend( su.simple_predictive_sample(S, n_rows, [0,1], N=n_per_chain) )

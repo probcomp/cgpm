@@ -1,7 +1,7 @@
 import gpmcc.utils.inference_utils as iu
 import gpmcc.utils.cc_test_utils as tu
 
-from  baxcat import cc_state 
+from baxcat import cc_state
 
 import numpy
 import random
@@ -24,9 +24,8 @@ itr = 0
 cctypes = ['normal']*n_cols
 distargs = [None]*n_cols
 
-Ts, Zv, Zc = tu.gen_data_table(n_rows,
-            numpy.array([.5,.5]), 
-            [numpy.array([1./2]*2),
+Ts, Zv, Zc = tu.gen_data_table(n_rows,numpy.array([.5,.5]),
+    [numpy.array([1./2]*2),
             numpy.array([1./5]*5)], 
             cctypes, 
             distargs, 

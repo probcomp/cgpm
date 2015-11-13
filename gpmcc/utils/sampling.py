@@ -1,32 +1,51 @@
-import gpmcc.utils.general as utils
+# -*- coding: utf-8 -*-
 
-from math import fabs
-from math import log
+#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 import random
-import numpy
 import copy
+from math import fabs, log
 
+
+import numpy as np
+from numpy.random import normal
 from scipy.misc import logsumexp
-from numpy.random import normal as normrnd
+
+import gpmcc.utils.general as gu
 
 def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
-    """
-    uses MH to sample from log_pdf_lambda
-    rguments:
+    """Uses MH to sample from log_pdf_lambda.
+
+    Arguments:
     ... x: seed point
     ... log_pdf_lambda: function that evaluates the log pdf at x
     ... jump_std: standard deviation of jump distance (tunes itself)
     ... D: domain
+
     Keyword arguments:
     ... num_samples: number of samples to take
     ... burn: samples to throw out before any are collected
     ... lag: moves between samples
+
     Returns:
     ... If num_samples == 1, returns a float, else resturns an num_samples length list
+
     Example:
     >>> # Sample from posterior of CRP(x) with exponential(1) prior
     >>> x = 1.0
-    >>> log_pdf_lambda = lambda x : utils.lcrp(10, [5,3,2] , x) - x
+    >>> log_pdf_lambda = lambda x : gu.lcrp(10, [5,3,2] , x) - x
     >>> jump_std = 0.5
     >>> D = (0.0,float('Inf'))
     >>> sample = mh_sample(x log_pdf_lambda, jump_std, D)
@@ -44,18 +63,16 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     aiters = 1.0
 
     if D[0] >= 0.0 and D[1] == float('Inf'):
-        jumpfun = lambda x, jstd: fabs(x + normrnd(0.0, jstd))
+        jumpfun = lambda x, jstd: fabs(x + normal(0.0, jstd))
     elif D[0] == 0 and D[1] == 1:
         def jumpfun(x, jstd):
-            x = fabs(x + normrnd(0.0, jstd))
+            x = fabs(x + normal(0.0, jstd))
             if x > 1.0:
                 x = x%1
-
             assert x > 0 and x < 1
-
             return x
     else:
-        jumpfun = lambda x, jstd: x + normrnd(0.0, jstd)
+        jumpfun = lambda x, jstd: x + normal(0.0, jstd)
 
     logp = log_pdf_lambda(x)
     while num_collected < num_samples:
@@ -111,7 +128,7 @@ def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1, 
     ... If num_samples == 1, returns a float, else resturns an num_samples length list
     Example:
     >>> # Sample from posterior of CRP(x) with exponential(x) prior
-    >>> log_pdf_lambda = lambda x : utils.lcrp(10, [5,3,2] , x) - x
+    >>> log_pdf_lambda = lambda x : gu.lcrp(10, [5,3,2] , x) - x
     >>> proposal_fun = lambda : random.gammavariate(1.0,1.0)
     >>> D = (0.0, float('Inf'))
     >>> sample = slice_sample(proposal_fun, log_pdf_lambda, D)
@@ -173,7 +190,7 @@ def _find_slice_interval(f, x, u, D, w=1.0):
 
 def simple_predictive_probability(state, row, col, X):
 
-    logps = numpy.zeros(len(X))
+    logps = np.zeros(len(X))
 
     i = 0
     for x in X:
@@ -205,7 +222,7 @@ def _simple_predictive_probability_unobserved(state, col, x):
     for cluster in clusters:
         logps.append(cluster.predictive_logp(x))
 
-    logps = numpy.array(logps) + log_pK
+    logps = np.array(logps) + log_pK
 
     return logsumexp(logps)
 
@@ -246,7 +263,7 @@ def _simple_predictive_sample_unobserved(state, cols, N=1):
     pK_dict = dict()
     for v in V:
         log_pK = get_cluster_crps(state, v)
-        pK = numpy.exp(utils.log_normalize(log_pK))
+        pK = np.exp(gu.log_normalize(log_pK))
         pK_dict[v] = pK;
 
     cluster_sets = dict()
@@ -258,19 +275,19 @@ def _simple_predictive_sample_unobserved(state, cols, N=1):
 
     view_dict = dict()
     for v in V:
-        which_cols = numpy.nonzero( views == v )[0]
+        which_cols = np.nonzero( views == v )[0]
         view_dict[v] = [ col for col in which_cols ]
 
     for _ in range(N):
         row_data = []
         for v in V:
             cols_v = view_dict[v]
-            k = utils.pflip(pK_dict[v])
+            k = gu.pflip(pK_dict[v])
             for col in cols_v:
                 x = cluster_sets[col][k].predictive_draw()
                 row_data.append(x)
 
-        draws.append( row_data )
+        draws.append(row_data)
 
     return draws
 
@@ -278,7 +295,7 @@ def get_cluster_crps(state, view):
     log_crp_numer = state.views[view].Nk[:]
     log_crp_numer.append(state.views[view].alpha)   # singleton cluster
     log_crp_denom = log(state.n_rows+state.views[view].alpha)
-    cluster_crps = numpy.log(numpy.array(log_crp_numer))-log_crp_denom
+    cluster_crps = np.log(np.array(log_crp_numer))-log_crp_denom
 
     return cluster_crps
 
@@ -306,7 +323,7 @@ def resample_data(state):
     """
     n_rows = state.n_rows
     n_cols = state.n_cols
-    table = numpy.zeros( (n_rows, n_cols) )
+    table = np.zeros( (n_rows, n_cols) )
     # state.dump_data()
 
     all_rows = [r for r in range(n_rows)]

@@ -1,12 +1,12 @@
 import numpy
 import random
 import math
-import gpmcc.utils.general as utils
+import gpmcc.utils.general as gu
 
 from scipy.stats import norm
 
-from gpmcc import cc_dim
-from gpmcc import cc_dim_uc
+from gpmcc import dim
+from gpmcc import dim_uc
 
 from gpmcc.cc_types import normal_uc
 from gpmcc.cc_types import beta_uc
@@ -98,9 +98,9 @@ def gen_dims_from_structure(T, Zv, Zc, cc_types, distargs):
         cc_type = cc_types[c]
         cc_type_class = _cctype_class[cc_type]
         if _is_uncollapsed[cc_type]:
-            dim_c = cc_dim_uc.cc_dim_uc(T[c], cc_type_class, c, Z=Zc[v], distargs=distargs[c])
+            dim_c = dim_uc.DimUC(T[c], cc_type_class, c, Z=Zc[v], distargs=distargs[c])
         else:
-            dim_c = cc_dim.cc_dim(T[c], cc_type_class, c, Z=Zc[v], distargs=distargs[c])
+            dim_c = dim.Dim(T[c], cc_type_class, c, Z=Zc[v], distargs=distargs[c])
         dims.append(dim_c)
 
     return dims
@@ -194,26 +194,24 @@ def _gen_binomial_data_column(Z, separation=.9, distargs=None):
 def _gen_multinomial_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
     K = distargs['K']
-
     if separation > .95:
         separation = .95
-
     Tc = numpy.zeros(n_rows, dtype=int)
     C = max(Z)+1
-    theta_arrays = [numpy.random.dirichlet(numpy.ones(K)*(1.0-separation), 1) for _ in range(C)]
+    theta_arrays = [numpy.random.dirichlet(numpy.ones(K)*(1.0-separation), 1)
+        for _ in range(C)]
     for r in range(n_rows):
         cluster = Z[r]
         thetas = theta_arrays[cluster][0]
-        x = int(utils.pflip(thetas))
+        x = int(gu.pflip(thetas))
         Tc[r] = x
-
     return Tc
 
 def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
     n_views = len(view_weights)
     Zv = [v for v in range(n_views)]
     for _ in range(n_cols-n_views):
-        v = utils.pflip(view_weights)
+        v = gu.pflip(view_weights)
         Zv.append(v)
 
     random.shuffle(Zv)
@@ -225,7 +223,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
         Z = [c for c in range(n_clusters)]
         for _ in range(n_rows-n_clusters):
             c_weights = numpy.copy(clusters_weights[v])
-            c = utils.pflip(c_weights)
+            c = gu.pflip(c_weights)
             Z.append(c)
         random.shuffle(Z)
         Zc.append(Z)
@@ -244,7 +242,7 @@ def gen_partition_crp(n_rows, n_cols, n_views, alphas):
 
     Zc = []
     for v in range(n_views):
-        Zc.append(utils.crp_gen(n_rows, alphas[v])[0])
+        Zc.append(gu.crp_gen(n_rows, alphas[v])[0])
 
     return Zv, Zc
 
@@ -264,8 +262,6 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
-# Generate different shapes
-# `````````````````````````````````````````````````````````````````````````````
 def gen_sine_wave(N, noise=.5):
     x_range = [-3.0*math.pi/2.0, 3.0*math.pi/2.0]
     X = numpy.zeros( (N,2) )

@@ -1,9 +1,25 @@
-import baxcat.utils.cc_unit_utils as uu
-import baxcat.utils.cc_plot_utils as pu
-import baxcat.utils.cc_general_utils as gu
-import baxcat.utils.cc_validation_utils as vu
+# -*- coding: utf-8 -*-
 
-from baxcat import cc_state
+#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+import gpmcc.utils.cc_unit_utils as uu
+import gpmcc.utils.cc_plot_utils as pu
+import gpmcc.utils.general as gu
+import gpmcc.utils.cc_validation_utils as vu
+
+from gpmcc import state
 
 import scipy.cluster.hierarchy as sch
 import multiprocessing
@@ -13,11 +29,11 @@ import scipy
 import pylab
 import copy
 
-_all_transition_kernels = ['column_z','state_alpha','row_z','column_hypers','view_alphas']
+_all_transition_kernels = ['column_z','state_alpha', 'row_z', 'column_hypers',
+    'view_alphas']
 
-_cctypes_list = ['normal', 'normal_uc','binomial','multinomial',
-                 'lognormal','poisson','vonmises','vonmises_uc']
-
+_cctypes_list = ['normal', 'normal_uc', 'binomial', 'multinomial', 'lognormal',
+    'poisson','vonmises','vonmises_uc']
 
 def _do_predictive_sample():
     pass
@@ -34,9 +50,9 @@ def _do_append_feature(args):
     m = args[5]
     metadata = args[6]
 
-    S = cc_state.cc_state.from_metadata(X, metadata=metadata)
+    S = state.State.from_metadata(X, metadata=metadata)
     S.append_dim(X_f, cctype, distargs=distargs, ct_kernel=0, m=1)
-    
+
     return S.get_metadata()
 
 def _do_transition(args):

@@ -1,34 +1,44 @@
-import numpy
-import random
-import pylab
-from scipy.stats import gamma
-from numpy.random import gamma as gamrnd
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
 from math import log
-import gpmcc.utils.general as utils
-import gpmcc.utils.sampling as su
+import random
 
-class cc_view(object):
-    """
-    cc_view (CrossCat view)
-    """
+import numpy as np
+import gpmcc.utils.general as gu
+
+class View(object):
+    """View. A collection of Dim."""
+
     def __init__(self, dims, alpha=None, Z=None, n_grid=30):
-        """
-        Constructor
-        input arguments:
+        """View constructor.
+
+        Input arguments:
         -- dims: a list of cc_dim objects
-        optional arguments:
+        Optional arguments:
         -- alpha: crp concentration parameter. If none, is selected from grid.
         -- Z: starting partiton of rows to categories. If nonde, is intialized
         from CRP(alpha)
         -- n_grid: number of grid points in the hyperparameter grids
         """
-
         N = dims[0].N
         self.N = N
 
         # generate alpha
-        self.alpha_grid = utils.log_linspace(1.0/self.N, self.N, n_grid)
+        self.alpha_grid = gu.log_linspace(1.0 / self.N, self.N, n_grid)
 
         if alpha is None:
             alpha = random.choice(self.alpha_grid)
@@ -36,10 +46,10 @@ class cc_view(object):
             assert alpha > 0.0
 
         if Z is None:
-            Z, Nk, K = utils.crp_gen(N, alpha)
+            Z, Nk, K = gu.crp_gen(N, alpha)
         else:
             assert len(Z) == dims[0].X.shape[0]
-            Nk = utils.bincount(Z)
+            Nk = gu.bincount(Z)
             K = len(Nk)
 
         assert sum(Nk) == N
@@ -51,18 +61,17 @@ class cc_view(object):
             self.dims[dim.index] = dim
 
         self.alpha = alpha
-        self.Z = numpy.array(Z)
+        self.Z = np.array(Z)
         self.K = K
         self.Nk = Nk
 
     def reassign_rows_to_cats(self, which_rows=None):
-        """
-        It do what it say--reassign rows to categories.
-        optional arguments:
-        -- which_rows: a list of rows to reassign. If not specified, reassigns 
+        """It do what it say--reassign rows to categories.
+
+        Optional arguments:
+        -- which_rows: a list of rows to reassign. If not specified, reassigns
         every row
         """
-
         log_alpha = log(self.alpha)
 
         if which_rows is None:
@@ -84,7 +93,7 @@ class cc_view(object):
                 pv[z_a] -= 1
 
             # take the log of the CRP probabilities
-            pv = numpy.log(numpy.array(pv))
+            pv = np.log(np.array(pv))
 
             ps = []
             # calculate the probability of each row in each category, k \in K
@@ -101,7 +110,7 @@ class cc_view(object):
                 ps.append(lp)
 
             # Draw new assignment, z_b
-            z_b = utils.log_pflip(ps)
+            z_b = gu.log_pflip(ps)
 
             if z_a != z_b:
                 if is_singleton:
@@ -123,10 +132,9 @@ class cc_view(object):
 
 
     def transition(self, N, do_plot=False):
-        """
-        Do all the transitions. Do_plot is mainly for debugging and is only
+        """Do all the transitions. Do_plot is mainly for debugging and is only
         meant to be used to watch multiple transitions in a single view and not
-        in full state transitions---cc_state.transition has its own do_plot arg. 
+        in full state transitions---cc_state.transition has its own do_plot arg.
         """
         for _ in range(N):
             self.transition_Z(do_plot)
@@ -134,48 +142,42 @@ class cc_view(object):
             self.transition_column_hypers()
 
     def transition_alpha(self):
-        """
-        Calculate CRP alpha conditionals over grid and transition
-        """
-        logps = numpy.zeros(len(self.alpha_grid))
+        """Calculate CRP alpha conditionals over grid and transition."""
+        logps = np.zeros(len(self.alpha_grid))
         for i in range(len(self.alpha_grid)):
             alpha = self.alpha_grid[i]
-            logps[i] = utils.unorm_lcrp_post(alpha, self.N, self.K, lambda x: 0)
-        # log_pdf_lambda = lambda a : utils.lcrp(self.n_cols, self.Nv, a) + self.alpha_prior_lambda(a)
+            logps[i] = gu.unorm_lcrp_post(alpha, self.N, self.K, lambda x: 0)
+        # log_pdf_lambda = lambda a : gu.lcrp(self.n_cols, self.Nv, a)
+        # + self.alpha_prior_lambda(a)
 
-        index = utils.log_pflip(logps)
+        index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
     def transition_column_hypers(self):
-        """
-        Calculate column (cc_dim) hyperparameter conditionals over grid and transition
+        """Calculate column (Dim) hyperparameter conditionals over grid and
+        transition.
         """
         for dim in self.dims.values():
             dim.update_hypers()
 
     def transition_Z(self, which_rows=None, N=1):
-        """
-        Transition row assignment.
-        optional arguments:
-        -- which_rows: a list of rows to reassign. If not specified, reassigns 
+        """Transition row assignment.
+        Optional arguments:
+        -- which_rows: a list of rows to reassign. If not specified, reassigns
         every row
         -- N: number of times to transition (defualt: 1)
-        -- do_plot: plot predictive distribution and data histogram of each 
-        dim. For debugging.
         """
         for _ in range(N):
             self.reassign_rows_to_cats(which_rows=which_rows)
 
     def row_predictive_logp(self, row, cluster):
-        """
-        Get the predictive log_p of row being in cluster
-        """
+        """Get the predictive log_p of row being in cluster."""
         z_0 = self.Z[row]   # current assignment
         z_1 = cluster       # queried assignment
 
         if z_0 == z_1:
             # if the original assignment is the same as the queried cluster, we
-            # must remove the data from the suffstats before calculating the 
+            # must remove the data from the suffstats before calculating the
             # predictive probability
             lp = 0
             for dim in self.dims.values():
@@ -190,9 +192,7 @@ class cc_view(object):
         return lp
 
     def singleton_predictive_logp(self, row):
-        """
-        Get the predictive log_p of row being a singleton cluster
-        """
+        """Get the predictive log_p of row being a singleton cluster."""
         lp = 0
         for dim in self.dims.values():
             lp += dim.singleton_predictive_logp(row)
@@ -200,7 +200,7 @@ class cc_view(object):
 
     def destroy_singleton_cluster(self, row, to_destroy, move_to):
         self.Z[row] = move_to
-        zminus = numpy.nonzero(self.Z>to_destroy)
+        zminus = np.nonzero(self.Z>to_destroy)
         self.Z[zminus] -= 1
         for dim in self.dims.values():
             dim.destroy_singleton_cluster(row, to_destroy, move_to)
@@ -233,4 +233,3 @@ class cc_view(object):
 
     def release_dim(self, dim_index):
         del self.dims[dim_index]
-
