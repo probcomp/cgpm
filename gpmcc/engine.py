@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
-#
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
@@ -61,7 +59,7 @@ def _do_transition(args):
     which_rows = args[4]
     which_cols = args[5]
     metadata = args[6]
-    S = state.Statee.from_metadata(X, metadata=metadata)
+    S = state.State.from_metadata(X, metadata=metadata)
     S.transition(N, kernel_list, ct_kernel, which_rows, which_cols)
     return S.get_metadata()
 
