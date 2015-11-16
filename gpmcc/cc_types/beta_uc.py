@@ -1,5 +1,3 @@
-import math
-import random
 from math import log
 
 import numpy as np
@@ -179,9 +177,9 @@ class BetaUC(object):
     @staticmethod
     def init_hypers(grids, X=None):
         hypers = {
-            'mu' : random.choice(grids['mu']),
-            'alpha' : random.choice(grids['alpha']),
-            'beta' : random.choice(grids['beta']),
+            'mu' : np.random.choice(grids['mu']),
+            'alpha' : np.random.choice(grids['alpha']),
+            'beta' : np.random.choice(grids['beta']),
         }
         return hypers
 
@@ -226,7 +224,7 @@ class BetaUC(object):
         beta = clusters[0].beta
 
         which_hypers = [0,1,2]
-        random.shuffle(which_hypers)
+        np.random.shuffle(which_hypers)
 
         for hyper in which_hypers:
             if hyper == 0:

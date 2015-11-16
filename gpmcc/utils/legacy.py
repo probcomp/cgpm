@@ -12,12 +12,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from gpmcc.utils import sampling as su
 from gpmcc.cc_types import normal
 from gpmcc import state
 
-import numpy
-import random
+import numpy as np
 #                                   ________
 #                                 ||.     . ||
 #                                 ||   -    ||
@@ -42,10 +40,10 @@ class BaxCatEngine(object):
             specified_s_grid=None, specified_mu_grid=None,
             row_initialization=-1, n_chains=1):
         # Assumes all columns are Normal data.
-        T = numpy.array(T)
+        T = np.array(T)
         n_rows, n_cols = T.shape
         X = [ T[:,c] for c in range(n_cols) ]
-        cctypes = ['normal']*n_cols
+        cctypes = ['normal'] * n_cols
         distargs = [None]*n_cols
         # It don't use M_r.
         X_L_list = []
@@ -55,15 +53,15 @@ class BaxCatEngine(object):
             if specified_mu_grid is not None:
                 if len(specified_mu_grid) > 0:
                     for dim in state.dims:
-                        dim.hypers_grids['m'] = numpy.array(specified_mu_grid)
-                        dim.hypers['m'] = random.sample(specified_mu_grid, 1)[0]
+                        dim.hypers_grids['m'] = np.array(specified_mu_grid)
+                        dim.hypers['m'] = np.random.choice(specified_mu_grid)
                         for cluster in dim.clusters:
                             cluster.set_hypers(dim.hypers)
             if specified_s_grid is not None:
                 if len(specified_s_grid) > 0:
                     for dim in state.dims:
-                        dim.hypers_grids['s'] = numpy.array(specified_s_grid)
-                        dim.hypers['s'] = random.sample(specified_s_grid, 1)[0]
+                        dim.hypers_grids['s'] = np.array(specified_s_grid)
+                        dim.hypers['s'] = np.random.choice(specified_s_grid)
                         for cluster in dim.clusters:
                             cluster.set_hypers(dim.hypers)
             _, X_L, X_D = get_legacy_metadata(state)
@@ -86,17 +84,17 @@ class BaxCatEngine(object):
         X_L_list = []
         X_D_list = []
         for chain in range(n_states):
-            state = construct_state_from_legacy_metadata(T, M_c,
-                     X_L[chain], X_D[chain])
+            state = construct_state_from_legacy_metadata(T, M_c, X_L[chain],
+                X_D[chain])
             # check if we need to update the hyperparameter grids
             if specified_mu_grid is not None:
                 if len(specified_mu_grid) > 0:
                     for dim in state.dims:
-                        dim.hypers_grids['m'] = numpy.array(specified_mu_grid)
+                        dim.hypers_grids['m'] = np.array(specified_mu_grid)
             if specified_s_grid is not None:
                 if len(specified_s_grid) > 0:
                     for dim in state.dims:
-                        dim.hypers_grids['s'] = numpy.array(specified_s_grid)
+                        dim.hypers_grids['s'] = np.array(specified_s_grid)
             state.transition()
             _, X_Li, X_Di = get_legacy_metadata(state)
             X_L_list.append(X_Li)
@@ -112,7 +110,7 @@ class BaxCatEngine(object):
         if is_multistate:
             # this isn't quite right
             # n_states = len(X_L)
-            r = random.randrange(len(X_L))
+            r = np.random.randint(len(X_L))
             x = _do_predictive_sample_legacy(M_c, X_L[r], X_D[r], Y, Q)
             # for i in range(1, n_states):
             #     xi = _do_predictive_sample_legacy(M_c, X_L[i], X_D[i], Y, Q, n)
@@ -121,7 +119,7 @@ class BaxCatEngine(object):
         else:
             x = _do_predictive_sample_legacy(M_c, X_L, X_D, Y, Q)
 
-        # x = numpy.transpose(numpy.array(x)).tolist()
+        # x = np.transpose(np.array(x)).tolist()
         return x
 
 def _do_predictive_sample_legacy(M_c, X_L, X_D, Y, Q):
@@ -206,7 +204,7 @@ def construct_state_from_legacy_metadata(T, M_c, X_L, X_D):
     # Ignores suffstats, calculates them manually.
     Zv = X_L['column_partition']['assignments']
     Zrcv = [Z for Z in X_D]
-    T_array = numpy.array(T)
+    T_array = np.array(T)
     X = [T_array[:,col].flatten(1) for col in range(T_array.shape[1])]
     cctypes = ['normal']*len(X)
     distargs = [None]*len(X)

@@ -1,5 +1,18 @@
-import numpy
-import random
+# -*- coding: utf-8 -*-
+
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+import numpy as np
 import pylab
 
 import gpmcc.utils.inference as iu
@@ -9,25 +22,24 @@ rho_list = [0.0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0]
 n_data_sets = 3
 n_samples = 5
 N = 50
-mu = numpy.zeros(2)
+mu = np.zeros(2)
 i = 0
 distargs = [None,None]
 
 # for kernel in range(2):
 for kernel in range(2):
-    L = numpy.zeros((n_data_sets*n_samples, len(rho_list)))
+    L = np.zeros((n_data_sets*n_samples, len(rho_list)))
     c = 0
     for rho in rho_list:
         r = 0
         for ds in range(n_data_sets):
             # seed control so that data is always the same
-            numpy.random.seed(r+ds)
-            random.seed(r+ds)
-            sigma = numpy.array([[1,rho],[rho,1]])
-            X = numpy.random.multivariate_normal(mu,sigma,N)
+            np.random.seed(r+ds)
+            sigma = np.array([[1,rho],[rho,1]])
+            X = np.random.multivariate_normal(mu,sigma,N)
             for _ in range(n_samples):
                 S = state.State([X[:,0], X[:,1]], ['normal']*2, Zv=[0,0],
-                    ct_kernel=kernel, distargs=distargs)
+                    distargs=distargs)
                 S.transition(N=100)
                 MI = iu.mutual_information(S, 0, 1)
                 linfoot = iu.mutual_information_to_linfoot(MI)

@@ -1,5 +1,4 @@
 import math
-import random
 from math import sin
 from math import cos
 from math import log
@@ -156,10 +155,10 @@ class VonmisesUC(object):
     @staticmethod
     def init_hypers(grids, X=None):
         hypers = dict()
-        hypers['a'] = random.choice(grids['a'])
-        hypers['b'] = random.choice(grids['b'])
-        hypers['shape'] = random.choice(grids['shape'])
-        hypers['scale'] = random.choice(grids['scale'])
+        hypers['a'] = np.random.choice(grids['a'])
+        hypers['b'] = np.random.choice(grids['b'])
+        hypers['shape'] = np.random.choice(grids['shape'])
+        hypers['scale'] = np.random.choice(grids['scale'])
 
         return hypers
 
@@ -236,7 +235,7 @@ class VonmisesUC(object):
         scale = clusters[0].scale
 
         which_hypers = [0,1,2,3]
-        random.shuffle(which_hypers)
+        np.random.shuffle(which_hypers)
 
         for hyper in which_hypers:
             if hyper == 0:

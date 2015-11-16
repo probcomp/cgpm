@@ -13,7 +13,6 @@
 #   limitations under the License.
 
 from math import log
-import random
 
 import numpy as np
 import gpmcc.utils.general as gu
@@ -39,7 +38,7 @@ class View(object):
         self.alpha_grid = gu.log_linspace(1.0 / self.N, self.N, n_grid)
 
         if alpha is None:
-            alpha = random.choice(self.alpha_grid)
+            alpha = np.random.choice(self.alpha_grid)
         else:
             assert alpha > 0.0
 

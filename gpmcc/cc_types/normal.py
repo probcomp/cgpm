@@ -1,5 +1,4 @@
 import math
-import random
 from math import log
 
 import numpy as np
@@ -14,7 +13,6 @@ LOG2PI = log(2*math.pi)
 
 class Normal(object):
     """Normal data with normal prior on mean and gamma prior on precision.
-
     Does not require additional argumets (distargs=None).
     """
 
@@ -112,10 +110,10 @@ class Normal(object):
     @staticmethod
     def init_hypers(grids, X=None):
         hypers = dict()
-        hypers['m'] = random.choice(grids['m'])
-        hypers['s'] = random.choice(grids['s'])
-        hypers['r'] = random.choice(grids['r'])
-        hypers['nu'] = random.choice(grids['nu'])
+        hypers['m'] = np.random.choice(grids['m'])
+        hypers['s'] = np.random.choice(grids['s'])
+        hypers['r'] = np.random.choice(grids['r'])
+        hypers['nu'] = np.random.choice(grids['nu'])
 
         return hypers
 
@@ -154,7 +152,7 @@ class Normal(object):
         nu = clusters[0].nu
 
         which_hypers = [0,1,2,3]
-        random.shuffle(which_hypers)
+        np.random.shuffle(which_hypers)
 
         for hyper in which_hypers:
             if hyper == 0:

@@ -14,7 +14,6 @@
 
 import math
 import csv
-import random
 from math import log
 
 import numpy as np
@@ -75,7 +74,7 @@ def pflip(p):
     if not math.fabs(1.0 - sum(p)) < 10.0**(-10.0):
         import ipdb;
         ipdb.set_trace()
-    return np.choice(range(len(p)), size=1, p=p)[0]
+    return np.random.choice(range(len(p)), size=1, p=p)[0]
 
 def log_linspace(a, b, n):
     """linspace from a to b with n entries over log scale (mor entries at
@@ -136,20 +135,20 @@ def crp_gen(N, alpha):
 
     K = len(Nk)
     if K > 1:
-        random.shuffle(partition)
+        np.random.shuffle(partition)
     return np.array(partition), Nk, K
 
 def kl_array(support, log_true, log_inferred, is_discrete):
     """
     Inputs:
-    -- support: np array of support intervals
-    -- log_true: log pdf at support for the "true" distribution
+    -- support: np array of support intervals.
+    -- log_true: log pdf at support for the "true" distribution.
     -- log_inferred: log pdf at support for the distribution to test against the
-    "true" distribution
-    -- is_discrete: is this a discrete variable True/False
+    "true" distribution.
+    -- is_discrete: is this a discrete variable True/False.
 
     Returns:
-    - KL divergence
+    - KL divergence.
     """
     # KL divergence formula, recall X and Y are log
     F = (log_true - log_inferred) * np.exp(log_true)
@@ -163,9 +162,8 @@ def kl_array(support, log_true, log_inferred, is_discrete):
     return kld
 
 def bincount(X, bins=None):
-    """Returns the frequency of each entry in bins of X.
-
-    If bins is not epecified, then bins is [0,1,..,max(X)].
+    """Returns the frequency of each entry in bins of X. If bins is not
+    specified, then bins is [0,1,..,max(X)].
     """
     Y = np.array(X, dtype=int)
     if bins == None:

@@ -13,7 +13,6 @@
 #   limitations under the License.
 
 import copy
-import random
 from math import log
 
 import numpy as np
@@ -99,7 +98,6 @@ class State(object):
         """
 
         if seed is not None:
-            random.seed(seed)
             np.random.seed(seed)
 
         self.n_rows = len(X[0])
@@ -127,7 +125,7 @@ class State(object):
         # Initialize CRP alpha.
         self.alpha_grid = utils.log_linspace(1.0 / self.n_cols, self.n_cols,
             self.n_grid)
-        self.alpha = random.choice(self.alpha_grid)
+        self.alpha = np.random.choice(self.alpha_grid)
 
         assert len(self.dims) == self.n_cols
 
@@ -311,7 +309,7 @@ class State(object):
         if which_cols is None:
             which_cols = [i for i in range(self.n_cols)]
 
-        random.shuffle(which_cols)
+        np.random.shuffle(which_cols)
 
         for col in which_cols:
             if self.dims[col].mode == 'collapsed':

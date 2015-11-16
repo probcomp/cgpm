@@ -13,13 +13,11 @@
 #   limitations under the License.
 
 import pylab
-import random
 import sys
 
 import numpy as np
 
 from gpmcc.state import State
-from gpmcc.utils import test as tu
 from gpmcc.utils import sampling as su
 
 _all_kernels = ['column_hypers','view_alphas','row_z','state_alpha','column_z']
@@ -296,7 +294,6 @@ def _construct_state_args(t_col_z, t_row_z, n_rows, n_cols):
     return Zv, Zrcv
 
 if __name__ == '__main__':
-    random.seed(0)
     np.random.seed(0)
     import argparse
     parser = argparse.ArgumentParser()
@@ -335,13 +332,13 @@ if __name__ == '__main__':
     # X = [np.random.normal(size=(n_rows)) for _ in range(n_cols)]
     X = [np.ones(n_rows) * float('nan') for _ in range(n_cols)]
 
-    print("Generating forward samples")
+    print "Generating forward samples"
     forward_sample_stats, fs = forward_sample(X, n_iters, Zv, Zrcv, n_grid,
         n_chains, ct_kernel)
-    print(" ")
-    print("Generating posterior samples")
+    print
+    print "Generating posterior samples"
     postertior_sample_stats, ps = posterior_sample(X, n_iters, kernels, Zv,
         Zrcv, n_grid, n_chains, ct_kernel)
-    print(" ")
-    print("Plotting samples")
+    print
+    print "Plotting samples"
     plot_stats(forward_sample_stats , postertior_sample_stats, hbins=n_grid)

@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import random
 import copy
 from math import fabs, log
 
@@ -77,11 +76,11 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
 
         # every now and then propose wild jumps incase there very distant modes
         x_prime = jumpfun(x, jump_std)
-        assert( x_prime > D[0] and x_prime < D[1] )
+        assert  x_prime > D[0] and x_prime < D[1]
         logp_prime = log_pdf_lambda(x_prime)
 
         # if log(random.random()) < logp_prime - logp:
-        if log(random.random()) < logp_prime - logp:
+        if log(np.random.random()) < logp_prime - logp:
             x = x_prime
             logp = logp_prime
             accepted += 1.0
@@ -139,11 +138,11 @@ def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1, 
     num_iters = 0
     while len(samples) < num_samples:
         num_iters += 1
-        u = log(random.random())+f(x)
+        u = log(np.random.random()) + f(x)
         a, b = _find_slice_interval(f, x, u, D, w=w)
 
         while True:
-            x_prime = random.uniform(a, b)
+            x_prime = np.random.uniform(a, b)
             if f(x_prime) > u:
                 x = x_prime
                 break
@@ -165,9 +164,9 @@ def _find_slice_interval(f, x, u, D, w=1.0):
     """Given a point u between 0 and f(x), returns an approximated interval
     under f(x) at height u.
     """
-    r = random.random();
-    a = x - r*w;
-    b = x + (1-r)*w;
+    r = np.random.random()
+    a = x - r*w
+    b = x + (1-r)*w
 
     if a < D[0]:
         a = D[0]
@@ -316,7 +315,7 @@ def resample_data(state):
     # state.dump_data()
 
     all_rows = [r for r in range(n_rows)]
-    random.shuffle(all_rows)
+    np.random.shuffle(all_rows)
     for col in range(n_cols):
         for row in all_rows:
             # get the view and cluster to which the datum is assigned
@@ -378,7 +377,7 @@ def rejection_sampling(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
         fx = target_pdf_fn(x)
 
         # draw point randomly between 0 and y
-        u = random.random()*y
+        u = np.random.random()*y
 
         # the proposal should contain the target for all x
         assert fx <= y

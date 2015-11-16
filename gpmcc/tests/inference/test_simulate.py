@@ -21,7 +21,7 @@ import gpmcc.utils.general as gu
 
 def test_predictive_draw(state, N=None):
     if state.n_cols != 2:
-        print("state must have exactly 2 columns")
+        print "State must have exactly 2 columns."
         return
 
     if N is None:
@@ -31,7 +31,7 @@ def test_predictive_draw(state, N=None):
     view_2 = state.Zv[1]
 
     if view_1 != view_2:
-        print("Columns not in same view")
+        print "Columns not in same view."
         return
 
     log_crp = su.get_cluster_crps(state, 0)
@@ -52,5 +52,6 @@ def test_predictive_draw(state, N=None):
         Y[i] = y
 
     pylab.scatter(X,Y, color='red', label='inferred')
-    pylab.scatter(state.dims[0].X, state.dims[1].X, color='blue', label='actual')
+    pylab.scatter(state.dims[0].X, state.dims[1].X, color='blue',
+        label='actual')
     pylab.show()

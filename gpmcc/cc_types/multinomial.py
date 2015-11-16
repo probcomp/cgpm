@@ -1,5 +1,3 @@
-import math
-import random
 from math import log
 
 import numpy as np
@@ -74,7 +72,7 @@ class Multinomial(object):
     @staticmethod
     def init_hypers(grids, X=None):
         hypers = dict()
-        hypers['alpha'] = random.choice(grids['alpha'])
+        hypers['alpha'] = np.random.choice(grids['alpha'])
         return hypers
 
     @staticmethod

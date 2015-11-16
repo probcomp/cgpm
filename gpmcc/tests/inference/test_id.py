@@ -1,79 +1,78 @@
-from baxcat import cc_state 
-from shared_utils import general_utils as gu
+# -*- coding: utf-8 -*-
 
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
-import numpy
-import random
+from gpmccc import state
+from gpmcc.utils import general as gu
+
+import numpy as np
 import pylab
 
 n_rows = 300
 n_states = 32
 
-
 distargs = [ {'K':n_rows} ]
-distargs.extend( [None]*8 )  
+distargs.extend( [None]*8 )
 cctypes = ['multinomial']
 cctypes.extend(['normal']*8)
-column_names = ['id'] 
+column_names = ['id']
 column_names.extend( ['one cluster']*4 )
 column_names.extend( ['four cluster']*4 )
 
-
-random.seed(10)
-numpy.random.seed(10)
+np.random.seed(10)
 
 # id col
-X = [ numpy.array([i for i in range(n_rows)], dtype=int) ]
+X = [np.array([i for i in range(n_rows)], dtype=int)]
 
 # four cols of one cluster
 for i in range(4):
-    X.append( numpy.random.randn(n_rows) )
+    X.append( np.random.randn(n_rows) )
 
 Z = []
 for i in range(n_rows):
-    Z.append(random.randrange(4))
+    Z.append(np.random.randrange(4))
 
-# four cols of 
+# four cols of
 for _ in range(4):
     x_clustered = []
     for i in range(n_rows):
-        x_clustered.append( numpy.random.randn()+Z[i]*4 )
+        x_clustered.append( np.random.randn()+Z[i]*4 )
 
-    X.append( numpy.array( x_clustered) )
-
-
-# S = cc_state.cc_state(X, cctypes, distargs, ct_kernel=0, seed=random.randrange(200000))
-# S.transition(N=200, do_plot=True)
+    X.append(np.array( x_clustered))
 
 states = []
 for s in range(n_states):
-    states.append( cc_state.cc_state(X, cctypes, distargs, ct_kernel=1, seed=random.randrange(200000)) )
-
+    states.append(state.State(X, cctypes, distargs,
+        seed=np.random.randrange(200000)))
 
 num_iters = 200
-
 i = 0
 for state in states:
     i += 1
     state.transition(N=num_iters)
-    print("state %i of %i" % (i, n_states) )
-
+    print "state %i of %i" % (i, n_states)
 
 Zvs = []
-for state in states: 
+for state in states:
     Zvs.append(state.Zv.tolist())
 
-
 for Zv in Zvs:
-    print(Zv)
+    print Zv
 
 fig = pylab.figure(num=None, figsize=(8,6),
-            facecolor='w', edgecolor='k',frameon=False, 
+            facecolor='w', edgecolor='k',frameon=False,
             tight_layout=True)
 
-
-
 gu.generate_Z_matrix(Zvs, column_names)
-
 
 # pylab.show()

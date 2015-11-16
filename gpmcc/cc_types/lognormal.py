@@ -1,5 +1,4 @@
 import math
-import random
 from math import log
 
 import numpy as np
@@ -16,7 +15,6 @@ LOG2PI = log(2.0*math.pi)
 class Lognormal(object):
     """Log-normal (zero-bounded) data type with normal prior on mu and gamma
     prior on precision.
-
     Does not require additional argumets (distargs=None).
     """
 
@@ -92,10 +90,10 @@ class Lognormal(object):
     @staticmethod
     def init_hypers(grids, X=None):
         hypers = dict()
-        hypers['m'] = random.choice(grids['m'])
-        hypers['a'] = random.choice(grids['a'])
-        hypers['b'] = random.choice(grids['b'])
-        hypers['t'] = random.choice(grids['t'])
+        hypers['m'] = np.random.choice(grids['m'])
+        hypers['a'] = np.random.choice(grids['a'])
+        hypers['b'] = np.random.choice(grids['b'])
+        hypers['t'] = np.random.choice(grids['t'])
 
         return hypers
 
@@ -136,7 +134,7 @@ class Lognormal(object):
         m = clusters[0].m
 
         which_hypers = [0,1,2,3]
-        random.shuffle(which_hypers)
+        np.random.shuffle(which_hypers)
         for hyper in which_hypers:
             if hyper == 0:
                 lp_a = Lognormal.calc_a_conditional_logps(clusters, grids['a'],

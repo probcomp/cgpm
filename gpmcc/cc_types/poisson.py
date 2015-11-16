@@ -1,5 +1,3 @@
-import math
-import random
 from math import log
 
 import numpy as np
@@ -83,8 +81,8 @@ class Poisson(object):
     @staticmethod
     def init_hypers(grids, X=None):
         hypers = dict()
-        hypers['a'] = random.choice(grids['a'])
-        hypers['b'] = random.choice(grids['b'])
+        hypers['a'] = np.random.choice(grids['a'])
+        hypers['b'] = np.random.choice(grids['b'])
 
         return hypers
 
@@ -114,7 +112,7 @@ class Poisson(object):
         b = clusters[0].b
 
         which_hypers = [0,1]
-        random.shuffle(which_hypers)
+        np.random.shuffle(which_hypers)
 
         for hyper in which_hypers:
             if hyper == 0:

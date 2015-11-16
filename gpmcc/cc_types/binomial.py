@@ -1,8 +1,7 @@
 import math
-import random
 from math import log
 
-import numpy
+import numpy as np
 import pylab
 from scipy.special import betaln
 
@@ -60,7 +59,7 @@ class Binomial(object):
         return self.calc_marginal_logp(self.N, self.k, self.alpha, self.beta)
 
     def predictive_draw(self):
-        if random.random() < self.alpha/(self.alpha+self.beta):
+        if np.random.random() < self.alpha/(self.alpha+self.beta):
             return 1.0
         else:
             return 0.0
@@ -77,8 +76,8 @@ class Binomial(object):
     @staticmethod
     def init_hypers(grids, X=None):
         hypers = dict()
-        hypers['alpha'] = random.choice(grids['alpha'])
-        hypers['beta'] = random.choice(grids['beta'])
+        hypers['alpha'] = np.random.choice(grids['alpha'])
+        hypers['beta'] = np.random.choice(grids['beta'])
         return hypers
 
     @staticmethod
@@ -103,7 +102,7 @@ class Binomial(object):
         beta = clusters[0].beta
 
         which_hypers = [0,1]
-        random.shuffle(which_hypers)
+        np.random.shuffle(which_hypers)
 
         for hyper in which_hypers:
             if hyper == 0:
@@ -153,11 +152,11 @@ class Binomial(object):
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None):
-        X_hist = numpy.histogram(X,bins=2)[0]
+        X_hist = np.histogram(X,bins=2)[0]
         X_hist = X_hist/float(len(X))
         Y = [0, 1]
         K = len(clusters)
-        pdf = numpy.zeros((K,2))
+        pdf = np.zeros((K,2))
         denom = log(float(len(X)))
 
         a = clusters[0].alpha
@@ -167,7 +166,7 @@ class Binomial(object):
 
         W = [log(clusters[k].N) - denom for k in range(K)]
 
-        if math.fabs(sum(numpy.exp(W)) -1.0) > 10.0 ** (-10.0):
+        if math.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
             import ipdb;
             ipdb.set_trace()
 
@@ -177,12 +176,12 @@ class Binomial(object):
             kk = clusters[k].k
             for n in range(2):
                 y = float(Y[n])
-                pdf[k, n] = numpy.exp(w + Binomial.calc_predictive_logp(y, N,
+                pdf[k, n] = np.exp(w + Binomial.calc_predictive_logp(y, N,
                     kk, a, b))
 
             pylab.bar(Y, pdf[k,:], color="white", edgecolor="none", alpha=.5)
 
-        pylab.bar(Y, numpy.sum(pdf, axis=0), color='none', edgecolor="red",
+        pylab.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor="red",
             linewidth=3)
         pylab.xlim([-.1,1.9])
         pylab.ylim([0,1.0])

@@ -1,8 +1,7 @@
 import math
-import random
 from math import log
 
-import numpy
+import numpy as np
 import scipy
 import pylab
 
@@ -99,7 +98,7 @@ class NormalUC(object):
         return lp
 
     def predictive_draw(self):
-        return numpy.random.normal(self.mu, 1.0/self.rho**.5)
+        return np.random.normal(self.mu, 1.0/self.rho**.5)
 
     @staticmethod
     def singleton_logp(x, hypers):
@@ -118,17 +117,17 @@ class NormalUC(object):
 
     @staticmethod
     def draw_normal_params(m, r, s, nu):
-        rho = numpy.random.gamma(nu/2.0, scale=2.0/s)
-        mu = numpy.random.normal(loc=m, scale=1.0/(rho*r)**.5)
+        rho = np.random.gamma(nu/2.0, scale=2.0/s)
+        mu = np.random.normal(loc=m, scale=1.0/(rho*r)**.5)
         return mu, rho
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
         grids = dict()
-        ssqdev = numpy.var(X)*float(len(X));
+        ssqdev = np.var(X)*float(len(X));
         # assert ssqdev > 0
 
-        grids['m'] = numpy.linspace(min(X),max(X), n_grid)
+        grids['m'] = np.linspace(min(X),max(X), n_grid)
         grids['r'] = gu.log_linspace(.1,float(len(X))/2.0, n_grid)
         grids['s'] = gu.log_linspace(ssqdev/100.0, ssqdev, n_grid)
         grids['nu'] = gu.log_linspace(.1,float(len(X))/2.0, n_grid)
@@ -145,10 +144,10 @@ class NormalUC(object):
     def init_hypers(grids, X=None):
 
         hypers = dict()
-        hypers['m'] = random.choice(grids['m'])
-        hypers['s'] = random.choice(grids['s'])
-        hypers['r'] = random.choice(grids['r'])
-        hypers['nu'] = random.choice(grids['nu'])
+        hypers['m'] = np.random.choice(grids['m'])
+        hypers['s'] = np.random.choice(grids['s'])
+        hypers['r'] = np.random.choice(grids['r'])
+        hypers['nu'] = np.random.choice(grids['nu'])
 
         return hypers
 
@@ -167,7 +166,7 @@ class NormalUC(object):
         nu = clusters[0].nu
 
         which_hypers = [0,1,2,3]
-        random.shuffle(which_hypers)
+        np.random.shuffle(which_hypers)
 
         for hyper in which_hypers:
             if hyper == 0:
@@ -270,9 +269,9 @@ class NormalUC(object):
         colors = ["red", "blue", "green", "yellow", "orange", "purple", "brown", "black"]
         x_min = min(X)
         x_max = max(X)
-        Y = numpy.linspace(x_min, x_max, 200)
+        Y = np.linspace(x_min, x_max, 200)
         K = len(clusters)
-        pdf = numpy.zeros((K,200))
+        pdf = np.zeros((K,200))
         denom = log(float(len(X)))
 
         m = clusters[0].m
@@ -292,7 +291,7 @@ class NormalUC(object):
             rho = clusters[k].rho
             for n in range(200):
                 y = Y[n]
-                pdf[k, n] = numpy.exp(w + NormalUC.calc_logp(y, mu, rho))
+                pdf[k, n] = np.exp(w + NormalUC.calc_logp(y, mu, rho))
 
             if k >= 8:
                 color = "white"
@@ -302,5 +301,5 @@ class NormalUC(object):
                 alpha=.7
             pylab.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
 
-        pylab.plot(Y, numpy.sum(pdf, axis=0), color='black', linewidth=3)
+        pylab.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
         pylab.title('normal (uncollapsed)')

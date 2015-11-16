@@ -13,8 +13,7 @@
 #   limitations under the License.
 
 import pylab
-import numpy
-import random
+import numpy as np
 import math
 
 from gpmcc import state
@@ -25,27 +24,26 @@ n_data_sets = 3
 n_samples = 5
 
 N = 250
-mu = numpy.zeros(2)
+mu = np.zeros(2)
 i = 0
 
 def _gen_ring(n,w):
-    X = numpy.zeros((n,2))
+    X = np.zeros((n,2))
     for i in range(n):
-        angle = random.uniform(0,2*math.pi)
-        distance = random.uniform(1-w,1)
+        angle = np.random.uniform(0,2*math.pi)
+        distance = np.random.uniform(1-w,1)
         X[i,0] = math.cos(angle)*distance
         X[i,1] = math.sin(angle)*distance
     return X+100
 
 for kernel in range(2):
-    MI = numpy.zeros((n_data_sets*n_samples, len(W_list)))
+    MI = np.zeros((n_data_sets*n_samples, len(W_list)))
     c = 0
     for w in W_list:
         r = 0
         for ds in range(n_data_sets):
             # seed control so that data is always the same
-            numpy.random.seed(r+ds)
-            random.seed(r+ds)
+            np.random.seed(r+ds)
             X = _gen_ring(N,w)
             for _ in range(n_samples):
                 S = state.State([X[:,0], X[:,1]], ['normal']*2,
@@ -54,8 +52,8 @@ for kernel in range(2):
                 mi = iu.mutual_information(S, 0, 1)
                 # linfoot = iu.mutual_information_to_linfoot(MI)
                 MI[r,c] = mi
-                print("w: %1.2f, MI: %1.6f" % (w, mi))
-                print("%i of %i" % (i+1, len(W_list)*n_data_sets*n_samples*2))
+                print "w: %1.2f, MI: %1.6f" % (w, mi)
+                print "%i of %i" % (i+1, len(W_list)*n_data_sets*n_samples*2)
                 del S
                 i += 1
                 r += 1
