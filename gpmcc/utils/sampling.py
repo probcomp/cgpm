@@ -306,13 +306,11 @@ def _create_single_cluster_copy(state, row, col):
     return cluster
 
 def resample_data(state):
-    """
-    Samples and resets data in the state
-    """
+    """Samples and resets data in the state."""
     n_rows = state.n_rows
     n_cols = state.n_cols
     table = np.zeros( (n_rows, n_cols) )
-    # state.dump_data()
+    # state.clear_data()
 
     all_rows = [r for r in range(n_rows)]
     np.random.shuffle(all_rows)

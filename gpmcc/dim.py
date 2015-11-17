@@ -157,14 +157,13 @@ class Dim(object):
             k = Z[i]
             self.clusters[k].insert_element(self.X[i])
 
-    def dump_data(self):
+    def clear_data(self):
         """Removes all data from the clusters. Cleans suffstats."""
         K = len(self.clusters)
-        self.clusters = []
         for k in range(K):
             cluster = self.model(distargs=self.distargs)
             cluster.set_hypers(self.hypers)
-            self.clusters.append(cluster)
+            self.clusters[k] = cluster
 
     def update_prior_grids(self):
         n_grid = len(self.hypers_grids.values()[0])

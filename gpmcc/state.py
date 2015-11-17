@@ -294,10 +294,10 @@ class State(object):
             self.dims[col].X = data[col]
             self.dims[col].reassign(self.views[self.Zv[col]].Z)
 
-    def dump_data(self):
+    def clear_data(self):
         """Clears the suffstats in all clusters in all dims."""
-        for dim in self.dims:
-            dim.dump_data()
+        for view in self.views:
+            view.clear_data()
 
     def _update_prior_grids(self):
         for dim in self.dims:
