@@ -24,15 +24,14 @@ _transition_kernels = ['column_z','state_alpha', 'row_z', 'column_hypers',
     'view_alphas']
 
 def _append_feature(args):
-    X, X_f, cctype, distargs, metadata = args
-    chain = State.from_metadata(X, metadata=metadata)
+    X_f, cctype, distargs, metadata = args
+    chain = State.from_metadata(metadata)
     chain.append_dim(X_f, cctype, distargs=distargs, ct_kernel=0, m=1)
     return chain.get_metadata()
 
-
 def _transition(args):
-    N, X, kernel_list, ct_kernel, target_rows, target_cols, metadata = args
-    chain = State.from_metadata(X, metadata=metadata)
+    N, kernel_list, ct_kernel, target_rows, target_cols, metadata = args
+    chain = State.from_metadata(metadata)
     chain.transition(N, kernel_list, ct_kernel, target_rows, target_cols)
     return chain.get_metadata()
 
@@ -111,7 +110,7 @@ class Engine(object):
     def transition(self, N=1, kernel_list=None, ct_kernel=2, target_rows=None,
             target_cols=None):
         """Do transitions in parallel."""
-        args = [(N, self.X, kernel_list, ct_kernel, target_rows, target_cols,
+        args = [(N, kernel_list, ct_kernel, target_rows, target_cols,
             self.metadata[i]) for i in range(self.num_states)]
         self.metadata = self.map(_transition, args)
 

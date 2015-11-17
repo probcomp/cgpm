@@ -155,54 +155,10 @@ class State(object):
                 self.views.append(View(dims_view, Z=np.array(Zrcv[view]),
                     n_grid=n_grid))
 
+        self.X = X
         self.Zv = np.array(Zv)
         self.Nv = Nv
         self.V = V
-
-    @classmethod
-    def from_metadata(cls, X, metadata):
-        Zv = metadata['Zv']
-        Zrcv = metadata['Zrcv']
-        n_grid = metadata['n_grid']
-        hypers = metadata['hypers']
-        cctypes = metadata['cctypes']
-        distargs = metadata['distargs']
-        return cls(X, cctypes, distargs, n_grid, Zv, Zrcv, hypers)
-
-    def get_metadata(self):
-        metadata = dict()
-
-        # Misc data.
-        metadata['n_grid'] = self.n_grid
-
-        # View data.
-        metadata['V'] = self.V
-        metadata['Nv'] = self.Nv
-        metadata['Zv'] = self.Zv
-
-        # Category data.
-        metadata['K'] = []
-        metadata['Nk'] = []
-        metadata['Zrcv'] = []
-
-        # Column data.
-        metadata['hypers'] = []
-        metadata['cctypes'] = []
-        metadata['distargs'] = []
-        metadata['suffstats'] = []
-
-        for dim in self.dims:
-            metadata['hypers'].append(dim.hypers)
-            metadata['distargs'].append(dim.distargs)
-            metadata['cctypes'].append(dim.cctype)
-            metadata['suffstats'].append(dim.get_suffstats())
-
-        for view in self.views:
-            metadata['K'].append(view.K)
-            metadata['Nk'].append(view.Nk)
-            metadata['Zrcv'].append(view.Z)
-
-        return metadata
 
     def append_dim(self, X_f, cctype, distargs=None, ct_kernel=0, m=1):
         """Add a new data column to X.
@@ -472,12 +428,12 @@ class State(object):
         # clean up
         if v_b != v_a:
             if is_singleton:
-                assert( v_b < self.V )
+                assert v_b < self.V
                 self._destroy_singleton_view(newdim, v_a, v_b,
                     is_uncollapsed=True)
             elif v_b >= self.V:
                 index = v_b-self.V
-                assert( index >= 0 and index < m)
+                assert index >= 0 and index < m
                 proposal_view = proposal_views[index]
                 self._create_singleton_view(newdim, v_a, proposal_view,
                     is_uncollapsed=True)
@@ -598,3 +554,63 @@ class State(object):
                 assert len(dim.clusters) == K
                 for k in range(len(dim.clusters)):
                     assert dim.clusters[k].N == Nk[k]
+
+    def get_metadata(self):
+        metadata = dict()
+
+        # Dataset.
+        metadata['X'] = self.X
+
+        # Misc data.
+        metadata['n_grid'] = self.n_grid
+
+        # View data.
+        metadata['V'] = self.V
+        metadata['Nv'] = self.Nv
+        metadata['Zv'] = self.Zv
+
+        # Category data.
+        metadata['K'] = []
+        metadata['Nk'] = []
+        metadata['Zrcv'] = []
+
+        # Column data.
+        metadata['hypers'] = []
+        metadata['cctypes'] = []
+        metadata['distargs'] = []
+        metadata['suffstats'] = []
+
+        for dim in self.dims:
+            metadata['hypers'].append(dim.hypers)
+            metadata['distargs'].append(dim.distargs)
+            metadata['cctypes'].append(dim.cctype)
+            metadata['suffstats'].append(dim.get_suffstats())
+
+        for view in self.views:
+            metadata['K'].append(view.K)
+            metadata['Nk'].append(view.Nk)
+            metadata['Zrcv'].append(view.Z)
+
+        return metadata
+
+    def to_pickle(self, fileptr):
+        import pickle
+        metadata = self.get_metadata()
+        pickle.dump(metadata, fileptr)
+
+    @classmethod
+    def from_pickle(cls, fileptr):
+        import pickle
+        metadata = pickle.load(fileptr)
+        return cls.from_metadata(metadata)
+
+    @classmethod
+    def from_metadata(cls, metadata):
+        X = metadata['X']
+        Zv = metadata['Zv']
+        Zrcv = metadata['Zrcv']
+        n_grid = metadata['n_grid']
+        hypers = metadata['hypers']
+        cctypes = metadata['cctypes']
+        distargs = metadata['distargs']
+        return cls(X, cctypes, distargs, n_grid, Zv, Zrcv, hypers)

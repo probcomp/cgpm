@@ -30,7 +30,7 @@ def validate_cctypes(cctypes):
                 (str(cctype), str(valid_types())))
 
 def validate_data(X):
-    if not isinstance(X, list):
+    if not (isinstance(X, list) or isinstance(X, np.ndarray)):
         raise TypeError("Data should be a list.")
     if not isinstance(X[0], np.ndarray):
         raise TypeError("All entries in data should by numpy arrays.")
