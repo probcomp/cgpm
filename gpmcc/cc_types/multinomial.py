@@ -35,25 +35,21 @@ class Multinomial(object):
         self.alpha = hypers['alpha']
 
     def insert_element(self, x):
-        assert np.issubdtype( type(x), np.integer)
-        assert x >=0 and x < self.K
+        x = Multinomial.validate(x, self.K)
         self.N += 1
         self.w[x] += 1
 
     def remove_element(self, x):
-        assert np.issubdtype( type(x), np.integer)
-        assert x >=0 and x < self.K
+        x = Multinomial.validate(x, self.K)
         self.N -= 1
         self.w[x] -= 1
 
     def predictive_logp(self, x):
-        assert np.issubdtype( type(x), np.integer)
-        assert x >=0 and x < self.K
+        x = Multinomial.validate(x, self.K)
         return self.calc_predictive_logp(x, self.N, self.w, self.alpha)
 
     def singleton_logp(self, x):
-        assert np.issubdtype( type(x), np.integer)
-        assert x >=0 and x < self.K
+        x = Multinomial.validate(x, self.K)
         return self.calc_predictive_logp(x, 0, [0]*self.K, self.alpha)
 
     def marginal_logp(self):
@@ -63,7 +59,13 @@ class Multinomial(object):
         return gu.pflip(self.w)
 
     @staticmethod
-    def construct_hyper_grids(X,n_grid=30):
+    def validate(x, K):
+        assert int(x) == float(x)
+        assert 0 <= x and x < K
+        return int(x)
+
+    @staticmethod
+    def construct_hyper_grids(X, n_grid=30):
         grids = dict()
         grids['alpha'] = gu.log_linspace(1.0 / float(len(X)), float(len(X)),
             n_grid)
