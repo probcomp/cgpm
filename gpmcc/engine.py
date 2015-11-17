@@ -78,6 +78,9 @@ class Engine(object):
         self.initialize(X, cctypes, distargs, num_states=num_states,
             col_names=col_names, seed=seed)
 
+    def get_state(self, index):
+        return State.from_metadata(self.metadata[index])
+
     def append_feature(self, X_f, cctype, distargs=None, ct_kernel=0, m=1,
             col_name=None):
         """Add a feature (column) to the data."""
@@ -103,7 +106,7 @@ class Engine(object):
         else:
             self.col_names.append(col_name)
 
-    def add_row(self, X_o, update_hypers_grid=False):
+    def append_row(self, X_o, update_hypers_grid=False):
         """Add an object (row) to the cc_state."""
         pass
 
