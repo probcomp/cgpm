@@ -93,7 +93,7 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
 
     for col in range(n_cols):
         cc_type = cc_types[col]
-        args=distargs[col]
+        args = distargs[col]
         view = Zv[col]
         Tc = _gen_data[cc_type](Zc[view], separation[col], distargs=args)
         T.append(Tc)

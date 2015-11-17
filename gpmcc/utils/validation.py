@@ -12,10 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import numpy
+import numpy as np
 
-cctypes_list = ['normal', 'normal_uc','binomial','multinomial','lognormal',
-    'poisson','vonmises','vonmises_uc']
+def valid_types():
+    """Returns a list of colors for plotting."""
+    return ['beta_uc', 'binomial', 'lognormal', 'multinomial', 'normal',
+        'normal_uc', 'poisson','vonmises', 'vonmises_uc']
 
 def validate_metadata(metadata):
     # FIXME: fill in
@@ -23,19 +25,19 @@ def validate_metadata(metadata):
 
 def validate_cctypes(cctypes):
     for cctype in cctypes:
-        if cctype not in cctypes_list:
+        if cctype not in valid_types():
             raise ValueError("Invalid cctype %s. Valid values: %s" % \
-                (str(cctype), str(cctypes_list)))
+                (str(cctype), str(valid_types())))
 
 def validate_data(X):
     if not isinstance(X, list):
         raise TypeError("Data should be a list.")
-    if not isinstance(X[0], numpy.ndarray):
+    if not isinstance(X[0], np.ndarray):
         raise TypeError("All entries in data should by numpy arrays.")
     else:
         num_rows = X[0].shape[0]
     for x in X:
-        if not isinstance(x, numpy.ndarray):
+        if not isinstance(x, np.ndarray):
             raise TypeError("All entries in data should by numpy arrays.")
         if x.shape[0] != num_rows:
             raise ValueError("All columns should have the same number of rows.")

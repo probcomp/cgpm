@@ -31,5 +31,5 @@ distargs = [None, None, None, None, {"K":5}, None, None, None, None]
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
 
-S = state.State(T, cctypes, distargs)
+S = state.State(T, cctypes, distargs, seed=0)
 S.transition(N=10, do_plot=True)

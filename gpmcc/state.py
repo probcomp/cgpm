@@ -161,14 +161,12 @@ class State(object):
 
     @classmethod
     def from_metadata(cls, X, metadata):
-
         Zv = metadata['Zv']
         Zrcv = metadata['Zrcv']
         n_grid = metadata['n_grid']
         hypers = metadata['hypers']
         cctypes = metadata['cctypes']
         distargs = metadata['distargs']
-
         return cls(X, cctypes, distargs, n_grid, Zv, Zrcv, hypers)
 
     def get_metadata(self):
@@ -235,8 +233,8 @@ class State(object):
             self._transition_columns_kernel_uncollapsed(-1, m=m, append=True)
         self._check_partitions()
 
-    def transition(self, N=1, kernel_list=None, ct_kernel=0, which_rows=None,
-            which_cols=None, m=1, do_plot=False):
+    def transition(self, N=1, kernel_list=None, ct_kernel=0, target_rows=None,
+            target_cols=None, m=1, do_plot=False):
         """Do transitions.
 
         Optional arguments:
@@ -244,8 +242,8 @@ class State(object):
         -- kernel_list: which kernels to do.
         -- ct_kernel: which column transition kernel to use {0,1,2}
         --      = {Gibbs, MH, Aux Gibbs}
-        -- which_rows: list of rows to apply the transitions to
-        -- which_cols: list of columns to apply the transitions to
+        -- target_rows: list of rows to apply the transitions to
+        -- target_cols: list of columns to apply the transitions to
         -- do_plot: plot the state of the sampler (real-time)
 
         Examples:
@@ -255,13 +253,13 @@ class State(object):
         """
         kernel_dict = {
             'column_z' :
-                lambda : self._transition_columns(which_cols,ct_kernel,m=m),
+                lambda : self._transition_columns(target_cols, ct_kernel, m=m),
             'state_alpha':
                 lambda : self._transition_state_alpha(),
             'row_z':
-                lambda : self._transition_rows(which_rows),
+                lambda : self._transition_rows(target_rows),
             'column_hypers' :
-                lambda : self._transition_column_hypers(which_rows),
+                lambda : self._transition_column_hypers(target_rows),
             'view_alphas'   :
                 lambda : self._transition_view_alphas(),
         }
@@ -269,7 +267,7 @@ class State(object):
         if kernel_list is None:
             kernel_list = _all_kernels
 
-        kernel_fns = [ kernel_dict[kernel] for kernel in kernel_list ]
+        kernel_fns = [kernel_dict[kernel] for kernel in kernel_list]
 
         if do_plot:
             plt.ion()
@@ -305,14 +303,14 @@ class State(object):
         for dim in self.dims:
             dim.update_prior_grids()
 
-    def _transition_columns(self, which_cols=None, ct_kernel=0, m=3):
+    def _transition_columns(self, target_cols=None, ct_kernel=0, m=3):
         """Transition column assignment to views."""
-        if which_cols is None:
-            which_cols = [i for i in range(self.n_cols)]
+        if target_cols is None:
+            target_cols = [i for i in range(self.n_cols)]
 
-        np.random.shuffle(which_cols)
+        np.random.shuffle(target_cols)
 
-        for col in which_cols:
+        for col in target_cols:
             if self.dims[col].mode == 'collapsed':
                 self._transition_columns_kernel_collapsed(col, m=m,
                     append=False)
@@ -488,16 +486,16 @@ class State(object):
 
         # self._check_partitions()
 
-    def _transition_rows(self, which_rows=None):
+    def _transition_rows(self, target_rows=None):
         # move rows to new cluster
         for view in self.views:
-            view.reassign_rows_to_cats(which_rows=which_rows)
+            view.transition_rows(target_rows=target_rows)
 
-    def _transition_column_hypers(self, which_cols=None):
-        if which_cols is None:
-            which_cols = range(self.n_cols)
+    def _transition_column_hypers(self, target_cols=None):
+        if target_cols is None:
+            target_cols = range(self.n_cols)
 
-        for i in which_cols:
+        for i in target_cols:
             self.dims[i].update_hypers()
 
     def _transition_view_alphas(self):

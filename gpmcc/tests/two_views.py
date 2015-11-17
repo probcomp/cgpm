@@ -16,20 +16,21 @@ from gpmcc.utils import test as tu
 from gpmcc import state
 import numpy as np
 
-# This script generates acolumn of every data type and plots inference
-# in real time
+# This script generates a column of every data type and plots inference
+# in real time.
 
-# set up the data generation
+# Set up the data generation.
 n_rows = 200
 view_weights = np.asarray([0.7, .3])
 cluster_weights = [np.array([.33, .33, .34]), np.array([.2, .8])]
 cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial','vonmises',
     'vonmises_uc','binomial', 'lognormal']
+
 separation = [.95] * 9
 distargs = [None, None, None, None, {"K":5}, None, None, None, None]
 
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
 
-# S = state.State(T, cctypes, distargs)
-# S.transition(N=10, do_plot=True)
+S = state.State(T, cctypes, distargs)
+S.transition(N=1, do_plot=True)

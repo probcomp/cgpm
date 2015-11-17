@@ -62,21 +62,21 @@ class View(object):
         self.K = K
         self.Nk = Nk
 
-    def reassign_rows_to_cats(self, which_rows=None):
-        """It do what it say--reassign rows to categories.
+    def transition_rows(self, target_rows=None):
+        """It do what it say -- reassign rows to categories.
 
         Optional arguments:
-        -- which_rows: a list of rows to reassign. If not specified, reassigns
+        -- target_rows: a list of rows to reassign. If not specified, reassigns
         every row
         """
         log_alpha = log(self.alpha)
 
-        if which_rows is None:
-            which_rows = [i for i in range(self.N)]
+        if target_rows is None:
+            target_rows = [i for i in range(self.N)]
 
-        # random.shuffle(which_rows)
+        # random.shuffle(target_rows)
 
-        for row in which_rows:
+        for row in target_rows:
             # get the current assignment, z_a, and determine if it is a singleton
             z_a = self.Z[row]
             is_singleton = (self.Nk[z_a] == 1)
@@ -93,7 +93,7 @@ class View(object):
             pv = np.log(np.array(pv))
 
             ps = []
-            # calculate the probability of each row in each category, k \in K
+            # Calculate the probability of each row in each category, k \in K.
             for k in range(self.K):
                 if k == z_a and is_singleton:
                     lp = self.singleton_predictive_logp(row) + pv[k]
@@ -101,7 +101,7 @@ class View(object):
                     lp = self.row_predictive_logp(row,k) + pv[k]
                 ps.append(lp)
 
-            # propose singleton
+            # Propose singleton.
             if not is_singleton:
                 lp = self.singleton_predictive_logp(row) + log_alpha
                 ps.append(lp)
@@ -133,7 +133,7 @@ class View(object):
         meant to be used to watch multiple transitions in a single view and not
         in full state transitions---cc_state.transition has its own do_plot arg.
         """
-        for _ in range(N):
+        for _ in xrange(N):
             self.transition_Z(do_plot)
             self.transition_alpha()
             self.transition_column_hypers()
@@ -157,15 +157,15 @@ class View(object):
         for dim in self.dims.values():
             dim.update_hypers()
 
-    def transition_Z(self, which_rows=None, N=1):
+    def transition_Z(self, target_rows=None, N=1):
         """Transition row assignment.
         Optional arguments:
-        -- which_rows: a list of rows to reassign. If not specified, reassigns
+        -- target_rows: a list of rows to reassign. If not specified, reassigns
         every row
         -- N: number of times to transition (defualt: 1)
         """
         for _ in range(N):
-            self.reassign_rows_to_cats(which_rows=which_rows)
+            self.transition_rows(target_rows=target_rows)
 
     def row_predictive_logp(self, row, cluster):
         """Get the predictive log_p of row being in cluster."""
