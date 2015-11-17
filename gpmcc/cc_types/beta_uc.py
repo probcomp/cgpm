@@ -1,7 +1,7 @@
 from math import log
 
 import numpy as np
-import pylab
+import matplotlib.pyplot as plt
 import scipy
 
 import gpmcc.utils.general as gu
@@ -253,8 +253,10 @@ class BetaUC(object):
         return hypers
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None):
-        colors = ["red", "blue", "green", "yellow", "orange", "purple", "brown", "black"]
+    def plot_dist(X, clusters, distargs=None, ax=None):
+        if ax is None:
+            _, ax = plt.subplots()
+
         N = 100
         Y = np.linspace(0.01, .99, N)
         K = len(clusters)
@@ -263,11 +265,10 @@ class BetaUC(object):
 
         nbins = min([len(X)/5, 50])
 
-        pylab.hist(X, nbins, normed=True, color="black", alpha=.5,
+        ax.hist(X, nbins, normed=True, color="black", alpha=.5,
             edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
-
         for k in range(K):
             w = W[k]
             strength = clusters[k].strength
@@ -276,14 +277,14 @@ class BetaUC(object):
                 y = Y[n]
                 pdf[k, n] = np.exp(w + BetaUC.calc_singleton_logp(y,
                     strength, balance))
-
             if k >= 8:
                 color = "white"
                 alpha=.3
             else:
-                color = colors[k]
+                color = gu.colors()[k]
                 alpha=.7
-            pylab.plot(Y, pdf[k,:],color=color, linewidth=5, alpha=alpha)
+            ax.plot(Y, pdf[k,:],color=color, linewidth=5, alpha=alpha)
 
-        pylab.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-        pylab.title('beta (uncollapsed)')
+        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
+        ax.set_title('beta (uncollapsed)')
+        return ax

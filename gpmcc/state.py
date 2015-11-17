@@ -16,7 +16,7 @@ import copy
 from math import log
 
 import numpy as np
-import pylab
+import matplotlib.pyplot as plt
 
 import gpmcc.utils.general as utils
 import gpmcc.utils.plots as pu
@@ -272,12 +272,13 @@ class State(object):
         kernel_fns = [ kernel_dict[kernel] for kernel in kernel_list ]
 
         if do_plot:
-            pylab.ion()
+            plt.ion()
             layout = pu.get_state_plot_layout(self.n_cols)
-            fig = pylab.figure(num=None, figsize=(layout['plot_inches_y'],
+            fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
                 layout['plot_inches_x']), dpi=75, facecolor='w', edgecolor='k',
                 frameon=False,tight_layout=True)
-            self._plot(fig,layout)
+            self._plot(fig, layout)
+            plt.show()
 
         for i in range(N):
             print i
@@ -285,7 +286,7 @@ class State(object):
             for kernel in kernel_fns:
                 kernel()
             if do_plot:
-                self._plot(fig,layout)
+                self._plot(fig, layout)
 
     def set_data(self, data):
         """Testing. Resets the suffstats in all clusters in all dims to reflect
@@ -561,25 +562,20 @@ class State(object):
         # do not plot more than 6 by 4
         if self.n_cols > 24:
             return
-        pylab.clf()
+        fig.clear()
         for dim in self.dims:
             index = dim.index
-            ax = pylab.subplot(layout['plots_x'], layout['plots_y'], index)
+            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index)
             if self.Zv[index] >= len(layout['border_color']):
                 border_color = 'gray'
             else:
                 border_color = layout['border_color'][self.Zv[index]]
-            dim.plot_dist()
-            ax.spines['bottom'].set(lw=7,color=border_color)
-            ax.spines['top'].set(lw=7,color=border_color)
-            ax.spines['right'].set(lw=7,color=border_color)
-            ax.spines['left'].set(lw=7,color=border_color)
-            pylab.text(1,1, "K: %i " % len(dim.clusters),
+            dim.plot_dist(ax=ax)
+            ax.text(1,1, "K: %i " % len(dim.clusters),
                 transform=ax.transAxes,
-                fontsize=18, weight='bold', color='blue',
+                fontsize=12, weight='bold', color='blue',
                 horizontalalignment='right',verticalalignment='top')
-
-        pylab.draw()
+        plt.draw()
 
     def _check_partitions(self):
         # for debugging only

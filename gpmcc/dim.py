@@ -70,7 +70,7 @@ class Dim(object):
         lp = self.clusters[k].predictive_logp(x)
         return lp
 
-    def singleton_predictive_logp(self,n):
+    def singleton_predictive_logp(self, n):
         """Returns the predictive log_p of X[n] in its own cluster."""
         x = self.X[n]
         lp = self.clusters[0].singleton_logp(x)
@@ -182,9 +182,9 @@ class Dim(object):
         #     suffstats.append(cluster.get_suffstats())
         return suffstats
 
-
-    def plot_dist(self):
+    def plot_dist(self, ax=None):
         """
         Plots the predictive distribution and histogram of X.
         """
-        self.model.plot_dist(self.X, self.clusters, distargs=self.distargs)
+        self.model.plot_dist(self.X, self.clusters, distargs=self.distargs,
+            ax=ax)

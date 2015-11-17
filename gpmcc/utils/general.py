@@ -21,6 +21,11 @@ from scipy.special import i0 as bessel_0
 from scipy.misc import logsumexp
 from scipy.special import gammaln
 
+def colors():
+    """Returns a list of colors for plotting."""
+    return ["red", "blue", "green", "yellow", "orange", "purple", "brown",
+        "black"]
+
 def log_bessel_0(x):
     besa = bessel_0(x)
     # if bessel_0(a) is inf, then use the eponential approximation to

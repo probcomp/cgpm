@@ -4,7 +4,7 @@ from math import sin
 from math import cos
 
 import numpy as np
-import pylab
+import matplotlib.pyplot as plt
 from scipy.special import i0 as bessel_0
 from scipy.special import i1 as bessel_1
 
@@ -295,8 +295,10 @@ class Vonmises(object):
             return np.abs(kappa)
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None):
-        colors = ["red", "blue", "green", "yellow", "orange", "purple", "brown", "black"]
+    def plot_dist(X, clusters, distargs=None, ax=None):
+        if ax is None:
+            _, ax = plt.subplots()
+
         x_min = 0
         x_max = 2*math.pi
         Y = np.linspace(x_min, x_max, 200)
@@ -309,16 +311,13 @@ class Vonmises(object):
         vmk = clusters[0].k
 
         nbins = min([len(X)/5, 50])
-
-        pylab.hist(X, nbins, normed=True, color="black", alpha=.5,
+        ax.hist(X, nbins, normed=True, color="black", alpha=.5,
             edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
-
         if math.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
             import ipdb;
             ipdb.set_trace()
-
         for k in range(K):
             w = W[k]
             N = clusters[k].N
@@ -328,14 +327,14 @@ class Vonmises(object):
                 y = Y[n]
                 pdf[k, n] = np.exp(w + Vonmises.calc_predictive_logp(y, N,
                     sum_sin_x, sum_cos_x, a, b, vmk))
-
             if k >= 8:
                 color = "white"
-                alpha=.3
+                alpha = .3
             else:
-                color = colors[k]
-                alpha=.7
-            pylab.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
+                color = gu.colors()[k]
+                alpha = .7
+            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
 
-        pylab.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-        pylab.title('vonmises')
+        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
+        ax.set_title('vonmises')
+        return ax

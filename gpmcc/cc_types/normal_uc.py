@@ -3,6 +3,8 @@ from math import log
 
 import numpy as np
 import scipy
+
+import matplotlib.pyplot as plt
 import pylab
 
 import gpmcc.utils.general as gu
@@ -264,26 +266,22 @@ class NormalUC(object):
 
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None):
-        colors = ["red", "blue", "green", "yellow", "orange", "purple", "brown", "black"]
+    def plot_dist(X, clusters, distargs=None, ax=None):
+        if ax is None:
+            _, ax = plt.subplots()
+
         x_min = min(X)
         x_max = max(X)
         Y = np.linspace(x_min, x_max, 200)
         K = len(clusters)
         pdf = np.zeros((K,200))
         denom = log(float(len(X)))
-
-        m = clusters[0].m
-        s = clusters[0].s
-        r = clusters[0].r
-        nu = clusters[0].nu
-
         nbins = min([len(X)/5, 50])
 
-        pylab.hist(X, nbins, normed=True, color="black", alpha=.5, edgecolor="none")
+        ax.hist(X, nbins, normed=True, color="black", alpha=.5,
+            edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
-
         for k in range(K):
             w = W[k]
             mu = clusters[k].mu
@@ -291,14 +289,14 @@ class NormalUC(object):
             for n in range(200):
                 y = Y[n]
                 pdf[k, n] = np.exp(w + NormalUC.calc_logp(y, mu, rho))
-
             if k >= 8:
                 color = "white"
                 alpha=.3
             else:
-                color = colors[k]
+                color = gu.colors()[k]
                 alpha=.7
-            pylab.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
+            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
 
-        pylab.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-        pylab.title('normal (uncollapsed)')
+        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
+        ax.set_title('normal (uncollapsed)')
+        return ax

@@ -34,27 +34,23 @@ _plot_layout = {
 }
 
 def get_state_plot_layout(n_cols):
-    
     pl = _plot_layout[n_cols]
     plots_x = pl[0]
     plots_y = pl[1]
 
-    plot_inches_x = (13/6.0)*plots_x
-    plot_inches_y = 6.0*plots_y
+    plot_inches_x = 13/6.0 * plots_x
+    plot_inches_y = 6.0 * plots_y
 
-    ret = dict(
-        plots_x=plots_x,
-        plots_y=plots_y,
-        plot_inches_x=plot_inches_x,
-        plot_inches_y=plot_inches_y,
-        border_color=_colors
-        )
-
+    ret = {
+        'plots_x': plots_x,
+        'plots_y': plots_y,
+        'plot_inches_x': plot_inches_x,
+        'plot_inches_y': plot_inches_y,
+        'border_color': _colors
+        }
     return ret
 
-
 def generate_Z_matrix(Zvs, col_names):
-
     n_cols = len(Zvs[0])
     D = numpy.eye(n_cols)*float(len(Zvs))
     combs = itertools.combinations( range(n_cols), 2 )

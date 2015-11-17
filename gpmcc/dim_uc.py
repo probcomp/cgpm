@@ -15,7 +15,7 @@
 from gpmcc.dim import Dim
 
 class DimUC(Dim):
-    """Dim. Column. Holds data, model type, and hyperparameters."""
+    """Holds data, model type, and hyperparameters."""
 
     def __init__(self, X, cc_datatype_class, index, Z=None, n_grid=30,
             distargs=None):
@@ -39,13 +39,12 @@ class DimUC(Dim):
         self.mode = 'uncollapsed'
         self.params = dict()
 
-    def singleton_predictive_logp(self,n):
+    def singleton_predictive_logp(self, n):
         """Returns the predictive log_p of X[n] in its own cluster."""
         x = self.X[n]
         lp, params = self.model.singleton_logp(x, self.hypers)
         self.params = params
         return lp
-
 
     def create_singleton_cluster(self, n, current):
         """Remove X[n] from clusters[current] and create a new singleton
@@ -57,7 +56,6 @@ class DimUC(Dim):
         self.clusters[-1].set_hypers(self.hypers)                   # set hypers of new cluster
         self.clusters[-1].set_params(self.params)                   # set component parameters
         self.clusters[-1].insert_element(x)                         # add element to new cluster
-
 
     def update_hypers(self):
         """Updates the hyperparameters and the component parameters."""

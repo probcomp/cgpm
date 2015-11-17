@@ -2,7 +2,7 @@ import math
 from math import log
 
 import numpy as np
-import pylab
+import matplotlib.pyplot as plt
 from scipy.special import betaln
 
 import gpmcc.utils.general as gu
@@ -151,7 +151,10 @@ class Binomial(object):
         return lps
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None):
+    def plot_dist(X, clusters, distargs=None, ax=None):
+        if ax is None:
+            _, ax = plt.subplots()
+
         X_hist = np.histogram(X,bins=2)[0]
         X_hist = X_hist/float(len(X))
         Y = [0, 1]
@@ -162,14 +165,11 @@ class Binomial(object):
         a = clusters[0].alpha
         b = clusters[0].beta
 
-        pylab.bar(Y, X_hist, color="black", alpha=1, edgecolor="none")
+        ax.bar(Y, X_hist, color="black", alpha=1, edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
-
         if math.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
-            import ipdb;
-            ipdb.set_trace()
-
+            import ipdb; ipdb.set_trace()
         for k in range(K):
             w = W[k]
             N = clusters[k].N
@@ -178,11 +178,11 @@ class Binomial(object):
                 y = float(Y[n])
                 pdf[k, n] = np.exp(w + Binomial.calc_predictive_logp(y, N,
                     kk, a, b))
+            ax.bar(Y, pdf[k,:], color="white", edgecolor="none", alpha=.5)
 
-            pylab.bar(Y, pdf[k,:], color="white", edgecolor="none", alpha=.5)
-
-        pylab.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor="red",
+        ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor="red",
             linewidth=3)
-        pylab.xlim([-.1,1.9])
-        pylab.ylim([0,1.0])
-        pylab.title('binomial')
+        ax.set_xlim([-.1,1.9])
+        ax.set_ylim([0,1.0])
+        ax.set_title('binomial')
+        return ax

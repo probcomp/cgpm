@@ -1,7 +1,7 @@
 from math import log
 
 import numpy as np
-import pylab
+import matplotlib.pyplot as plt
 from scipy.special import gammaln
 
 import gpmcc.utils.general as gu
@@ -189,8 +189,10 @@ class Poisson(object):
         return lp
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None):
-        colors = ["red", "blue", "green", "yellow", "orange", "purple", "brown", "black"]
+    def plot_dist(X, clusters, distargs=None, ax=None):
+        if ax is None:
+            _, ax = plt.subplots()
+
         x_min = min(X)
         x_max = max(X)
         Y = range(int(x_max)+1)
@@ -203,13 +205,10 @@ class Poisson(object):
         b = clusters[0].b
 
         nbins = min([len(Y), 50])
-
         toplt = np.array(gu.bincount(X,Y))/float(len(X))
-
-        pylab.bar(Y, toplt, color="gray", edgecolor="none")
+        ax.bar(Y, toplt, color="gray", edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
-
         for k in range(K):
             w = W[k]
             N = clusters[k].N
@@ -219,19 +218,18 @@ class Poisson(object):
                 y = Y[n]
                 pdf[k, n] = np.exp(w + Poisson.calc_predictive_logp(y, N, sum_x,
                     sum_log_fact_x, a, b))
-
             if k >= 8:
                 color = "white"
                 alpha=.3
             else:
-                color = colors[k]
+                color = gu.colors()[k]
                 alpha=.7
-            pylab.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
+            ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
 
-        pylab.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
+        ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
             linewidth=3)
-
         # print integral for debugging (should never be greater that 1)
         # print gu.line_quad(Y, np.sum(pdf,axis=0))
-        pylab.xlim([0, x_max+1])
-        pylab.title('poisson')
+        ax.set_xlim([0, x_max+1])
+        ax.set_title('poisson')
+        return ax
