@@ -58,7 +58,7 @@ _cctype_class = {
 def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
         separation, return_dims=False):
     """
-     gen_data_table. generates data, partitions, and cc_dims
+     gen_data_table. Generates data, partitions, and Dim.
 
      input arguments:
      -- n_rows: number of rows (data points)
@@ -95,7 +95,7 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
         cc_type = cc_types[col]
         args=distargs[col]
         view = Zv[col]
-        Tc = _gen_data[cc_type](Zc[view],separation[col],distargs=args)
+        Tc = _gen_data[cc_type](Zc[view], separation[col], distargs=args)
         T.append(Tc)
 
     if return_dims:
