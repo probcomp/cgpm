@@ -158,7 +158,6 @@ class State(object):
         self.X = X
         self.Zv = np.array(Zv)
         self.Nv = Nv
-        self.V = V
 
     def append_dim(self, X_f, cctype, distargs=None, ct_kernel=0, m=1):
         """Add a new data column to X.
@@ -306,7 +305,7 @@ class State(object):
         # calculate probability under each view's assignment
         dim = self.dims[col]
 
-        for v in range(self.V):
+        for v in xrange(len(self.Nv)):
             dim.reassign(self.views[v].Z)
             p_v = dim.full_marginal_logp()+pv[v]
             ps.append(p_v)
@@ -328,8 +327,8 @@ class State(object):
         v_b = utils.log_pflip(ps)
 
         if append:
-            if v_b >= self.V:
-                index = v_b-self.V
+            if v_b >= len(self.Nv):
+                index = v_b - len(self.Nv)
                 assert index >= 0 and index < m
                 proposal_view = proposal_views[index]
             self._append_new_dim_to_view(dim, v_b, proposal_view)
@@ -338,10 +337,10 @@ class State(object):
         # clean up
         if v_b != v_a:
             if is_singleton:
-                assert v_b < self.V
+                assert v_b < len(self.Nv)
                 self._destroy_singleton_view(dim, v_a, v_b)
-            elif v_b >= self.V:
-                index = v_b-self.V
+            elif v_b >= len(self.Nv):
+                index = v_b - len(self.Nv)
                 assert index >= 0 and index < m
                 proposal_view = proposal_views[index]
                 self._create_singleton_view(dim, v_a, proposal_view)
@@ -383,7 +382,7 @@ class State(object):
 
         dim_holder = []
 
-        for v in range(self.V):
+        for v in xrange(len(self.Nv)):
             if v == v_a:
                 dim_holder.append(dim)
             else:
@@ -417,8 +416,8 @@ class State(object):
         self.dims[dim.index] = newdim
 
         if append:
-            if v_b >= self.V:
-                index = v_b-self.V
+            if v_b >= len(self.Nv):
+                index = v_b - len(self.Nv)
                 assert( index >= 0 and index < m)
                 proposal_view = proposal_views[index]
             self._append_new_dim_to_view(newdim, v_b, proposal_view,
@@ -428,11 +427,11 @@ class State(object):
         # clean up
         if v_b != v_a:
             if is_singleton:
-                assert v_b < self.V
+                assert v_b < len(self.Nv)
                 self._destroy_singleton_view(newdim, v_a, v_b,
                     is_uncollapsed=True)
-            elif v_b >= self.V:
-                index = v_b-self.V
+            elif v_b >= len(self.Nv):
+                index = v_b - len(self.Nv)
                 assert index >= 0 and index < m
                 proposal_view = proposal_views[index]
                 self._create_singleton_view(newdim, v_a, proposal_view,
@@ -462,7 +461,7 @@ class State(object):
         logps = np.zeros(self.n_grid)
         for i in range(self.n_grid):
             alpha = self.alpha_grid[i]
-            logps[i] = utils.unorm_lcrp_post(alpha, self.n_cols, self.V,
+            logps[i] = utils.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
                 lambda x: 0)
         # log_pdf_lambda = lambda a : utils.lcrp(self.n_cols, self.Nv, a) +
         # self.alpha_prior_lambda(a)
@@ -479,18 +478,16 @@ class State(object):
         self.Nv[move_to] += 1
         del self.Nv[to_destroy]
         del self.views[to_destroy]
-        self.V -= 1
 
     def _create_singleton_view(self, dim, current_view_index, proposal_view,
             is_uncollapsed=False):
-        self.Zv[dim.index] = self.V
+        self.Zv[dim.index] = len(self.Nv)
         if not is_uncollapsed:
             dim.reassign(proposal_view.Z)
         self.views[current_view_index].release_dim(dim.index)
         self.Nv[current_view_index] -= 1
         self.Nv.append(1)
         self.views.append(proposal_view)
-        self.V += 1
 
     def _move_dim_to_view(self, dim, move_from, move_to, is_uncollapsed=False):
         self.Zv[dim.index] = move_to
@@ -502,9 +499,8 @@ class State(object):
     def _append_new_dim_to_view(self, dim, append_to, proposal_view,
             is_uncollapsed=False):
         self.Zv[dim.index] = append_to
-        if append_to == self.V:
+        if append_to == len(self.Nv):
             self.Nv.append(1)
-            self.V += 1
             self.views.append(proposal_view)
         else:
             self.Nv[append_to] += 1
@@ -536,8 +532,7 @@ class State(object):
         # Nv should account for each column
         assert sum(self.Nv) == self.n_cols
         # Nv should have an entry for each view
-        assert len(self.Nv) == self.V
-        assert max(self.Zv) == self.V-1
+        assert max(self.Zv) == len(self.Nv)-1
         for v in range(len(self.Nv)):
             # check that the number of dims actually assigned to the view
             # matches the count in Nv
@@ -565,7 +560,6 @@ class State(object):
         metadata['n_grid'] = self.n_grid
 
         # View data.
-        metadata['V'] = self.V
         metadata['Nv'] = self.Nv
         metadata['Zv'] = self.Zv
 
