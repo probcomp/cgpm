@@ -57,8 +57,7 @@ _cctype_class = {
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
         separation, return_dims=False):
-    """
-     gen_data_table. Generates data, partitions, and Dim.
+    """Generates data, partitions, and Dim.
 
      input arguments:
      -- n_rows: number of rows (data points)
@@ -76,6 +75,10 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
      optional_arguments:
      -- return_dims: return the cc_dim objects for each column
 
+     Returns:
+     -- T : np.ndarray(n_cols, n_rows), each row in T is a column of data,
+     (tranpose of a design matrix).
+
      example:
      >>> n_rows = 500
      >>> view_weights = np.ones(1)
@@ -89,14 +92,14 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
     n_cols = len(cc_types)
     Zv, Zc = gen_partition_from_weights(n_rows, n_cols, view_weights,
         cluster_weights)
-    T = []
+    T = np.zeros((n_cols, n_rows))
 
     for col in range(n_cols):
         cc_type = cc_types[col]
         args = distargs[col]
         view = Zv[col]
         Tc = _gen_data[cc_type](Zc[view], separation[col], distargs=args)
-        T.append(Tc)
+        T[col] = Tc
 
     if return_dims:
         dims = gen_dims_from_structure(T, Zv, Zc, cc_types, distargs)
