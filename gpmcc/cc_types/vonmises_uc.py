@@ -13,18 +13,6 @@ import gpmcc.utils.sampling as su
 TWOPI = 2 * math.pi
 LOG2PI = log(2 * math.pi)
 
-def estimate_kappa(N, ssx, scx):
-    if N == 0:
-        kappa = 10**-6
-    elif N == 1:
-        kappa = 2*math.pi
-    else:
-        rbar2 = (ssx/N)**2. + (scx/N)**2.
-        rbar = rbar2**.5
-        kappa = rbar*(2.-rbar2)/(1.-rbar2)
-    return kappa
-
-
 class VonmisesUC(object):
     """Von Mises data type.
     All data should be in the range [0, 2*pi]
@@ -141,7 +129,7 @@ class VonmisesUC(object):
         ssx = np.sum(np.sin(X))
         scx = np.sum(np.cos(X))
         N = float(len(X))
-        k = estimate_kappa(N, ssx, scx)
+        k = VonmisesUC.estimate_kappa(N, ssx, scx)
 
         grid_interval = TWOPI/n_grid
         grids = dict()
@@ -342,6 +330,18 @@ class VonmisesUC(object):
             lp += l
 
         return lp
+
+    @staticmethod
+    def estimate_kappa(N, ssx, scx):
+        if N == 0:
+            kappa = 10**-6
+        elif N == 1:
+            kappa = 2*math.pi
+        else:
+            rbar2 = (ssx/N)**2. + (scx/N)**2.
+            rbar = rbar2**.5
+            kappa = rbar*(2.-rbar2)/(1.-rbar2)
+        return kappa
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None):

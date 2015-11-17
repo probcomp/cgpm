@@ -49,13 +49,13 @@ class NormalUC(object):
         self.nu = nu
 
     def set_component_params_from_prior(self):
-        mu, rho = self.draw_normal_params(self.m, self.r, self.s, self.nu)
+        mu, rho = NormalUC.draw_normal_params(self.m, self.r, self.s, self.nu)
         self.mu = mu
         self.rho = rho
 
     def update_component_parameters(self):
-        rn, nun, mn, sn = self.posterior_update_parameters(self.N, self.sum_x,
-            self.sum_x_sq, self. m, self.r, self.s, self.nu)
+        rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
+            self.sum_x, self.sum_x_sq, self. m, self.r, self.s, self.nu)
         mu, rho = self.draw_normal_params(mn, rn, sn, nun)
         self.mu = mu
         self.rho = rho
@@ -142,7 +142,6 @@ class NormalUC(object):
 
     @staticmethod
     def init_hypers(grids, X=None):
-
         hypers = dict()
         hypers['m'] = np.random.choice(grids['m'])
         hypers['s'] = np.random.choice(grids['s'])

@@ -62,7 +62,7 @@ class Normal(object):
 
     def remove_element(self, x):
         if math.isnan(x):
-            return 
+            return
         self.N -= 1.0
         if self.N == 0:
             self.sum_x = 0.0
@@ -74,7 +74,7 @@ class Normal(object):
 
     def predictive_logp(self, x):
         return self.calc_predictive_logp(x, self.N, self.sum_x, self.sum_x_sq,
-                                        self.m, self.r, self.s, self.nu)
+            self.m, self.r, self.s, self.nu)
 
     def singleton_logp(self, x):
         # return self.calc_predictive_logp(x, 0, 0, 0,self.m, self.r, self.s, self.nu)
@@ -194,7 +194,7 @@ class Normal(object):
         sn = s + sum_x_sq + r*m*m - rn*mn*mn
 
         if sn == 0:
-            print("posterior_update_parameters: sn(0) truncated")
+            print "Posterior_update_parameters: sn(0) truncated."
             sn = s
 
         return rn, nun, mn, sn

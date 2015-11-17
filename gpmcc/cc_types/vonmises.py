@@ -13,32 +13,6 @@ import gpmcc.utils.general as gu
 TWOPI = 2 * math.pi
 LOG2PI = log(2 * math.pi)
 
-def estimate_kappa(N, ssx, scx):
-    if N == 0:
-        return 10.0**-6
-    elif N == 1:
-        return 10*math.pi
-    else:
-        rbar2 = (ssx/N)**2. + (scx/N)**2.
-        rbar = rbar2**.5
-        kappa = rbar*(2.-rbar2)/(1.-rbar2)
-
-    A_p = lambda k : bessel_1(k)/bessel_0(k)
-
-    Apk = A_p(kappa)
-    kappa_1 = kappa - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa)*Apk)
-    Apk = A_p(kappa_1)
-    kappa = kappa_1 - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa_1)*Apk)
-    Apk = A_p(kappa)
-    kappa_1 = kappa - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa)*Apk)
-    Apk = A_p(kappa_1)
-    kappa = kappa_1 - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa_1)*Apk)
-
-    if np.isnan(kappa):
-        return 10.0**-6
-    else:
-        return np.abs(kappa)
-
 class Vonmises(object):
     """Von Mises data type. Currently assumes fixed concentration parameter.
 
@@ -121,7 +95,7 @@ class Vonmises(object):
         ssx = np.sum(np.sin(X))
         scx = np.sum(np.cos(X))
         N = float(len(X))
-        k = estimate_kappa(N, ssx, scx)
+        k = Vonmises.estimate_kappa(N, ssx, scx)
 
         grids['a'] = gu.log_linspace(1/N,N, n_grid)
         grids['b'] = np.linspace(grid_interval,TWOPI, n_grid)
@@ -292,6 +266,33 @@ class Vonmises(object):
             lp += l
 
         return lp
+
+    @staticmethod
+    def estimate_kappa(N, ssx, scx):
+        if N == 0:
+            return 10.0**-6
+        elif N == 1:
+            return 10*math.pi
+        else:
+            rbar2 = (ssx/N)**2. + (scx/N)**2.
+            rbar = rbar2**.5
+            kappa = rbar*(2.-rbar2)/(1.-rbar2)
+
+        A_p = lambda k : bessel_1(k)/bessel_0(k)
+
+        Apk = A_p(kappa)
+        kappa_1 = kappa - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa)*Apk)
+        Apk = A_p(kappa_1)
+        kappa = kappa_1 - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa_1)*Apk)
+        Apk = A_p(kappa)
+        kappa_1 = kappa - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa)*Apk)
+        Apk = A_p(kappa_1)
+        kappa = kappa_1 - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa_1)*Apk)
+
+        if np.isnan(kappa):
+            return 10.0**-6
+        else:
+            return np.abs(kappa)
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None):
