@@ -54,15 +54,17 @@ class Multinomial(object):
         x = Multinomial.validate(x, self.K)
         return self.calc_predictive_logp(x, self.N, self.w, self.alpha)
 
-    def singleton_logp(self, x):
-        x = Multinomial.validate(x, self.K)
-        return self.calc_predictive_logp(x, 0, [0]*self.K, self.alpha)
-
     def marginal_logp(self):
         return self.calc_marginal_logp(self.N, self.w, self.alpha)
 
     def predictive_draw(self):
         return gu.pflip(self.w)
+
+    @staticmethod
+    def singleton_logp(x, hypers):
+        x = Multinomial.validate(x, hypers['K'])
+        return Multinomial.calc_predictive_logp(x, 0, [0]*hypers['K'],
+            hypers['alpha'])
 
     @staticmethod
     def validate(x, K):

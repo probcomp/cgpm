@@ -35,19 +35,14 @@ class Dim(object):
         multinomial data requires the number of multinomial categories. See the
         documentation for each type for details
         """
-        hypers_grids = cc_datatype_class.construct_hyper_grids(X, n_grid)
-        hypers = cc_datatype_class.init_hypers(hypers_grids, X)
-
-        N = len(X)
-
         self.index = index
-        self.N = N
-        self.model = cc_datatype_class
         self.X = X
+        self.N = len(X)
+        self.model = cc_datatype_class
         self.cctype = cc_datatype_class.cctype
-        self.hypers_grids = hypers_grids
-        self.hypers = hypers
-        self.distargs = distargs
+        self.hypers_grids = cc_datatype_class.construct_hyper_grids(X, n_grid)
+        self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, X)
+        self.distargs = distargs if distargs is not None else {}
         self.mode = 'collapsed'
 
         if Z is None:
@@ -58,7 +53,7 @@ class Dim(object):
             K = max(Z)+1
             for k in range(K):
                 self.clusters.append(cc_datatype_class(distargs=distargs))
-                self.clusters[k].set_hypers(hypers)
+                self.clusters[k].set_hypers(self.hypers)
 
             for i in range(len(X)):
                 k = Z[i]
@@ -70,10 +65,11 @@ class Dim(object):
         lp = self.clusters[k].predictive_logp(x)
         return lp
 
-    def singleton_predictive_logp(self, n):
+    def singleton_logp(self, n):
         """Returns the predictive log_p of X[n] in its own cluster."""
         x = self.X[n]
-        lp = self.clusters[0].singleton_logp(x)
+        lp = self.model.singleton_logp(x, dict(self.hypers,
+            **self.distargs))
         return lp
 
     def insert_element(self, n, k):

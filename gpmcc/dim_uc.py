@@ -34,15 +34,16 @@ class DimUC(Dim):
         multinomial data requires the number of multinomial categories. See the
         documentation for each type for details.
         """
-        super(DimUC, self).__init__(X, cc_datatype_class, index, Z=None,
-            n_grid=30, distargs=None)
+        super(DimUC, self).__init__(X, cc_datatype_class, index, Z=Z,
+            n_grid=n_grid, distargs=distargs)
         self.mode = 'uncollapsed'
         self.params = dict()
 
-    def singleton_predictive_logp(self, n):
+    def singleton_logp(self, n):
         """Returns the predictive log_p of X[n] in its own cluster."""
         x = self.X[n]
-        lp, params = self.model.singleton_logp(x, self.hypers)
+        lp, params = self.model.singleton_logp(x, dict(self.hypers,
+            **self.distargs))
         self.params = params
         return lp
 
@@ -61,13 +62,13 @@ class DimUC(Dim):
         """Updates the hyperparameters and the component parameters."""
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
-            cluster.update_component_parameters()
+            cluster.resample_params()
         self.hypers = self.clusters[0].update_hypers(self.clusters,
             self.hypers_grids)
 
     def reassign(self, Z):
-        """Reassigns the data to new clusters according to the new
-        partitioning, Z. Destroys and recreates dims.
+        """Reassigns the data to new clusters according to the new partitioning,
+        Z. Destroys and recreates dims.
         """
         self.clusters = []
         K = max(Z)+1
@@ -82,12 +83,4 @@ class DimUC(Dim):
             self.clusters[k].insert_element(self.X[i])
 
         for cluster in self.clusters:
-            cluster.update_component_parameters()
-
-        # from here down is for debugging
-        assert len(self.clusters) == max(Z)+1
-        N = 0
-        for k in range(K):
-            assert self.clusters[k].N > 0
-            N += self.clusters[k].N
-        assert N == len(Z)
+            cluster.resample_params()

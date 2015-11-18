@@ -94,21 +94,23 @@ class VonmisesUC(object):
 
     def predictive_logp(self, x):
         assert 0 <= x and x <= 2*math.pi
-        return self.calc_predictive_logp(x, self.N, self.sum_sin_x,
+        return VonmisesUC.calc_predictive_logp(x, self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
 
     def marginal_logp(self):
-        return self.calc_marginal_logp(self.N, self.sum_sin_x, self.sum_cos_x,
-            self.k, self.a, self.b, self.scale, self.shape)
+        return VonmisesUC.calc_marginal_logp(self.N, self.sum_sin_x,
+            self.sum_cos_x, self.k, self.a, self.b, self.scale, self.shape)
 
     def predictive_draw(self):
-        an, bn = self.posterior_update_parameters(self.N, self.sum_sin_x,
+        an, bn = VonmisesUC.posterior_update_parameters(self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
 
         return np.random.vonmises(bn, self.k)
 
     @staticmethod
     def singleton_logp(x, hypers):
+        if np.isnan(x):
+            return 0
         assert 0 <= x and x <= 2*math.pi
         shape = hypers['shape']
         scale = hypers['scale']

@@ -79,16 +79,11 @@ class Normal(object):
             self.sum_x_sq -= x*x
 
     def predictive_logp(self, x):
-        return self.calc_predictive_logp(x, self.N, self.sum_x, self.sum_x_sq,
+        return Normal.calc_predictive_logp(x, self.N, self.sum_x, self.sum_x_sq,
             self.m, self.r, self.s, self.nu)
 
-    def singleton_logp(self, x):
-        # return self.calc_predictive_logp(x, 0, 0, 0,self.m, self.r, self.s, self.nu)
-        return self.calc_marginal_logp(1, x, x*x, self.m, self.r, self.s,
-            self.nu)
-
     def marginal_logp(self):
-        return self.calc_marginal_logp(self.N, self.sum_x, self.sum_x_sq,
+        return Normal.calc_marginal_logp(self.N, self.sum_x, self.sum_x_sq,
             self.m, self.r, self.s, self.nu)
 
     def predictive_draw(self):
@@ -99,7 +94,12 @@ class Normal(object):
         return draw
 
     @staticmethod
-    def construct_hyper_grids(X,n_grid=30):
+    def singleton_logp(x, hypers):
+        return Normal.calc_predictive_logp(x, 0, 0, 0, hypers['m'], hypers['r'],
+            hypers['s'], hypers['nu'])
+
+    @staticmethod
+    def construct_hyper_grids(X, n_grid=30):
         grids = dict()
         ssqdev = np.var(X) * float(len(X))
 
@@ -127,26 +127,20 @@ class Normal(object):
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
         if math.isnan(x):
             return 0
-
         rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x, sum_x_sq,
             m, r, s, nu)
-
         rm, num, mm, sm = Normal.posterior_update_parameters(
             N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
-
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
-
         return -.5*LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, sum_x_sq, m, r, s, nu):
         rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x, sum_x_sq,
             m, r, s, nu)
-
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
-
         return - (float(N) / 2.0) * LOG2PI + ZN - Z0
 
     @staticmethod

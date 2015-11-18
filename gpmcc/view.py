@@ -96,14 +96,14 @@ class View(object):
             # Calculate the probability of each row in each category, k \in K.
             for k in range(self.K):
                 if k == z_a and is_singleton:
-                    lp = self.singleton_predictive_logp(row) + pv[k]
+                    lp = self.row_singleton_logp(row) + pv[k]
                 else:
                     lp = self.row_predictive_logp(row,k) + pv[k]
                 ps.append(lp)
 
             # Propose singleton.
             if not is_singleton:
-                lp = self.singleton_predictive_logp(row) + log_alpha
+                lp = self.row_singleton_logp(row) + log_alpha
                 ps.append(lp)
 
             # Draw new assignment, z_b
@@ -188,11 +188,11 @@ class View(object):
 
         return lp
 
-    def singleton_predictive_logp(self, row):
+    def row_singleton_logp(self, row):
         """Get the predictive log_p of row being a singleton cluster."""
         lp = 0
         for dim in self.dims.values():
-            lp += dim.singleton_predictive_logp(row)
+            lp += dim.singleton_logp(row)
         return lp
 
     def destroy_singleton_cluster(self, row, to_destroy, move_to):

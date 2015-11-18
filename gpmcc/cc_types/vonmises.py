@@ -75,15 +75,11 @@ class Vonmises(object):
 
     def predictive_logp(self, x):
         assert 0 <= x and x <= 2*math.pi
-        return self.calc_predictive_logp(x, self.N, self.sum_sin_x,
+        return Vonmises.calc_predictive_logp(x, self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
 
-    def singleton_logp(self, x):
-        assert 0 <= x and x <= 2*math.pi
-        return self.calc_predictive_logp(x, 0, 0, 0, self.a, self.b, self.k)
-
     def marginal_logp(self):
-        logp = self.calc_marginal_logp(self.N, self.sum_sin_x, self.sum_cos_x,
+        logp = Vonmises.calc_marginal_logp(self.N, self.sum_sin_x, self.sum_cos_x,
             self.a, self.b, self.k)
         return logp
 
@@ -92,6 +88,14 @@ class Vonmises(object):
         lower_bound = 0.0
         delta = 2*math.pi/10000
         return gu.inversion_sampling(fn, lower_bound, delta)
+
+    @staticmethod
+    def singleton_logp(x, hypers):
+        if np.isnan(x):
+            return 0
+        assert 0 <= x and x <= 2*math.pi
+        return Vonmises.calc_predictive_logp(x, 0, 0, 0, hypers['a'],
+            hypers['b'], hypers['k'])
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):

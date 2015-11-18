@@ -72,16 +72,17 @@ class Lognormal(object):
         self.sum_log_x_sq -= lx*lx
 
     def predictive_logp(self, x):
-        return self.calc_predictive_logp(x, self.N, self.sum_log_x,
+        return Lognormal.calc_predictive_logp(x, self.N, self.sum_log_x,
             self.sum_log_x_sq, self.a, self.b, self.t, self.m)
-
-    def singleton_logp(self, x):
-        return self.calc_predictive_logp(x, 0, 0, 0, self.a, self.b, self.t,
-            self.m)
 
     def marginal_logp(self):
-        return self.calc_marginal_logp(self.N, self.sum_log_x,
+        return Lognormal.calc_marginal_logp(self.N, self.sum_log_x,
             self.sum_log_x_sq, self.a, self.b, self.t, self.m)
+
+    @staticmethod
+    def singleton_logp(x, hypers):
+        return Lognormal.calc_predictive_logp(x, 0, 0, 0, hypers['a'],
+            hypers['b'], hypers['t'], hypers['m'])
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
@@ -105,16 +106,17 @@ class Lognormal(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_log_x, sum_log_x_sq, a, b, t, m):
-
-        if x == 0.0:
+        if np.isnan(x):
             return 0
 
-        lx = log(x)
+        if x <= 0:
+            return float('-inf')
+
         an, bn, tn, mn = Lognormal.posterior_update_parameters(N, sum_log_x,
             sum_log_x_sq, a, b, t, m)
 
         am, bm, tm, mm = Lognormal.posterior_update_parameters(N + 1,
-            sum_log_x + lx, sum_log_x_sq + lx * lx, a, b, t, m)
+            sum_log_x + log(x), sum_log_x_sq + log(x) * log(x), a, b, t, m)
 
         ZN = log(x) + Lognormal.calc_log_Z(an, bn, tn)
         ZM = Lognormal.calc_log_Z(am, bm, tm)

@@ -55,15 +55,12 @@ class Poisson(object):
         self.sum_log_fact_x -= gammaln(x+1)
 
     def predictive_logp(self, x):
-        return self.calc_predictive_logp(x, self.N, self.sum_x,
+        return Poisson.calc_predictive_logp(x, self.N, self.sum_x,
             self.sum_log_fact_x, self.a, self.b)
 
-    def singleton_logp(self, x):
-        return self.calc_predictive_logp(x, 0, 0, 0, self.a, self.b)
-
     def marginal_logp(self):
-        return self.calc_marginal_logp(self.N, self.sum_x, self.sum_log_fact_x,
-            self.a, self.b)
+        return Poisson.calc_marginal_logp(self.N, self.sum_x,
+            self.sum_log_fact_x, self.a, self.b)
 
     def predictive_draw(self):
         an, bn = Poisson.posterior_update_parameters(self.N, self.sum_x,
@@ -74,6 +71,10 @@ class Poisson(object):
         # lower_bound = 0
         # delta = 1
         # return utils.inversion_sampling(fn, lower_bound, delta)
+
+    @staticmethod
+    def singleton_logp(x, hypers):
+        return Poisson.calc_predictive_logp(x, 0, 0, 0, hypers['a'], hypers['b'])
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
