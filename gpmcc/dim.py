@@ -18,7 +18,7 @@ class Dim(object):
     """Holds data, model type, and hyperparameters."""
 
     def __init__(self, X, cc_datatype_class, index, Z=None, n_grid=30,
-            distargs=None):
+            mode='collapsed', distargs=None):
         """Dimension constructor.
 
         Arguments:
@@ -43,7 +43,7 @@ class Dim(object):
         self.hypers_grids = cc_datatype_class.construct_hyper_grids(X, n_grid)
         self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, X)
         self.distargs = distargs if distargs is not None else {}
-        self.mode = 'collapsed'
+        self.mode = mode
 
         if Z is None:
             self.clusters = []
@@ -122,15 +122,11 @@ class Dim(object):
         return lp
 
     def resample_hypers(self):
-        """Updates the hyperparameters."""
+        """Updates the hyperparameters and the component parameters."""
+        for cluster in self.clusters:
+            cluster.resample_params()
         self.hypers = self.model.resample_hypers(self.clusters,
             self.hypers_grids)
-        for cluster in self.clusters:
-            cluster.set_hypers(self.hypers)
-
-    def set_hypers(self, hypers):
-        """Set the hyperparameters."""
-        self.hypers = hypers
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
 

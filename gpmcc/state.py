@@ -33,7 +33,6 @@ from gpmcc.cc_types import vonmises_uc
 
 from gpmcc.view import View
 from gpmcc.dim import Dim
-from gpmcc.dim_uc import DimUC
 
 _is_uncollapsed = {
     'normal'      : False,
@@ -109,12 +108,11 @@ class State(object):
         for col in range(self.n_cols):
             Y = X[col]
             cctype = cctypes[col]
+            mode = 'collapsed'
             if _is_uncollapsed[cctype]:
-                dim = DimUC(Y, _cctype_class[cctype], col, n_grid=n_grid,
-                    distargs=distargs[col])
-            else:
-                dim = Dim(Y, _cctype_class[cctype], col, n_grid=n_grid,
-                    distargs=distargs[col])
+                mode = 'uncollapsed'
+            dim = Dim(Y, _cctype_class[cctype], col, n_grid=n_grid,
+                mode = mode, distargs=distargs[col])
             self.dims.append(dim)
 
         # Set the hyperparameters in the dims.
@@ -173,11 +171,10 @@ class State(object):
         """
         col = self.n_cols
         n_grid = self.n_grid
+        mode = 'collapsed'
         if _is_uncollapsed[cctype]:
-            dim = DimUC(X_f, _cctype_class[cctype], col, n_grid=n_grid,
-                distargs=distargs)
-        else:
-            dim = Dim(X_f, _cctype_class[cctype], col, n_grid=n_grid,
+            mode = 'uncollapsed'
+        dim = Dim(X_f, _cctype_class[cctype], col, n_grid=n_grid, mode=mode,
                 distargs=distargs)
         self.n_cols += 1
         self.dims.append(dim)
