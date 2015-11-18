@@ -19,7 +19,6 @@ import gpmcc.utils.general as gu
 from scipy.stats import norm
 
 from gpmcc import dim
-from gpmcc import dim_uc
 
 from gpmcc.cc_types import normal_uc
 from gpmcc.cc_types import beta_uc
@@ -114,11 +113,10 @@ def gen_dims_from_structure(T, Zv, Zc, cc_types, distargs):
         v = Zv[c]
         cc_type = cc_types[c]
         cc_type_class = _cctype_class[cc_type]
+        mode = 'collapsed'
         if _is_uncollapsed[cc_type]:
-            dim_c = dim_uc.DimUC(T[c], cc_type_class, c, Z=Zc[v],
-                distargs=distargs[c])
-        else:
-            dim_c = dim.Dim(T[c], cc_type_class, c, Z=Zc[v],
+            mode = 'uncollapsed'
+        dim_c = dim.Dim(T[c], cc_type_class, c, Z=Zc[v], mode=mode,
                 distargs=distargs[c])
         dims.append(dim_c)
 

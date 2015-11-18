@@ -20,14 +20,14 @@ import gpmcc.utils.general as gu
 class View(object):
     """View. A collection of Dim."""
 
-    def __init__(self, dims, alpha=None, Z=None, n_grid=30):
+    def __init__(self, dims, alpha=None, Zr=None, n_grid=30):
         """View constructor.
 
         Input arguments:
         -- dims: a list of cc_dim objects
         Optional arguments:
         -- alpha: crp concentration parameter. If none, is selected from grid.
-        -- Z: starting partiton of rows to categories. If nonde, is intialized
+        -- Zr: starting partiton of rows to categories. If none, is intialized
         from CRP(alpha)
         -- n_grid: number of grid points in the hyperparameter grids
         """
@@ -42,11 +42,11 @@ class View(object):
         else:
             assert alpha > 0.0
 
-        if Z is None:
-            Z, Nk, K = gu.crp_gen(N, alpha)
+        if Zr is None:
+            Zr, Nk, K = gu.crp_gen(N, alpha)
         else:
-            assert len(Z) == dims[0].X.shape[0]
-            Nk = gu.bincount(Z)
+            assert len(Zr) == dims[0].X.shape[0]
+            Nk = gu.bincount(Zr)
             K = len(Nk)
 
         assert sum(Nk) == N
@@ -54,11 +54,11 @@ class View(object):
 
         self.dims = dict()
         for dim in dims:
-            dim.reassign(Z)
+            dim.reassign(Zr)
             self.dims[dim.index] = dim
 
         self.alpha = alpha
-        self.Z = np.array(Z)
+        self.Zr = np.array(Zr)
         self.K = K
         self.Nk = Nk
 
@@ -78,7 +78,7 @@ class View(object):
 
         for row in target_rows:
             # get the current assignment, z_a, and determine if it is a singleton
-            z_a = self.Z[row]
+            z_a = self.Zr[row]
             is_singleton = (self.Nk[z_a] == 1)
 
             # get CRP probabilities
@@ -121,7 +121,7 @@ class View(object):
             # assert sum(self.Nk) == self.N
             # assert len(self.Nk) == self.K
 
-            # zs = list(set(self.Z))
+            # zs = list(set(self.Zr))
             # for j in range(self.K):
             #   assert zs[j] == j
             #   for dim in self.dims.keys():
@@ -169,7 +169,7 @@ class View(object):
 
     def row_predictive_logp(self, row, cluster):
         """Get the predictive log_p of row being in cluster."""
-        z_0 = self.Z[row]   # current assignment
+        z_0 = self.Zr[row]   # current assignment
         z_1 = cluster       # queried assignment
 
         if z_0 == z_1:
@@ -196,9 +196,9 @@ class View(object):
         return lp
 
     def destroy_singleton_cluster(self, row, to_destroy, move_to):
-        self.Z[row] = move_to
-        zminus = np.nonzero(self.Z>to_destroy)
-        self.Z[zminus] -= 1
+        self.Zr[row] = move_to
+        zminus = np.nonzero(self.Zr>to_destroy)
+        self.Zr[zminus] -= 1
         for dim in self.dims.values():
             dim.destroy_singleton_cluster(row, to_destroy, move_to)
 
@@ -207,7 +207,7 @@ class View(object):
         self.K -= 1
 
     def create_singleton_cluster(self, row, current):
-        self.Z[row] = self.K
+        self.Zr[row] = self.K
         self.K += 1
         self.Nk[current] -= 1
         self.Nk.append(1)
@@ -216,7 +216,7 @@ class View(object):
             dim.create_singleton_cluster(row, current)
 
     def move_row_to_cluster(self, row, move_from, move_to):
-        self.Z[row] = move_to
+        self.Zr[row] = move_to
         self.Nk[move_from] -= 1
         self.Nk[move_to] += 1
         for dim in self.dims.values():
@@ -225,7 +225,7 @@ class View(object):
     def assimilate_dim(self, new_dim, is_uncollapsed=True):
         # resistance is futile
         if not is_uncollapsed:
-            new_dim.reassign(self.Z)
+            new_dim.reassign(self.Zr)
         self.dims[new_dim.index] = new_dim
 
     def release_dim(self, dim_index):

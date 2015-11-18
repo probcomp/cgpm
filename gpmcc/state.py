@@ -150,7 +150,7 @@ class State(object):
             if Zrcv is None:
                 self.views.append(View(dims_view, n_grid=n_grid))
             else:
-                self.views.append(View(dims_view, Z=np.array(Zrcv[view]),
+                self.views.append(View(dims_view, Zr=np.array(Zrcv[view]),
                     n_grid=n_grid))
 
         self.X = X
@@ -244,7 +244,7 @@ class State(object):
         """
         for col in range(self.n_cols):
             self.dims[col].X = data[col]
-            self.dims[col].reassign(self.views[self.Zv[col]].Z)
+            self.dims[col].reassign(self.views[self.Zv[col]].Zr)
 
     def clear_data(self):
         """Clears the suffstats in all clusters in all dims."""
@@ -303,7 +303,7 @@ class State(object):
         dim = self.dims[col]
 
         for v in xrange(len(self.Nv)):
-            dim.reassign(self.views[v].Z)
+            dim.reassign(self.views[v].Zr)
             p_v = dim.full_marginal_logp()+pv[v]
             ps.append(p_v)
 
@@ -316,7 +316,7 @@ class State(object):
                 # propose (from prior) and calculate probability under each view
                 proposal_view = View([dim], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
-                dim.reassign(proposal_view.Z)
+                dim.reassign(proposal_view.Zr)
                 p_v = dim.full_marginal_logp()+log_aux
                 ps.append(p_v)
 
@@ -344,7 +344,7 @@ class State(object):
             else:
                 self._move_dim_to_view(dim, v_a, v_b)
         else:
-            self.dims[col].reassign(self.views[v_a].Z)
+            self.dims[col].reassign(self.views[v_a].Zr)
 
         # self._check_partitions()
 
@@ -384,7 +384,7 @@ class State(object):
                 dim_holder.append(dim)
             else:
                 dim_holder.append(copy.deepcopy(dim))
-                dim_holder[-1].reassign(self.views[v].Z)
+                dim_holder[-1].reassign(self.views[v].Zr)
 
             p_v = dim_holder[-1].full_marginal_logp()+pv[v]
             ps.append(p_v)
@@ -400,7 +400,7 @@ class State(object):
 
                 proposal_view = View([dim_holder[-1]], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
-                dim_holder[-1].reassign(proposal_view.Z)
+                dim_holder[-1].reassign(proposal_view.Zr)
 
                 p_v = dim_holder[-1].full_marginal_logp()+log_aux
                 ps.append(p_v)
@@ -480,7 +480,7 @@ class State(object):
             is_uncollapsed=False):
         self.Zv[dim.index] = len(self.Nv)
         if not is_uncollapsed:
-            dim.reassign(proposal_view.Z)
+            dim.reassign(proposal_view.Zr)
         self.views[current_view_index].release_dim(dim.index)
         self.Nv[current_view_index] -= 1
         self.Nv.append(1)
@@ -538,7 +538,7 @@ class State(object):
             K = self.views[v].K
             assert sum(Nk) == self.n_rows
             assert len(Nk) == K
-            assert max(self.views[v].Z) == K-1
+            assert max(self.views[v].Zr) == K-1
             for dim in self.views[v].dims.values():
                 # make sure the number of clusters in each dim in the view is the same
                 # and is the same as described in the view (K, Nk)
@@ -580,7 +580,7 @@ class State(object):
         for view in self.views:
             metadata['K'].append(view.K)
             metadata['Nk'].append(view.Nk)
-            metadata['Zrcv'].append(view.Z)
+            metadata['Zrcv'].append(view.Zr)
 
         return metadata
 

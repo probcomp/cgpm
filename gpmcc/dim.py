@@ -137,14 +137,14 @@ class Dim(object):
         Destroys and recreates dims.
         """
         self.clusters = []
-        K = max(Z)+1
+        K = max(Z) + 1
 
-        for k in range(K):
+        for k in xrange(K):
             cluster = self.model(distargs=self.distargs)
             cluster.set_hypers(self.hypers)
             self.clusters.append(cluster)
 
-        for i in range(self.N):
+        for i in xrange(self.N):
             k = Z[i]
             self.clusters[k].insert_element(self.X[i])
 
