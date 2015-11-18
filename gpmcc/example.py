@@ -19,6 +19,8 @@ import numpy
 # This script generates acolumn of every data type and plots inference
 # in real time
 
+numpy.random.seed(10)
+
 # set up the data generation
 n_rows = 200
 view_weights = numpy.ones(1)
