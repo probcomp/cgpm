@@ -330,7 +330,7 @@ class State(object):
         if v_b != v_a:
             if is_singleton:
                 assert v_b < len(self.Nv)
-                self._destroy_singleton_view(dim, v_a, v_b)
+                self._move_dim_to_view(dim, v_a, v_b)
             elif v_b >= len(self.Nv):
                 index = v_b - len(self.Nv)
                 assert index >= 0 and index < m
@@ -420,7 +420,7 @@ class State(object):
         if v_b != v_a:
             if is_singleton:
                 assert v_b < len(self.Nv)
-                self._destroy_singleton_view(newdim, v_a, v_b,
+                self._move_dim_to_view(newdim, v_a, v_b,
                     is_uncollapsed=True)
             elif v_b >= len(self.Nv):
                 index = v_b - len(self.Nv)
@@ -460,17 +460,6 @@ class State(object):
         index = utils.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
-    def _destroy_singleton_view(self, dim, to_destroy, move_to,
-        is_uncollapsed=False):
-        self.Zv[dim.index] = move_to
-        self.views[to_destroy].release_dim(dim.index)
-        zminus = np.nonzero(self.Zv>to_destroy)
-        self.Zv[zminus] -= 1
-        self.views[move_to].assimilate_dim(dim, is_uncollapsed=is_uncollapsed)
-        self.Nv[move_to] += 1
-        del self.Nv[to_destroy]
-        del self.views[to_destroy]
-
     def _create_singleton_view(self, dim, current_view_index, proposal_view,
             is_uncollapsed=False):
         self.Zv[dim.index] = len(self.Nv)
@@ -487,6 +476,13 @@ class State(object):
         self.Nv[move_from] -= 1
         self.views[move_to].assimilate_dim(dim, is_uncollapsed=is_uncollapsed)
         self.Nv[move_to] += 1
+        # If move_from was a singleton, destroy.
+        if self.Nv[move_from] == 0:
+            # Decrement view index of all other views.
+            zminus = np.nonzero(self.Zv>move_from)
+            self.Zv[zminus] -= 1
+            del self.Nv[move_from]
+            del self.views[move_from]
 
     def _append_new_dim_to_view(self, dim, append_to, proposal_view,
             is_uncollapsed=False):

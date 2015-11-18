@@ -116,7 +116,7 @@ def gen_dims_from_structure(T, Zv, Zc, cc_types, distargs):
         mode = 'collapsed'
         if _is_uncollapsed[cc_type]:
             mode = 'uncollapsed'
-        dim_c = dim.Dim(T[c], cc_type_class, c, Z=Zc[v], mode=mode,
+        dim_c = dim.Dim(T[c], cc_type_class, c, Zr=Zc[v], mode=mode,
                 distargs=distargs[c])
         dims.append(dim_c)
 

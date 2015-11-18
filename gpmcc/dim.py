@@ -179,8 +179,6 @@ class Dim(object):
         return suffstats
 
     def plot_dist(self, ax=None):
-        """
-        Plots the predictive distribution and histogram of X.
-        """
+        """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.X, self.clusters, distargs=self.distargs,
             ax=ax)
