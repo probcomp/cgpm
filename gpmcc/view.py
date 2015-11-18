@@ -76,9 +76,9 @@ class View(object):
 
         # random.shuffle(target_rows)
 
-        for row in target_rows:
+        for rowid in target_rows:
             # get the current assignment, z_a, and determine if it is a singleton
-            z_a = self.Zr[row]
+            z_a = self.Zr[rowid]
             is_singleton = (self.Nk[z_a] == 1)
 
             # get CRP probabilities
@@ -96,14 +96,14 @@ class View(object):
             # Calculate the probability of each row in each category, k \in K.
             for k in range(self.K):
                 if k == z_a and is_singleton:
-                    lp = self.row_singleton_logp(row) + pv[k]
+                    lp = self.row_singleton_logp(rowid) + pv[k]
                 else:
-                    lp = self.row_predictive_logp(row,k) + pv[k]
+                    lp = self.row_predictive_logp(rowid, k) + pv[k]
                 ps.append(lp)
 
             # Propose singleton.
             if not is_singleton:
-                lp = self.row_singleton_logp(row) + log_alpha
+                lp = self.row_singleton_logp(rowid) + log_alpha
                 ps.append(lp)
 
             # Draw new assignment, z_b
@@ -111,11 +111,11 @@ class View(object):
 
             if z_a != z_b:
                 if is_singleton:
-                    self.destroy_singleton_cluster(row, z_a, z_b)
+                    self.destroy_singleton_cluster(rowid, z_a, z_b)
                 elif z_b == self.K:
-                    self.create_singleton_cluster(row, z_a)
+                    self.create_singleton_cluster(rowid, z_a)
                 else:
-                    self.move_row_to_cluster(row, z_a, z_b)
+                    self.move_row_to_cluster(rowid, z_a, z_b)
 
             # make sure the reassign worked properly
             # assert sum(self.Nk) == self.N
@@ -167,60 +167,46 @@ class View(object):
         for _ in range(N):
             self.transition_rows(target_rows=target_rows)
 
-    def row_predictive_logp(self, row, cluster):
-        """Get the predictive log_p of row being in cluster."""
-        z_0 = self.Zr[row]   # current assignment
-        z_1 = cluster       # queried assignment
-
-        if z_0 == z_1:
-            # if the original assignment is the same as the queried cluster, we
-            # must remove the data from the suffstats before calculating the
-            # predictive probability
-            lp = 0
-            for dim in self.dims.values():
-                dim.remove_element(row,cluster)         # remove
-                lp += dim.predictive_logp(row,cluster)  # calculate
-                dim.insert_element(row,cluster)         # reinsert
-        else:
-            lp = 0
-            for dim in self.dims.values():
-                lp += dim.predictive_logp(row, cluster)
-
-        return lp
-
-    def row_singleton_logp(self, row):
-        """Get the predictive log_p of row being a singleton cluster."""
+    def row_predictive_logp(self, rowid, cluster):
+        """Get the predictive log_p of rowid being in cluster."""
         lp = 0
         for dim in self.dims.values():
-            lp += dim.singleton_logp(row)
+            lp += dim.predictive_logp(rowid, cluster)
         return lp
 
-    def destroy_singleton_cluster(self, row, to_destroy, move_to):
-        self.Zr[row] = move_to
+    def row_singleton_logp(self, rowid):
+        """Get the predictive log_p of rowid being a singleton cluster."""
+        lp = 0
+        for dim in self.dims.values():
+            lp += dim.singleton_logp(rowid)
+        return lp
+
+    def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
+        self.Zr[rowid] = move_to
         zminus = np.nonzero(self.Zr>to_destroy)
         self.Zr[zminus] -= 1
         for dim in self.dims.values():
-            dim.destroy_singleton_cluster(row, to_destroy, move_to)
+            dim.destroy_singleton_cluster(rowid, to_destroy, move_to)
 
         self.Nk[move_to] += 1
         del self.Nk[to_destroy]
         self.K -= 1
 
-    def create_singleton_cluster(self, row, current):
-        self.Zr[row] = self.K
+    def create_singleton_cluster(self, rowid, current):
+        self.Zr[rowid] = self.K
         self.K += 1
         self.Nk[current] -= 1
         self.Nk.append(1)
 
         for dim in self.dims.values():
-            dim.create_singleton_cluster(row, current)
+            dim.create_singleton_cluster(rowid, current)
 
-    def move_row_to_cluster(self, row, move_from, move_to):
-        self.Zr[row] = move_to
+    def move_row_to_cluster(self, rowid, move_from, move_to):
+        self.Zr[rowid] = move_to
         self.Nk[move_from] -= 1
         self.Nk[move_to] += 1
         for dim in self.dims.values():
-            dim.move_to_cluster(row, move_from, move_to)
+            dim.move_to_cluster(rowid, move_from, move_to)
 
     def assimilate_dim(self, new_dim, is_uncollapsed=True):
         # resistance is futile

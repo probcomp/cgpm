@@ -61,55 +61,58 @@ class Dim(object):
                 k = Zr[i]
                 self.clusters[k].insert_element(X[i])
 
-    def predictive_logp(self, n, k):
-        """Returns the predictive logp of X[n] in clusters[k]."""
-        x = self.X[n]
-        lp = self.clusters[k].predictive_logp(x)
+    def predictive_logp(self, rowid, k):
+        """Returns the predictive logp of X[rowid] in clusters[k]."""
+        x = self.X[rowid]
+        if self.Zr[rowid] == k:
+            self._remove_element(x, k)
+            lp = self.clusters[k].predictive_logp(x)
+            self._insert_element(x, k)
+        else:
+            lp = self.clusters[k].predictive_logp(x)
         return lp
 
-    def singleton_logp(self, n):
-        """Returns the predictive log_p of X[n] in its own cluster."""
-        x = self.X[n]
+    def singleton_logp(self, rowid):
+        """Returns the predictive log_p of X[rowid] in its own cluster."""
+        x = self.X[rowid]
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
         lp = self.aux_model.singleton_logp(x)
         if not isinstance(lp, float):
             import ipdb; ipdb.set_trace()
         return lp
 
-    def insert_element(self, n, k):
-        """Insert X[n] into clusters[k]."""
-        x = self.X[n]
+    def _insert_element(self, x, k):
+        """Insert x into clusters[k]."""
         if isnan(x):
             return
         self.clusters[k].insert_element(x)
 
-    def remove_element(self, n, k):
-        """Remove X[n] from clusters[k]."""
-        x = self.X[n]
+    def _remove_element(self, x, k):
+        """Remove x from clusters[k]."""
         if isnan(x):
             return
         self.clusters[k].remove_element(x)
 
-    def move_to_cluster(self, n, move_from, move_to):
-        """Move X[n] from clusters[move_from] to clusters[move_to]."""
-        x = self.X[n]
+    def move_to_cluster(self, rowid, move_from, move_to):
+        """Move X[rowid] from clusters[move_from] to clusters[move_to]."""
+        x = self.X[rowid]
         self.clusters[move_from].remove_element(x)
         self.clusters[move_to].insert_element(x)
 
-    def destroy_singleton_cluster(self, n, to_destroy, move_to):
-        """Move X[n] tp clusters[move_to] and destroy clusters[to_destroy]."""
-        x = self.X[n]
+    def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
+        """Move X[rowid] tp clusters[move_to], destroy clusters[to_destroy]."""
+        x = self.X[rowid]
         self.clusters[move_to].insert_element(x)
         del self.clusters[to_destroy]
 
-    def create_singleton_cluster(self, n, current):
-        """Remove X[n] from clusters[current] and create a new singleton
+    def create_singleton_cluster(self, rowid, current):
+        """Remove X[rowid] from clusters[current] and create a new singleton
         cluster.
         """
-        x = self.X[n]                                               # get the element
-        self.clusters[current].remove_element(x)                    # remove from current cluster
-        self.clusters.append(self.aux_model)                        # create the singleton
-        self.clusters[-1].insert_element(x)                         # add element to new cluster
+        x = self.X[rowid]                          # get the element
+        self.clusters[current].remove_element(x)   # remove from current cluster
+        self.clusters.append(self.aux_model)       # create the singleton
+        self.clusters[-1].insert_element(x)        # add element to new cluster
 
     def marginal_logp(self, k):
         """Returns the marginal log_p of clusters[k]."""
