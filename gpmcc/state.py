@@ -97,8 +97,8 @@ class State(object):
         >>> state = State(X, ['normal', 'normal'], [None, None])
         """
 
-        if seed is not None:
-            np.random.seed(seed)
+        if seed is None:
+            np.random.seed(0)
 
         self.n_rows = len(X[0])
         self.n_cols = len(X)
