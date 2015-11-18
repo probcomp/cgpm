@@ -169,8 +169,8 @@ class Lognormal(object):
         hypers['t'] = t
         hypers['m'] = m
 
-        # for cluster in clusters:
-        #     cluster.set_hypers(hypers)
+        for cluster in clusters:
+            cluster.set_hypers(hypers)
 
         return hypers
 

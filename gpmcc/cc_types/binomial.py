@@ -126,8 +126,8 @@ class Binomial(object):
         hypers['alpha'] = alpha
         hypers['beta'] = beta
 
-        # for cluster in clusters:
-        #     cluster.set_hypers(hypers)
+        for cluster in clusters:
+            cluster.set_hypers(hypers)
 
         return hypers
 

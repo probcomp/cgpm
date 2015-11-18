@@ -132,8 +132,6 @@ class Dim(object):
             cluster.transition_params()
         self.hypers = self.model.transition_hypers(self.clusters, self.hypers,
             self.hypers_grids)
-        for cluster in self.clusters:
-            cluster.set_hypers(self.hypers)
 
     def reassign(self, Zr):
         """Reassigns the data to new clusters according to the new

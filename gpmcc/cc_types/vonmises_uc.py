@@ -241,8 +241,8 @@ class VonmisesUC(object):
         hypers['shape'] = shape
         hypers['scale'] = scale
 
-        # for cluster in clusters:
-        #     cluster.set_hypers(hypers)
+        for cluster in clusters:
+            cluster.set_hypers(hypers)
 
         return hypers
 

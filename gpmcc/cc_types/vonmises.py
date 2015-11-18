@@ -209,8 +209,8 @@ class Vonmises(object):
         hypers['b'] = b
         hypers['k'] = k
 
-        # for cluster in clusters:
-        #     cluster.set_hypers(hypers)
+        for cluster in clusters:
+            cluster.set_hypers(hypers)
 
         return hypers
 

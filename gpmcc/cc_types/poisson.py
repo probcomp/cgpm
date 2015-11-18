@@ -134,8 +134,8 @@ class Poisson(object):
         hypers['a'] = a
         hypers['b'] = b
 
-        # for cluster in clusters:
-        #     cluster.set_hypers(hypers)
+        for cluster in clusters:
+            cluster.set_hypers(hypers)
 
         return hypers
 

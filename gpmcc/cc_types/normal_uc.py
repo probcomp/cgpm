@@ -181,8 +181,8 @@ class NormalUC(object):
         hypers['r'] = r
         hypers['nu'] = nu
 
-        # for cluster in clusters:
-        #     cluster.set_hypers(hypers)
+        for cluster in clusters:
+            cluster.set_hypers(hypers)
 
         return hypers
 

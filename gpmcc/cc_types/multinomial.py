@@ -107,8 +107,8 @@ class Multinomial(object):
         hypers = dict()
         hypers['alpha'] = grids['alpha'][alpha_index]
 
-        # for cluster in clusters:
-        #     cluster.set_hypers(hypers)
+        for cluster in clusters:
+            cluster.set_hypers(hypers)
 
         return hypers
 
