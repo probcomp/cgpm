@@ -17,7 +17,7 @@ from math import isnan
 class Dim(object):
     """Holds data, model type, and hyperparameters."""
 
-    def __init__(self, X, cc_datatype_class, index, Z=None, n_grid=30,
+    def __init__(self, X, cc_datatype_class, index, Zr=None, n_grid=30,
             hypers=None, mode='collapsed', distargs=None):
         """Dimension constructor.
 
@@ -27,7 +27,7 @@ class Dim(object):
         -- index: the column index (int)
 
         Optional arguments:
-        -- Z: partition of data to clusters. If not specified, no clusters are
+        -- Zr: partition of data to clusters. If not specified, no clusters are
 
         Intialized:
         -- n_grid: number of hyperparameter grid bins. Default is 30.
@@ -47,18 +47,18 @@ class Dim(object):
         if hypers is None:
             self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, X)
 
-        if Z is None:
+        if Zr is None:
             self.clusters = []
             self.pX = 0
         else:
             self.clusters = []
-            K = max(Z)+1
+            K = max(Zr)+1
             for k in xrange(K):
                 self.clusters.append(cc_datatype_class(distargs=distargs))
                 self.clusters[k].set_hypers(self.hypers)
 
-            for i in range(len(X)):
-                k = Z[i]
+            for i in xrange(len(X)):
+                k = Zr[i]
                 self.clusters[k].insert_element(X[i])
 
     def predictive_logp(self, n, k):
@@ -132,14 +132,15 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
 
-    def reassign(self, Z):
+    def reassign(self, Zr):
         """Reassigns the data to new clusters according to the new
-        partitioning, Z.
+        partitioning, Zr.
 
         Destroys and recreates dims.
         """
         self.clusters = []
-        K = max(Z) + 1
+        self.Zr = Zr
+        K = max(Zr) + 1
 
         for k in xrange(K):
             cluster = self.model(distargs=self.distargs)
@@ -147,7 +148,7 @@ class Dim(object):
             self.clusters.append(cluster)
 
         for i in xrange(self.N):
-            k = Z[i]
+            k = Zr[i]
             self.clusters[k].insert_element(self.X[i])
 
         for cluster in self.clusters:

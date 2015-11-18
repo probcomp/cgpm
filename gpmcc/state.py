@@ -110,7 +110,6 @@ class State(object):
             cctype = cctypes[col]
             mode = 'uncollapsed' if _is_uncollapsed[cctype] else 'collapsed'
             dim_hypers = None if hypers is None else hypers[col]
-            print dim_hypers
             dim = Dim(Y, _cctype_class[cctype], col, n_grid=n_grid,
                 hypers=dim_hypers, mode=mode, distargs=distargs[col])
             self.dims.append(dim)
@@ -218,20 +217,21 @@ class State(object):
 
         if do_plot:
             plt.ion()
+            plt.show()
             layout = pu.get_state_plot_layout(self.n_cols)
             fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
                 layout['plot_inches_x']), dpi=75, facecolor='w', edgecolor='k',
                 frameon=False,tight_layout=True)
             self._plot(fig, layout)
-            plt.show()
 
-        for i in range(N):
+        for i in xrange(N):
             print i
             # random.shuffle(kernel_fns)
             for kernel in kernel_fns:
                 kernel()
             if do_plot:
                 self._plot(fig, layout)
+                plt.pause(0.0001)
 
     def set_data(self, data):
         """Testing. Resets the suffstats in all clusters in all dims to reflect
