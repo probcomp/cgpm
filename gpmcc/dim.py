@@ -18,7 +18,7 @@ class Dim(object):
     """Holds data, model type, and hyperparameters."""
 
     def __init__(self, X, cc_datatype_class, index, Z=None, n_grid=30,
-            mode='collapsed', distargs=None):
+            hypers=None, mode='collapsed', distargs=None):
         """Dimension constructor.
 
         Arguments:
@@ -41,9 +41,11 @@ class Dim(object):
         self.model = cc_datatype_class
         self.cctype = cc_datatype_class.cctype
         self.hypers_grids = cc_datatype_class.construct_hyper_grids(X, n_grid)
-        self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, X)
         self.distargs = distargs if distargs is not None else {}
         self.mode = mode
+        self.hypers = hypers
+        if hypers is None:
+            self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, X)
 
         if Z is None:
             self.clusters = []
@@ -51,7 +53,7 @@ class Dim(object):
         else:
             self.clusters = []
             K = max(Z)+1
-            for k in range(K):
+            for k in xrange(K):
                 self.clusters.append(cc_datatype_class(distargs=distargs))
                 self.clusters[k].set_hypers(self.hypers)
 

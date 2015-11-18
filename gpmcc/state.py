@@ -105,20 +105,15 @@ class State(object):
 
         # Construct the dims.
         self.dims = []
-        for col in range(self.n_cols):
+        for col in xrange(self.n_cols):
             Y = X[col]
             cctype = cctypes[col]
-            mode = 'collapsed'
-            if _is_uncollapsed[cctype]:
-                mode = 'uncollapsed'
+            mode = 'uncollapsed' if _is_uncollapsed[cctype] else 'collapsed'
+            dim_hypers = None if hypers is None else hypers[col]
+            print dim_hypers
             dim = Dim(Y, _cctype_class[cctype], col, n_grid=n_grid,
-                mode = mode, distargs=distargs[col])
+                hypers=dim_hypers, mode=mode, distargs=distargs[col])
             self.dims.append(dim)
-
-        # Set the hyperparameters in the dims.
-        if hypers is not None:
-            for d in range(self.n_cols):
-                self.dims[d].set_hypers(hypers[d])
 
         # Initialize CRP alpha.
         self.alpha_grid = utils.log_linspace(1.0 / self.n_cols, self.n_cols,
