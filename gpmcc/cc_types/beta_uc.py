@@ -61,12 +61,6 @@ class BetaUC(object):
             self.sum_log_x -= log(x)
             self.sum_minus_log_x -= log(1.0-x)
 
-    def set_params(self, params):
-        assert params['strength'] > 0
-        assert params['balance'] >= 0 and params['balance'] <= 1
-        self.strength = params['strength']
-        self.balance = params['balance']
-
     def resample_params(self):
         n_samples = 25
 

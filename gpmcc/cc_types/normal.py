@@ -57,9 +57,6 @@ class Normal(object):
     def resample_params(self, prior=False):
         return
 
-    def set_params(self, params):
-        return
-
     def insert_element(self, x):
         if math.isnan(x):
             return

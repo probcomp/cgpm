@@ -34,9 +34,6 @@ class Multinomial(object):
         assert hypers['alpha'] > 0
         self.alpha = hypers['alpha']
 
-    def set_params(self, params):
-        return
-
     def resample_params(self, prior=False):
         return
 

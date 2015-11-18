@@ -53,9 +53,6 @@ class Lognormal(object):
         self.t = hypers['t']
         self.a = hypers['a']
 
-    def set_params(self, params):
-        return
-
     def resample_params(self, prior=False):
         return
 

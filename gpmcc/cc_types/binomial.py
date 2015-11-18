@@ -36,9 +36,6 @@ class Binomial(object):
         self.alpha = hypers['alpha']
         self.beta = hypers['beta']
 
-    def set_params(self, params):
-        return
-
     def resample_params(self, prior=False):
         return
 

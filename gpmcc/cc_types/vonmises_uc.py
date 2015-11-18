@@ -66,10 +66,6 @@ class VonmisesUC(object):
         self.scale = hypers['scale']
         self.shape = hypers['shape']
 
-    def set_params(self, params):
-        assert params['k'] > 0
-        self.k = params['k']
-
     def resample_params(self):
         n_samples = 25
         D = (0.0, float('Inf'))

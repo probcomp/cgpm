@@ -60,11 +60,6 @@ class NormalUC(object):
         self.s = hypers['s']
         self.nu = hypers['nu']
 
-    def set_params(self, params):
-        assert params['rho'] > 0
-        self.mu = params['mu']
-        self.rho = params['rho']
-
     def resample_params(self):
         rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
                 self.sum_x, self.sum_x_sq, self. m, self.r, self.s, self.nu)
