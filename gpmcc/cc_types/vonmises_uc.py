@@ -21,7 +21,7 @@ class VonmisesUC(object):
 
     cctype = 'vonmises_uc'
 
-    def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, k=1.5, a=1, b=math.pi,
+    def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, k=None, a=1, b=math.pi,
             shape=1, scale=1, distargs=None):
         """
         Keyword arguments:
@@ -38,7 +38,6 @@ class VonmisesUC(object):
         assert N >= 0
         assert a > 0
         assert 0 <= b and b <= 2*math.pi
-        assert k > 0
         assert shape > 0
         assert scale > 0
 
@@ -46,12 +45,14 @@ class VonmisesUC(object):
         self.sum_sin_x = sum_sin_x
         self.sum_cos_x = sum_cos_x
 
-        self.k = k
-
         self.shape = shape
         self.scale = scale
         self.a = a
         self.b = b
+
+        self.k = k
+        if k is None:
+            self.k = VonmisesUC.draw_params(self.shape, self.scale)
 
     def set_hypers(self, hypers):
         assert hypers['a'] > 0
@@ -93,9 +94,12 @@ class VonmisesUC(object):
             self.sum_cos_x -= cos(x)
 
     def predictive_logp(self, x):
-        assert 0 <= x and x <= 2*math.pi
         return VonmisesUC.calc_predictive_logp(x, self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
+
+    def singleton_logp(self, x):
+        return VonmisesUC.calc_predictive_logp(x, 0, 0, 0, self.a, self.b,
+            self.k)
 
     def marginal_logp(self):
         return VonmisesUC.calc_marginal_logp(self.N, self.sum_sin_x,
@@ -104,25 +108,11 @@ class VonmisesUC(object):
     def predictive_draw(self):
         an, bn = VonmisesUC.posterior_update_parameters(self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
-
         return np.random.vonmises(bn, self.k)
 
     @staticmethod
-    def singleton_logp(x, hypers):
-        if np.isnan(x):
-            return 0
-        assert 0 <= x and x <= 2*math.pi
-        shape = hypers['shape']
-        scale = hypers['scale']
-        k = np.random.gamma(shape, scale=scale)
-
-        a = hypers['a']
-        b = hypers['b']
-        lp = VonmisesUC.calc_predictive_logp(x, 0, 0, 0, a, b, k)
-
-        params = dict(k=k)
-
-        return lp, params
+    def draw_params(shape, scale):
+        return np.random.gamma(shape, scale=scale)
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
@@ -216,7 +206,7 @@ class VonmisesUC(object):
         return gu.log_bessel_0(a)
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         a = clusters[0].a
         b = clusters[0].b
         shape = clusters[0].shape

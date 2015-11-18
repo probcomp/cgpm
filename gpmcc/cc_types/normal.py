@@ -86,17 +86,16 @@ class Normal(object):
         return Normal.calc_marginal_logp(self.N, self.sum_x, self.sum_x_sq,
             self.m, self.r, self.s, self.nu)
 
+    def singleton_logp(self, x):
+        return Normal.calc_predictive_logp(x, 0, 0, 0, self.m, self.r,
+            self.s, self.nu)
+
     def predictive_draw(self):
         rn, nun, mn, sn = Normal.posterior_update_parameters(
             self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
         coeff = ( ((sn/2.0)*(rn+1.0)) / ((nun/2.0)*rn) )**.5
         draw = np.random.standard_t(nun) * coeff + mn
         return draw
-
-    @staticmethod
-    def singleton_logp(x, hypers):
-        return Normal.calc_predictive_logp(x, 0, 0, 0, hypers['m'], hypers['r'],
-            hypers['s'], hypers['nu'])
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -144,7 +143,7 @@ class Normal(object):
         return - (float(N) / 2.0) * LOG2PI + ZN - Z0
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         # resample hypers
         m = clusters[0].m
         s = clusters[0].s

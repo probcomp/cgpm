@@ -451,7 +451,7 @@ class State(object):
             target_cols = range(self.n_cols)
 
         for i in target_cols:
-            self.dims[i].update_hypers()
+            self.dims[i].resample_hypers()
 
     def _transition_view_alphas(self):
         for view in self.views:

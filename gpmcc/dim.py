@@ -68,8 +68,10 @@ class Dim(object):
     def singleton_logp(self, n):
         """Returns the predictive log_p of X[n] in its own cluster."""
         x = self.X[n]
-        lp = self.model.singleton_logp(x, dict(self.hypers,
-            **self.distargs))
+        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+        lp = self.aux_model.singleton_logp(x)
+        if not isinstance(lp, float):
+            import ipdb; ipdb.set_trace()
         return lp
 
     def insert_element(self, n, k):
@@ -104,8 +106,7 @@ class Dim(object):
         """
         x = self.X[n]                                               # get the element
         self.clusters[current].remove_element(x)                    # remove from current cluster
-        self.clusters.append(self.model(distargs=self.distargs))    # create new empty cluster
-        self.clusters[-1].set_hypers(self.hypers)                   # set hypers of new cluster
+        self.clusters.append(self.aux_model)                        # create the singleton
         self.clusters[-1].insert_element(x)                         # add element to new cluster
 
     def marginal_logp(self, k):
@@ -120,9 +121,9 @@ class Dim(object):
 
         return lp
 
-    def update_hypers(self):
+    def resample_hypers(self):
         """Updates the hyperparameters."""
-        self.hypers = self.clusters[0].update_hypers(self.clusters,
+        self.hypers = self.model.resample_hypers(self.clusters,
             self.hypers_grids)
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
@@ -139,19 +140,20 @@ class Dim(object):
 
         Destroys and recreates dims.
         """
-        self.clusters = []  # destroy dims
-        K = max(Z)+1        # get number of clusters in Z
+        self.clusters = []
+        K = max(Z)+1
 
-        # create new empty clusters with appropriate args and hypers
         for k in range(K):
             cluster = self.model(distargs=self.distargs)
             cluster.set_hypers(self.hypers)
             self.clusters.append(cluster)
 
-        # insert data into clusters according to Z
         for i in range(self.N):
             k = Z[i]
             self.clusters[k].insert_element(self.X[i])
+
+        for cluster in self.clusters:
+            cluster.resample_params()
 
     def clear_data(self):
         """Removes all data from the clusters. Cleans suffstats."""

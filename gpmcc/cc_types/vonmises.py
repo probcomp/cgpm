@@ -74,7 +74,6 @@ class Vonmises(object):
         self.sum_cos_x -= cos(x)
 
     def predictive_logp(self, x):
-        assert 0 <= x and x <= 2*math.pi
         return Vonmises.calc_predictive_logp(x, self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
 
@@ -83,19 +82,14 @@ class Vonmises(object):
             self.a, self.b, self.k)
         return logp
 
+    def singleton_logp(self, x):
+        return Vonmises.calc_predictive_logp(x, 0, 0, 0, self.a, self.b, self.k)
+
     def predictive_draw(self):
         fn = lambda x: np.exp(self.predictive_logp(x))
         lower_bound = 0.0
         delta = 2*math.pi/10000
         return gu.inversion_sampling(fn, lower_bound, delta)
-
-    @staticmethod
-    def singleton_logp(x, hypers):
-        if np.isnan(x):
-            return 0
-        assert 0 <= x and x <= 2*math.pi
-        return Vonmises.calc_predictive_logp(x, 0, 0, 0, hypers['a'],
-            hypers['b'], hypers['k'])
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
@@ -186,7 +180,7 @@ class Vonmises(object):
         return gu.log_bessel_0(a)
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         a = clusters[0].a
         b = clusters[0].b
         k = clusters[0].k

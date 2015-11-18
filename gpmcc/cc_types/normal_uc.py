@@ -20,8 +20,8 @@ class NormalUC(object):
 
     cctype = 'normal_uc'
 
-    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=0, rho=1, m=0, r=1, s=1,
-            nu=1, distargs=None):
+    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, rho=None, m=0, r=1,
+            s=1, nu=1, distargs=None):
         """
         Optional arguments:
         -- N: number of data points
@@ -33,7 +33,6 @@ class NormalUC(object):
         -- nu: hyperparameter
         -- distargs: not used
         """
-        assert rho > 0.0
         assert s > 0.0
         assert r > 0.0
         assert nu > 0.0
@@ -42,13 +41,14 @@ class NormalUC(object):
         self.sum_x = sum_x
         self.sum_x_sq = sum_x_sq
 
-        self.mu = mu
-        self.rho = rho
-
         self.m = m
         self.r = r
         self.s = s
         self.nu = nu
+
+        self.mu, self.rho = mu, rho
+        if mu is None or rho is None:
+            self.mu, self.rho = NormalUC.draw_params(m, r, s, nu)
 
     def set_hypers(self, hypers):
         assert hypers['s'] > 0.0
@@ -65,13 +65,10 @@ class NormalUC(object):
         self.mu = params['mu']
         self.rho = params['rho']
 
-    def resample_params(self, prior=False):
-        if prior:
-            rn, nun, mn, sn = self.r, self.nu, self.m, self.s
-        else:
-            rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
+    def resample_params(self):
+        rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
                 self.sum_x, self.sum_x_sq, self. m, self.r, self.s, self.nu)
-        mu, rho = self.draw_normal_params(mn, rn, sn, nun)
+        mu, rho = self.draw_params(mn, rn, sn, nun)
         self.mu = mu
         self.rho = rho
 
@@ -97,26 +94,18 @@ class NormalUC(object):
             self.rho, self.mu, self.m, self.r, self.s, self.nu)
         return lp
 
+    def singleton_logp(self, x):
+        return NormalUC.calc_logp(x, self.mu, self.rho)
+
     def predictive_draw(self):
         return np.random.normal(self.mu, 1.0/self.rho**.5)
-
-    @staticmethod
-    def singleton_logp(x, hypers):
-        m = hypers['m']
-        r = hypers['r']
-        s = hypers['s']
-        nu = hypers['nu']
-        mu, rho = NormalUC.draw_normal_params(m, r, s, nu)
-        logp = NormalUC.calc_logp(x, mu, rho)
-        params = dict(mu=mu, rho=rho)
-        return logp, params
 
     @staticmethod
     def calc_logp(x, mu, rho):
         return scipy.stats.norm.logpdf(x, loc=mu, scale=1.0/rho**.5)
 
     @staticmethod
-    def draw_normal_params(m, r, s, nu):
+    def draw_params(m, r, s, nu):
         rho = np.random.gamma(nu/2.0, scale=2.0/s)
         mu = np.random.normal(loc=m, scale=1.0/(rho*r)**.5)
         return mu, rho
@@ -157,7 +146,7 @@ class NormalUC(object):
         return log_p
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         # resample hypers
         m = clusters[0].m
         s = clusters[0].s

@@ -53,24 +53,21 @@ class Binomial(object):
         self.k -= x
 
     def predictive_logp(self, x):
-        assert x == 1.0 or x == 0.0
         return Binomial.calc_predictive_logp(x, self.N, self.k, self.alpha,
             self.beta)
 
     def marginal_logp(self):
-        return Binomial.calc_marginal_logp(self.N, self.k, self.alpha, self.beta)
+        return Binomial.calc_marginal_logp(self.N, self.k, self.alpha,
+            self.beta)
+
+    def singleton_logp(self, x):
+        return Binomial.calc_predictive_logp(x, 0, 0, self.alpha, self.beta)
 
     def predictive_draw(self):
         if np.random.random() < self.alpha/(self.alpha+self.beta):
             return 1.0
         else:
             return 0.0
-
-    @staticmethod
-    def singleton_logp(x, hypers):
-        assert x == 1.0 or x == 0.0
-        return Binomial.calc_predictive_logp(x, 0, 0, hypers['alpha'],
-            hypers['beta'])
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -107,7 +104,7 @@ class Binomial(object):
         return lnck + numer - denom
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         alpha = clusters[0].alpha
         beta = clusters[0].beta
 

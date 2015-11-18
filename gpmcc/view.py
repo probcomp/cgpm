@@ -155,7 +155,7 @@ class View(object):
         transition.
         """
         for dim in self.dims.values():
-            dim.update_hypers()
+            dim.resample_hypers()
 
     def transition_Z(self, target_rows=None, N=1):
         """Transition row assignment.

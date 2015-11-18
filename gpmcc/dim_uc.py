@@ -37,50 +37,12 @@ class DimUC(Dim):
         super(DimUC, self).__init__(X, cc_datatype_class, index, Z=Z,
             n_grid=n_grid, distargs=distargs)
         self.mode = 'uncollapsed'
-        self.params = dict()
 
-    def singleton_logp(self, n):
-        """Returns the predictive log_p of X[n] in its own cluster."""
-        x = self.X[n]
-        lp, params = self.model.singleton_logp(x, dict(self.hypers,
-            **self.distargs))
-        self.params = params
-        return lp
-
-    def create_singleton_cluster(self, n, current):
-        """Remove X[n] from clusters[current] and create a new singleton
-        cluster.
-        """
-        x = self.X[n]                                               # get the element
-        self.clusters[current].remove_element(x)                    # remove from current cluster
-        self.clusters.append(self.model(distargs=self.distargs))    # create new empty cluster
-        self.clusters[-1].set_hypers(self.hypers)                   # set hypers of new cluster
-        self.clusters[-1].set_params(self.params)                   # set component parameters
-        self.clusters[-1].insert_element(x)                         # add element to new cluster
-
-    def update_hypers(self):
+    def resample_hypers(self):
         """Updates the hyperparameters and the component parameters."""
         for cluster in self.clusters:
-            cluster.set_hypers(self.hypers)
             cluster.resample_params()
-        self.hypers = self.clusters[0].update_hypers(self.clusters,
+        self.hypers = self.model.resample_hypers(self.clusters,
             self.hypers_grids)
-
-    def reassign(self, Z):
-        """Reassigns the data to new clusters according to the new partitioning,
-        Z. Destroys and recreates dims.
-        """
-        self.clusters = []
-        K = max(Z)+1
-
-        for k in range(K):
-            cluster = self.model(distargs=self.distargs)
-            cluster.set_hypers(self.hypers)
-            self.clusters.append(cluster)
-
-        for i in range(self.N):
-            k = Z[i]
-            self.clusters[k].insert_element(self.X[i])
-
         for cluster in self.clusters:
-            cluster.resample_params()
+            cluster.set_hypers(self.hypers)

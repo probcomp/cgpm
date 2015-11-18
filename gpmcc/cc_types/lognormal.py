@@ -79,10 +79,9 @@ class Lognormal(object):
         return Lognormal.calc_marginal_logp(self.N, self.sum_log_x,
             self.sum_log_x_sq, self.a, self.b, self.t, self.m)
 
-    @staticmethod
-    def singleton_logp(x, hypers):
-        return Lognormal.calc_predictive_logp(x, 0, 0, 0, hypers['a'],
-            hypers['b'], hypers['t'], hypers['m'])
+    def singleton_logp(self, x):
+        return Lognormal.calc_predictive_logp(x, 0, 0, 0, self.a, self.b,
+            self.t, self.m)
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
@@ -134,7 +133,7 @@ class Lognormal(object):
         return -(float(N) / 2.0) * LOG2PI + ZN - Z0
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         # resample alpha
         a = clusters[0].a
         b = clusters[0].b

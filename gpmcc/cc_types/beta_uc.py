@@ -19,8 +19,8 @@ class BetaUC(object):
 
     cctype = 'beta_uc'
 
-    def __init__(self, N=0, sum_log_x=0, sum_minus_log_x=0, strength=2.0,
-            balance=.5, mu=1, alpha=.5, beta=.5, distargs=None):
+    def __init__(self, N=0, sum_log_x=0, sum_minus_log_x=0, strength=None,
+            balance=None, mu=1, alpha=.5, beta=.5, distargs=None):
         """
         Optional arguments:
         -- N: number of data points
@@ -37,12 +37,13 @@ class BetaUC(object):
         self.sum_log_x = sum_log_x
         self.sum_minus_log_x = sum_minus_log_x
 
-        self.strength = strength
-        self.balance = balance
-
         self.mu = mu
         self.alpha = alpha
         self.beta = beta
+
+        self.strength, self.balance = strength, balance
+        if strength is None or balance is None:
+            self.strength, self.balance = BetaUC.draw_params(mu, alpha, beta)
 
     def insert_element(self, x):
         assert x > 0 and x < 1
@@ -66,34 +67,28 @@ class BetaUC(object):
         self.strength = params['strength']
         self.balance = params['balance']
 
-    def resample_params(self, prior=False):
-        if prior:
-            self.strength, self.balance = BetaUC.draw_params(self.mu,
+    def resample_params(self):
+        n_samples = 25
+
+        log_pdf_lambda_str = lambda strength : BetaUC.calc_logp(self.N,
+            self.sum_log_x, self.sum_minus_log_x, strength, self.balance) \
+            + BetaUC.calc_log_prior(strength, self.balance, self.mu,
                 self.alpha, self.beta)
-        else:
-            n_samples = 25
+        self.strength = su.mh_sample(self.strength, log_pdf_lambda_str,
+            .5, [0.0,float('Inf')], burn=n_samples)
 
-            log_pdf_lambda_str = lambda strength : BetaUC.calc_logp(self.N,
-                self.sum_log_x, self.sum_minus_log_x, strength, self.balance) \
-                + BetaUC.calc_log_prior(strength, self.balance, self.mu,
-                    self.alpha, self.beta)
-            self.strength = su.mh_sample(self.strength, log_pdf_lambda_str,
-                .5, [0.0,float('Inf')], burn=n_samples)
-
-            log_pdf_lambda_bal = lambda balance : BetaUC.calc_logp(self.N,
-                self.sum_log_x, self.sum_minus_log_x, self.strength, balance) \
-                + BetaUC.calc_log_prior(self.strength, balance, self.mu,
-                    self.alpha, self.beta)
-            self.balance = su.mh_sample(self.balance, log_pdf_lambda_bal,
-                .25, [0,1], burn=n_samples)
+        log_pdf_lambda_bal = lambda balance : BetaUC.calc_logp(self.N,
+            self.sum_log_x, self.sum_minus_log_x, self.strength, balance) \
+            + BetaUC.calc_log_prior(self.strength, balance, self.mu,
+                self.alpha, self.beta)
+        self.balance = su.mh_sample(self.balance, log_pdf_lambda_bal,
+            .25, [0,1], burn=n_samples)
 
     def predictive_logp(self, x):
         return BetaUC.calc_singleton_logp(x, self.strength, self.balance)
 
-    def predictive_draw(self):
-        alpha = self.strength*self.balance
-        beta = self.strength*(1.0-self.balance)
-        return np.random.beta(alpha, beta)
+    def singleton_logp(self, x):
+        return BetaUC.calc_singleton_logp(x, self.strength, self.balance)
 
     def marginal_logp(self):
         lp = BetaUC.calc_logp(self.N, self.sum_log_x, self.sum_minus_log_x,
@@ -102,20 +97,15 @@ class BetaUC(object):
             self.alpha, self.beta)
         return lp
 
+    def predictive_draw(self):
+        alpha = self.strength*self.balance
+        beta = self.strength*(1.0-self.balance)
+        return np.random.beta(alpha, beta)
+
     def set_hypers(self, hypers):
         self.mu = hypers['mu']
         self.alpha = hypers['alpha']
         self.beta = hypers['beta']
-
-    @staticmethod
-    def singleton_logp(x, hypers):
-        mu = hypers['mu']
-        alpha = hypers['alpha']
-        beta = hypers['beta']
-        strength, balance = BetaUC.draw_params(mu, alpha, beta)
-        logp = BetaUC.calc_singleton_logp(x, strength, balance)
-        params = dict( strength=strength, balance=balance)
-        return logp, params
 
     @staticmethod
     def calc_singleton_logp(x, strength, balance):
@@ -214,7 +204,7 @@ class BetaUC(object):
         return lps
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         # resample hypers
         mu = clusters[0].mu
         alpha = clusters[0].alpha

@@ -52,19 +52,17 @@ class Multinomial(object):
 
     def predictive_logp(self, x):
         x = Multinomial.validate(x, self.K)
-        return self.calc_predictive_logp(x, self.N, self.w, self.alpha)
+        return Multinomial.calc_predictive_logp(x, self.N, self.w, self.alpha)
 
     def marginal_logp(self):
-        return self.calc_marginal_logp(self.N, self.w, self.alpha)
+        return Multinomial.calc_marginal_logp(self.N, self.w, self.alpha)
+
+    def singleton_logp(self, x):
+        return Multinomial.calc_predictive_logp(x, 0, [0]*self.K,
+            self.alpha)
 
     def predictive_draw(self):
         return gu.pflip(self.w)
-
-    @staticmethod
-    def singleton_logp(x, hypers):
-        x = Multinomial.validate(x, hypers['K'])
-        return Multinomial.calc_predictive_logp(x, 0, [0]*hypers['K'],
-            hypers['alpha'])
 
     @staticmethod
     def validate(x, K):
@@ -87,6 +85,7 @@ class Multinomial(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, w, alpha):
+        x = Multinomial.validate(x, len(w))
         numer = log(alpha + w[x])
         denom = log( np.sum(w) + alpha * len(w))
         return numer - denom
@@ -103,7 +102,7 @@ class Multinomial(object):
 
 
     @staticmethod
-    def update_hypers(clusters, grids):
+    def resample_hypers(clusters, grids):
         # resample alpha
         lp_alpha = Multinomial.calc_alpha_conditional_logps(clusters,
             grids['alpha'])
