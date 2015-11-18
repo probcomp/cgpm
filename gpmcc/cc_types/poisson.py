@@ -198,7 +198,6 @@ class Poisson(object):
         if ax is None:
             _, ax = plt.subplots()
 
-        x_min = min(X)
         x_max = max(X)
         Y = range(int(x_max)+1)
         nn = len(Y)
@@ -209,26 +208,25 @@ class Poisson(object):
         a = clusters[0].a
         b = clusters[0].b
 
-        nbins = min([len(Y), 50])
         toplt = np.array(gu.bincount(X,Y))/float(len(X))
         ax.bar(Y, toplt, color="gray", edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
-        for k in range(K):
+        for k in xrange(K):
             w = W[k]
             N = clusters[k].N
             sum_x = clusters[k].sum_x
             sum_log_fact_x = clusters[k].sum_log_fact_x
-            for n in range(nn):
+            for n in xrange(nn):
                 y = Y[n]
                 pdf[k, n] = np.exp(w + Poisson.calc_predictive_logp(y, N, sum_x,
                     sum_log_fact_x, a, b))
             if k >= 8:
                 color = "white"
-                alpha=.3
+                alpha = .3
             else:
                 color = gu.colors()[k]
-                alpha=.7
+                alpha = .7
             ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
 
         ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
