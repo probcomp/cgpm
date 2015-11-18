@@ -69,6 +69,13 @@ class VonmisesUC(object):
         assert params['k'] > 0
         self.k = params['k']
 
+    def resample_params(self):
+        n_samples = 25
+        D = (0.0, float('Inf'))
+        lambda_k = lambda k : self.calc_marginal_logp(self.N, self.sum_sin_x,
+            self.sum_cos_x, k, self.a, self.b, self.scale, self.shape)
+        self.k = su.mh_sample(self.k, lambda_k, .5, D, burn=n_samples)
+
     def insert_element(self, x):
         assert 0 <= x and x <= 2*math.pi
         self.N += 1.0
@@ -93,15 +100,6 @@ class VonmisesUC(object):
     def marginal_logp(self):
         return self.calc_marginal_logp(self.N, self.sum_sin_x, self.sum_cos_x,
             self.k, self.a, self.b, self.scale, self.shape)
-
-    def update_component_parameters(self):
-        n_samples = 25
-
-        D = (0.0, float('Inf'))
-
-        lambda_k = lambda k : self.calc_marginal_logp(self.N, self.sum_sin_x,
-            self.sum_cos_x, k, self.a, self.b, self.scale, self.shape)
-        self.k = su.mh_sample(self.k, lambda_k, .5, D, burn=n_samples)
 
     def predictive_draw(self):
         an, bn = self.posterior_update_parameters(self.N, self.sum_sin_x,

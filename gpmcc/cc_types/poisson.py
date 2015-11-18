@@ -38,6 +38,12 @@ class Poisson(object):
         self.b = hypers['b']
         self.a = hypers['a']
 
+    def set_params(self, params):
+        return
+
+    def resample_params(self, prior=False):
+        return
+
     def insert_element(self, x):
         self.N += 1.0
         self.sum_x += x

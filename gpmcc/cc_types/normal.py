@@ -54,6 +54,12 @@ class Normal(object):
         self.s = hypers['s']
         self.nu = hypers['nu']
 
+    def resample_params(self, prior=False):
+        return
+
+    def set_params(self, params):
+        return
+
     def insert_element(self, x):
         if math.isnan(x):
             return
@@ -71,7 +77,6 @@ class Normal(object):
         else:
             self.sum_x -= x
             self.sum_x_sq -= x*x
-
 
     def predictive_logp(self, x):
         return self.calc_predictive_logp(x, self.N, self.sum_x, self.sum_x_sq,

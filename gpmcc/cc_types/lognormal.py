@@ -53,6 +53,12 @@ class Lognormal(object):
         self.t = hypers['t']
         self.a = hypers['a']
 
+    def set_params(self, params):
+        return
+
+    def resample_params(self, prior=False):
+        return
+
     def insert_element(self, x):
         self.N += 1.0
         lx = log(x)

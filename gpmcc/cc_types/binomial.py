@@ -36,6 +36,12 @@ class Binomial(object):
         self.alpha = hypers['alpha']
         self.beta = hypers['beta']
 
+    def set_params(self, params):
+        return
+
+    def resample_params(self, prior=False):
+        return
+
     def insert_element(self, x):
         assert x == 1.0 or x == 0.0
         self.N += 1

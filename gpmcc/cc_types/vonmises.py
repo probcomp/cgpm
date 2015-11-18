@@ -55,6 +55,12 @@ class Vonmises(object):
         self.b = hypers['b']
         self.k = hypers['k']
 
+    def set_params(self, params):
+        return
+
+    def resample_params(self, prior=False):
+        return
+
     def insert_element(self, x):
         assert 0 <= x and x <= 2*math.pi
         self.N += 1.0

@@ -34,6 +34,12 @@ class Multinomial(object):
         assert hypers['alpha'] > 0
         self.alpha = hypers['alpha']
 
+    def set_params(self, params):
+        return
+
+    def resample_params(self, prior=False):
+        return
+
     def insert_element(self, x):
         x = Multinomial.validate(x, self.K)
         self.N += 1

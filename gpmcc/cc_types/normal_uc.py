@@ -50,18 +50,6 @@ class NormalUC(object):
         self.s = s
         self.nu = nu
 
-    def set_component_params_from_prior(self):
-        mu, rho = NormalUC.draw_normal_params(self.m, self.r, self.s, self.nu)
-        self.mu = mu
-        self.rho = rho
-
-    def update_component_parameters(self):
-        rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
-            self.sum_x, self.sum_x_sq, self. m, self.r, self.s, self.nu)
-        mu, rho = self.draw_normal_params(mn, rn, sn, nun)
-        self.mu = mu
-        self.rho = rho
-
     def set_hypers(self, hypers):
         assert hypers['s'] > 0.0
         assert hypers['r'] > 0.0
@@ -76,6 +64,16 @@ class NormalUC(object):
         assert params['rho'] > 0
         self.mu = params['mu']
         self.rho = params['rho']
+
+    def resample_params(self, prior=False):
+        if prior:
+            rn, nun, mn, sn = self.r, self.nu, self.m, self.s
+        else:
+            rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
+                self.sum_x, self.sum_x_sq, self. m, self.r, self.s, self.nu)
+        mu, rho = self.draw_normal_params(mn, rn, sn, nun)
+        self.mu = mu
+        self.rho = rho
 
     def insert_element(self, x):
         if math.isnan(x):
