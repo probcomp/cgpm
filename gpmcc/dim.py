@@ -126,11 +126,11 @@ class Dim(object):
 
         return lp
 
-    def resample_hypers(self):
+    def transition_hypers(self):
         """Updates the hyperparameters and the component parameters."""
         for cluster in self.clusters:
-            cluster.resample_params()
-        self.hypers = self.model.resample_hypers(self.clusters,
+            cluster.transition_params()
+        self.hypers = self.model.transition_hypers(self.clusters, self.hypers,
             self.hypers_grids)
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
@@ -155,12 +155,12 @@ class Dim(object):
             self.clusters[k].insert_element(self.X[i])
 
         for cluster in self.clusters:
-            cluster.resample_params()
+            cluster.transition_params()
 
     def clear_data(self):
         """Removes all data from the clusters. Cleans suffstats."""
         K = len(self.clusters)
-        for k in range(K):
+        for k in xrange(K):
             cluster = self.model(distargs=self.distargs)
             cluster.set_hypers(self.hypers)
             self.clusters[k] = cluster

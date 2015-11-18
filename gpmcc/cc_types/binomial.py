@@ -36,7 +36,7 @@ class Binomial(object):
         self.alpha = hypers['alpha']
         self.beta = hypers['beta']
 
-    def resample_params(self, prior=False):
+    def transition_params(self, prior=False):
         return
 
     def insert_element(self, x):
@@ -101,9 +101,9 @@ class Binomial(object):
         return lnck + numer - denom
 
     @staticmethod
-    def resample_hypers(clusters, grids):
-        alpha = clusters[0].alpha
-        beta = clusters[0].beta
+    def transition_hypers(clusters, hypers, grids):
+        alpha = hypers['alpha']
+        beta = hypers['beta']
 
         which_hypers = [0,1]
         np.random.shuffle(which_hypers)
@@ -125,6 +125,9 @@ class Binomial(object):
         hypers = dict()
         hypers['alpha'] = alpha
         hypers['beta'] = beta
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

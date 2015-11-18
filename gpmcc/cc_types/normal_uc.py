@@ -60,7 +60,7 @@ class NormalUC(object):
         self.s = hypers['s']
         self.nu = hypers['nu']
 
-    def resample_params(self):
+    def transition_params(self):
         rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
                 self.sum_x, self.sum_x_sq, self. m, self.r, self.s, self.nu)
         mu, rho = self.draw_params(mn, rn, sn, nun)
@@ -141,12 +141,12 @@ class NormalUC(object):
         return log_p
 
     @staticmethod
-    def resample_hypers(clusters, grids):
+    def transition_hypers(clusters, hypers, grids):
         # resample hypers
-        m = clusters[0].m
-        s = clusters[0].s
-        r = clusters[0].r
-        nu = clusters[0].nu
+        m = hypers['m']
+        s = hypers['s']
+        r = hypers['r']
+        nu = hypers['nu']
 
         which_hypers = [0,1,2,3]
         np.random.shuffle(which_hypers)
@@ -180,6 +180,9 @@ class NormalUC(object):
         hypers['s'] = s
         hypers['r'] = r
         hypers['nu'] = nu
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

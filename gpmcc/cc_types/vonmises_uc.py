@@ -66,7 +66,7 @@ class VonmisesUC(object):
         self.scale = hypers['scale']
         self.shape = hypers['shape']
 
-    def resample_params(self):
+    def transition_params(self):
         n_samples = 25
         D = (0.0, float('Inf'))
         lambda_k = lambda k : self.calc_marginal_logp(self.N, self.sum_sin_x,
@@ -202,11 +202,11 @@ class VonmisesUC(object):
         return gu.log_bessel_0(a)
 
     @staticmethod
-    def resample_hypers(clusters, grids):
-        a = clusters[0].a
-        b = clusters[0].b
-        shape = clusters[0].shape
-        scale = clusters[0].scale
+    def transition_hypers(clusters, hypers, grids):
+        a = hypers['a']
+        b = hypers['b']
+        shape = hypers['shape']
+        scale = hypers['scale']
 
         which_hypers = [0,1,2,3]
         np.random.shuffle(which_hypers)
@@ -240,6 +240,9 @@ class VonmisesUC(object):
         hypers['b'] = b
         hypers['shape'] = shape
         hypers['scale'] = scale
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

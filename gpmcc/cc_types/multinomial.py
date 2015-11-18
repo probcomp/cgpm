@@ -34,7 +34,7 @@ class Multinomial(object):
         assert hypers['alpha'] > 0
         self.alpha = hypers['alpha']
 
-    def resample_params(self, prior=False):
+    def transition_params(self, prior=False):
         return
 
     def insert_element(self, x):
@@ -99,13 +99,16 @@ class Multinomial(object):
 
 
     @staticmethod
-    def resample_hypers(clusters, grids):
-        # resample alpha
+    def transition_hypers(clusters, hypers, grids):
+        # Do not need to extract any hypers since alpha is the only one.
         lp_alpha = Multinomial.calc_alpha_conditional_logps(clusters,
             grids['alpha'])
         alpha_index = gu.log_pflip(lp_alpha)
         hypers = dict()
         hypers['alpha'] = grids['alpha'][alpha_index]
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

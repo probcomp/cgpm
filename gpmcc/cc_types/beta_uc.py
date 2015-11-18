@@ -61,7 +61,7 @@ class BetaUC(object):
             self.sum_log_x -= log(x)
             self.sum_minus_log_x -= log(1.0-x)
 
-    def resample_params(self):
+    def transition_params(self):
         n_samples = 25
 
         log_pdf_lambda_str = lambda strength : BetaUC.calc_logp(self.N,
@@ -198,11 +198,11 @@ class BetaUC(object):
         return lps
 
     @staticmethod
-    def resample_hypers(clusters, grids):
+    def transition_hypers(clusters, hypers, grids):
         # resample hypers
-        mu = clusters[0].mu
-        alpha = clusters[0].alpha
-        beta = clusters[0].beta
+        mu = hypers['mu']
+        alpha = hypers['alpha']
+        beta = hypers['beta']
 
         which_hypers = [0,1,2]
         np.random.shuffle(which_hypers)
@@ -230,6 +230,9 @@ class BetaUC(object):
         hypers['mu'] = mu
         hypers['alpha'] = alpha
         hypers['beta'] = beta
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

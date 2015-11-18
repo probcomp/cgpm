@@ -55,7 +55,7 @@ class Vonmises(object):
         self.b = hypers['b']
         self.k = hypers['k']
 
-    def resample_params(self, prior=False):
+    def transition_params(self, prior=False):
         return
 
     def insert_element(self, x):
@@ -177,28 +177,28 @@ class Vonmises(object):
         return gu.log_bessel_0(a)
 
     @staticmethod
-    def resample_hypers(clusters, grids):
-        a = clusters[0].a
-        b = clusters[0].b
-        k = clusters[0].k
+    def transition_hypers(clusters, hypers, grids):
+        a = hypers['a']
+        b = hypers['b']
+        k = hypers['k']
 
         which_hypers = [0,1,2]
         np.random.shuffle(which_hypers)
 
         for hyper in which_hypers:
             if hyper == 0:
-                lp_a = Vonmises.calc_a_conditional_logps(clusters,
-                    grids['a'],b,k)
+                lp_a = Vonmises.calc_a_conditional_logps(clusters, grids['a'],
+                    b, k)
                 a_index = gu.log_pflip(lp_a)
                 a = grids['a'][a_index]
             elif hyper == 1:
-                lp_b = Vonmises.calc_b_conditional_logps(clusters,
-                    grids['b'],a,k)
+                lp_b = Vonmises.calc_b_conditional_logps(clusters, grids['b'],
+                    a, k)
                 b_index = gu.log_pflip(lp_b)
                 b = grids['b'][b_index]
             elif hyper == 2:
-                lp_k = Vonmises.calc_k_conditional_logps(clusters,
-                    grids['k'],a,b)
+                lp_k = Vonmises.calc_k_conditional_logps(clusters, grids['k'],
+                    a, b)
                 k_index = gu.log_pflip(lp_k)
                 k = grids['k'][k_index]
             else:
@@ -208,6 +208,9 @@ class Vonmises(object):
         hypers['a'] = a
         hypers['b'] = b
         hypers['k'] = k
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

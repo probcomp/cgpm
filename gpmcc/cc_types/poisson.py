@@ -38,7 +38,7 @@ class Poisson(object):
         self.b = hypers['b']
         self.a = hypers['a']
 
-    def resample_params(self, prior=False):
+    def transition_params(self, prior=False):
         return
 
     def insert_element(self, x):
@@ -111,10 +111,9 @@ class Poisson(object):
         return ZN - Z0 - sum_log_fact_x
 
     @staticmethod
-    def resample_hypers(clusters, grids):
-        # resample alpha
-        a = clusters[0].a
-        b = clusters[0].b
+    def transition_hypers(clusters, hypers, grids):
+        a = hypers['a']
+        b = hypers['b']
 
         which_hypers = [0,1]
         np.random.shuffle(which_hypers)
@@ -134,6 +133,9 @@ class Poisson(object):
         hypers = dict()
         hypers['a'] = a
         hypers['b'] = b
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

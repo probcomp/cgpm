@@ -54,7 +54,7 @@ class Normal(object):
         self.s = hypers['s']
         self.nu = hypers['nu']
 
-    def resample_params(self, prior=False):
+    def transition_params(self, prior=False):
         return
 
     def insert_element(self, x):
@@ -140,12 +140,11 @@ class Normal(object):
         return - (float(N) / 2.0) * LOG2PI + ZN - Z0
 
     @staticmethod
-    def resample_hypers(clusters, grids):
-        # resample hypers
-        m = clusters[0].m
-        s = clusters[0].s
-        r = clusters[0].r
-        nu = clusters[0].nu
+    def transition_hypers(clusters, hypers, grids):
+        m = hypers['m']
+        s = hypers['s']
+        r = hypers['r']
+        nu = hypers['nu']
 
         which_hypers = [0,1,2,3]
         np.random.shuffle(which_hypers)
@@ -179,6 +178,9 @@ class Normal(object):
         hypers['s'] = s
         hypers['r'] = r
         hypers['nu'] = nu
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 

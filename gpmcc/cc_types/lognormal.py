@@ -53,7 +53,7 @@ class Lognormal(object):
         self.t = hypers['t']
         self.a = hypers['a']
 
-    def resample_params(self, prior=False):
+    def transition_params(self, prior=False):
         return
 
     def insert_element(self, x):
@@ -130,12 +130,12 @@ class Lognormal(object):
         return -(float(N) / 2.0) * LOG2PI + ZN - Z0
 
     @staticmethod
-    def resample_hypers(clusters, grids):
+    def transition_hypers(clusters, hypers, grids):
         # resample alpha
-        a = clusters[0].a
-        b = clusters[0].b
-        t = clusters[0].t
-        m = clusters[0].m
+        a = hypers['a']
+        b = hypers['b']
+        t = hypers['t']
+        m = hypers['m']
 
         which_hypers = [0,1,2,3]
         np.random.shuffle(which_hypers)
@@ -168,6 +168,9 @@ class Lognormal(object):
         hypers['b'] = b
         hypers['t'] = t
         hypers['m'] = m
+
+        # for cluster in clusters:
+        #     cluster.set_hypers(hypers)
 
         return hypers
 
