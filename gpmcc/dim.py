@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import numpy as np
 from math import isnan
 
 class Dim(object):
@@ -36,15 +37,17 @@ class Dim(object):
         """
         self.index = index
         self.X = X
+        self.Xf = X[~np.isnan(X)]
         self.N = len(X)
         self.model = cc_datatype_class
         self.cctype = cc_datatype_class.cctype
-        self.hypers_grids = cc_datatype_class.construct_hyper_grids(X, n_grid)
+        self.hypers_grids = cc_datatype_class.construct_hyper_grids(self.Xf,
+            n_grid)
         self.distargs = distargs if distargs is not None else {}
         self.mode = mode
         self.hypers = hypers
         if hypers is None:
-            self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, X)
+            self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, self.Xf)
 
         if Zr is None:
             self.clusters = []
@@ -58,17 +61,22 @@ class Dim(object):
 
             for i in xrange(len(X)):
                 k = Zr[i]
-                self.clusters[k].insert_element(X[i])
+                if isnan(X[i]):
+                    self.clusters[k].insert_element(X[i])
 
     def predictive_logp(self, rowid, k):
         """Returns the predictive logp of X[rowid] in clusters[k]."""
         x = self.X[rowid]
+        if isnan(x):
+            return 0
         lp = self.clusters[k].predictive_logp(x)
         return lp
 
     def singleton_logp(self, rowid):
         """Returns the predictive log_p of X[rowid] in its own cluster."""
         x = self.X[rowid]
+        if isnan(x):
+            return 0
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
         lp = self.aux_model.singleton_logp(x)
         return lp
@@ -90,12 +98,16 @@ class Dim(object):
     def move_to_cluster(self, rowid, move_from, move_to):
         """Move X[rowid] from clusters[move_from] to clusters[move_to]."""
         x = self.X[rowid]
+        if isnan(x):
+            return
         self.clusters[move_from].remove_element(x)
         self.clusters[move_to].insert_element(x)
 
     def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
         """Move X[rowid] tp clusters[move_to], destroy clusters[to_destroy]."""
         x = self.X[rowid]
+        if isnan(x):
+            return
         self.clusters[move_to].insert_element(x)
         del self.clusters[to_destroy]
 
@@ -104,8 +116,10 @@ class Dim(object):
         cluster.
         """
         x = self.X[rowid]                          # get the element
-        self.clusters[current].remove_element(x)   # remove from current cluster
         self.clusters.append(self.aux_model)       # create the singleton
+        if isnan(x):
+            return
+        self.clusters[current].remove_element(x)   # remove from current cluster
         self.clusters[-1].insert_element(x)        # add element to new cluster
 
     def marginal_logp(self, k):
@@ -114,11 +128,7 @@ class Dim(object):
 
     def full_marginal_logp(self):
         """Returns the marginal log_p over all clusters."""
-        lp = 0
-        for cluster in self.clusters:
-            lp += cluster.marginal_logp()
-
-        return lp
+        return sum(cluster.marginal_logp() for cluster in self.clusters)
 
     def transition_hypers(self):
         """Updates the hyperparameters and the component parameters."""
@@ -144,7 +154,8 @@ class Dim(object):
 
         for i in xrange(self.N):
             k = Zr[i]
-            self.clusters[k].insert_element(self.X[i])
+            if not isnan(self.X[i]):
+                self.clusters[k].insert_element(self.X[i])
 
         for cluster in self.clusters:
             cluster.transition_params()
@@ -175,5 +186,5 @@ class Dim(object):
 
     def plot_dist(self, ax=None):
         """Plots the predictive distribution and histogram of X."""
-        self.model.plot_dist(self.X, self.clusters, distargs=self.distargs,
+        self.model.plot_dist(self.Xf, self.clusters, distargs=self.distargs,
             ax=ax)
