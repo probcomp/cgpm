@@ -68,15 +68,11 @@ class NormalUC(object):
         self.rho = rho
 
     def insert_element(self, x):
-        if math.isnan(x):
-            return
         self.N += 1.0
         self.sum_x += x
         self.sum_x_sq += x*x
 
     def remove_element(self, x):
-        if math.isnan(x):
-            return
         self.N -= 1.0
         self.sum_x -= x
         self.sum_x_sq -= x*x

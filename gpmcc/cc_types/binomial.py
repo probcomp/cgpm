@@ -84,8 +84,6 @@ class Binomial(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, k, alpha, beta):
-        if np.isnan(x):
-            return 0
         assert x == 1.0 or x == 0.0
         log_denom = log( N+alpha+beta )
         if x == 1.0:

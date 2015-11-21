@@ -102,9 +102,6 @@ class Lognormal(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_log_x, sum_log_x_sq, a, b, t, m):
-        if np.isnan(x):
-            return 0
-
         if x <= 0:
             return float('-inf')
 

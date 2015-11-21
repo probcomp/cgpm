@@ -132,7 +132,7 @@ class BetaUC(object):
         lp += (alpha-1.0)*sum_log_x
         lp += (beta-1.0)*sum_minus_log_x
 
-        assert( not np.isnan(lp) )
+        assert not np.isnan(lp)
         return lp
 
     @staticmethod

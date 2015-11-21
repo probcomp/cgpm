@@ -58,15 +58,11 @@ class Normal(object):
         return
 
     def insert_element(self, x):
-        if math.isnan(x):
-            return
         self.N += 1.0
         self.sum_x += x
         self.sum_x_sq += x*x
 
     def remove_element(self, x):
-        if math.isnan(x):
-            return
         self.N -= 1.0
         if self.N == 0:
             self.sum_x = 0.0
@@ -121,8 +117,6 @@ class Normal(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        if math.isnan(x):
-            return 0
         rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x, sum_x_sq,
             m, r, s, nu)
         rm, num, mm, sm = Normal.posterior_update_parameters(
