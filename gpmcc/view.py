@@ -72,16 +72,14 @@ class View(object):
         log_alpha = log(self.alpha)
 
         if target_rows is None:
-            target_rows = [i for i in range(self.N)]
-
-        # random.shuffle(target_rows)
+            target_rows = [i for i in xrange(self.N)]
 
         for rowid in target_rows:
-            # get the current assignment, z_a, and determine if it is a singleton
+            # Get current assignment, z_a, and determine if it is a singleton.
             z_a = self.Zr[rowid]
             is_singleton = (self.Nk[z_a] == 1)
 
-            # get CRP probabilities
+            # Get CRP probabilities.
             pv = list(self.Nk)
             if is_singleton:
                 # If z_a is a singleton, do not consider a new singleton
@@ -89,12 +87,12 @@ class View(object):
             else:
                 pv[z_a] -= 1
 
-            # take the log of the CRP probabilities
+            # Take the log of the CRP probabilities.
             pv = np.log(np.array(pv))
 
-            ps = []
             # Calculate the probability of each row in each category, k \in K.
-            for k in range(self.K):
+            ps = []
+            for k in xrange(self.K):
                 if k == z_a and is_singleton:
                     lp = self.row_singleton_logp(rowid) + pv[k]
                 else:
@@ -171,7 +169,12 @@ class View(object):
         """Get the predictive log_p of rowid being in cluster."""
         lp = 0
         for dim in self.dims.values():
-            lp += dim.predictive_logp(rowid, cluster)
+            if self.Zr[rowid] == cluster:
+                dim.remove_element(rowid, cluster)
+                lp += dim.predictive_logp(rowid, cluster)
+                dim.insert_element(rowid, cluster)
+            else:
+                lp += dim.predictive_logp(rowid, cluster)
         return lp
 
     def row_singleton_logp(self, rowid):
@@ -187,7 +190,6 @@ class View(object):
         self.Zr[zminus] -= 1
         for dim in self.dims.values():
             dim.destroy_singleton_cluster(rowid, to_destroy, move_to)
-
         self.Nk[move_to] += 1
         del self.Nk[to_destroy]
         self.K -= 1
@@ -197,7 +199,6 @@ class View(object):
         self.K += 1
         self.Nk[current] -= 1
         self.Nk.append(1)
-
         for dim in self.dims.values():
             dim.create_singleton_cluster(rowid, current)
 

@@ -75,14 +75,16 @@ class Dim(object):
             import ipdb; ipdb.set_trace()
         return lp
 
-    def insert_element(self, x, k):
+    def insert_element(self, rowid, k):
         """Insert x into clusters[k]."""
+        x = self.X[rowid]
         if isnan(x):
             return
         self.clusters[k].insert_element(x)
 
-    def remove_element(self, x, k):
+    def remove_element(self, rowid, k):
         """Remove x from clusters[k]."""
+        x = self.X[rowid]
         if isnan(x):
             return
         self.clusters[k].remove_element(x)
