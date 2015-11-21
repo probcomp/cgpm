@@ -28,8 +28,7 @@ class Dim(object):
 
         Optional arguments:
         -- Zr: partition of data to clusters. If not specified, no clusters are
-
-        Intialized:
+        initialized.
         -- n_grid: number of hyperparameter grid bins. Default is 30.
         -- distargs: some data types require additional information, for example
         multinomial data requires the number of multinomial categories. See the
@@ -64,12 +63,7 @@ class Dim(object):
     def predictive_logp(self, rowid, k):
         """Returns the predictive logp of X[rowid] in clusters[k]."""
         x = self.X[rowid]
-        if self.Zr[rowid] == k:
-            self._remove_element(x, k)
-            lp = self.clusters[k].predictive_logp(x)
-            self._insert_element(x, k)
-        else:
-            lp = self.clusters[k].predictive_logp(x)
+        lp = self.clusters[k].predictive_logp(x)
         return lp
 
     def singleton_logp(self, rowid):
@@ -81,13 +75,13 @@ class Dim(object):
             import ipdb; ipdb.set_trace()
         return lp
 
-    def _insert_element(self, x, k):
+    def insert_element(self, x, k):
         """Insert x into clusters[k]."""
         if isnan(x):
             return
         self.clusters[k].insert_element(x)
 
-    def _remove_element(self, x, k):
+    def remove_element(self, x, k):
         """Remove x from clusters[k]."""
         if isnan(x):
             return
