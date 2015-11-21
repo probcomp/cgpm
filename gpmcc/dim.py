@@ -71,8 +71,6 @@ class Dim(object):
         x = self.X[rowid]
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
         lp = self.aux_model.singleton_logp(x)
-        if not isinstance(lp, float):
-            import ipdb; ipdb.set_trace()
         return lp
 
     def insert_element(self, rowid, k):
