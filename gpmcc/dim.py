@@ -149,6 +149,7 @@ class Dim(object):
 
         for k in xrange(K):
             cluster = self.model(distargs=self.distargs)
+            # XXX Fix this stupid line.
             cluster.set_hypers(self.hypers)
             self.clusters.append(cluster)
 
