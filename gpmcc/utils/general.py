@@ -200,18 +200,20 @@ def csv_to_list(filename):
             T.append(row)
     return T
 
+def csv_to_array(filename):
+    """Reads the csv filename into a numpy array."""
+    return np.asarray(csv_to_list(filename)).astype(float).T
+
 def csv_to_data_and_colnames(filename):
     TC = csv_to_list(filename)
     colnames = list(TC[0])
     Y = np.genfromtxt(filename, delimiter=',', skip_header=1)
-
     if len(Y.shape) == 1:
         return [Y], colnames
-
     X = []
     for col in range(Y.shape[1]):
         X.append(Y[:,col])
-    return X, colnames
+    return np.asarray(X).T, colnames
 
 def clean_data(X, cctypes):
     """Makes sure that descrete data columns are integer types."""
@@ -226,8 +228,7 @@ def clean_data(X, cctypes):
     'vonmises_uc' : False,
     }
 
-    for i in range(len(X)):
+    for i in xrange(len(X)):
         if is_discrete[cctypes[i]]:
             X[i] = np.array(X[i], dtype=int)
-
     return X
