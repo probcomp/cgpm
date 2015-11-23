@@ -72,10 +72,10 @@ class Engine(object):
         args = ((X, cctypes, distargs, seed) for _ in xrange(self.num_states))
         self.metadata = self.pool.map(_intialize, args)
 
-    def initialize_csv(self, X, cctypes, distargs, filename, num_states=1,
+    def initialize_csv(self, cctypes, distargs, filename, num_states=1,
             seed=0):
         X, col_names = gu.csv_to_data_and_colnames(filename)
-        self.initialize(X, cctypes, distargs, num_states=num_states,
+        self.initialize(X.T, cctypes, distargs, num_states=num_states,
             col_names=col_names, seed=seed)
 
     def get_state(self, index):
@@ -114,7 +114,7 @@ class Engine(object):
             target_cols=None):
         """Do transitions in parallel."""
         args = [(N, kernel_list, ct_kernel, target_rows, target_cols,
-            self.metadata[i]) for i in range(self.num_states)]
+            self.metadata[i]) for i in xrange(self.num_states)]
         self.metadata = self.map(_transition, args)
 
     def predictive_probabiilty(self, query, constraints=None):
