@@ -1,0 +1,7 @@
+[x] Standardize codebase.
+[x] Unify the seed (numpy uniformly).
+[x] Implement multiprocessing.
+[x] Use numpy arrays for dataset.
+[x] Unify uncollapsed and collapsed dim.
+[x] Handle missing data.
+[ ] Explore high number of cluster in exponential, geometric.
