@@ -38,17 +38,18 @@ class Multinomial(object):
         return
 
     def insert_element(self, x):
-        x = Multinomial.validate(x, self.K)
+        if not Multinomial.validate(x, self.K):
+            raise ValueError('Invalid categorical observation inserted.')
         self.N += 1
-        self.w[x] += 1
+        self.w[int(x)] += 1
 
     def remove_element(self, x):
-        x = Multinomial.validate(x, self.K)
+        if not Multinomial.validate(x, self.K):
+            raise ValueError('Invalid categorical observation removed.')
         self.N -= 1
-        self.w[x] -= 1
+        self.w[int(x)] -= 1
 
     def predictive_logp(self, x):
-        x = Multinomial.validate(x, self.K)
         return Multinomial.calc_predictive_logp(x, self.N, self.w, self.alpha)
 
     def marginal_logp(self):
@@ -65,7 +66,7 @@ class Multinomial(object):
     def validate(x, K):
         assert int(x) == float(x)
         assert 0 <= x and x < K
-        return int(x)
+        return int(x) == float(x) and 0 <= x and x < K
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -82,7 +83,9 @@ class Multinomial(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, w, alpha):
-        x = Multinomial.validate(x, len(w))
+        if not Multinomial.validate(x, len(w)):
+            return float('-inf')
+        x = int(x)
         numer = log(alpha + w[x])
         denom = log( np.sum(w) + alpha * len(w))
         return numer - denom
@@ -90,13 +93,9 @@ class Multinomial(object):
     @staticmethod
     def calc_marginal_logp(N, w, alpha):
         K = len(w)
-        A = K*alpha
-        lg = 0
-        for k in range(K):
-            lg += gammaln(w[k] + alpha)
-
+        A = K * alpha
+        lg = sum(gammaln(w[k] + alpha) for k in xrange(K))
         return gammaln(A) - gammaln(A+N) + lg - K * gammaln(alpha)
-
 
     @staticmethod
     def transition_hypers(clusters, hypers, grids):

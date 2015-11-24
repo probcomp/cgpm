@@ -87,6 +87,8 @@ class Geometric(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
+        if float(x) != int(x) or x < 0:
+            return float('-inf')
         an, bn = Geometric.posterior_update_parameters(N, sum_x, a, b)
         am, bm = Geometric.posterior_update_parameters(N+1, sum_x+x, a, b)
 

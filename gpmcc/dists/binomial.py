@@ -84,7 +84,8 @@ class Binomial(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, k, alpha, beta):
-        assert x == 1.0 or x == 0.0
+        if int(x) not in [0, 1]:
+            return float('-inf')
         log_denom = log( N+alpha+beta )
         if x == 1.0:
             return log(k+alpha)-log_denom

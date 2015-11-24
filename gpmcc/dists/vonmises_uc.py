@@ -145,7 +145,7 @@ class VonmisesUC(object):
         assert k >= 0
 
         if x < 0 or x > math.pi*2.0:
-            return 0.0
+            return float('-inf')
 
         an, bn = VonmisesUC.posterior_update_parameters(
             N, sum_sin_x, sum_cos_x, a, b, k)

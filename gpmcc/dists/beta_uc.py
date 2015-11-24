@@ -103,6 +103,8 @@ class BetaUC(object):
 
     @staticmethod
     def calc_singleton_logp(x, strength, balance):
+        if not (0 < x < 1):
+            return float('-inf')
         assert strength > 0 and balance > 0 and balance < 1
 
         alpha = strength*balance

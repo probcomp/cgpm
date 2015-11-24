@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
 from scipy.special import gammaln
+from scipy.stats import gamma, expon
 
 import gpmcc.utils.general as gu
 
@@ -65,11 +66,11 @@ class ExponentialUC(object):
         return ExponentialUC.calc_logp(x, self.mu)
 
     def predictive_draw(self):
-        return scipy.stats.expon.rvs(scale=1./mu)
+        return expon.rvs(scale=1./self.mu)
 
     @staticmethod
     def calc_logp(x, mu):
-        return scipy.stats.expon.logpdf(x, scale=1./mu)
+        return expon.logpdf(x, scale=1./mu)
 
     @staticmethod
     def calc_log_likelihood(N, sum_x, mu):
@@ -78,7 +79,7 @@ class ExponentialUC(object):
 
     @staticmethod
     def draw_params(a, b):
-        mu = scipy.stats.gamma.rvs(a, scale=1./b)
+        mu = gamma.rvs(a, scale=1./b)
         return mu
 
     @staticmethod
@@ -100,7 +101,7 @@ class ExponentialUC(object):
 
     @staticmethod
     def log_gamma(mu, a, b):
-        return scipy.stats.gamma.logpdf(mu, a, scale=1./b)
+        return gamma.logpdf(mu, a, scale=1./b)
 
     @staticmethod
     def transition_hypers(clusters, hypers, grids):

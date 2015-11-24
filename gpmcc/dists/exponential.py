@@ -63,7 +63,7 @@ class Exponential(object):
     def predictive_draw(self):
         an, bn = Exponential.posterior_update_parameters(self.N, self.sum_x,
             self.a, self.b)
-        draw = lomax.rvs(a, loc=1-b) - (1 - b)
+        draw = lomax.rvs(an, loc=1-bn) - (1 - bn)
         return draw
 
     @staticmethod
@@ -85,6 +85,8 @@ class Exponential(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
+        if x < 0:
+            return float('-inf')
         an, bn = Exponential.posterior_update_parameters(N, sum_x, a, b)
         am, bm = Exponential.posterior_update_parameters(N+1, sum_x+x, a, b)
 
