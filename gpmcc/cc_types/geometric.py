@@ -136,7 +136,7 @@ class Geometric(object):
     @staticmethod
     def posterior_update_parameters(N, sum_x, a, b):
         an = a + N
-        bn = b + sum_x - N
+        bn = b + sum_x
         return an, bn
 
     @staticmethod
