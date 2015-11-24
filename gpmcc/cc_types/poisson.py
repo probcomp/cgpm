@@ -148,7 +148,6 @@ class Poisson(object):
     @staticmethod
     def calc_log_Z(a, b):
         Z =  gammaln(a)-a*log(b)
-
         return Z
 
     @staticmethod
