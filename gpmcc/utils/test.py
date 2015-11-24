@@ -14,45 +14,12 @@
 
 import numpy as np
 import math
-import gpmcc.utils.general as gu
 
 from scipy.stats import norm
 
 from gpmcc import dim
-
-from gpmcc.cc_types import normal_uc
-from gpmcc.cc_types import beta_uc
-from gpmcc.cc_types import normal
-from gpmcc.cc_types import binomial
-from gpmcc.cc_types import multinomial
-from gpmcc.cc_types import lognormal
-from gpmcc.cc_types import poisson
-from gpmcc.cc_types import vonmises
-from gpmcc.cc_types import vonmises_uc
-
-_is_uncollapsed = {
-    'normal'      : False,
-    'normal_uc'   : True,
-    'beta_uc'   : True,
-    'binomial'    : False,
-    'multinomial' : False,
-    'lognormal'   : False,
-    'poisson'     : False,
-    'vonmises'    : False,
-    'vonmises_uc' : True,
-    }
-
-_cctype_class = {
-    'normal'      : normal.Normal,
-    'normal_uc'   : normal_uc.NormalUC,
-    'beta_uc'     : beta_uc.BetaUC,
-    'binomial'    : binomial.Binomial,
-    'multinomial' : multinomial.Multinomial,
-    'lognormal'   : lognormal.Lognormal,
-    'poisson'     : poisson.Poisson,
-    'vonmises'    : vonmises.Vonmises,
-    'vonmises_uc' : vonmises_uc.VonmisesUC,
-    }
+import gpmcc.utils.general as gu
+import gpmcc.utils.config as cu
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
         separation, return_dims=False):
@@ -64,7 +31,7 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
      Weights for generating views.
      -- cluster_weights: A n_views length list of n_cluster length np arrays
      that sum to one. Weights for row tp cluster assignments.
-     -- cc_types: n_columns length list os string specifying the data types for
+     -- cc_types: n_columns length list of string specifying the data types for
      each column
      -- distargs: a list of distargs for each column (see documentation for
      each data type for info on distargs)
@@ -112,9 +79,9 @@ def gen_dims_from_structure(T, Zv, Zc, cc_types, distargs):
     for c in range(n_cols):
         v = Zv[c]
         cc_type = cc_types[c]
-        cc_type_class = _cctype_class[cc_type]
+        cc_type_class = cu.dist_class(cc_type)
         mode = 'collapsed'
-        if _is_uncollapsed[cc_type]:
+        if cu.is_uncollapsed(cc_type):
             mode = 'uncollapsed'
         dim_c = dim.Dim(T[c], cc_type_class, c, Zr=Zc[v], mode=mode,
                 distargs=distargs[c])
