@@ -82,7 +82,7 @@ class NormalUC(object):
 
     def marginal_logp(self):
         lp = self.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
-            self.rho, self.mu, self.m, self.r, self.s, self.nu)
+            self.rho, self.mu)
         return lp
 
     def singleton_logp(self, x):
@@ -131,7 +131,7 @@ class NormalUC(object):
         return hypers
 
     @staticmethod
-    def calc_log_likelihood(N, sum_x, sum_x_sq, rho, mu, m, r, s, nu):
+    def calc_log_likelihood(N, sum_x, sum_x_sq, rho, mu):
         log_p = -(N / 2.0) * LOG2PI + (N / 2.0) * log(rho) - \
             .5 * (rho * (N * mu * mu - 2 * mu * sum_x + sum_x_sq))
         return log_p
@@ -257,7 +257,7 @@ class NormalUC(object):
         K = len(clusters)
         pdf = np.zeros((K,200))
         denom = log(float(len(X)))
-        nbins = min([len(X)/5, 50])
+        nbins = min([len(X), 50])
 
         ax.hist(X, nbins, normed=True, color="black", alpha=.5,
             edgecolor="none")

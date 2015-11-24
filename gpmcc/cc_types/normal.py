@@ -274,7 +274,7 @@ class Normal(object):
         r = clusters[0].r
         nu = clusters[0].nu
 
-        nbins = min([len(X)/5, 50])
+        nbins = min([len(X), 50])
         ax.hist(X, nbins, normed=True, color="black", alpha=.5,
             edgecolor="none")
 
