@@ -23,8 +23,8 @@ from scipy.special import gammaln
 
 def colors():
     """Returns a list of colors for plotting."""
-    return ["red", "blue", "green", "yellow", "orange", "purple", "brown",
-        "black"]
+    return \
+        ["red", "blue", "green", "yellow", "orange", "purple", "brown", "black"]
 
 def log_bessel_0(x):
     besa = bessel_0(x)
