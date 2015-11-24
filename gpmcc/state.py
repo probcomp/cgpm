@@ -18,7 +18,7 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 
-import gpmcc.utils.general as utils
+import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
 
 from gpmcc.cc_types import normal_uc
@@ -115,7 +115,7 @@ class State(object):
             self.dims.append(dim)
 
         # Initialize CRP alpha.
-        self.alpha_grid = utils.log_linspace(1.0 / self.n_cols, self.n_cols,
+        self.alpha_grid = gu.log_linspace(1.0 / self.n_cols, self.n_cols,
             self.n_grid)
         self.alpha = np.random.choice(self.alpha_grid)
 
@@ -129,9 +129,9 @@ class State(object):
 
         # Construct the view partition.
         if Zv is None:
-            Zv, Nv, V = utils.crp_gen(self.n_cols, self.alpha)
+            Zv, Nv, V = gu.crp_gen(self.n_cols, self.alpha)
         else:
-            Nv = utils.bincount(Zv)
+            Nv = gu.bincount(Zv)
             V = len(Nv)
 
         # Construct views.
@@ -316,7 +316,7 @@ class State(object):
                 ps.append(p_v)
 
         # draw a view
-        v_b = utils.log_pflip(ps)
+        v_b = gu.log_pflip(ps)
 
         if append:
             if v_b >= len(self.Nv):
@@ -402,7 +402,7 @@ class State(object):
 
 
         # draw a view
-        v_b = utils.log_pflip(ps)
+        v_b = gu.log_pflip(ps)
 
         newdim = dim_holder[v_b]
         self.dims[dim.index] = newdim
@@ -453,11 +453,11 @@ class State(object):
         logps = np.zeros(self.n_grid)
         for i in range(self.n_grid):
             alpha = self.alpha_grid[i]
-            logps[i] = utils.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
+            logps[i] = gu.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
                 lambda x: 0)
-        # log_pdf_lambda = lambda a : utils.lcrp(self.n_cols, self.Nv, a) +
+        # log_pdf_lambda = lambda a : gu.lcrp(self.n_cols, self.Nv, a) +
         # self.alpha_prior_lambda(a)
-        index = utils.log_pflip(logps)
+        index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
     def _create_singleton_view(self, dim, current_view_index, proposal_view,
