@@ -12,47 +12,47 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from gpmcc.cc_types import normal_uc
-from gpmcc.cc_types import beta_uc
-from gpmcc.cc_types import normal
-from gpmcc.cc_types import binomial
-from gpmcc.cc_types import multinomial
-from gpmcc.cc_types import lognormal
-from gpmcc.cc_types import poisson
-from gpmcc.cc_types import exponential
-from gpmcc.cc_types import exponential_uc
-from gpmcc.cc_types import geometric
-from gpmcc.cc_types import vonmises
-from gpmcc.cc_types import vonmises_uc
+from gpmcc.dists import normal_uc
+from gpmcc.dists import beta_uc
+from gpmcc.dists import normal
+from gpmcc.dists import binomial
+from gpmcc.dists import multinomial
+from gpmcc.dists import lognormal
+from gpmcc.dists import poisson
+from gpmcc.dists import exponential
+from gpmcc.dists import exponential_uc
+from gpmcc.dists import geometric
+from gpmcc.dists import vonmises
+from gpmcc.dists import vonmises_uc
 
 dist_class_lookup = {
-    'normal'      : normal.Normal,
-    'normal_uc'   : normal_uc.NormalUC,
-    'beta_uc'     : beta_uc.BetaUC,
-    'binomial'    : binomial.Binomial,
-    'multinomial' : multinomial.Multinomial,
-    'lognormal'   : lognormal.Lognormal,
-    'poisson'     : poisson.Poisson,
-    'exponential' : exponential.Exponential,
-    'exponential_uc' : exponential_uc.ExponentialUC,
-    'geometric'   : geometric.Geometric,
-    'vonmises'    : vonmises.Vonmises,
-    'vonmises_uc' : vonmises_uc.VonmisesUC,
+    'normal'            : normal.Normal,
+    'normal_uc'         : normal_uc.NormalUC,
+    'beta_uc'           : beta_uc.BetaUC,
+    'binomial'          : binomial.Binomial,
+    'multinomial'       : multinomial.Multinomial,
+    'lognormal'         : lognormal.Lognormal,
+    'poisson'           : poisson.Poisson,
+    'exponential'       : exponential.Exponential,
+    'exponential_uc'    : exponential_uc.ExponentialUC,
+    'geometric'         : geometric.Geometric,
+    'vonmises'          : vonmises.Vonmises,
+    'vonmises_uc'       : vonmises_uc.VonmisesUC,
 }
 
 dist_collapsed_lookup = {
-        'normal'      : False,
-        'normal_uc'   : True,
-        'beta_uc'     : True,
-        'binomial'    : False,
-        'multinomial' : False,
-        'lognormal'   : False,
-        'poisson'     : False,
-        'exponential' : False,
-        'exponential_uc' : True,
-        'geometric'   : False,
-        'vonmises'    : False,
-        'vonmises_uc' : True,
+        'normal'            : False,
+        'normal_uc'         : True,
+        'beta_uc'           : True,
+        'binomial'          : False,
+        'multinomial'       : False,
+        'lognormal'         : False,
+        'poisson'           : False,
+        'exponential'       : False,
+        'exponential_uc'    : True,
+        'geometric'         : False,
+        'vonmises'          : False,
+        'vonmises_uc'       : True,
 }
 
 def colors():

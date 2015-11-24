@@ -22,7 +22,7 @@ from gpmcc import dim
 import gpmcc.utils.general as gu
 import gpmcc.utils.config as cu
 
-def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
+def gen_data_table(n_rows, view_weights, cluster_weights, dists, distargs,
         separation, return_dims=False):
     """Generates data, partitions, and Dim.
 
@@ -32,8 +32,8 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
      Weights for generating views.
      -- cluster_weights: A n_views length list of n_cluster length np arrays
      that sum to one. Weights for row tp cluster assignments.
-     -- cc_types: n_columns length list of string specifying the data types for
-     each column
+     -- dists: n_columns length list of string specifying the data types for
+     each column.
      -- distargs: a list of distargs for each column (see documentation for
      each data type for info on distargs)
      -- separation: a n_cols length list of cluster separation values [0,1].
@@ -50,41 +50,41 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cc_types, distargs,
      >>> n_rows = 500
      >>> view_weights = np.ones(1)
      >>> cluster_weights = [np.ones(2)/2.0]
-     >>> cc_types = ['lognormal','normal','poisson','multinomial','vonmises','binomial']
+     >>> dists = ['lognormal','normal','poisson','multinomial','vonmises','binomial']
      >>> distargs = [None, None, None, {'K':5}, None, None]
      >>> separation = [.9]*6
      >>> T, Zv, Zc, dims = tu.gen_data_table( n_rows, view_weights,
-             cluster_weights, cc_types, distargs, separation, return_dims=True)
+             cluster_weights, dists, distargs, separation, return_dims=True)
     """
-    n_cols = len(cc_types)
+    n_cols = len(dists)
     Zv, Zc = gen_partition_from_weights(n_rows, n_cols, view_weights,
         cluster_weights)
     T = np.zeros((n_cols, n_rows))
 
     for col in range(n_cols):
-        cc_type = cc_types[col]
+        dist_type = dists[col]
         args = distargs[col]
         view = Zv[col]
-        Tc = _gen_data[cc_type](Zc[view], separation[col], distargs=args)
+        Tc = _gen_data[dist_type](Zc[view], separation[col], distargs=args)
         T[col] = Tc
 
     if return_dims:
-        dims = gen_dims_from_structure(T, Zv, Zc, cc_types, distargs)
+        dims = gen_dims_from_structure(T, Zv, Zc, dists, distargs)
         return T, Zv, Zc, dims
     else:
         return T, Zv, Zc
 
-def gen_dims_from_structure(T, Zv, Zc, cc_types, distargs):
+def gen_dims_from_structure(T, Zv, Zc, dists, distargs):
     n_cols = len(Zv)
     dims = []
     for c in range(n_cols):
         v = Zv[c]
-        cc_type = cc_types[c]
-        cc_type_class = cu.dist_class(cc_type)
+        dist_type = dists[c]
+        dist_class = cu.dist_class(dist_type)
         mode = 'collapsed'
-        if cu.is_uncollapsed(cc_type):
+        if cu.is_uncollapsed(dist_type):
             mode = 'uncollapsed'
-        dim_c = dim.Dim(T[c], cc_type_class, c, Zr=Zc[v], mode=mode,
+        dim_c = dim.Dim(T[c], dist_class, c, Zr=Zc[v], mode=mode,
                 distargs=distargs[c])
         dims.append(dim_c)
 
@@ -320,18 +320,18 @@ def gen_four_dots(N=200, stddev=.25):
     return T
 
 _gen_data = {
-    'normal_uc'  : _gen_normal_data_column,
-    'beta_uc'    : _gen_beta_data_column,
-    'normal'     : _gen_normal_data_column,
-    'binomial'   : _gen_binomial_data_column,
-    'multinomial': _gen_multinomial_data_column,
-    'poisson'    : _gen_poisson_data_column,
-    'exponential': _gen_exponential_data_column,
-    'exponential_uc': _gen_exponential_data_column,
-    'geometric'  : _gen_geometric_data_column,
-    'lognormal'  : _gen_lognormal_data_column,
-    'vonmises'   : _gen_vonmises_data_column,
-    'vonmises_uc': _gen_vonmises_data_column,
+    'normal_uc'         : _gen_normal_data_column,
+    'beta_uc'           : _gen_beta_data_column,
+    'normal'            : _gen_normal_data_column,
+    'binomial'          : _gen_binomial_data_column,
+    'multinomial'       : _gen_multinomial_data_column,
+    'poisson'           : _gen_poisson_data_column,
+    'exponential'       : _gen_exponential_data_column,
+    'exponential_uc'    : _gen_exponential_data_column,
+    'geometric'         : _gen_geometric_data_column,
+    'lognormal'         : _gen_lognormal_data_column,
+    'vonmises'          : _gen_vonmises_data_column,
+    'vonmises_uc'       : _gen_vonmises_data_column,
 }
 
 _gen_data_cpp = {
