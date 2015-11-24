@@ -13,11 +13,7 @@
 #   limitations under the License.
 
 import numpy as np
-
-def valid_types():
-    """Returns a list of colors for plotting."""
-    return ['beta_uc', 'binomial', 'lognormal', 'multinomial', 'normal',
-        'normal_uc', 'poisson','vonmises', 'vonmises_uc']
+import gpmcc.utils.config as cu
 
 def validate_metadata(metadata):
     # FIXME: fill in
@@ -25,9 +21,9 @@ def validate_metadata(metadata):
 
 def validate_cctypes(cctypes):
     for cctype in cctypes:
-        if cctype not in valid_types():
+        if not cu.valid_dist(cctype):
             raise ValueError("Invalid cctype %s. Valid values: %s" % \
-                (str(cctype), str(valid_types())))
+                (str(cctype), str(cu.all_dists())))
 
 def validate_data(X):
     if not (isinstance(X, list) or isinstance(X, np.ndarray)):
