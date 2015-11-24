@@ -20,6 +20,8 @@ from gpmcc.cc_types import multinomial
 from gpmcc.cc_types import lognormal
 from gpmcc.cc_types import poisson
 from gpmcc.cc_types import exponential
+from gpmcc.cc_types import exponential_uc
+from gpmcc.cc_types import geometric
 from gpmcc.cc_types import vonmises
 from gpmcc.cc_types import vonmises_uc
 
@@ -32,6 +34,8 @@ dist_class_lookup = {
     'lognormal'   : lognormal.Lognormal,
     'poisson'     : poisson.Poisson,
     'exponential' : exponential.Exponential,
+    'exponential_uc' : exponential_uc.ExponentialUC,
+    'geometric'   : geometric.Geometric,
     'vonmises'    : vonmises.Vonmises,
     'vonmises_uc' : vonmises_uc.VonmisesUC,
 }
@@ -45,6 +49,8 @@ dist_collapsed_lookup = {
         'lognormal'   : False,
         'poisson'     : False,
         'exponential' : False,
+        'exponential_uc' : True,
+        'geometric'   : False,
         'vonmises'    : False,
         'vonmises_uc' : True,
 }

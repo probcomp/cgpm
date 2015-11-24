@@ -16,6 +16,7 @@ import numpy as np
 import math
 
 from scipy.stats import norm
+from scipy.stats import geom
 
 from gpmcc import dim
 import gpmcc.utils.general as gu
@@ -142,6 +143,31 @@ def _gen_poisson_data_column(Z, separation=.9, distargs=None):
         cluster = Z[r]
         lam = (cluster)*(4.0*separation)+1
         Tc[r] = np.random.poisson(lam)
+
+    return Tc
+
+def _gen_exponential_data_column(Z, separation=.9, distargs=None):
+    n_rows = len(Z)
+    Tc = np.zeros(n_rows)
+
+    for r in range(n_rows):
+        cluster = Z[r]
+        mu = (cluster)*(4.0*separation)+1
+        Tc[r] = np.random.exponential(mu)
+        print cluster, mu
+
+    return Tc
+
+def _gen_geometric_data_column(Z, separation=.9, distargs=None):
+    n_rows = len(Z)
+    Tc = np.zeros(n_rows)
+    K = np.max(Z)+1
+
+    ps = np.linspace(.5 -.5*separation*.85, .5 + .5*separation*.85, K)
+    Tc = np.zeros(n_rows)
+    for r in range(n_rows):
+        cluster = Z[r]
+        Tc[r] = geom.rvs(ps[cluster], loc=-1)
 
     return Tc
 
@@ -300,6 +326,9 @@ _gen_data = {
     'binomial'   : _gen_binomial_data_column,
     'multinomial': _gen_multinomial_data_column,
     'poisson'    : _gen_poisson_data_column,
+    'exponential': _gen_exponential_data_column,
+    'exponential_uc': _gen_exponential_data_column,
+    'geometric'  : _gen_geometric_data_column,
     'lognormal'  : _gen_lognormal_data_column,
     'vonmises'   : _gen_vonmises_data_column,
     'vonmises_uc': _gen_vonmises_data_column,
