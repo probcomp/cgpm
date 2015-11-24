@@ -224,6 +224,9 @@ def clean_data(X, cctypes):
     'multinomial' : True,
     'lognormal'   : False,
     'poisson'     : False,
+    'exponential' : False,
+    'exponential_uc' : False,
+    'geometric'   : True,
     'vonmises'    : False,
     'vonmises_uc' : False,
     }
