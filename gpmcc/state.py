@@ -20,43 +20,10 @@ import matplotlib.pyplot as plt
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
-
-from gpmcc.cc_types import normal_uc
-from gpmcc.cc_types import beta_uc
-from gpmcc.cc_types import normal
-from gpmcc.cc_types import binomial
-from gpmcc.cc_types import multinomial
-from gpmcc.cc_types import lognormal
-from gpmcc.cc_types import poisson
-from gpmcc.cc_types import vonmises
-from gpmcc.cc_types import vonmises_uc
+import gpmcc.utils.config as cu
 
 from gpmcc.view import View
 from gpmcc.dim import Dim
-
-_is_uncollapsed = {
-    'normal'      : False,
-    'normal_uc'   : True,
-    'beta_uc'     : True,
-    'binomial'    : False,
-    'multinomial' : False,
-    'lognormal'   : False,
-    'poisson'     : False,
-    'vonmises'    : False,
-    'vonmises_uc' : True,
-    }
-
-_cctype_class = {
-    'normal'      : normal.Normal,
-    'normal_uc'   : normal_uc.NormalUC,
-    'beta_uc'     : beta_uc.BetaUC,
-    'binomial'    : binomial.Binomial,
-    'multinomial' : multinomial.Multinomial,
-    'lognormal'   : lognormal.Lognormal,
-    'poisson'     : poisson.Poisson,
-    'vonmises'    : vonmises.Vonmises,
-    'vonmises_uc' : vonmises_uc.VonmisesUC,
-    }
 
 _all_kernels = ['column_z','state_alpha','row_z','column_hypers','view_alphas']
 
@@ -108,9 +75,9 @@ class State(object):
         for col in xrange(self.n_cols):
             Y = X[col]
             cctype = cctypes[col]
-            mode = 'uncollapsed' if _is_uncollapsed[cctype] else 'collapsed'
+            mode = 'uncollapsed' if cu.is_uncollapsed(cctype) else 'collapsed'
             dim_hypers = None if hypers is None else hypers[col]
-            dim = Dim(Y, _cctype_class[cctype], col, n_grid=n_grid,
+            dim = Dim(Y, cu.dist_class(cctype), col, n_grid=n_grid,
                 hypers=dim_hypers, mode=mode, distargs=distargs[col])
             self.dims.append(dim)
 
@@ -166,14 +133,14 @@ class State(object):
         col = self.n_cols
         n_grid = self.n_grid
         mode = 'collapsed'
-        if _is_uncollapsed[cctype]:
+        if cu.is_uncollapsed(cctype):
             mode = 'uncollapsed'
-        dim = Dim(X_f, _cctype_class[cctype], col, n_grid=n_grid, mode=mode,
-                distargs=distargs)
+        dim = Dim(X_f, cu.dist_class(cctype), col, n_grid=n_grid,
+            mode=mode, distargs=distargs)
         self.n_cols += 1
         self.dims.append(dim)
         self.Zv = np.append(self.Zv, -1)
-        if _is_uncollapsed[cctype]:
+        if cu.is_uncollapsed(cctype):
             self._transition_columns_kernel_collapsed(-1, m=m, append=True)
         else:
             self._transition_columns_kernel_uncollapsed(-1, m=m, append=True)
