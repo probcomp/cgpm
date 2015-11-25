@@ -109,7 +109,8 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     else:
         return samples
 
-def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1, w=1.0):
+def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1,
+        w=1.0):
     """Slice samples from the disitrbution defined by log_pdf_lambda.
 
     Arguments:
@@ -186,6 +187,49 @@ def _find_slice_interval(f, x, u, D, w=1.0):
                 b = D[1]
                 break
     return a, b
+
+def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
+    """Samples from target pdf using rejection sampling.
+
+    Input arguments:
+    -- target_pdf_fn: the target distribution pdf. Should take a single
+    argument, x.
+    -- proposal_pdf_fn: the propsal distribution pdf. Should take a single
+    argument, x. Should also contain the target for all x, that is,
+    target_pdf_fn(x) <= proposal_pdf_fn(x)
+    -- proposal_draw_fn: draws x randomly from the domain of the target pdf
+    according to the proposal distribution.
+
+    Keyword Arguments:
+    -- N: the number of samples to take.
+
+    NOTES:
+    This was specifically implemented for the VonMiese predictive distribution
+    which, because it is cyclic, is not super obvious to me how to apply
+    adaptive rejection sampling strategies. This is wasteful, but it's correct
+    and quicker than esitimating the CDF for inversion sampling.
+    """
+    samples = []
+
+    while len(samples) < N:
+        # Draw point along X-axis from proposal distribution.
+        x = proposal_draw_fn()
+        # Calculate proposal pdf at x.
+        qx = proposal_pdf_fn(x)
+        # Calculate pdf at x.
+        px = target_pdf_fn(x)
+        # Draw point randomly between 0 and qx.
+        u = np.random.random()*qx
+        # The proposal should contain the target for all x.
+        assert px <= qx
+        # If u is less than the target distribution pdf at x, then accept x
+        if u < px:
+            samples.append(x)
+
+    if N == 1:
+        return samples[0]
+    else:
+        return samples
 
 def simple_predictive_probability(state, row, col, X):
     logps = np.zeros(len(X))
@@ -348,52 +392,3 @@ def resample_data(state):
         X.append(table[:,col].flatten(1))
 
     return X
-
-
-def rejection_sampling(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
-    """Samples from target pdf using rejection sampling.
-
-    Input arguments:
-    -- target_pdf_fn: the target distribution pdf. Should take a single
-    argument, x.
-    -- proposal_pdf_fn: the propsal distribution pdf. Should take a single
-    argument, x. Should also contain the target for all x, that is,
-    proposal_pdf_fn(x) >= target_pdf_fn(x)
-    -- proposal_draw_fn: draws x randomly from the domain of the target pdf
-    according to the proposal distribution.
-
-    Keyword Arguments:
-    -- N: the number of samples to take.
-
-    NOTES:
-    This was specifically implemented for the VonMiese predictive distribution
-    which, because it is cyclic, is not super obvious to me how to apply
-    adaptive rejection sampling strategies. This is wasteful, but it's correct
-    and quicker than esitimating the CDF for inversion sampling.
-    """
-    samples = []
-
-    while len(samples) < N:
-        # draw point along X-axis from proposal distribution
-        x = proposal_draw_fn()
-
-        # calculate proposal pdf at x
-        y = proposal_pdf_fn(x)
-
-        # calculate pdf at x
-        fx = target_pdf_fn(x)
-
-        # draw point randomly between 0 and y
-        u = np.random.random()*y
-
-        # the proposal should contain the target for all x
-        assert fx <= y
-
-        # if u is less than the target distribution pdf at x, then accept x
-        if u < fx:
-            samples.append(x)
-
-    if N == 1:
-        return samples[0]
-    else:
-        return samples
