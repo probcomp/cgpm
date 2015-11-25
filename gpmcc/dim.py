@@ -15,16 +15,18 @@
 import numpy as np
 from math import isnan
 
+from gpmcc.utils import config as cu
+
 class Dim(object):
     """Holds data, model type, and hyperparameters."""
 
-    def __init__(self, X, cc_datatype_class, index, Zr=None, n_grid=30,
-            hypers=None, mode='collapsed', distargs=None):
+    def __init__(self, X, dist, index, distargs=None, Zr=None, n_grid=30,
+            hypers=None, mode='collapsed'):
         """Dimension constructor.
 
         Arguments:
         -- X: a numpy array of data.
-        -- cc_datatype_class: the cc_type class for this column
+        -- dist: The name of the distribution.
         -- index: the column index (int)
 
         Optional arguments:
@@ -35,20 +37,25 @@ class Dim(object):
         multinomial data requires the number of multinomial categories. See the
         documentation for each type for details
         """
-        self.index = index
+        # Data information.
+        self.N = len(X)
         self.X = X
         self.Xf = X[~np.isnan(X)]
-        self.N = len(X)
-        self.model = cc_datatype_class
-        self.cctype = cc_datatype_class.cctype
-        self.hypers_grids = cc_datatype_class.construct_hyper_grids(self.Xf,
-            n_grid)
-        self.distargs = distargs if distargs is not None else {}
+        self.index = index
+
+        # Mddel type.
         self.mode = mode
+        self.model = cu.dist_class(dist)
+        self.disttype = self.model.cctype
+        self.distargs = distargs if distargs is not None else {}
+
+        # Hyperparams.
+        self.hypers_grids = self.model.construct_hyper_grids(self.Xf, n_grid)
         self.hypers = hypers
         if hypers is None:
-            self.hypers = cc_datatype_class.init_hypers(self.hypers_grids, self.Xf)
+            self.hypers = self.model.init_hypers(self.hypers_grids, self.Xf)
 
+        # Row partitioning.
         if Zr is None:
             self.clusters = []
             self.pX = 0
@@ -56,9 +63,8 @@ class Dim(object):
             self.clusters = []
             K = max(Zr)+1
             for k in xrange(K):
-                self.clusters.append(cc_datatype_class(distargs=distargs))
+                self.clusters.append(self.model(distargs=distargs))
                 self.clusters[k].set_hypers(self.hypers)
-
             for i in xrange(len(X)):
                 k = Zr[i]
                 if isnan(X[i]):
