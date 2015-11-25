@@ -28,7 +28,6 @@ from gpmcc.dim import Dim
 
 _all_kernels = ['column_z','state_alpha','row_z','column_hypers','view_alphas']
 
-
 class State(object):
     """State. The main crosscat object.
 
@@ -65,9 +64,7 @@ class State(object):
         >>> state = State(X, ['normal', 'normal'], [None, None])
         """
         # Entropy control.
-        self.seed = seed
-        if seed is None:
-            self.seed = 0
+        self.seed = 0 if seed is None else seed
         np.random.seed(self.seed)
 
         self.n_rows = len(X[0])
