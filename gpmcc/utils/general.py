@@ -75,6 +75,7 @@ def pflip(p):
     """Multinomial draw from a vector p of probabilities."""
     if len(p) == 1:
         return 0
+    p = np.asarray(p).astype(float)
     p /= sum(p)
     if not math.fabs(1.0 - sum(p)) < 10.0**(-10.0):
         import ipdb;
