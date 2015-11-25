@@ -79,8 +79,8 @@ class State(object):
             disttype = dists[col]
             mode = 'uncollapsed' if cu.is_uncollapsed(disttype) else 'collapsed'
             dim_hypers = None if hypers is None else hypers[col]
-            dim = Dim(Y, cu.dist_class(disttype), col, n_grid=n_grid,
-                hypers=dim_hypers, mode=mode, distargs=distargs[col])
+            dim = Dim(Y, disttype, col, n_grid=n_grid, hypers=dim_hypers,
+                mode=mode, distargs=distargs[col])
             self.dims.append(dim)
 
         # Initialize CRP alpha.
@@ -110,11 +110,9 @@ class State(object):
             dims_view = []
             for index in indices:
                 dims_view.append(self.dims[index])
-            if Zrcv is None:
-                self.views.append(View(dims_view, n_grid=n_grid))
-            else:
-                self.views.append(View(dims_view, Zr=np.array(Zrcv[view]),
-                    n_grid=n_grid))
+            Zr = None if Zrcv is None else np.asarray(Zrcv[view])
+            view = View(dims_view, Zr=Zr, n_grid=n_grid)
+            self.views.append(view)
 
         self.X = X
         self.Zv = np.array(Zv)

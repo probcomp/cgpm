@@ -79,8 +79,9 @@ def all_dists():
     return dist_class_lookup.keys()
 
 def parse_distargs(dists):
-    """Input ['normal','multinomial(k=8)','beta_uc'].
-    Output ['normal','multinomial','beta_uc'], [None, {'k':8}, None].
+    """Parses a list of disttypes, where distargs are in parenthesis.
+    >>> Input ['normal','multinomial(k=8)','beta_uc'].
+    >>> Output ['normal','multinomial','beta_uc'], [None, {'k':8}, None].
     """
     disttypes, distargs = [], []
     for dist in dists:
