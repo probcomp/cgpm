@@ -38,14 +38,14 @@ class State(object):
     -- n_grid: (int) number of bins in hyperparameter grids.
     """
 
-    def __init__(self, X, dists, distargs, n_grid=30, Zv=None, Zrcv=None,
+    def __init__(self, X, cctypes, distargs, n_grid=30, Zv=None, Zrcv=None,
             hypers=None, seed=None):
         """State constructor.
 
         Input arguments:
         -- X: A tranposed data matrix DxN, where D is the number of variables
             and N is the number of observations.
-        -- dists: a list of strings where each entry is the data type for
+        -- cctypes: a list of strings where each entry is the data type for
             each column.
         -- distargs: a list of distargs appropriate for each type in cctype.
             For details on distrags see the documentation for each data type.
@@ -64,8 +64,11 @@ class State(object):
         >>> X = [np.random.normal(n_rows), np.random.normal(n_rows)]
         >>> state = State(X, ['normal', 'normal'], [None, None])
         """
+        # Entropy control.
+        self.seed = seed
         if seed is None:
-            np.random.seed(0)
+            self.seed = 0
+        np.random.seed(self.seed)
 
         self.n_rows = len(X[0])
         self.n_cols = len(X)
@@ -74,7 +77,7 @@ class State(object):
         self.dims = []
         for col in xrange(self.n_cols):
             Y = X[col]
-            cctype = dists[col]
+            cctype = cctypes[col]
             mode = 'uncollapsed' if cu.is_uncollapsed(cctype) else 'collapsed'
             dim_hypers = None if hypers is None else hypers[col]
             dim = Dim(Y, cctype, col, n_grid=n_grid, hypers=dim_hypers,
@@ -517,6 +520,7 @@ class State(object):
 
         # Misc data.
         metadata['n_grid'] = self.n_grid
+        metadata['seed'] = self.seed
 
         # View data.
         metadata['Nv'] = self.Nv
@@ -564,5 +568,7 @@ class State(object):
         Zrcv = metadata['Zrcv']
         n_grid = metadata['n_grid']
         hypers = metadata['hypers']
-        dists = metadata['dists']
-        return cls(X, dists, n_grid, Zv, Zrcv, hypers)
+        cctypes = metadata['cctypes']
+        distargs = metadata['distargs']
+        return cls(X, cctypes, distargs, n_grid=n_grid, Zv=Zv, Zrcv=Zrcv,
+            hypers=hypers)
