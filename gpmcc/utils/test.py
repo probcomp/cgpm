@@ -22,8 +22,8 @@ from gpmcc import dim
 import gpmcc.utils.general as gu
 import gpmcc.utils.config as cu
 
-def gen_data_table(n_rows, view_weights, cluster_weights, dists, separation,
-        return_dims=False):
+def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
+        separation, return_dims=False):
     """Generates data, partitions, and Dim.
 
      input arguments:
@@ -32,7 +32,7 @@ def gen_data_table(n_rows, view_weights, cluster_weights, dists, separation,
      Weights for generating views.
      -- cluster_weights: A n_views length list of n_cluster length np arrays
      that sum to one. Weights for row tp cluster assignments.
-     -- dists: n_columns length list of string specifying the data types for
+     -- cctypes: n_columns length list of string specifying the data types for
      each column.
      -- distargs: a list of distargs for each column (see documentation for
      each data type for info on distargs)
@@ -50,41 +50,40 @@ def gen_data_table(n_rows, view_weights, cluster_weights, dists, separation,
      >>> n_rows = 500
      >>> view_weights = np.ones(1)
      >>> cluster_weights = [np.ones(2)/2.0]
-     >>> dists = ['lognormal','normal','poisson','multinomial(k=9)','vonmises',
+     >>> cctypes = ['lognormal','normal','poisson','multinomial(k=9)','vonmises',
             'binomial']
      >>> separation = [.9] * 6
      >>> T, Zv, Zc, dims = tu.gen_data_table( n_rows, view_weights,
              cluster_weights, dists, distargs, separation, return_dims=True)
     """
-    dists, distargs = cu.parse_distargs(dists)
-    n_cols = len(dists)
+    n_cols = len(cctypes)
     Zv, Zc = gen_partition_from_weights(n_rows, n_cols, view_weights,
         cluster_weights)
     T = np.zeros((n_cols, n_rows))
 
     for col in range(n_cols):
-        dist_type = dists[col]
+        cctype = cctypes[col]
         args = distargs[col]
         view = Zv[col]
-        Tc = _gen_data[dist_type](Zc[view], separation[col], distargs=args)
+        Tc = _gen_data[cctype](Zc[view], separation[col], distargs=args)
         T[col] = Tc
 
     if return_dims:
-        dims = gen_dims_from_structure(T, Zv, Zc, dists, distargs)
+        dims = gen_dims_from_structure(T, Zv, Zc, cctypes, distargs)
         return T, Zv, Zc, dims
     else:
         return T, Zv, Zc
 
-def gen_dims_from_structure(T, Zv, Zc, dists, distargs):
+def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
     n_cols = len(Zv)
     dims = []
     for col in xrange(n_cols):
         v = Zv[col]
-        disttype = dists[col]
+        cctype = cctypes[col]
         mode = 'collapsed'
-        if cu.is_uncollapsed(disttype):
+        if cu.is_uncollapsed(cctype):
             mode = 'uncollapsed'
-        dim_c = dim.Dim(T[col], disttype, col, Zr=Zc[v], mode=mode,
+        dim_c = dim.Dim(T[col], cctype, col, Zr=Zc[v], mode=mode,
             distargs=distargs[col])
         dims.append(dim_c)
 
@@ -154,7 +153,6 @@ def _gen_exponential_data_column(Z, separation=.9, distargs=None):
         cluster = Z[r]
         mu = (cluster)*(4.0*separation)+1
         Tc[r] = np.random.exponential(mu)
-        print cluster, mu
 
     return Tc
 

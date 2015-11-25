@@ -46,7 +46,7 @@ class Dim(object):
         # Mddel type.
         self.mode = mode
         self.model = cu.dist_class(dist)
-        self.disttype = self.model.cctype
+        self.cctype = self.model.cctype
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.

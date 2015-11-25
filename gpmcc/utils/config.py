@@ -83,9 +83,9 @@ def parse_distargs(dists):
     >>> Input ['normal','multinomial(k=8)','beta_uc'].
     >>> Output ['normal','multinomial','beta_uc'], [None, {'k':8}, None].
     """
-    disttypes, distargs = [], []
-    for dist in dists:
-        keywords = re.search('\(.*\)', dist)
+    cctypes, distargs = [], []
+    for cctype in dists:
+        keywords = re.search('\(.*\)', cctype)
         if keywords is not None:
             keywords = keywords.group(0).replace('(','').\
                 replace(')','')
@@ -94,7 +94,7 @@ def parse_distargs(dists):
                 key, val = subpair.split('=')
                 temp[key] = float(val)
             keywords = temp
-            dist = dist[:dist.index('(')]
-        disttypes.append(dist)
+            cctype = cctype[:cctype.index('(')]
+        cctypes.append(cctype)
         distargs.append(keywords)
-    return disttypes, distargs
+    return cctypes, distargs

@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from gpmcc.utils import config as cu
 from gpmcc.utils import test as tu
 from gpmcc import state
 import numpy
@@ -25,10 +26,11 @@ numpy.random.seed(10)
 n_rows = 200
 view_weights = numpy.ones(1)
 cluster_weights = [ numpy.array([.33, .33, .34]) ]
-cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial','vonmises',
-    'vonmises_uc','binomial', 'lognormal']
-separation = [.95]*9
-distargs = [None, None, None, None, {"K":5}, None, None, None, None]
+cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial(k=8)',
+    'vonmises', 'vonmises_uc','binomial', 'lognormal','exponential',
+    'geometric']
+separation = [.95]*11
+cctypes, distargs = cu.parse_distargs(cctypes)
 
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
