@@ -29,7 +29,7 @@ cluster_weights = [ numpy.array([.33, .33, .34]) ]
 cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial(k=8)',
     'vonmises', 'vonmises_uc','binomial', 'lognormal','exponential',
     'geometric']
-separation = [.95]*11
+separation = [.95] * len(cctypes)
 cctypes, distargs = cu.parse_distargs(cctypes)
 
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
