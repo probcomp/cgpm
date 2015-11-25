@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 import copy
+import sys
 from math import log
 
 import numpy as np
@@ -42,16 +43,17 @@ class State(object):
         """State constructor.
 
         Input arguments:
-        -- X: a list of np data columns.
+        -- X: A tranposed data matrix DxN, where D is the number of variables
+            and N is the number of observations.
         -- cctypes: a list of strings where each entry is the data type for
-        each column.
+            each column.
         -- distargs: a list of distargs appropriate for each type in cctype.
-        For details on distrags see the documentation for each data type.
+            For details on distrags see the documentation for each data type.
 
         Optional arguments:
         -- n_grid: number of bins for hyperparameter grids. Default = 30.
         -- Zv: The assignment of columns to views. If not specified, a
-        partition is generated randomly
+            partition is generated randomly
         -- Zrcv: The assignment of rows to clusters for each view
         -- ct_kernel: which column transition kenerl to use. Default = 0 (Gibbs)
         -- seed: seed the random number generator. Default = system time.
@@ -62,7 +64,6 @@ class State(object):
         >>> X = [np.random.normal(n_rows), np.random.normal(n_rows)]
         >>> state = State(X, ['normal', 'normal'], [None, None])
         """
-
         if seed is None:
             np.random.seed(0)
 
@@ -192,13 +193,19 @@ class State(object):
             self._plot(fig, layout)
 
         for i in xrange(N):
-            print i
+            percentage = float(i+1) / N
+            progress = ' ' * 30
+            fill = int(percentage * len(progress))
+            progress = '[' + '=' * fill + progress[fill:] + ']'
+            print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
+            sys.stdout.flush()
             # random.shuffle(kernel_fns)
             for kernel in kernel_fns:
                 kernel()
             if do_plot:
                 self._plot(fig, layout)
                 plt.pause(0.0001)
+        print
 
     def set_data(self, data):
         """Testing. Resets the suffstats in all clusters in all dims to reflect
