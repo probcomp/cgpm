@@ -21,14 +21,15 @@ class Multinomial(object):
         -- alpha: dirichlet prior parameter
         -- distargs: dict with 'K' entry. K = len(w)
         """
-        self.N = N
-        self.K = distargs['K']
+        assert float(distargs['k']) == int(distargs['k'])
+        self.k = int(distargs['k'])
         if w is None:
-            self.w = [0]*self.K
+            self.w = [0]*self.k
         else:
-            assert self.K == len(w)
+            assert self.k == len(w)
             self.w = w
         self.alpha = alpha
+        self.N = N
 
     def set_hypers(self, hypers):
         assert hypers['alpha'] > 0
@@ -38,13 +39,13 @@ class Multinomial(object):
         return
 
     def insert_element(self, x):
-        if not Multinomial.validate(x, self.K):
+        if not Multinomial.validate(x, self.k):
             raise ValueError('Invalid categorical observation inserted.')
         self.N += 1
         self.w[int(x)] += 1
 
     def remove_element(self, x):
-        if not Multinomial.validate(x, self.K):
+        if not Multinomial.validate(x, self.k):
             raise ValueError('Invalid categorical observation removed.')
         self.N -= 1
         self.w[int(x)] -= 1
@@ -56,7 +57,7 @@ class Multinomial(object):
         return Multinomial.calc_marginal_logp(self.N, self.w, self.alpha)
 
     def singleton_logp(self, x):
-        return Multinomial.calc_predictive_logp(x, 0, [0]*self.K,
+        return Multinomial.calc_predictive_logp(x, 0, [0]*self.k,
             self.alpha)
 
     def predictive_draw(self):
@@ -129,12 +130,12 @@ class Multinomial(object):
         if ax is None:
             _, ax = plt.subplots()
 
-        Y = range(distargs['K'])
+        Y = range(int(distargs['k']))
         X_hist = np.array(gu.bincount(X,Y))
         X_hist = X_hist / float(len(X))
 
         K = len(clusters)
-        pdf = np.zeros((K,distargs['K']))
+        pdf = np.zeros((K, int(distargs['k'])))
         denom = log(float(len(X)))
 
         a = clusters[0].alpha

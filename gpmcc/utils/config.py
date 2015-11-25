@@ -12,6 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import re
+
 from gpmcc.dists import normal_uc
 from gpmcc.dists import beta_uc
 from gpmcc.dists import normal
@@ -75,3 +77,23 @@ def valid_dist(dist):
 def all_dists():
     """Returns Ture if dist is a valid distribution."""
     return dist_class_lookup.keys()
+
+def parse_distargs(dists):
+    """Input ['normal','multinomial(k=8)','beta_uc'].
+    Output ['normal','multinomial','beta_uc'], [None, {'k':8}, None].
+    """
+    disttypes, distargs = [], []
+    for dist in dists:
+        keywords = re.search('\(.*\)', dist)
+        if keywords is not None:
+            keywords = keywords.group(0).replace('(','').\
+                replace(')','')
+            temp = {}
+            for subpair in keywords.split(','):
+                key, val = subpair.split('=')
+                temp[key] = float(val)
+            keywords = temp
+            dist = dist[:dist.index('(')]
+        disttypes.append(dist)
+        distargs.append(keywords)
+    return disttypes, distargs

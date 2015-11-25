@@ -38,14 +38,14 @@ class State(object):
     -- n_grid: (int) number of bins in hyperparameter grids.
     """
 
-    def __init__(self, X, cctypes, distargs, n_grid=30, Zv=None, Zrcv=None,
+    def __init__(self, X, dists, n_grid=30, Zv=None, Zrcv=None,
             hypers=None, seed=None):
         """State constructor.
 
         Input arguments:
         -- X: A tranposed data matrix DxN, where D is the number of variables
             and N is the number of observations.
-        -- cctypes: a list of strings where each entry is the data type for
+        -- dists: a list of strings where each entry is the data type for
             each column.
         -- distargs: a list of distargs appropriate for each type in cctype.
             For details on distrags see the documentation for each data type.
@@ -72,13 +72,14 @@ class State(object):
         self.n_grid = n_grid
 
         # Construct the dims.
+        dists, distargs = cu.parse_distargs(dists)
         self.dims = []
         for col in xrange(self.n_cols):
             Y = X[col]
-            cctype = cctypes[col]
-            mode = 'uncollapsed' if cu.is_uncollapsed(cctype) else 'collapsed'
+            disttype = dists[col]
+            mode = 'uncollapsed' if cu.is_uncollapsed(disttype) else 'collapsed'
             dim_hypers = None if hypers is None else hypers[col]
-            dim = Dim(Y, cu.dist_class(cctype), col, n_grid=n_grid,
+            dim = Dim(Y, cu.dist_class(disttype), col, n_grid=n_grid,
                 hypers=dim_hypers, mode=mode, distargs=distargs[col])
             self.dims.append(dim)
 
@@ -532,14 +533,13 @@ class State(object):
 
         # Column data.
         metadata['hypers'] = []
-        metadata['cctypes'] = []
-        metadata['distargs'] = []
+        metadata['dists'] = []
         metadata['suffstats'] = []
 
         for dim in self.dims:
             metadata['hypers'].append(dim.hypers)
             metadata['distargs'].append(dim.distargs)
-            metadata['cctypes'].append(dim.cctype)
+            metadata['dists'].append(dim.cctype)
             metadata['suffstats'].append(dim.get_suffstats())
 
         for view in self.views:
@@ -567,6 +567,5 @@ class State(object):
         Zrcv = metadata['Zrcv']
         n_grid = metadata['n_grid']
         hypers = metadata['hypers']
-        cctypes = metadata['cctypes']
-        distargs = metadata['distargs']
-        return cls(X, cctypes, distargs, n_grid, Zv, Zrcv, hypers)
+        dists = metadata['dists']
+        return cls(X, dists, n_grid, Zv, Zrcv, hypers)
