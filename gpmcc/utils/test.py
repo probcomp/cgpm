@@ -22,8 +22,8 @@ from gpmcc import dim
 import gpmcc.utils.general as gu
 import gpmcc.utils.config as cu
 
-def gen_data_table(n_rows, view_weights, cluster_weights, dists, distargs,
-        separation, return_dims=False):
+def gen_data_table(n_rows, view_weights, cluster_weights, dists, separation,
+        return_dims=False):
     """Generates data, partitions, and Dim.
 
      input arguments:
@@ -50,12 +50,13 @@ def gen_data_table(n_rows, view_weights, cluster_weights, dists, distargs,
      >>> n_rows = 500
      >>> view_weights = np.ones(1)
      >>> cluster_weights = [np.ones(2)/2.0]
-     >>> dists = ['lognormal','normal','poisson','multinomial','vonmises','binomial']
-     >>> distargs = [None, None, None, {'K':5}, None, None]
-     >>> separation = [.9]*6
+     >>> dists = ['lognormal','normal','poisson','multinomial(k=9)','vonmises',
+            'binomial']
+     >>> separation = [.9] * 6
      >>> T, Zv, Zc, dims = tu.gen_data_table( n_rows, view_weights,
              cluster_weights, dists, distargs, separation, return_dims=True)
     """
+    dists, distargs = cu.parse_distargs(dists)
     n_cols = len(dists)
     Zv, Zc = gen_partition_from_weights(n_rows, n_cols, view_weights,
         cluster_weights)
@@ -77,15 +78,14 @@ def gen_data_table(n_rows, view_weights, cluster_weights, dists, distargs,
 def gen_dims_from_structure(T, Zv, Zc, dists, distargs):
     n_cols = len(Zv)
     dims = []
-    for c in range(n_cols):
-        v = Zv[c]
-        dist_type = dists[c]
-        dist_class = cu.dist_class(dist_type)
+    for col in xrange(n_cols):
+        v = Zv[col]
+        disttype = dists[col]
         mode = 'collapsed'
-        if cu.is_uncollapsed(dist_type):
+        if cu.is_uncollapsed(disttype):
             mode = 'uncollapsed'
-        dim_c = dim.Dim(T[c], dist_class, c, Zr=Zc[v], mode=mode,
-                distargs=distargs[c])
+        dim_c = dim.Dim(T[col], disttype, col, Zr=Zc[v], mode=mode,
+            distargs=distargs[col])
         dims.append(dim_c)
 
     return dims
@@ -204,12 +204,12 @@ def _gen_binomial_data_column(Z, separation=.9, distargs=None):
 
 def _gen_multinomial_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
-    K = distargs['K']
+    k = distargs['k']
     if separation > .95:
         separation = .95
     Tc = np.zeros(n_rows, dtype=int)
     C = max(Z)+1
-    theta_arrays = [np.random.dirichlet(np.ones(K)*(1.0-separation), 1)
+    theta_arrays = [np.random.dirichlet(np.ones(k)*(1.0-separation), 1)
         for _ in range(C)]
     for r in range(n_rows):
         cluster = Z[r]
