@@ -205,104 +205,113 @@ def simple_predictive_probability(state, row, col, X):
         return logps
 
 def _simple_predictive_probability_observed(state, row, cols, x):
-    cluster = _create_single_cluster_copy(state, row, cols)
+    cluster = create_cluster(state, row, cols)
     logp = cluster.predictive_logp(x)
     return logp
 
 def _simple_predictive_probability_unobserved(state, col, x):
-    log_pK = get_cluster_crps(state, col)
-    clusters = create_cluster_set(state, col)
+    log_pK = compute_cluster_crp_logps(state, col)
+    clusters = create_clusters(state, col)
     logps = []
     for cluster in clusters:
         logps.append(cluster.predictive_logp(x))
     logps = np.array(logps) + log_pK
     return logsumexp(logps)
 
-def simple_predictive_sample(state, row, cols, N=1):
-    # TODO: accept multipe queries and constraints. Return float if N=1
-    if row >= state.n_rows:
-        samples = _simple_predictive_sample_unobserved(state, cols, N=N)
+def simulate(state, rowid, query, evidence=None, N=1):
+    # TODO: accept multipe queries and evidence. Return float if N=1
+    if 0 <= rowid < state.n_rows and float(rowid) == int(rowid):
+        samples = simulate_observed(state, rowid, query, N=N)
     else:
-        samples = _simple_predictive_sample_observed(state, row, cols, N=N)
+        samples = simulate_unobserved(state, query, evidence, N=N)
+    return samples
 
-    if N == 1 and isinstance(cols, int):
-        return samples[0]
-    else:
-        return samples
-
-def _simple_predictive_sample_observed(state, row, cols, N=1):
-    if not isinstance(cols, list):
-        cols = [cols]
-
-    draws = [];
-    for _ in range(N):
+def simulate_observed(state, rowid, query, N=1):
+    """Simulates a hypothetical member, with the same latents as rowid."""
+    samples = []
+    for _ in xrange(N):
         row_draw = []
-        for col in cols:
-            cluster = _create_single_cluster_copy(state, row, col)
+        for col in query:
+            cluster = create_cluster(state, rowid, col)
             row_draw.append(cluster.predictive_draw())
+        samples.append(row_draw)
+    return samples
 
-        draws.append(row_draw)
+def simulate_unobserved(state, query, evidence=None, N=1):
+    """Simulates a hypothetical member, with no observed latents."""
+    # Default parameter.
+    if evidence is None:
+        evidence = []
 
-    return draws
+    # Obtain all views of the query columns.
+    views = [state.Zv[col] for col in query]
 
-def _simple_predictive_sample_unobserved(state, cols, N=1):
+    # Create component models for all the queries.
+    clusters_for = dict()
+    for col in query:
+        clusters_for[col] = create_clusters(state, col)
 
-    # get if in the same view
-    views = [ state.Zv[col] for col in cols]
-    # get a list of the views
-    V = list(set(views))
+    cols_in = dict()
+    for v in set(views):
+        cols_in[v] = [col for col in query if state.Zv[col] == v]
 
-    pK_dict = dict()
-    for v in V:
-        log_pK = get_cluster_crps(state, v)
-        pK = np.exp(gu.log_normalize(log_pK))
-        pK_dict[v] = pK;
+    # Obtain the probability of hypothetical row belonging to each cluster.
+    clusterps_for = dict()
+    for v in set(views):
+        # CRP densities.
+        logp_crp = compute_cluster_crp_logps(state, v)
+        # Posterior predictive density of evidence.
+        logp_data = np.zeros(len(logp_crp))
+        for (col, val) in evidence:
+            if state.Zv[col] == v:
+                logp_data += compute_cluster_data_logps(state, col, val)
+        clusterps_for[v] = np.exp(gu.log_normalize(logp_crp + logp_data))
 
-    cluster_sets = dict()
-    for col in cols:
-        cluster_sets[col] = create_cluster_set(state, col)
+    samples = []
+    for _ in xrange(N):
+        draw = []
+        for v in set(views):
+            # Sample a cluster.
+            k = gu.pflip(clusterps_for[v])
+            for col in cols_in[v]:
+                # Sample data from the cluster.
+                x = clusters_for[col][k].predictive_draw()
+                draw.append(x)
+        samples.append(draw)
 
-    draws = []
-    i = 0
+    return np.asarray(samples)
 
-    view_dict = dict()
-    for v in V:
-        which_cols = np.nonzero( views == v )[0]
-        view_dict[v] = [ col for col in which_cols ]
-
-    for _ in range(N):
-        row_data = []
-        for v in V:
-            cols_v = view_dict[v]
-            k = gu.pflip(pK_dict[v])
-            for col in cols_v:
-                x = cluster_sets[col][k].predictive_draw()
-                row_data.append(x)
-        draws.append(row_data)
-
-    return draws
-
-def get_cluster_crps(state, view):
+def compute_cluster_crp_logps(state, view):
     log_crp_numer = state.views[view].Nk[:]
     log_crp_numer.append(state.views[view].alpha)   # singleton cluster
     log_crp_denom = log(state.n_rows + state.views[view].alpha)
     cluster_crps = np.log(np.array(log_crp_numer))-log_crp_denom
     return cluster_crps
 
-def create_cluster_set(state, col):
-    hypers = state.dims[col].hypers
-    clusters = copy.deepcopy(state.dims[col].clusters)
-    # append empty model and set hypers (singleton)
-    clusters.append(state.dims[col].model())
-    clusters[-1].set_hypers(hypers)
+def compute_cluster_data_logps(state, col, x):
+    """Computes the Pr[x|z=k] for each cluster k in col, including singleton."""
+    clusters = create_clusters(state, col)
+    logps = np.zeros(len(clusters))
+    for i, cluster in enumerate(clusters):
+        logps[i] = cluster.predictive_logp(x)
+    return logps
 
+def create_clusters(state, col):
+    """Returns a list of all the clusters in the dim, plus one singleton."""
+    hypers = state.dims[col].hypers
+    # Existing cluster.
+    clusters = copy.deepcopy(state.dims[col].clusters)
+    # Singleton cluster.
+    singleton_cluster = state.dims[col].model(distargs=state.dims[col].distargs,
+        **hypers)
+    clusters.append(singleton_cluster)
     return clusters
 
-def _create_single_cluster_copy(state, row, col):
+def create_cluster(state, rowid, col):
+    """Returns the exact cluster of the cell (rowid, col)."""
     v = state.Zv[col]
-    k = state.views[v].Z[row]
+    k = state.views[v].Zr[rowid]
     cluster = copy.deepcopy(state.dims[col].clusters[k])
-
     return cluster
 
 def resample_data(state):

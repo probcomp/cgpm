@@ -15,9 +15,11 @@
 import math
 import numpy as np
 import pylab
+import matplotlib.pyplot as plt
 
 import gpmcc.utils.sampling as su
 import gpmcc.utils.general as gu
+from gpmcc.engine import Engine
 
 def test_predictive_draw(state, N=None):
     if state.n_cols != 2:
@@ -43,7 +45,7 @@ def test_predictive_draw(state, N=None):
     clusters_col_1 = su.create_cluster_set(state, 0)
     clusters_col_2 = su.create_cluster_set(state, 1)
 
-    for i in range(N):
+    for i in xrange(N):
         c = gu.log_pflip(log_crp)
         x = clusters_col_1[c].predictive_draw()
         y = clusters_col_2[c].predictive_draw()
@@ -55,3 +57,46 @@ def test_predictive_draw(state, N=None):
     pylab.scatter(state.dims[0].X, state.dims[1].X, color='blue',
         label='actual')
     pylab.show()
+
+def test_simulate_indicator():
+    # Number of rows in synthetic dataset.
+    n_rows = 250
+
+    mus = [-1, 5, 9]
+    sigmas = [2, 2, 1.5]
+    data = np.zeros((n_rows, 2))
+    indicators = [0, 1, 2, 3, 4, 5]
+    data[:, 1] = np.random.choice(indicators, size=n_rows,
+        p=[.15, .15, .25, .25, .1, .1])
+    for i in xrange(n_rows):
+        idx = int(data[i,1] / 2)
+        data[i, 0] = np.random.normal(loc=mus[idx], scale=sigmas[idx])
+
+    # Create an engine.
+    state = Engine()
+    state.initialize(data.T, ['normal', 'multinomial'], [None, {'K':6}],
+        num_states=1)
+    state.transition(N=150)
+    model = state.get_state(0)
+
+    # Simulate from the joint distribution of (x,i).
+    samples = su.simulate(model, -1, [0, 1], N=100)
+
+    # Scatter the data points by color.
+    fig, ax = plt.subplots()
+    for t in indicators:
+        # Plot original data.
+        data_subpop = data[data[:,1] == t]
+        ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors()[t])
+        # Plot simulated data.
+        samples_subpop = samples[samples[:,1] == t]
+        ax.scatter(samples_subpop[:,1] + .25, samples_subpop[:,0],
+            color=gu.colors()[t])
+    ax.set_xlabel('Indicator')
+    ax.set_ylabel('x')
+    ax.grid()
+
+    # Simulate from the conditional distribution (x|i=4)
+    samples = su.simulate(model, -1, [0], evidence=[(1,4)], N=100)
+
+    # XXX TODO PLOT.
