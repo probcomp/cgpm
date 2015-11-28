@@ -215,6 +215,33 @@ class State(object):
         for dim in self.dims:
             dim.update_prior_grids()
 
+    def _transition_rows(self, target_rows=None):
+        # move rows to new cluster
+        for view in self.views:
+            view.transition_rows(target_rows=target_rows)
+
+    def _transition_column_hypers(self, target_cols=None):
+        if target_cols is None:
+            target_cols = range(self.n_cols)
+
+        for i in target_cols:
+            self.dims[i].transition_hypers()
+
+    def _transition_view_alphas(self):
+        for view in self.views:
+            view.transition_alpha()
+
+    def _transition_state_alpha(self):
+        logps = np.zeros(self.n_grid)
+        for i in range(self.n_grid):
+            alpha = self.alpha_grid[i]
+            logps[i] = gu.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
+                lambda x: 0)
+        # log_pdf_lambda = lambda a : gu.lcrp(self.n_cols, self.Nv, a) +
+        # self.alpha_prior_lambda(a)
+        index = gu.log_pflip(logps)
+        self.alpha = self.alpha_grid[index]
+
     def _transition_columns(self, target_cols=None, m=3):
         """Transition column assignment to views."""
         if target_cols is None:
@@ -326,46 +353,19 @@ class State(object):
 
         # self._check_partitions()
 
-    def _transition_rows(self, target_rows=None):
-        # move rows to new cluster
-        for view in self.views:
-            view.transition_rows(target_rows=target_rows)
-
-    def _transition_column_hypers(self, target_cols=None):
-        if target_cols is None:
-            target_cols = range(self.n_cols)
-
-        for i in target_cols:
-            self.dims[i].transition_hypers()
-
-    def _transition_view_alphas(self):
-        for view in self.views:
-            view.transition_alpha()
-
-    def _transition_state_alpha(self):
-        logps = np.zeros(self.n_grid)
-        for i in range(self.n_grid):
-            alpha = self.alpha_grid[i]
-            logps[i] = gu.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
-                lambda x: 0)
-        # log_pdf_lambda = lambda a : gu.lcrp(self.n_cols, self.Nv, a) +
-        # self.alpha_prior_lambda(a)
-        index = gu.log_pflip(logps)
-        self.alpha = self.alpha_grid[index]
-
     def _create_singleton_view(self, dim, current_view_index, proposal_view):
         self.Zv[dim.index] = len(self.Nv)
         dim.reassign(proposal_view.Zr)
-        self.views[current_view_index].release_dim(dim.index)
+        self.views[current_view_index].remove_dim(dim.index)
         self.Nv[current_view_index] -= 1
         self.Nv.append(1)
         self.views.append(proposal_view)
 
     def _move_dim_to_view(self, dim, move_from, move_to):
         self.Zv[dim.index] = move_to
-        self.views[move_from].release_dim(dim.index)
+        self.views[move_from].remove_dim(dim.index)
         self.Nv[move_from] -= 1
-        self.views[move_to].assimilate_dim(dim)
+        self.views[move_to].insert_dim(dim)
         self.Nv[move_to] += 1
         # If move_from was a singleton, destroy.
         if self.Nv[move_from] == 0:
@@ -382,7 +382,7 @@ class State(object):
             self.views.append(proposal_view)
         else:
             self.Nv[append_to] += 1
-            self.views[append_to].assimilate_dim(dim)
+            self.views[append_to].insert_dim(dim)
         self._check_partitions()
 
     def _compute_view_crp_logps(self, view):

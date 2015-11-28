@@ -209,12 +209,12 @@ class View(object):
         for dim in self.dims.values():
             dim.move_to_cluster(rowid, move_from, move_to)
 
-    def assimilate_dim(self, dim):
+    def insert_dim(self, dim):
         if not np.allclose(dim.Zr, self.Zr):
             dim.reassign(self.Zr)
         self.dims[dim.index] = dim
 
-    def release_dim(self, dim_index):
+    def remove_dim(self, dim_index):
         del self.dims[dim_index]
 
     def clear_data(self):
