@@ -78,7 +78,6 @@ class Engine(object):
 
         args = ((X, cctypes, distargs, seed) for (_, seed) in
             zip(xrange(self.num_states), seeds))
-        print args
         self.metadata = self.pool.map(_intialize, args)
 
     def initialize_csv(self, cctypes, distargs, filename, num_states=1,
