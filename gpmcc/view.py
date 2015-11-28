@@ -115,15 +115,15 @@ class View(object):
                 else:
                     self.move_row_to_cluster(rowid, z_a, z_b)
 
-            self._check_partitions()
+            # self._check_partitions()
 
-    def transition(self, N, do_plot=False):
+    def transition(self, N):
         """Do all the transitions. Do_plot is mainly for debugging and is only
         meant to be used to watch multiple transitions in a single view and not
         in full state transitions---cc_state.transition has its own do_plot arg.
         """
         for _ in xrange(N):
-            self.transition_Z(do_plot)
+            self.transition_Z()
             self.transition_alpha()
             self.transition_column_hypers()
 
