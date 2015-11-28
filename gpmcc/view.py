@@ -209,11 +209,10 @@ class View(object):
         for dim in self.dims.values():
             dim.move_to_cluster(rowid, move_from, move_to)
 
-    def assimilate_dim(self, new_dim, is_uncollapsed=True):
-        # resistance is futile
-        if not is_uncollapsed:
-            new_dim.reassign(self.Zr)
-        self.dims[new_dim.index] = new_dim
+    def assimilate_dim(self, dim):
+        if not np.allclose(dim.Zr, self.Zr):
+            dim.reassign(self.Zr)
+        self.dims[dim.index] = dim
 
     def release_dim(self, dim_index):
         del self.dims[dim_index]

@@ -306,7 +306,7 @@ class State(object):
                 assert v_b < len(self.Nv)
             self._move_dim_to_view(dim, v_a, v_b)
 
-        self._check_partitions()
+        # self._check_partitions()
 
     def _transition_columns_kernel_uncollapsed(self, col, m=3, append=False):
         """Gibbs with auxiliary parameters for uncollapsed data types"""
@@ -314,7 +314,7 @@ class State(object):
         if append:
             col = self.n_cols-1
 
-        # get start view, v_a, and check whether a singleton
+        # Get start view, v_a, and check whether a singleton.
         v_a = self.Zv[col]
 
         if append:
@@ -323,30 +323,28 @@ class State(object):
         else:
             is_singleton = (self.Nv[v_a] == 1)
             pv = list(self.Nv)
-            # Get crp probabilities under each view. remove from current view.
-            # If v_a is a singleton, do not consider move to new singleton view.
+            # Get crp probabilities under each view.
             if is_singleton:
+                # If v_a singleton do not consider move to new singleton view.
                 pv[v_a] = self.alpha
             else:
+                # Remove from current view.
                 pv[v_a] -= 1
 
-        # take the log
+        # Take the log.
         pv = np.log(np.array(pv))
 
         ps = []
-        # calculate probability under each view's assignment
+        # Calculate column probability under each view's assignment.
         dim = self.dims[col]
-
         dim_holder = []
-
         for v in xrange(len(self.Nv)):
             if v == v_a:
                 dim_holder.append(dim)
             else:
                 dim_holder.append(copy.deepcopy(dim))
                 dim_holder[-1].reassign(self.views[v].Zr)
-
-            p_v = dim_holder[-1].full_marginal_logp()+pv[v]
+            p_v = dim_holder[-1].full_marginal_logp() + pv[v]
             ps.append(p_v)
 
         # if not a singleton, propose m auxiliary parameters (views)
@@ -365,36 +363,30 @@ class State(object):
                 p_v = dim_holder[-1].full_marginal_logp()+log_aux
                 ps.append(p_v)
 
-
-        # draw a view
+        # Draw a view
         v_b = gu.log_pflip(ps)
-
         newdim = dim_holder[v_b]
         self.dims[dim.index] = newdim
 
         if append:
             if v_b >= len(self.Nv):
                 index = v_b - len(self.Nv)
-                assert( index >= 0 and index < m)
+                assert 0 <= index and index < m
                 proposal_view = proposal_views[index]
-            self._append_new_dim_to_view(newdim, v_b, proposal_view,
-                is_uncollapsed=True)
+            self._append_new_dim_to_view(newdim, v_b, proposal_view)
             return
 
-        # clean up
-        if v_b != v_a:
+        # Are we moving to a singleton?
+        if len(self.Nv) <= v_b:
+            index = v_b - len(self.Nv)
+            assert 0 <= index and index < m
+            proposal_view = proposal_views[index]
+            self._create_singleton_view(newdim, v_a, proposal_view)
+        # Move newdim to the new view.
+        else:
             if is_singleton:
                 assert v_b < len(self.Nv)
-                self._move_dim_to_view(newdim, v_a, v_b,
-                    is_uncollapsed=True)
-            elif v_b >= len(self.Nv):
-                index = v_b - len(self.Nv)
-                assert index >= 0 and index < m
-                proposal_view = proposal_views[index]
-                self._create_singleton_view(newdim, v_a, proposal_view,
-                    is_uncollapsed=True)
-            else:
-                self._move_dim_to_view(newdim, v_a, v_b, is_uncollapsed=True)
+            self._move_dim_to_view(newdim, v_a, v_b)
 
         # self._check_partitions()
 
@@ -439,7 +431,7 @@ class State(object):
         self.Zv[dim.index] = move_to
         self.views[move_from].release_dim(dim.index)
         self.Nv[move_from] -= 1
-        self.views[move_to].assimilate_dim(dim, is_uncollapsed=is_uncollapsed)
+        self.views[move_to].assimilate_dim(dim)
         self.Nv[move_to] += 1
         # If move_from was a singleton, destroy.
         if self.Nv[move_from] == 0:
@@ -449,16 +441,14 @@ class State(object):
             del self.Nv[move_from]
             del self.views[move_from]
 
-    def _append_new_dim_to_view(self, dim, append_to, proposal_view,
-            is_uncollapsed=False):
+    def _append_new_dim_to_view(self, dim, append_to, proposal_view):
         self.Zv[dim.index] = append_to
         if append_to == len(self.Nv):
             self.Nv.append(1)
             self.views.append(proposal_view)
         else:
             self.Nv[append_to] += 1
-            self.views[append_to].assimilate_dim(dim,
-                is_uncollapsed=is_uncollapsed)
+            self.views[append_to].assimilate_dim(dim)
         self._check_partitions()
 
     def _plot(self, fig, layout):
