@@ -133,9 +133,6 @@ class View(object):
         for i in range(len(self.alpha_grid)):
             alpha = self.alpha_grid[i]
             logps[i] = gu.unorm_lcrp_post(alpha, self.N, self.K, lambda x: 0)
-        # log_pdf_lambda = lambda a : gu.lcrp(self.n_cols, self.Nv, a)
-        # + self.alpha_prior_lambda(a)
-
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
