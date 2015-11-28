@@ -216,7 +216,6 @@ class State(object):
             dim.update_prior_grids()
 
     def _transition_rows(self, target_rows=None):
-        # move rows to new cluster
         for view in self.views:
             view.transition_rows(target_rows=target_rows)
 
