@@ -22,8 +22,7 @@ from gpmcc.utils import sampling as su
 
 _all_kernels = ['column_hypers','view_alphas','row_z','state_alpha','column_z']
 
-def forward_sample(X, n_iters, Zv=None, Zrcv=None, n_grid=30, n_chains=1,
-        ct_kernel=0):
+def forward_sample(X, n_iters, Zv=None, Zrcv=None, n_grid=30, n_chains=1):
     total_iters = n_chains * n_iters
     n_cols = len(X)
     cctypes = ['normal'] * n_cols
@@ -47,7 +46,7 @@ def forward_sample(X, n_iters, Zv=None, Zrcv=None, n_grid=30, n_chains=1,
     return stats, forward_samples
 
 def posterior_sample(X, n_iters, kernels=_all_kernels, Zv=None, Zrcv=None,
-        n_grid=30, n_chains=1, ct_kernel=0):
+        n_grid=30, n_chains=1):
     n_cols = len(X)
     cctypes = ['normal'] * n_cols
     distargs = [None] * n_cols
@@ -307,10 +306,9 @@ if __name__ == '__main__':
     parser.add_argument('--no_col_hyper', default=True, action="store_false")
     parser.add_argument('--no_view_alpha', default=True, action="store_false")
     parser.add_argument('--n_grid', default=50, type=int)
-    parser.add_argument('--ct_kernel', default=0, type=int)
 
     args = parser.parse_args()
-    #
+
     n_rows = args.num_rows
     n_cols = args.num_cols
     n_chains = args.num_chains
@@ -321,7 +319,6 @@ if __name__ == '__main__':
     t_col_hyper = args.no_col_hyper
     t_view_alpha = args.no_view_alpha
     n_grid = args.n_grid
-    ct_kernel = args.ct_kernel
 
     # python geweke_test.py --num_rows 40 --num_cols 1 --num_iters 1000 --num_chains 1 --no_col_z --no_row_z
 
@@ -334,11 +331,11 @@ if __name__ == '__main__':
 
     print "Generating forward samples"
     forward_sample_stats, fs = forward_sample(X, n_iters, Zv, Zrcv, n_grid,
-        n_chains, ct_kernel)
+        n_chains)
     print
     print "Generating posterior samples"
     postertior_sample_stats, ps = posterior_sample(X, n_iters, kernels, Zv,
-        Zrcv, n_grid, n_chains, ct_kernel)
+        Zrcv, n_grid, n_chains)
     print
     print "Plotting samples"
     plot_stats(forward_sample_stats , postertior_sample_stats, hbins=n_grid)

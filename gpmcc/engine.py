@@ -26,13 +26,13 @@ _transition_kernels = ['column_z','state_alpha', 'row_z', 'column_hypers',
 def _append_feature(args):
     X_f, cctype, distargs, metadata = args
     chain = State.from_metadata(metadata)
-    chain.append_dim(X_f, cctype, distargs=distargs, ct_kernel=0, m=1)
+    chain.append_dim(X_f, cctype, distargs=distargs, m=1)
     return chain.get_metadata()
 
 def _transition(args):
-    N, kernel_list, ct_kernel, target_rows, target_cols, metadata = args
+    N, kernel_list, target_rows, target_cols, metadata = args
     chain = State.from_metadata(metadata)
-    chain.transition(N, kernel_list, ct_kernel, target_rows, target_cols)
+    chain.transition(N, kernel_list, target_rows, target_cols)
     return chain.get_metadata()
 
 def _intialize(args):
@@ -81,7 +81,7 @@ class Engine(object):
     def get_state(self, index):
         return State.from_metadata(self.metadata[index])
 
-    def append_feature(self, X_f, cctype, distargs=None, ct_kernel=0, m=1,
+    def append_feature(self, X_f, cctype, distargs=None, m=1,
             col_name=None):
         """Add a feature (column) to the data."""
         # Check data size.
@@ -93,7 +93,7 @@ class Engine(object):
         vu.validate_data(X_f)
         vu.validate_cctypes(cctype)
 
-        args = [(self.X, X_f, cctype, distargs, ct_kernel, m, self.metadata[i])
+        args = [(self.X, X_f, cctype, distargs, m, self.metadata[i])
             for i in range(self.num_states) ]
 
         self.metadata = self.map(self._append_feature, args)
@@ -110,10 +110,10 @@ class Engine(object):
         """Add an object (row) to the cc_state."""
         pass
 
-    def transition(self, N=1, kernel_list=None, ct_kernel=2, target_rows=None,
+    def transition(self, N=1, kernel_list=None, target_rows=None,
             target_cols=None):
         """Do transitions in parallel."""
-        args = [(N, kernel_list, ct_kernel, target_rows, target_cols,
+        args = [(N, kernel_list, target_rows, target_cols,
             self.metadata[i]) for i in xrange(self.num_states)]
         self.metadata = self.map(_transition, args)
 

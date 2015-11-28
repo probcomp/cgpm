@@ -36,7 +36,6 @@ def run_test(argsin):
     n_rows = args["num_rows"]
     n_iters = args["num_iters"]
     n_chains = args["num_chains"]
-    ct_kernel = args["ct_kernel"]
 
     fig = pylab.figure(num=None, facecolor='w', edgecolor='k',frameon=False,
         tight_layout=True)
@@ -58,7 +57,6 @@ def run_test(argsin):
 
         ax.set_xticks([])
         ax.set_yticks([])
-        pylab.suptitle( "Kernel %i" % ct_kernel)
 
         xlims[shape] = ax.get_xlim()
         ylims[shape] = ax.get_ylim()
@@ -71,7 +69,7 @@ def run_test(argsin):
             print("\tWorking on %s." % shape)
             plt += 1
             T = data[shape]
-            S = state.State(T, cctypes, ct_kernel=ct_kernel, distargs=distargs)
+            S = state.State(T, cctypes, distargs=distargs)
             S.transition(N=n_iters)
             T_chain = numpy.array(su.simple_predictive_sample(S, n_rows, [0,1],
                 N=n_rows))
@@ -88,19 +86,16 @@ def run_test(argsin):
     pylab.show()
 
 if __name__ == "__main__":
-    # python shape_test_chains.py --num_chains 20 --num_rows 500 --ct_kernel 0
+    # python shape_test_chains.py --num_chains 20 --num_rows 500
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_iters', default=200, type=int)
     parser.add_argument('--num_rows', default=500, type=int)
     parser.add_argument('--num_chains', default=8, type=int)
-    parser.add_argument('--ct_kernel', default=0, type=int)
 
     args = parser.parse_args()
     num_iters = args.num_iters
     num_chains = args.num_chains
     num_rows = args.num_rows
-    ct_kernel = args.ct_kernel
 
-    args = dict(num_rows=num_rows, num_iters=num_iters, num_chains=num_chains,
-        ct_kernel=ct_kernel)
+    args = dict(num_rows=num_rows, num_iters=num_iters, num_chains=num_chains)
     run_test(args)

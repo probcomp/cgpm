@@ -54,7 +54,6 @@ class State(object):
         -- Zv: The assignment of columns to views. If not specified, a
             partition is generated randomly
         -- Zrcv: The assignment of rows to clusters for each view
-        -- ct_kernel: which column transition kenerl to use. Default = 0 (Gibbs)
         -- seed: seed the random number generator. Default = system time.
 
         Example:
@@ -115,7 +114,7 @@ class State(object):
         self.Zv = np.array(Zv)
         self.Nv = Nv
 
-    # def append_dim(self, X_f, cctype, distargs=None, ct_kernel=0, m=1):
+    # def append_dim(self, X_f, cctype, distargs=None, m=1):
     #     """Add a new data column to X.
 
     #     Input arguments:
@@ -124,8 +123,7 @@ class State(object):
 
     #     Optional arguments:
     #     -- distargs: for multinomial data
-    #     -- ct_kernel: must be 0 or 2. MH kernel cannot be used to append
-    #     -- m: for ct_kernel=2. Number of auxiliary parameters
+    #     -- m: Number of auxiliary parameters
     #     """
     #     col = self.n_cols
     #     n_grid = self.n_grid
@@ -143,15 +141,13 @@ class State(object):
     #         self._transition_columns_kernel_uncollapsed(-1, m=m, append=True)
     #     self._check_partitions()
 
-    def transition(self, N=1, kernel_list=None, ct_kernel=0, target_rows=None,
+    def transition(self, N=1, kernel_list=None, target_rows=None,
             target_cols=None, m=1, do_plot=False):
         """Do transitions.
 
         Optional arguments:
         -- N: number of transitions.
         -- kernel_list: which kernels to do.
-        -- ct_kernel: which column transition kernel to use {0,1,2}
-        --      = {Gibbs, MH, Aux Gibbs}
         -- target_rows: list of rows to apply the transitions to
         -- target_cols: list of columns to apply the transitions to
         -- do_plot: plot the state of the sampler (real-time)
@@ -163,7 +159,7 @@ class State(object):
         """
         kernel_dict = {
             'column_z' :
-                lambda : self._transition_columns(target_cols, ct_kernel, m=m),
+                lambda : self._transition_columns(target_cols, m=m),
             'state_alpha':
                 lambda : self._transition_state_alpha(),
             'row_z':
@@ -219,7 +215,7 @@ class State(object):
         for dim in self.dims:
             dim.update_prior_grids()
 
-    def _transition_columns(self, target_cols=None, ct_kernel=0, m=3):
+    def _transition_columns(self, target_cols=None, m=3):
         """Transition column assignment to views."""
         if target_cols is None:
             target_cols = [i for i in range(self.n_cols)]
