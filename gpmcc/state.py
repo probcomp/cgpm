@@ -262,7 +262,7 @@ class State(object):
         # Draw a view.
         v_b = gu.log_pflip(p_view)
 
-        # Clean up.
+        # Register the dim with the new view.
         if len(self.Nv) <= v_b:
             index = v_b - len(self.Nv)
             assert 0 <= index and index < m
@@ -273,7 +273,7 @@ class State(object):
                 assert v_b < len(self.Nv)
             self._move_dim_to_view(dim, v_a, v_b)
 
-        self._check_partitions()
+        # self._check_partitions()
 
     def _transition_columns_kernel_uncollapsed(self, col, m=3):
         """Gibbs with auxiliary parameters for uncollapsed data types"""
@@ -281,8 +281,8 @@ class State(object):
         is_singleton = (self.Nv[v_a] == 1)
         p_crp = self._compute_view_crp_logps(v_a)
 
-        ps = []
         # Calculate column probability under each view's assignment.
+        p_view = []
         dim = self.dims[col]
         dim_holder = []
         for v in xrange(len(self.Nv)):
@@ -291,8 +291,8 @@ class State(object):
             else:
                 dim_holder.append(copy.deepcopy(dim))
                 dim_holder[-1].reassign(self.views[v].Zr)
-            p_v = dim_holder[-1].full_marginal_logp() + p_crp[v]
-            ps.append(p_v)
+            p_view_v = dim_holder[-1].full_marginal_logp() + p_crp[v]
+            p_view.append(p_view_v)
 
         # If not a singleton, propose m auxiliary parameters (views)
         if not is_singleton:
@@ -305,21 +305,20 @@ class State(object):
                 proposal_view = View([dim_holder[-1]], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
                 dim_holder[-1].reassign(proposal_view.Zr)
-                p_v = dim_holder[-1].full_marginal_logp() + log_aux
-                ps.append(p_v)
+                p_view_aux = dim_holder[-1].full_marginal_logp() + log_aux
+                p_view.append(p_view_aux)
 
         # Draw a view
-        v_b = gu.log_pflip(ps)
+        v_b = gu.log_pflip(p_view)
         new_dim = dim_holder[v_b]
         self.dims[dim.index] = new_dim
 
-        # Are we moving to a singleton?
+        # Register the dim with the new view.
         if len(self.Nv) <= v_b:
             index = v_b - len(self.Nv)
             assert 0 <= index and index < m
             proposal_view = proposal_views[index]
             self._create_singleton_view(new_dim, v_a, proposal_view)
-        # Move new_dim to the new view.
         else:
             if is_singleton:
                 assert v_b < len(self.Nv)
