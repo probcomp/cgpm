@@ -63,7 +63,6 @@ class State(object):
         >>> X = [np.random.normal(n_rows), np.random.normal(n_rows)]
         >>> state = State(X, ['normal', 'normal'], [None, None])
         """
-        # Entropy control.
         self.seed = 0 if seed is None else seed
         np.random.seed(self.seed)
 
@@ -196,7 +195,6 @@ class State(object):
             progress = '[' + '=' * fill + progress[fill:] + ']'
             print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
             sys.stdout.flush()
-            # random.shuffle(kernel_fns)
             for kernel in kernel_fns:
                 kernel()
             if do_plot:
