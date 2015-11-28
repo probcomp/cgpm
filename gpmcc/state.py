@@ -284,7 +284,7 @@ class State(object):
                 p_v = dim.full_marginal_logp()+log_aux
                 ps.append(p_v)
 
-        # draw a view
+        # Draw a view.
         v_b = gu.log_pflip(ps)
 
         if append:
@@ -295,22 +295,18 @@ class State(object):
             self._append_new_dim_to_view(dim, v_b, proposal_view)
             return
 
-        # clean up
-        if v_b != v_a:
+        # Clean up.
+        if len(self.Nv) <= v_b:
+            index = v_b - len(self.Nv)
+            assert 0 <= index and index < m
+            proposal_view = proposal_views[index]
+            self._create_singleton_view(dim, v_a, proposal_view)
+        else:
             if is_singleton:
                 assert v_b < len(self.Nv)
-                self._move_dim_to_view(dim, v_a, v_b)
-            elif v_b >= len(self.Nv):
-                index = v_b - len(self.Nv)
-                assert index >= 0 and index < m
-                proposal_view = proposal_views[index]
-                self._create_singleton_view(dim, v_a, proposal_view)
-            else:
-                self._move_dim_to_view(dim, v_a, v_b)
-        else:
-            self.dims[col].reassign(self.views[v_a].Zr)
+            self._move_dim_to_view(dim, v_a, v_b)
 
-        # self._check_partitions()
+        self._check_partitions()
 
     def _transition_columns_kernel_uncollapsed(self, col, m=3, append=False):
         """Gibbs with auxiliary parameters for uncollapsed data types"""
