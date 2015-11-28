@@ -358,17 +358,15 @@ class State(object):
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
-    def _create_singleton_view(self, dim, current_view_index, proposal_view,
-            is_uncollapsed=False):
+    def _create_singleton_view(self, dim, current_view_index, proposal_view):
         self.Zv[dim.index] = len(self.Nv)
-        if not is_uncollapsed:
-            dim.reassign(proposal_view.Zr)
+        dim.reassign(proposal_view.Zr)
         self.views[current_view_index].release_dim(dim.index)
         self.Nv[current_view_index] -= 1
         self.Nv.append(1)
         self.views.append(proposal_view)
 
-    def _move_dim_to_view(self, dim, move_from, move_to, is_uncollapsed=False):
+    def _move_dim_to_view(self, dim, move_from, move_to):
         self.Zv[dim.index] = move_to
         self.views[move_from].release_dim(dim.index)
         self.Nv[move_from] -= 1
