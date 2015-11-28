@@ -52,7 +52,7 @@ class Engine(object):
         self.metadata = None
 
     def initialize(self, X, cctypes, distargs, num_states=1, col_names=None,
-            seed=0):
+            seeds=None):
         """Get or set the initial state."""
         vu.validate_data(X)
         vu.validate_cctypes(cctypes)
@@ -63,13 +63,22 @@ class Engine(object):
         self.n_cols = len(X)
 
         if col_names is None:
-            self.col_names = [ "col_" + str(i) for i in xrange(len(X))]
+            col_names = [ "col_" + str(i) for i in xrange(len(X))]
         else:
             assert isinstance(col_names, list)
             assert len(col_names) == len(X)
-            self.col_names = col_names
+        self.col_names = col_names
 
-        args = ((X, cctypes, distargs, seed) for _ in xrange(self.num_states))
+        if seeds is None:
+            seeds = range(num_states)
+        else:
+            assert len(seeds) == num_states
+            assert float(seeds) == int(seeds)
+        self.seeds = seeds
+
+        args = ((X, cctypes, distargs, seed) for (_, seed) in
+            zip(xrange(self.num_states), seeds))
+        print args
         self.metadata = self.pool.map(_intialize, args)
 
     def initialize_csv(self, cctypes, distargs, filename, num_states=1,
