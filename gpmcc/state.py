@@ -413,7 +413,7 @@ class State(object):
         plt.draw()
 
     def _check_partitions(self):
-        # for debugging only
+        # For debugging only.
         # Nv should account for each column
         assert sum(self.Nv) == self.n_cols
         # Nv should have an entry for each view

@@ -115,16 +115,7 @@ class View(object):
                 else:
                     self.move_row_to_cluster(rowid, z_a, z_b)
 
-            # make sure the reassign worked properly
-            # assert sum(self.Nk) == self.N
-            # assert len(self.Nk) == self.K
-
-            # zs = list(set(self.Zr))
-            # for j in range(self.K):
-            #   assert zs[j] == j
-            #   for dim in self.dims.keys():
-            #       assert self.dims[dim].clusters[j].N == self.Nk[j]
-
+            self._check_partitions()
 
     def transition(self, N, do_plot=False):
         """Do all the transitions. Do_plot is mainly for debugging and is only
@@ -220,3 +211,15 @@ class View(object):
     def clear_data(self):
         for dim in self.dims.values():
             dim.clear_data()
+
+    def _check_partitions(self):
+        # For debugging only.
+        # The counts for all clusters are accounted for.
+        assert len(self.Nk) == self.K
+        # All rows must be accounted for in the clustering.
+        assert sum(self.Nk) == self.N
+        zs = sorted(list(set(self.Zr)))
+        for j in xrange(self.K):
+          assert zs[j] == j
+          for dim in self.dims.keys():
+              assert self.dims[dim].clusters[j].N == self.Nk[j]
