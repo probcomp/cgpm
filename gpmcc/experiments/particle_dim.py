@@ -12,6 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import sys
+
 import numpy as np
 from scipy.misc import logsumexp
 
@@ -21,7 +23,7 @@ from gpmcc.utils import general as gu
 class ParticleDim(object):
     """Holds data, model type, and hyperparameters."""
 
-    def __init__(self, X, dist, distargs=None, n_grid=30, hypers=None):
+    def __init__(self, dist, distargs=None, n_grid=30):
         """Dimension constructor.
 
         Arguments:
@@ -36,62 +38,74 @@ class ParticleDim(object):
         multinomial data requires the number of multinomial categories. See the
         documentation for each type for details
         """
-        # Data information.
-        self.X = X
-
         # Model type.
         self.model = cu.dist_class(dist)
         self.cctype = self.model.cctype
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
-        self.hypers_grids = self.model.construct_hyper_grids(self.X, n_grid)
-        self.hypers = hypers
-        if hypers is None:
-            self.hypers = self.model.init_hypers(self.hypers_grids, self.X)
+        self.n_grid = n_grid
+        self.hypers_grids = dict()
+        self.hypers = dict()
+
+        # self.update_hyper_grids(X)
+        # self.hypers = self.model.init_hypers(self.hypers_grids, X)
 
         # CRP
         self.alpha = 1
-        self.alpha_grid = gu.log_linspace(1.0/len(self.X), len(self.X), n_grid)
+        self.alpha_grid = []
 
-    def particle_initialize(self):
+        # Initial variables.
+        self.clusters = []
+        self.Xobs = np.asarray([])
+        self.Nobs = 0
+        self.Zr = np.asarray([])
+
+    def particle_initialize(self, x):
         """Clears entire state to a single observation."""
         # Initialize the SMC with first observation into cluster 0.
         self.clusters = [self.model(distargs=self.distargs, **self.hypers)]
         self.Nobs = 1
-        self.Xobs = self.X[:self.Nobs]
-        self.Zr = [0]
+        self.Xobs = np.asarray([x])
+        self.Zr = np.asarray([0])
         self.insert_element(0, self.Zr[0])
         self.weight = self.clusters[0].marginal_logp()
+        # Hyperparameters.
+        self.update_grids(self.Xobs)
+        self.hypers = self.model.init_hypers(self.hypers_grids, self.Xobs)
 
-    def particle_learn(self):
-        """Iteratively applies particle learning, Carvalho (2011)."""
-        self.particle_initialize()
-        for j in xrange(1, len(self.X)):
+    def particle_learn(self, X):
+        """Iteratively applies particle learning on the observations in X."""
+        if self.Nobs == 0:
+            self.particle_initialize(X[0])
+            X = X[1:]
+        for i, x in enumerate(X):
             # Monitor progress.
-            percentage = float(j+1) / len(self.X)
+            percentage = float(i+1) / len(X)
             progress = ' ' * 30
             fill = int(percentage * len(progress))
             progress = '[' + '=' * fill + progress[fill:] + ']'
             print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
-            # Learn.
-            self.weight += self.incorporate_observation(j)
+            sys.stdout.flush()
+            # Include the new datapoint.
+            self.incorporate(x)
+            self.weight += self.transition_rows(target_rows=[self.Nobs-1])
+            # Gibbs transition.
             self.transition_rows(target_rows=range(self.Nobs))
             self.transition_hypers()
             self.transition_alpha()
-        print
         return self.weight
 
-    def incorporate_observation(self, rowid):
-        """Incorporates a new observation, as a step in particle learning."""
+    def incorporate(self, x):
+        """Incorporates a new observation in particle learning."""
         # Arbitrarily assign to cluster 0, not consequential.
         self.Nobs += 1
-        self.Xobs = self.X[:self.Nobs]
+        self.Xobs = np.append(self.Xobs, x)
+        assert self.Nobs == len(self.Xobs)
+        rowid = self.Nobs - 1
         self.insert_element(rowid, 0)
         self.Zr = np.append(self.Zr, 0)
-        # Transition the row.
-        weight = self.transition_rows(target_rows=[rowid])
-        return weight
+        self.update_grids(self.Xobs)
 
     def insert_element(self, rowid, k):
         """Insert x into clusters[k]."""
@@ -157,6 +171,12 @@ class ParticleDim(object):
     def full_marginal_logp(self):
         """Returns the marginal log_p over all clusters."""
         return sum(cluster.marginal_logp() for cluster in self.clusters)
+
+    def update_grids(self, X):
+        self.hypers_grids = self.model.construct_hyper_grids(X,
+            self.n_grid)
+        self.alpha_grid = gu.log_linspace(1.0/len(X), len(X),
+            self.n_grid)
 
     def transition_hypers(self):
         """Updates the hyperparameters and the component parameters."""

@@ -14,39 +14,39 @@
 
 import numpy as np
 
+from gpmcc.utils.validation import validate_cctypes
 from gpmcc.experiments.particle_dim import ParticleDim
 
 import multiprocessing
 
 def _particle_learn(args):
-    X, cctype, distargs, seed = args
+    dim, X, seed = args
     np.random.seed(seed)
     np.random.shuffle(X)
-    dim = ParticleDim(X, cctype, distargs)
-    dim.particle_learn()
+    dim.particle_learn(X)
     return dim
 
 class ParticleEngine(object):
     """Particle Engine."""
 
-    def __init__(self, X, dist, distargs=None, multithread=True):
+    def __init__(self, dist, particles=1, distargs=None, multithread=True):
+        validate_cctypes([dist])
         self.multithread = multithread
         self.map = map
         if self.multithread:
             self.pool = multiprocessing.Pool(multiprocessing.cpu_count())
             self.map = self.pool.map
-        self.X = X
         self.dist = dist
         self.distargs = distargs
-        self.dims = None
+        self.particles = particles
+        self.dims = [ParticleDim(dist, distargs) for _ in xrange(particles)]
 
-    def particle_learn(self, particles=1, seeds=None):
+    def particle_learn(self, X, seeds=None):
         """Do particle learning in parallel."""
         if seeds is None:
-            seeds = range(particles)
-        assert len(seeds) == particles
-        args = ((self.X, self.dist, self.distargs, seed) for (_, seed) in
-            zip(xrange(particles), seeds))
+            seeds = range(self.particles)
+        assert len(seeds) == self.particles
+        args = [(dim, X, seed) for (dim, seed) in zip(self.dims, seeds)]
         self.dims = self.map(_particle_learn, args)
 
     def get_dim(self, index):
