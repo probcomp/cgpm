@@ -61,6 +61,9 @@ class ParticleDim(object):
         self.Nobs = 0
         self.Zr = np.asarray([])
 
+        # Weight
+        self.weight = 0
+
     def particle_initialize(self, x):
         """Clears entire state to a single observation."""
         # Initialize the SMC with first observation into cluster 0.
