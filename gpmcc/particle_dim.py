@@ -61,9 +61,9 @@ class ParticleDim(object):
         self.clusters = [self.model(distargs=self.distargs, **self.hypers)]
         self.Nobs = 1
         self.Xobs = self.X[:self.Nobs]
-        self.insert_element(0, 0)
-        self.weight = self.clusters[0].marginal_logp()
         self.Zr = [0]
+        self.insert_element(0, self.Zr[0])
+        self.weight = self.clusters[0].marginal_logp()
 
     def particle_learn(self):
         self.particle_initialize()
@@ -114,15 +114,13 @@ class ParticleDim(object):
 
     def move_to_cluster(self, rowid, move_from, move_to):
         """Move X[rowid] from clusters[move_from] to clusters[move_to]."""
-        x = self.Xobs[rowid]
-        self.clusters[move_from].remove_element(x)
-        self.clusters[move_to].insert_element(x)
+        self.remove_element(rowid, move_from)
+        self.insert_element(rowid, move_to)
         self.Zr[rowid] = move_to
 
     def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
         """Move X[rowid] to clusters[move_to], destroy clusters[to_destroy]."""
-        x = self.Xobs[rowid]
-        self.clusters[move_to].insert_element(x)
+        self.insert_element(rowid, move_to)
         self.Zr[rowid] = move_to
         zminus = np.nonzero(self.Zr>to_destroy)
         self.Zr[zminus] -= 1
@@ -132,11 +130,10 @@ class ParticleDim(object):
         """Remove X[rowid] from clusters[current] and create a new singleton
         cluster.
         """
-        x = self.Xobs[rowid]                          # Get the element
-        self.clusters.append(self.aux_model)       # Create the singleton
-        self.clusters[current].remove_element(x)   # Remove from current cluster
-        self.clusters[-1].insert_element(x)        # Add element to new cluster
-        self.Zr[rowid] = len(self.clusters) - 1    # Update the row partition
+        self.clusters.append(self.aux_model)
+        self.Zr[rowid] = len(self.clusters) - 1
+        self.remove_element(rowid, current)
+        self.insert_element(rowid, self.Zr[rowid])
 
     def marginal_logp(self, k):
         """Returns the marginal log_p of clusters[k]."""
