@@ -76,7 +76,7 @@ class ParticleDim(object):
             print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
             # Learn.
             self.weight += self.incorporate_observation(j)
-            self.transition_rows(target_rows=range(j+1))
+            self.transition_rows(target_rows=range(self.Nobs))
             self.transition_hypers()
             self.transition_alpha()
         print
