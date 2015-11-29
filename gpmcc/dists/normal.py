@@ -93,12 +93,13 @@ class Normal(object):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        ssqdev = np.var(X) * float(len(X))
+        ssqdev = np.var(X) * float(len(X)) + 1
 
-        grids['r'] = gu.log_linspace(1.0/float(len(X)),float(len(X)), n_grid)
+        grids['r'] = gu.log_linspace(1.0/(float(len(X))+1), float(len(X))+1,
+            n_grid)
         grids['s'] = gu.log_linspace(ssqdev/100.0, ssqdev, n_grid)
-        grids['nu'] = gu.log_linspace(1.0,float(len(X)), n_grid) # df >= 1
-        grids['m'] = np.linspace(min(X),max(X), n_grid)
+        grids['nu'] = gu.log_linspace(1.0,float(len(X)+1), n_grid) # df >= 1
+        grids['m'] = np.linspace(min(X),max(X)+5, n_grid)
 
         grids['m'] = np.linspace(-2.0,2.0, n_grid) # for gewek
         grids['s'] = gu.log_linspace(.01, 3.0, n_grid) # for geweke
