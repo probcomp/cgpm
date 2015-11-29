@@ -57,6 +57,7 @@ class ParticleDim(object):
         self.alpha_grid = gu.log_linspace(1.0/len(self.X), len(self.X), n_grid)
 
     def particle_initialize(self):
+        """Clears entire state to a single observation."""
         # Initialize the SMC with first observation into cluster 0.
         self.clusters = [self.model(distargs=self.distargs, **self.hypers)]
         self.Nobs = 1
@@ -66,6 +67,7 @@ class ParticleDim(object):
         self.weight = self.clusters[0].marginal_logp()
 
     def particle_learn(self):
+        """Iteratively applies particle learning, Carvalho (2011)."""
         self.particle_initialize()
         for j in xrange(1, len(self.X)):
             self.weight += self.incorporate_observation(j)
@@ -75,6 +77,7 @@ class ParticleDim(object):
         return self.weight
 
     def incorporate_observation(self, rowid):
+        """Incorporates a new observation, as a step in particle learning."""
         # Arbitrarily assign to cluster 0, not consequential.
         self.Nobs += 1
         self.Xobs = self.X[:self.Nobs]
@@ -83,24 +86,6 @@ class ParticleDim(object):
         # Transition the row.
         weight = self.transition_rows(target_rows=[rowid])
         return weight
-
-    def predictive_logp(self, rowid, k):
-        """Returns the predictive logp of X[rowid] in clusters[k]."""
-        x = self.Xobs[rowid]
-        if self.Zr[rowid] == k:
-            self.remove_element(rowid, k)
-            lp = self.clusters[k].predictive_logp(x)
-            self.insert_element(rowid, k)
-        else:
-            lp = self.clusters[k].predictive_logp(x)
-        return lp
-
-    def singleton_logp(self, rowid):
-        """Returns the predictive log_p of X[rowid] in its own cluster."""
-        x = self.Xobs[rowid]
-        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
-        lp = self.aux_model.singleton_logp(x)
-        return lp
 
     def insert_element(self, rowid, k):
         """Insert x into clusters[k]."""
@@ -135,6 +120,33 @@ class ParticleDim(object):
         self.remove_element(rowid, current)
         self.insert_element(rowid, self.Zr[rowid])
 
+    def cluster_count(self, k):
+        return sum(j == k for j in self.Zr)
+
+    def cluster_counts(self):
+        counts = [self.cluster_count(j) for j in xrange(len(self.clusters))]
+        if sum(counts) != self.Nobs:
+            import ipdb; ipdb.set_trace()
+        return counts
+
+    def predictive_logp(self, rowid, k):
+        """Returns the predictive logp of X[rowid] in clusters[k]."""
+        x = self.Xobs[rowid]
+        if self.Zr[rowid] == k:
+            self.remove_element(rowid, k)
+            lp = self.clusters[k].predictive_logp(x)
+            self.insert_element(rowid, k)
+        else:
+            lp = self.clusters[k].predictive_logp(x)
+        return lp
+
+    def singleton_logp(self, rowid):
+        """Returns the predictive log_p of X[rowid] in its own cluster."""
+        x = self.Xobs[rowid]
+        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+        lp = self.aux_model.singleton_logp(x)
+        return lp
+
     def marginal_logp(self, k):
         """Returns the marginal log_p of clusters[k]."""
         return self.clusters[k].marginal_logp()
@@ -142,23 +154,6 @@ class ParticleDim(object):
     def full_marginal_logp(self):
         """Returns the marginal log_p over all clusters."""
         return sum(cluster.marginal_logp() for cluster in self.clusters)
-
-    def clear_data(self):
-        """Removes all data from the clusters. Cleans suffstats."""
-        K = len(self.clusters)
-        for k in xrange(K):
-            cluster = self.model(distargs=self.distargs)
-            cluster.set_hypers(self.hypers)
-            self.clusters[k] = cluster
-
-    def update_prior_grids(self):
-        n_grid = len(self.hypers_grids.values()[0])
-        hypers_grids = self.model.construct_hyper_grids(self.X, n_grid)
-        hypers = self.model.init_hypers(hypers_grids, self.X)
-        self.hypers_grids = hypers_grids
-        self.hypers = hypers
-        for cluster in self.clusters:
-            cluster.set_hypers(hypers)
 
     def transition_hypers(self):
         """Updates the hyperparameters and the component parameters."""
@@ -177,20 +172,13 @@ class ParticleDim(object):
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
-    def cluster_count(self, k):
-        return sum(j == k for j in self.Zr)
-
-    def cluster_counts(self):
-        counts = [self.cluster_count(j) for j in xrange(len(self.clusters))]
-        if sum(counts) != self.Nobs:
-            import ipdb; ipdb.set_trace()
-        return counts
-
     def transition_rows(self, target_rows=None):
         """Reassign rows to categories.
         Optional arguments:
-        -- target_rows: a list of rows to reassign. If not specified, reassigns
+        -- target_rows: A list of rows to reassign. If not specified, reassigns
         every row in self.Nobs.
+        Returns:
+        -- particle weight.
         """
         weight = 0
         log_alpha = np.log(self.alpha)
@@ -241,7 +229,6 @@ class ParticleDim(object):
                     self.move_to_cluster(rowid, z_a, z_b)
 
             weight += logsumexp(p_cluster)
-            # self._check_partitions()
 
         return weight
 
