@@ -43,26 +43,21 @@ class ParticleDim(object):
         self.cctype = self.model.cctype
         self.distargs = distargs if distargs is not None else {}
 
-        # Hyperparams.
+        # Distribution hyperparams.
         self.n_grid = n_grid
         self.hypers_grids = dict()
         self.hypers = dict()
 
-        # self.update_hyper_grids(X)
-        # self.hypers = self.model.init_hypers(self.hypers_grids, X)
-
-        # CRP
+        # CRP hyperparams.
         self.alpha = 1
         self.alpha_grid = []
 
-        # Initial variables.
+        # Initial state variables.
+        self.weight = 0
         self.clusters = []
         self.Xobs = np.asarray([])
         self.Nobs = 0
         self.Zr = np.asarray([])
-
-        # Weight
-        self.weight = 0
 
     def particle_initialize(self, x):
         """Clears entire state to a single observation."""
