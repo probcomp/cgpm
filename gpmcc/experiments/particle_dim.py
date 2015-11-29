@@ -15,6 +15,7 @@
 import sys
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.misc import logsumexp
 
 from gpmcc.utils import config as cu
@@ -72,27 +73,45 @@ class ParticleDim(object):
         self.update_grids(self.Xobs)
         self.hypers = self.model.init_hypers(self.hypers_grids, self.Xobs)
 
-    def particle_learn(self, X):
+    def particle_learn(self, X, n_gibbs=1, plot=False, progress=False):
         """Iteratively applies particle learning on the observations in X."""
         if self.Nobs == 0:
             self.particle_initialize(X[0])
             X = X[1:]
+        if plot:
+            plt.ion(); plt.show()
+            _, ax = plt.subplots()
+            self.plot_dist(ax=ax)
+            plt.draw()
+            plt.pause(3)
         for i, x in enumerate(X):
-            # Monitor progress.
-            percentage = float(i+1) / len(X)
-            progress = ' ' * 30
-            fill = int(percentage * len(progress))
-            progress = '[' + '=' * fill + progress[fill:] + ']'
-            print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
-            sys.stdout.flush()
+            if progress:
+                # Monitor progress.
+                percentage = float(i+1) / len(X)
+                progress = ' ' * 30
+                fill = int(percentage * len(progress))
+                progress = '[' + '=' * fill + progress[fill:] + ']'
+                print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
+                sys.stdout.flush()
             # Include the new datapoint.
             self.incorporate(x)
             self.weight += self.transition_rows(target_rows=[self.Nobs-1])
-            # Gibbs transition.
-            self.transition_rows(target_rows=range(self.Nobs))
-            self.transition_hypers()
-            self.transition_alpha()
+            for _ in xrange(n_gibbs):
+                self.gibbs_transition()
+                # Plot?
+                if plot:
+                    ax.clear()
+                    self.plot_dist(ax=ax)
+                    plt.draw()
+                    plt.pause(3)
         return self.weight
+
+    def gibbs_transition(self):
+        # Gibbs transition.
+        self.transition_rows(target_rows=range(self.Nobs))
+        self.transition_hypers()
+        self.transition_alpha()
+
 
     def incorporate(self, x):
         """Incorporates a new observation in particle learning."""
