@@ -102,14 +102,11 @@ class ParticleDim(object):
         self.remove_element(rowid, move_from)
         self.insert_element(rowid, move_to)
         self.Zr[rowid] = move_to
-
-    def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
-        """Move X[rowid] to clusters[move_to], destroy clusters[to_destroy]."""
-        self.insert_element(rowid, move_to)
-        self.Zr[rowid] = move_to
-        zminus = np.nonzero(self.Zr>to_destroy)
-        self.Zr[zminus] -= 1
-        del self.clusters[to_destroy]
+        # If move_from now singleton, destroy.
+        if self.cluster_count(move_from) == 0:
+            zminus = np.nonzero(self.Zr > move_from)
+            self.Zr[zminus] -= 1
+            del self.clusters[move_from]
 
     def create_singleton_cluster(self, rowid, current):
         """Remove X[rowid] from clusters[current] and create a new singleton
@@ -221,9 +218,7 @@ class ParticleDim(object):
             z_b = gu.log_pflip(p_cluster)
 
             if z_a != z_b:
-                if is_singleton:
-                    self.destroy_singleton_cluster(rowid, z_a, z_b)
-                elif z_b == len(self.clusters):
+                if z_b == len(self.clusters):
                     self.create_singleton_cluster(rowid, z_a)
                 else:
                     self.move_to_cluster(rowid, z_a, z_b)
