@@ -21,8 +21,7 @@ from gpmcc.utils import general as gu
 class ParticleDim(object):
     """Holds data, model type, and hyperparameters."""
 
-    def __init__(self, X, dist, distargs=None, n_grid=30, hypers=None,
-            mode='collapsed'):
+    def __init__(self, X, dist, distargs=None, n_grid=30, hypers=None):
         """Dimension constructor.
 
         Arguments:
@@ -41,7 +40,6 @@ class ParticleDim(object):
         self.X = X
 
         # Model type.
-        self.mode = mode
         self.model = cu.dist_class(dist)
         self.cctype = self.model.cctype
         self.distargs = distargs if distargs is not None else {}
