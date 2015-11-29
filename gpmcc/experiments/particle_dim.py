@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.misc import logsumexp
 
 from gpmcc.utils import config as cu
@@ -64,9 +65,16 @@ class ParticleDim(object):
         self.insert_element(0, self.Zr[0])
         self.weight = self.clusters[0].marginal_logp()
 
-    def particle_learn(self):
+    def particle_learn(self, plot=False):
         """Iteratively applies particle learning, Carvalho (2011)."""
+        # Initialize the first observation.
         self.particle_initialize()
+        # Are we plotting?
+        if plot:
+            plt.ion(); plt.show()
+            _, ax = plt.subplots()
+            self.plot_dist(ax=ax)
+            plt.draw()
         for j in xrange(1, len(self.X)):
             # Monitor progress.
             percentage = float(j+1) / len(self.X)
@@ -79,6 +87,11 @@ class ParticleDim(object):
             self.transition_rows(target_rows=range(j+1))
             self.transition_hypers()
             self.transition_alpha()
+            # Plot.
+            if plot:
+                ax.clear()
+                self.plot_dist(ax=ax)
+                plt.draw()
         print
         return self.weight
 
