@@ -68,10 +68,18 @@ class ParticleDim(object):
         """Iteratively applies particle learning, Carvalho (2011)."""
         self.particle_initialize()
         for j in xrange(1, len(self.X)):
+            # Monitor progress.
+            percentage = float(j+1) / len(self.X)
+            progress = ' ' * 30
+            fill = int(percentage * len(progress))
+            progress = '[' + '=' * fill + progress[fill:] + ']'
+            print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
+            # Learn.
             self.weight += self.incorporate_observation(j)
             self.transition_rows(target_rows=range(j+1))
             self.transition_hypers()
             self.transition_alpha()
+        print
         return self.weight
 
     def incorporate_observation(self, rowid):
@@ -228,4 +236,4 @@ class ParticleDim(object):
     def plot_dist(self, ax=None):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.Xobs, self.clusters, distargs=self.distargs,
-            ax=ax)
+            ax=ax, hist=False)
