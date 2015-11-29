@@ -189,8 +189,7 @@ class Geometric(object):
         return lp
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None):
-
+    def plot_dist(X, clusters, distargs=None, ax=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()
 

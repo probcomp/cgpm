@@ -299,7 +299,7 @@ class Vonmises(object):
             return np.abs(kappa)
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None):
+    def plot_dist(X, clusters, distargs=None, ax=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()
 
@@ -313,10 +313,6 @@ class Vonmises(object):
         a = clusters[0].a
         b = clusters[0].b
         vmk = clusters[0].k
-
-        nbins = min([len(X)/5, 50])
-        ax.hist(X, nbins, normed=True, color="black", alpha=.5,
-            edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
         if math.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
@@ -339,6 +335,18 @@ class Vonmises(object):
                 alpha = .7
             ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
 
+        # Plot the sum of pdfs.
         ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
+
+        # Plot the samples.
+        if hist:
+            nbins = min([len(X)/5, 50])
+            ax.hist(X, nbins, normed=True, color="black", alpha=.5,
+                edgecolor="none")
+        else:
+            y_max = ax.get_ylim()[1]
+            for x in X:
+                ax.vlines(x, 0, y_max/float(10), linewidth=1)
+
         ax.set_title('vonmises')
         return ax
