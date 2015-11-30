@@ -165,7 +165,7 @@ class ExponentialUC(object):
         return lps
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None, Y=None, ax=None):
+    def plot_dist(X, clusters, distargs=None, Y=None, ax=None, hist=False):
         if ax is None:
             _, ax = plt.subplots()
 
@@ -179,10 +179,6 @@ class ExponentialUC(object):
 
         a = clusters[0].a
         b = clusters[0].b
-
-        nbins = min([len(X), 50])
-        ax.hist(X, nbins, normed=True, color="black", alpha=.5,
-            edgecolor="none")
 
         W = [log(clusters[k].N) - denom for k in range(K)]
         for k in range(K):
@@ -198,6 +194,15 @@ class ExponentialUC(object):
                 alpha=.7
             ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
 
-        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
+        # Plot the samples.
+        if hist:
+            nbins = min([len(X), 50])
+            ax.hist(X, nbins, normed=True, color="black", alpha=.5,
+                edgecolor="none")
+        else:
+            y_max = ax.get_ylim()[1]
+            for x in X:
+                ax.vlines(x, 0, y_max/float(10), linewidth=1)
+
         ax.set_title('exponential')
         return ax
