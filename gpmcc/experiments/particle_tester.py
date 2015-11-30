@@ -52,9 +52,11 @@ T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
 # dim.particle_learn(T[0])
 
-dims = [ParticleDim('normal'), ParticleDim('exponential_uc'),
-    ParticleDim('lognormal'), ParticleDim('beta_uc')]
-dim = dims[0]
+dims = [
+    ParticleDim('normal'),
+    ParticleDim('exponential_uc'),
+    ParticleDim('lognormal'),
+    ParticleDim('beta_uc')]
 
 def observe_datum(t):
     for d in dims:
@@ -63,10 +65,11 @@ def observe_datum(t):
 
 def observe_data(t):
     global dims
+    for d in dims:
+        d.particle_learn([t])
     weights = observe_datum(t)
-    print 'Observation %f: %f' % (dim.Nobs, t)
+    print 'Observation %f: %f' % (dims[0].Nobs, t)
     print weights
-    ax.clear()
     while True:
         args = ((d) for d in dims)
         dims = pool.map(_gibbs_transition, args)
@@ -81,8 +84,6 @@ def observe_data(t):
 plt.ion(); plt.show()
 _, ax = plt.subplots()
 def on_click(event):
-    global dims
-    # get the x and y coords, flip y from top to bottom
     if event.button == 1:
         if event.inaxes is not None:
             observe_data(event.xdata)
