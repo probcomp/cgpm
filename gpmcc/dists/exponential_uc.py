@@ -204,5 +204,5 @@ class ExponentialUC(object):
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
 
-        ax.set_title('exponential')
+        ax.set_title('exponential_uc')
         return ax
