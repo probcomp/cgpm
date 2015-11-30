@@ -197,7 +197,7 @@ class Poisson(object):
         return lp
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, hist=True):
+    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()
 

@@ -165,13 +165,14 @@ class ExponentialUC(object):
         return lps
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None):
+    def plot_dist(X, clusters, distargs=None, Y=None, ax=None):
         if ax is None:
             _, ax = plt.subplots()
 
         x_min = 0
         x_max = max(X) + 2
-        Y = np.linspace(x_min, x_max, 200)
+        if Y is None:
+            Y = np.linspace(x_min, x_max, 200)
         K = len(clusters)
         pdf = np.zeros((K,200))
         denom = log(float(len(X)))

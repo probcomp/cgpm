@@ -245,13 +245,14 @@ class NormalUC(object):
 
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, hist=True):
+    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()
 
         x_min = min(X)
         x_max = max(X)
-        Y = np.linspace(x_min, x_max, 200)
+        if Y is None:
+            Y = np.linspace(x_min, x_max, 200)
         K = len(clusters)
         pdf = np.zeros((K,200))
         denom = log(float(len(X)))
