@@ -85,9 +85,9 @@ class ExponentialUC(object):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['a'] = gu.log_linspace(1.0/float(len(X)), float(len(X)),
+        grids['a'] = gu.log_linspace(1.0/float(len(X)), float(len(X)+1),
             n_grid)
-        grids['b'] = gu.log_linspace(1.0/float(len(X)), float(len(X)),
+        grids['b'] = gu.log_linspace(1.0/float(len(X)), float(len(X)+1),
             n_grid)
         return grids
 
