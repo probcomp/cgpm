@@ -194,4 +194,4 @@ class Dim(object):
     def plot_dist(self, ax=None):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.Xf, self.clusters, distargs=self.distargs,
-            ax=ax)
+            ax=ax, hist=False)
