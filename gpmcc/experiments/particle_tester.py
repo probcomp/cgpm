@@ -39,33 +39,29 @@ distargs = [None]
 
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
-dim = ParticleDim('beta_uc')
+dim = ParticleDim('normal')
 # dim.particle_learn(T[0])
 
 plt.ion(); plt.show()
 _, ax = plt.subplots()
-def observe_data(t):
-    dim.particle_learn([t])
-    ax.clear()
-    while True:
-        dim.gibbs_transition()
-        ax.clear()
-        dim.plot_dist(ax=ax)
-        ax.grid()
-        plt.draw()
-        plt.pause(1)
-        print dim.Nobs
-
 def on_click(event):
     # get the x and y coords, flip y from top to bottom
-    x, y = event.x, event.y
     if event.button == 1:
         if event.inaxes is not None:
             print('data coords %f %f' % (event.xdata, event.ydata))
-            observe_data([event.xdata])
+            dim.particle_learn([event.xdata])
+            ax.clear()
+            while True:
+                dim.gibbs_transition()
+                ax.clear()
+                dim.plot_dist(ax=ax, Y=np.linspace(0,1,200))
+                ax.grid()
+                plt.draw()
+                plt.pause(0.5)
+                print dim.Nobs
+
 
 plt.connect('button_press_event', on_click)
-
 
 # engine = ParticleEngine('beta_uc', particles=particles)
 # engine.particle_learn(T[0])
