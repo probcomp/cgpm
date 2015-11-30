@@ -12,11 +12,16 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from gpmcc.utils import test as tu
-from particle_engine import ParticleEngine
-from particle_dim import ParticleDim
+import multiprocessing
+
 import numpy as np
 import matplotlib.pyplot as plt
+
+from gpmcc.utils import test as tu
+from gpmcc.utils import general as gu
+from particle_engine import ParticleEngine
+from particle_dim import ParticleDim
+
 
 def logmeanexp(values):
     from scipy.misc import logsumexp
@@ -36,30 +41,47 @@ distargs = [None]
 
 # T = np.random.normal(loc=1000, scale=10, size=100)
 
+def _gibbs_transition(args):
+    dim = args
+    dim.gibbs_transition()
+    return dim
+
+pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
-dim = ParticleDim('normal')
 # dim.particle_learn(T[0])
+
+dims = [ParticleDim('normal'), ParticleDim('exponential'),
+    ParticleDim('lognormal'), ParticleDim('beta_uc')]
+dim = dims[0]
+
+def observe_data(t):
+    for d in dims:
+        d.particle_learn([t])
+    return [d.weight for d in dims]
 
 plt.ion(); plt.show()
 _, ax = plt.subplots()
 def on_click(event):
+    global dims
     # get the x and y coords, flip y from top to bottom
     if event.button == 1:
         if event.inaxes is not None:
-            print('data coords %f %f' % (event.xdata, event.ydata))
-            dim.particle_learn([event.xdata])
+            weights = observe_data(event.xdata)
+            print 'Observation %f: %f' % (dim.Nobs, event.xdata)
+            print weights
             ax.clear()
             while True:
-                dim.gibbs_transition()
+                args = ((d) for d in dims)
+                dims = pool.map(_gibbs_transition, args)
+                i = gu.log_pflip(weights)
+                dims[i].gibbs_transition()
                 ax.clear()
-                dim.plot_dist(ax=ax, Y=np.linspace(0,1,200))
+                dims[i].plot_dist(ax=ax, Y=np.linspace(0,1,200))
                 ax.grid()
                 plt.draw()
                 plt.pause(0.5)
-                print dim.Nobs
-
 
 plt.connect('button_press_event', on_click)
 
