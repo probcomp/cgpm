@@ -52,14 +52,31 @@ T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
 # dim.particle_learn(T[0])
 
-dims = [ParticleDim('normal'), ParticleDim('exponential'),
+dims = [ParticleDim('normal'), ParticleDim('exponential_uc'),
     ParticleDim('lognormal'), ParticleDim('beta_uc')]
 dim = dims[0]
 
-def observe_data(t):
+def observe_datum(t):
     for d in dims:
         d.particle_learn([t])
     return [d.weight for d in dims]
+
+def observe_data(t):
+    global dims
+    weights = observe_datum(t)
+    print 'Observation %f: %f' % (dim.Nobs, t)
+    print weights
+    ax.clear()
+    while True:
+        args = ((d) for d in dims)
+        dims = pool.map(_gibbs_transition, args)
+        i = gu.log_pflip(weights)
+        dims[i].gibbs_transition()
+        ax.clear()
+        dims[i].plot_dist(ax=ax, Y=np.linspace(0.01,0.99,200))
+        ax.grid()
+        plt.draw()
+        plt.pause(0.5)
 
 plt.ion(); plt.show()
 _, ax = plt.subplots()
@@ -68,24 +85,6 @@ def on_click(event):
     # get the x and y coords, flip y from top to bottom
     if event.button == 1:
         if event.inaxes is not None:
-            weights = observe_data(event.xdata)
-            print 'Observation %f: %f' % (dim.Nobs, event.xdata)
-            print weights
-            ax.clear()
-            while True:
-                args = ((d) for d in dims)
-                dims = pool.map(_gibbs_transition, args)
-                i = gu.log_pflip(weights)
-                dims[i].gibbs_transition()
-                ax.clear()
-                dims[i].plot_dist(ax=ax, Y=np.linspace(0,1,200))
-                ax.grid()
-                plt.draw()
-                plt.pause(0.5)
+            observe_data(event.xdata)
 
 plt.connect('button_press_event', on_click)
-
-# engine = ParticleEngine('beta_uc', particles=particles)
-# engine.particle_learn(T[0])
-# weights = [engine.get_dim(i).weight for i in xrange(particles)]
-# dims = [engine.get_dim(i) for i in xrange(particles)]
