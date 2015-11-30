@@ -269,7 +269,7 @@ class ParticleDim(object):
 
         return weight
 
-    def plot_dist(self, ax=None, Y=None):
+    def plot_dist(self, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.Xobs, self.clusters, distargs=self.distargs,
             ax=ax, Y=Y, hist=False)

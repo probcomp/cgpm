@@ -12,58 +12,77 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from gpmcc.utils import test as tu
-from particle_engine import ParticleEngine
-from particle_dim import ParticleDim
+import multiprocessing
+
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.misc import logsumexp
 
-def logmeanexp(values):
-    from scipy.misc import logsumexp
-    return logsumexp(values) - np.log(len(values))
+from gpmcc.utils import test as tu
+from gpmcc.utils import general as gu
+from particle_dim import ParticleDim
 
 # Fix the dataset.
 np.random.seed(100)
-particles = 20
 
-# set up the data generation
-n_rows = 10
+# Competing densities.
+dims = [
+    ParticleDim('normal'),
+    ParticleDim('exponential_uc'),
+    ParticleDim('lognormal'),
+    ParticleDim('beta_uc')
+    ]
+
+def logmeanexp(values):
+    return logsumexp(values) - np.log(len(values))
+
+def _gibbs_transition(args):
+    dim = args
+    dim.gibbs_transition()
+    return dim
+
+
+# Multiprocessor.
+pool = multiprocessing.Pool(multiprocessing.cpu_count())
+
+def observe_data(t):
+    global dims
+    global pool
+    for d in dims:
+        d.particle_learn([t])
+    weights = [d.weight for d in dims]
+    print 'Observation %f: %f' % (dims[0].Nobs, t)
+    print weights
+    while True:
+        dims = pool.map(_gibbs_transition, ((d) for d in dims))
+        i = gu.log_pflip(weights)
+        dims[i].gibbs_transition()
+        ax.clear()
+        dims[i].plot_dist(ax=ax, Y=np.linspace(0.01,0.99,200))
+        ax.grid()
+        plt.draw()
+        plt.pause(1.5)
+
+def on_click(event):
+    if event.button == 1:
+        if event.inaxes is not None:
+            observe_data(event.xdata)
+
+# Activate the plotter.
+plt.ion(); plt.show()
+_, ax = plt.subplots()
+plt.connect('button_press_event', on_click)
+
+# Data generation.
+n_rows = 100
 view_weights = np.ones(1)
 cluster_weights = [ np.array([.5, .5]) ]
 cctypes = ['beta_uc']
 separation = [.8]
 distargs = [None]
+T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
+    cctypes, distargs, separation)
 
-# T = np.random.normal(loc=1000, scale=10, size=100)
-
-
-T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-    cctypes, distargs, separation, return_dims=True)
-dim = ParticleDim('normal')
-# dim.particle_learn(T[0])
-
-plt.ion(); plt.show()
-_, ax = plt.subplots()
-def on_click(event):
-    # get the x and y coords, flip y from top to bottom
-    if event.button == 1:
-        if event.inaxes is not None:
-            print('data coords %f %f' % (event.xdata, event.ydata))
-            dim.particle_learn([event.xdata])
-            ax.clear()
-            while True:
-                dim.gibbs_transition()
-                ax.clear()
-                dim.plot_dist(ax=ax, Y=np.linspace(0,1,200))
-                ax.grid()
-                plt.draw()
-                plt.pause(0.5)
-                print dim.Nobs
-
-
-plt.connect('button_press_event', on_click)
-
-# engine = ParticleEngine('beta_uc', particles=particles)
-# engine.particle_learn(T[0])
-# weights = [engine.get_dim(i).weight for i in xrange(particles)]
-# dims = [engine.get_dim(i) for i in xrange(particles)]
+# Test against synthetic data.
+# for t in T[0]:
+#     observe_data(t)
