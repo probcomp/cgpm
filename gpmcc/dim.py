@@ -191,7 +191,7 @@ class Dim(object):
         #     suffstats.append(cluster.get_suffstats())
         return suffstats
 
-    def plot_dist(self, ax=None):
+    def plot_dist(self, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.Xf, self.clusters, distargs=self.distargs,
-            ax=ax, hist=False)
+            ax=ax, Y=Y, hist=False)
