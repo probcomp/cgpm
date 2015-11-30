@@ -29,7 +29,6 @@ np.random.seed(100)
 dims = [
     ParticleDim('normal'),
     ParticleDim('exponential_uc'),
-    ParticleDim('lognormal'),
     ParticleDim('beta_uc')
     ]
 
