@@ -112,7 +112,6 @@ class ParticleDim(object):
         self.transition_hypers()
         self.transition_alpha()
 
-
     def incorporate(self, x):
         """Incorporates a new observation in particle learning."""
         # Arbitrarily assign to cluster 0, not consequential.
@@ -270,7 +269,7 @@ class ParticleDim(object):
 
         return weight
 
-    def plot_dist(self, ax=None):
+    def plot_dist(self, ax=None, Y=None):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.Xobs, self.clusters, distargs=self.distargs,
-            ax=ax, hist=False)
+            ax=ax, Y=Y, hist=False)
