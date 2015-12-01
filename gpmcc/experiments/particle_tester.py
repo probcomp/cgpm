@@ -22,65 +22,30 @@ from gpmcc.utils import test as tu
 from gpmcc.utils import general as gu
 from particle_dim import ParticleDim
 
-# Fix the dataset.
-np.random.seed(100)
-
-# Competing densities.
-dims = [
-    ParticleDim('normal'),
-    ParticleDim('exponential_uc'),
-    ParticleDim('beta_uc')
-    ]
-
 def logmeanexp(values):
     return logsumexp(values) - np.log(len(values))
 
-def _gibbs_transition(args):
-    dim = args
-    dim.gibbs_transition()
-    return dim
+# Fix seed for random dataset.
+np.random.seed(10)
 
-
-# Multiprocessor.
-pool = multiprocessing.Pool(multiprocessing.cpu_count())
-
-def observe_data(t):
-    global dims
-    global pool
-    for d in dims:
-        d.particle_learn([t])
-    weights = [d.weight for d in dims]
-    print 'Observation %f: %f' % (dims[0].Nobs, t)
-    print weights
-    while True:
-        dims = pool.map(_gibbs_transition, ((d) for d in dims))
-        i = gu.log_pflip(weights)
-        dims[i].gibbs_transition()
-        ax.clear()
-        dims[i].plot_dist(ax=ax, Y=np.linspace(0.01,0.99,200))
-        ax.grid()
-        plt.draw()
-        plt.pause(1.5)
-
-def on_click(event):
-    if event.button == 1:
-        if event.inaxes is not None:
-            observe_data(event.xdata)
-
-# Activate the plotter.
-plt.ion(); plt.show()
-_, ax = plt.subplots()
-plt.connect('button_press_event', on_click)
-
-# Data generation.
-n_rows = 100
+# set up the data generation
+n_rows = 15
 view_weights = np.ones(1)
-cluster_weights = [ np.array([.5, .5]) ]
-cctypes = ['beta_uc']
+cluster_weights = [np.asarray([.5, .3, .2])]
+dists = ['normal']
 separation = [.8]
 distargs = [None]
-T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-    cctypes, distargs, separation)
+T, Zv, Zc,= tu.gen_data_table(n_rows, view_weights, cluster_weights, dists,
+    distargs, separation)
+
+# num_particles = 1
+# dims = []
+# for i in xrange(num_particles):
+#     dims.append(ParticleDim('normal'))
+#     dims[-1].particle_learn(T[0], progress=True)
+
+dim = ParticleDim('normal_uc')
+dim.particle_learn(T[0], progress=True)
 
 # Test against synthetic data.
 # for t in T[0]:

@@ -60,6 +60,9 @@ class ParticleDim(object):
         self.Nobs = 0
         self.Zr = np.asarray([])
 
+        # Auxiliary singleton model.
+        self.aux_model = None
+
     def particle_initialize(self, x):
         """Clears entire state to a single observation."""
         # Initialize the SMC with first observation into cluster 0.
@@ -273,3 +276,57 @@ class ParticleDim(object):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.Xobs, self.clusters, distargs=self.distargs,
             ax=ax, Y=Y, hist=False)
+
+    def to_metadata(self):
+        metadata = dict()
+        # Model type.
+        metadata['cctype'] = self.cctype
+        metadata['distargs'] = self.distargs
+
+        # Distribution hyperparams.
+        metadata['n_grid'] = self.n_grid
+        metadata['hypers_grids'] = self.hypers_grids
+        metadata['hypers'] = self.hypers
+
+        # CRP hyperparams.
+        metadata['alpha'] = self.alpha
+        metadata['alpha_grid'] = self.alpha_grid
+
+        # State variables.
+        metadata['weight'] = self.weight
+        metadata['Xobs'] = self.Xobs
+        metadata['Nobs'] = self.Nobs
+        metadata['Zr'] = self.Zr
+
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata):
+        # Model type.
+        dim = cls(metadata['cctype'], distargs=metadata['distargs'],
+            n_grid=metadata['n_grid'])
+
+        # Distribution hyperparams.
+        dim.hypers_grids = metadata['hypers_grids']
+        dim.hypers = metadata['hypers']
+
+        # CRP hyperparams.
+        dim.alpha = metadata['alpha']
+        dim.alpha_grid = metadata['alpha_grid']
+
+        # State variables.
+        dim.weight = metadata['weight']
+        dim.Xobs = metadata['Xobs']
+        dim.Nobs = metadata['Nobs']
+        dim.Zr = metadata['Zr']
+        assert len(dim.Xobs) == dim.Nobs
+        assert len(dim.Xobs) == len(dim.Zr)
+
+        # Insert Xobs into clusters.
+        n_cluster = len(set(dim.Zr))
+        dim.clusters = [dim.model(distargs=dim.distargs, **dim.hypers)
+            for _ in xrange(n_cluster)]
+        for i, z in enumerate(dim.Zr):
+            dim.insert_element(i, z)
+
+        return dim
