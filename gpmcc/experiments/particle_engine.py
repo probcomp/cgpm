@@ -20,11 +20,12 @@ from gpmcc.experiments.particle_dim import ParticleDim
 import multiprocessing
 
 def _particle_learn(args):
-    dim, X, seed = args
+    metadata, X, seed = args
     np.random.seed(seed)
     np.random.shuffle(X)
-    dim.particle_learn(X)
-    return dim
+    dim = ParticleDim.from_metadata(metadata)
+    dim.particle_learn(X, progress=True)
+    return dim.to_metadata()
 
 class ParticleEngine(object):
     """Particle Engine."""
@@ -46,8 +47,10 @@ class ParticleEngine(object):
         if seeds is None:
             seeds = range(self.particles)
         assert len(seeds) == self.particles
-        args = [(dim, X, seed) for (dim, seed) in zip(self.dims, seeds)]
-        self.dims = self.map(_particle_learn, args)
+        args = [(dim.to_metadata(), X, seed) for (dim, seed)
+            in zip(self.dims, seeds)]
+        metadata = self.map(_particle_learn, args)
+        self.dims = [ParticleDim.from_metadata(m) for m in metadata]
 
     def get_dim(self, index):
         return self.dims[index]
