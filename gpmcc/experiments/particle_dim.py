@@ -99,6 +99,7 @@ class ParticleDim(object):
             # Include the new datapoint.
             self.incorporate(x)
             self.weight += self.transition_rows(target_rows=[self.Nobs-1])
+            # Do the MCMC transition.
             for _ in xrange(n_gibbs):
                 self.gibbs_transition()
                 # Plot?
@@ -241,9 +242,12 @@ class ParticleDim(object):
             else:
                 # Remove rowid from the z_a cluster count.
                 p_crp[z_a] -= 1
+                # Append to the CRP an alpha for singleton.
+                p_crp.append(self.alpha)
 
             # Take log of the CRP probabilities.
             p_crp = np.log(np.array(p_crp))
+            p_crp = gu.log_normalize(p_crp)
 
             # Calculate probability of each row in each category, k \in K.
             p_cluster = []
@@ -256,7 +260,7 @@ class ParticleDim(object):
 
             # Propose singleton.
             if not is_singleton:
-                lp = self.singleton_logp(rowid) + log_alpha
+                lp = self.singleton_logp(rowid) + p_crp[-1]
                 p_cluster.append(lp)
 
             # Draw new assignment, z_b
@@ -319,6 +323,7 @@ class ParticleDim(object):
         dim.Xobs = metadata['Xobs']
         dim.Nobs = metadata['Nobs']
         dim.Zr = metadata['Zr']
+        # Check.
         assert len(dim.Xobs) == dim.Nobs
         assert len(dim.Xobs) == len(dim.Zr)
 
