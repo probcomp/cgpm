@@ -21,6 +21,7 @@ from scipy.misc import logsumexp
 from gpmcc.utils import test as tu
 from gpmcc.utils import general as gu
 from particle_dim import ParticleDim
+from particle_engine import ParticleEngine
 
 def logmeanexp(values):
     return logsumexp(values) - np.log(len(values))
@@ -28,8 +29,8 @@ def logmeanexp(values):
 # Fix seed for random dataset.
 np.random.seed(10)
 
-# set up the data generation
-n_rows = 15
+# Set up the data generation.
+n_rows = 100
 view_weights = np.ones(1)
 cluster_weights = [np.asarray([.5, .3, .2])]
 dists = ['normal']
@@ -38,15 +39,13 @@ distargs = [None]
 T, Zv, Zc,= tu.gen_data_table(n_rows, view_weights, cluster_weights, dists,
     distargs, separation)
 
-# num_particles = 1
-# dims = []
-# for i in xrange(num_particles):
-#     dims.append(ParticleDim('normal'))
-#     dims[-1].particle_learn(T[0], progress=True)
+# Initialize the engine.
+num_particles = 6
+engine = ParticleEngine('normal', particles=num_particles)
+engine.particle_learn(T[0])
 
-dim = ParticleDim('normal_uc')
-dim.particle_learn(T[0], progress=True)
+# Obtain the marginal logps from each chain.
+weights = [dim.weight for dim in engine.dims]
 
-# Test against synthetic data.
-# for t in T[0]:
-#     observe_data(t)
+# Compute the estimator of logZ.
+logZ = logmeanexp(weights)
