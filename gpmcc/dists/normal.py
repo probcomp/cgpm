@@ -188,43 +188,32 @@ class Normal(object):
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+        # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
-
+        # Set up x axis.
         x_min = min(X)
         x_max = max(X)
         if Y is None:
             Y = np.linspace(x_min, x_max, 200)
+        # Compute weighted pdfs
         K = len(clusters)
-        pdf = np.zeros((K,200))
+        pdf = np.zeros((K, 200))
         denom = log(float(len(X)))
-
-        m = clusters[0].m
-        s = clusters[0].s
-        r = clusters[0].r
-        nu = clusters[0].nu
-
         W = [log(clusters[k].N) - denom for k in range(K)]
         for k in range(K):
-            w = W[k]
-            N = clusters[k].N
-            sum_x = clusters[k].sum_x
-            sum_x_sq = clusters[k].sum_x_sq
             for n in range(200):
                 y = Y[n]
-                pdf[k, n] = np.exp(w + Normal.calc_predictive_logp(y, N,
-                    sum_x, sum_x_sq, m, r, s, nu))
+                pdf[k, n] = np.exp(W[k] + clusters[k].predictive_logp(y))
             if k >= 8:
                 color = "white"
-                alpha=.3
+                alpha = .3
             else:
                 color = gu.colors()[k]
-                alpha=.7
+                alpha = .7
             ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-
         # Plot the sum of pdfs.
         ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-
         # Plot the samples.
         if hist:
             nbins = min([len(X), 50])
@@ -234,6 +223,6 @@ class Normal(object):
             y_max = ax.get_ylim()[1]
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
-
-        ax.set_title('normal')
+        # Title.
+        ax.set_title(clusters[0].cctype)
         return ax
