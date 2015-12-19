@@ -72,8 +72,8 @@ class Normal(object):
             self.sum_x_sq -= x*x
 
     def predictive_logp(self, x):
-        return Normal.calc_predictive_logp(x, self.N, self.sum_x, self.sum_x_sq,
-            self.m, self.r, self.s, self.nu)
+        return Normal.calc_predictive_logp(x, self.N, self.sum_x,
+            self.sum_x_sq, self.m, self.r, self.s, self.nu)
 
     def marginal_logp(self):
         return Normal.calc_marginal_logp(self.N, self.sum_x, self.sum_x_sq,
@@ -84,9 +84,9 @@ class Normal(object):
             self.s, self.nu)
 
     def predictive_draw(self):
-        rn, nun, mn, sn = Normal.posterior_update_parameters(
-            self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
-        coeff = ( ((sn/2.0)*(rn+1.0)) / ((nun/2.0)*rn) )**.5
+        rn, nun, mn, sn = Normal.posterior_update_parameters(self.N,
+            self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
+        coeff = ( ((sn / 2.) * (rn + 1.)) / ((nun / 2.) * rn) ) ** .5
         draw = np.random.standard_t(nun) * coeff + mn
         return draw
 
