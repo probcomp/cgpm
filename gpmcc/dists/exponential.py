@@ -15,8 +15,7 @@ class Exponential(object):
     cctype = 'exponential'
 
     def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None):
-        """
-        Optional arguments:
+        """Optional arguments:
         -- N: number of data points
         -- sum_x: suffstat, sum(X)
         -- a: hyperparameter
@@ -30,15 +29,14 @@ class Exponential(object):
         self.a = a
         self.b = b
 
+    def transition_params(self):
+        return
+
     def set_hypers(self, hypers):
         assert hypers['a'] > 0
         assert hypers['b'] > 0
-
         self.b = hypers['b']
         self.a = hypers['a']
-
-    def transition_params(self):
-        return
 
     def insert_element(self, x):
         self.N += 1.0
@@ -49,8 +47,8 @@ class Exponential(object):
         self.sum_x -= x
 
     def predictive_logp(self, x):
-        return Exponential.calc_predictive_logp(x, self.N, self.sum_x, self.a,
-            self.b)
+        return Exponential.calc_predictive_logp(x, self.N, self.sum_x,
+            self.a, self.b)
 
     def marginal_logp(self):
         return Exponential.calc_marginal_logp(self.N, self.sum_x, self.a,
@@ -61,17 +59,17 @@ class Exponential(object):
             self.b)
 
     def predictive_draw(self):
-        an, bn = Exponential.posterior_update_parameters(self.N, self.sum_x,
-            self.a, self.b)
+        an, bn = Exponential.posterior_update_parameters(self.N,
+            self.sum_x, self.a, self.b)
         draw = lomax.rvs(an, loc=1-bn) - (1 - bn)
         return draw
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['a'] = gu.log_linspace(1.0/float(len(X)), float(len(X)),
+        grids['a'] = gu.log_linspace(1./float(len(X)), float(len(X)),
             n_grid)
-        grids['b'] = gu.log_linspace(1.0/float(len(X)), float(len(X)),
+        grids['b'] = gu.log_linspace(1./float(len(X)), float(len(X)),
             n_grid)
         return grids
 
@@ -80,58 +78,24 @@ class Exponential(object):
         hypers = dict()
         hypers['a'] = np.random.choice(grids['a'])
         hypers['b'] = np.random.choice(grids['b'])
-
         return hypers
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
         if x < 0:
             return float('-inf')
-        an, bn = Exponential.posterior_update_parameters(N, sum_x, a, b)
-        am, bm = Exponential.posterior_update_parameters(N+1, sum_x+x, a, b)
-
+        an,bn = Exponential.posterior_update_parameters(N, sum_x, a, b)
+        am,bm = Exponential.posterior_update_parameters(N+1, sum_x+x, a, b)
         ZN = Exponential.calc_log_Z(an, bn)
         ZM = Exponential.calc_log_Z(am, bm)
-
         return  ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, a, b):
         an, bn = Exponential.posterior_update_parameters(N, sum_x, a, b)
-
         Z0 = Exponential.calc_log_Z(a, b)
         ZN = Exponential.calc_log_Z(an, bn)
-
         return ZN - Z0
-
-    @staticmethod
-    def transition_hypers(clusters, hypers, grids):
-        a = hypers['a']
-        b = hypers['b']
-
-        which_hypers = [0,1]
-        np.random.shuffle(which_hypers)
-
-        for hyper in which_hypers:
-            if hyper == 0:
-                lp_a = Exponential.calc_a_conditional_logps(clusters, grids['a'], b)
-                a_index = gu.log_pflip(lp_a)
-                a = grids['a'][a_index]
-            elif hyper == 1:
-                lp_b = Exponential.calc_b_conditional_logps(clusters, grids['b'], a)
-                b_index = gu.log_pflip(lp_b)
-                b = grids['b'][b_index]
-            else:
-                raise ValueError("Invalid hyper.")
-
-        hypers = dict()
-        hypers['a'] = a
-        hypers['b'] = b
-
-        for cluster in clusters:
-            cluster.set_hypers(hypers)
-
-        return hypers
 
     @staticmethod
     def posterior_update_parameters(N, sum_x, a, b):
@@ -145,69 +109,37 @@ class Exponential(object):
         return Z
 
     @staticmethod
-    def calc_a_conditional_logps(clusters, a_grid, b):
+    def calc_hyper_logps(clusters, grid, hypers, target):
         lps = []
-        for a in a_grid:
-            lp = Exponential.calc_full_marginal_conditional(clusters, a, b)
+        for g in grid:
+            hypers[target] = g
+            lp = sum(Exponential.calc_marginal_logp(cluster.N,
+                cluster.sum_x, **hypers) for cluster in clusters)
             lps.append(lp)
-
         return lps
-
-    @staticmethod
-    def calc_b_conditional_logps(clusters, b_grid, a):
-        lps = []
-        for b in b_grid:
-            lp = Exponential.calc_full_marginal_conditional(clusters, a, b)
-            lps.append(lp)
-
-        return lps
-
-    @staticmethod
-    def calc_full_marginal_conditional(clusters, a, b):
-        lp = 0
-        for cluster in clusters:
-            N = cluster.N
-            sum_x = cluster.sum_x
-            l = Exponential.calc_marginal_logp(N, sum_x, a, b)
-            lp += l
-
-        return lp
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+        # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
-
+        # Set up x axis.
         x_min = 0
         x_max = max(X)
         if Y is None:
             Y = np.linspace(x_min, x_max, 200)
+        # Compute weighted pdfs.
         K = len(clusters)
-        pdf = np.zeros((K,200))
+        pdf = np.zeros((K, len(Y)))
         denom = log(float(len(X)))
-
-        a = clusters[0].a
-        b = clusters[0].b
-
-        W = [log(clusters[k].N) - denom for k in range(K)]
+        W = [log(clusters[k].N) - denom for k in xrange(K)]
         for k in range(K):
-            w = W[k]
-            N = clusters[k].N
-            sum_x = clusters[k].sum_x
-            for j in range(200):
-                pdf[k, j] = np.exp(w + Exponential.calc_predictive_logp(Y[j], N,
-                    sum_x, a, b))
-            if k >= 8:
-                color = "white"
-                alpha = .3
-            else:
-                color = gu.colors()[k]
-                alpha=.7
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
             ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-
         # Plot the sum of pdfs.
         ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-
         # Plot the samples.
         if hist:
             nbins = min([len(X), 50])
@@ -217,6 +149,5 @@ class Exponential(object):
             y_max = ax.get_ylim()[1]
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
-
-        ax.set_title('exponential')
+        ax.set_title(clusters[0].cctype)
         return ax
