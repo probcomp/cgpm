@@ -78,7 +78,7 @@ class NormalUC(object):
         self.sum_x_sq -= x*x
 
     def predictive_logp(self, x):
-        return self.calc_logp(x, self.mu, self.rho)
+        return self.calc_predictive_logp(x, self.mu, self.rho)
 
     def marginal_logp(self):
         lp = self.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
@@ -86,13 +86,13 @@ class NormalUC(object):
         return lp
 
     def singleton_logp(self, x):
-        return NormalUC.calc_logp(x, self.mu, self.rho)
+        return NormalUC.calc_predictive_logp(x, self.mu, self.rho)
 
     def predictive_draw(self):
         return np.random.normal(self.mu, 1.0/self.rho**.5)
 
     @staticmethod
-    def calc_logp(x, mu, rho):
+    def calc_predictive_logp(x, mu, rho):
         return scipy.stats.norm.logpdf(x, loc=mu, scale=1.0/rho**.5)
 
     @staticmethod
@@ -264,7 +264,7 @@ class NormalUC(object):
             rho = clusters[k].rho
             for n in range(200):
                 y = Y[n]
-                pdf[k, n] = np.exp(w + NormalUC.calc_logp(y, mu, rho))
+                pdf[k, n] = np.exp(w + NormalUC.calc_predictive_logp(y, mu, rho))
             if k >= 8:
                 color = "white"
                 alpha=.3
