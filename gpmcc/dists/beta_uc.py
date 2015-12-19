@@ -33,17 +33,43 @@ class BetaUC(object):
         -- beta: hyperparam, beta distribution parameter for balance
         -- distargs: not used
         """
+        # Sufficient statistics.
         self.N = N
         self.sum_log_x = sum_log_x
         self.sum_minus_log_x = sum_minus_log_x
-
+        # Hyperparameters.
         self.mu = mu
         self.alpha = alpha
         self.beta = beta
-
+        # Parameters.
         self.strength, self.balance = strength, balance
         if strength is None or balance is None:
-            self.strength, self.balance = BetaUC.draw_params(mu, alpha, beta)
+            self.strength, self.balance = BetaUC.draw_params(mu, alpha,
+                beta)
+
+    def transition_params(self):
+        n_samples = 25
+        # Transition strength.
+        log_pdf_lambda_str = lambda strength :\
+            BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
+                self.sum_minus_log_x, strength, self.balance) \
+            + BetaUC.calc_log_prior(strength, self.balance, self.mu,
+                self.alpha, self.beta)
+        self.strength = su.mh_sample(self.strength, log_pdf_lambda_str,
+            .5, [0.0,float('Inf')], burn=n_samples)
+        # Transition balance.
+        log_pdf_lambda_bal = lambda balance : \
+            BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
+                self.sum_minus_log_x, self.strength, balance) \
+            + BetaUC.calc_log_prior(self.strength, balance, self.mu,
+                self.alpha, self.beta)
+        self.balance = su.mh_sample(self.balance, log_pdf_lambda_bal,
+            .25, [0,1], burn=n_samples)
+
+    def set_hypers(self, hypers):
+        self.mu = hypers['mu']
+        self.alpha = hypers['alpha']
+        self.beta = hypers['beta']
 
     def insert_element(self, x):
         assert x > 0 and x < 1
@@ -61,32 +87,15 @@ class BetaUC(object):
             self.sum_log_x -= log(x)
             self.sum_minus_log_x -= log(1.0-x)
 
-    def transition_params(self):
-        n_samples = 25
-
-        log_pdf_lambda_str = lambda strength : BetaUC.calc_logp(self.N,
-            self.sum_log_x, self.sum_minus_log_x, strength, self.balance) \
-            + BetaUC.calc_log_prior(strength, self.balance, self.mu,
-                self.alpha, self.beta)
-        self.strength = su.mh_sample(self.strength, log_pdf_lambda_str,
-            .5, [0.0,float('Inf')], burn=n_samples)
-
-        log_pdf_lambda_bal = lambda balance : BetaUC.calc_logp(self.N,
-            self.sum_log_x, self.sum_minus_log_x, self.strength, balance) \
-            + BetaUC.calc_log_prior(self.strength, balance, self.mu,
-                self.alpha, self.beta)
-        self.balance = su.mh_sample(self.balance, log_pdf_lambda_bal,
-            .25, [0,1], burn=n_samples)
-
     def predictive_logp(self, x):
-        return BetaUC.calc_singleton_logp(x, self.strength, self.balance)
+        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def singleton_logp(self, x):
-        return BetaUC.calc_singleton_logp(x, self.strength, self.balance)
+        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def marginal_logp(self):
-        lp = BetaUC.calc_logp(self.N, self.sum_log_x, self.sum_minus_log_x,
-            self.strength, self.balance)
+        lp = BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
+            self.sum_minus_log_x, self.strength, self.balance)
         lp += BetaUC.calc_log_prior(self.strength, self.balance, self.mu,
             self.alpha, self.beta)
         return lp
@@ -96,44 +105,34 @@ class BetaUC(object):
         beta = self.strength*(1.0-self.balance)
         return np.random.beta(alpha, beta)
 
-    def set_hypers(self, hypers):
-        self.mu = hypers['mu']
-        self.alpha = hypers['alpha']
-        self.beta = hypers['beta']
-
     @staticmethod
-    def calc_singleton_logp(x, strength, balance):
-        if not (0 < x < 1):
-            return float('-inf')
+    def calc_predictive_logp(x, strength, balance):
         assert strength > 0 and balance > 0 and balance < 1
-
-        alpha = strength*balance
-        beta = strength*(1.0-balance)
+        if not 0 < x < 1:
+            return float('-inf')
+        alpha = strength * balance
+        beta = strength * (1.0-balance)
         lp = scipy.stats.beta.logpdf(x, alpha, beta)
-
         assert not np.isnan(lp)
         return lp
 
     @staticmethod
     def calc_log_prior(strength, balance, mu, alpha, beta):
         assert strength > 0 and balance > 0 and balance < 1
-
-        lp = 0
-        lp += scipy.stats.expon.logpdf(strength, scale=mu)
-        lp += scipy.stats.beta.logpdf(balance, alpha, beta)
-        return lp
+        log_strength = scipy.stats.expon.logpdf(strength, scale=mu)
+        log_balance = scipy.stats.beta.logpdf(balance, alpha, beta)
+        return log_strength + log_balance
 
     @staticmethod
-    def calc_logp(N, sum_log_x, sum_minus_log_x, strength, balance):
-        assert( strength > 0 and balance > 0 and balance < 1)
-
-        alpha = strength*balance
-        beta = strength*(1.0-balance)
+    def calc_log_likelihood(N, sum_log_x, sum_minus_log_x, strength,
+            balance):
+        assert strength > 0 and balance > 0 and balance < 1
+        alpha = strength * balance
+        beta = strength * (1. - balance)
         lp = 0
         lp -= N*scipy.special.betaln(alpha, beta)
-        lp += (alpha-1.0)*sum_log_x
-        lp += (beta-1.0)*sum_minus_log_x
-
+        lp += (alpha - 1.) * sum_log_x
+        lp += (beta - 1.) * sum_minus_log_x
         assert not np.isnan(lp)
         return lp
 
