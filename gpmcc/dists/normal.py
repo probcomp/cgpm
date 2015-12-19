@@ -173,14 +173,13 @@ class Normal(object):
         pdf = np.zeros((K, 200))
         denom = log(float(len(X)))
         W = [log(clusters[k].N) - denom for k in range(K)]
-        for k in range(K):
-            for n in range(200):
-                y = Y[n]
-                pdf[k, n] = np.exp(W[k] + clusters[k].predictive_logp(y))
-            if k >= 8:
-                color = "white"
-                alpha = .3
-            else:
+        for k in xrange(K):
+            for n in xrange(200):
+                pdf[k, n] = np.exp(W[k] + \
+                    clusters[k].predictive_logp(Y[n]))
+            color = "white"
+            alpha = .3
+            if k < 8:
                 color = gu.colors()[k]
                 alpha = .7
             ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)

@@ -126,40 +126,30 @@ class Poisson(object):
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+        # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
-
+        # Set up x axis.
         x_max = max(X)
         Y = range(int(x_max)+1)
-        nn = len(Y)
+        # Compute weighted pdfs
         K = len(clusters)
-        pdf = np.zeros((K,nn))
+        pdf = np.zeros((K, len(Y)))
         denom = log(float(len(X)))
-
-        a = clusters[0].a
-        b = clusters[0].b
-
         toplt = np.array(gu.bincount(X,Y))/float(len(X))
         ax.bar(Y, toplt, color="gray", edgecolor="none")
-
         W = [log(clusters[k].N) - denom for k in range(K)]
         for k in xrange(K):
-            w = W[k]
-            N = clusters[k].N
-            sum_x = clusters[k].sum_x
-            sum_log_fact_x = clusters[k].sum_log_fact_x
-            for n in xrange(nn):
-                y = Y[n]
-                pdf[k, n] = np.exp(w + Poisson.calc_predictive_logp(y, N, sum_x,
-                    sum_log_fact_x, a, b))
-            if k >= 8:
-                color = "white"
-                alpha = .3
-            else:
+            for n in xrange(len(Y)):
+                pdf[k, n] = np.exp(W[k] + \
+                    clusters[k].predictive_logp(Y[n]))
+            color = "white"
+            alpha =.3
+            if k < 8:
                 color = gu.colors()[k]
-                alpha = .7
+                alpha =.7
             ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
-
+        # Plot the sum of pdfs.
         ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
             linewidth=3)
         # print integral for debugging (should never be greater that 1)

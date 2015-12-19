@@ -140,135 +140,64 @@ class BetaUC(object):
     def draw_params(mu, alpha, beta):
         strength = np.random.exponential(scale=mu)
         balance = np.random.beta(alpha, beta)
-
         assert strength > 0 and balance > 0 and balance < 1
         return strength, balance
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
+        grids = dict()
         N = float(len(X))
         Sx = np.sum(X)
         Mx = np.sum(1-X)
-        grids = {
-            'mu' : gu.log_linspace(1/N, N, n_grid),
-            'alpha' : gu.log_linspace(Sx/N, Sx, n_grid),
-            'beta' : gu.log_linspace(Mx/N, Mx, n_grid),
-        }
+        grids['mu'] = gu.log_linspace(1/N, N, n_grid)
+        grids['alpha'] = gu.log_linspace(Sx/N, Sx, n_grid)
+        grids['beta'] = gu.log_linspace(Mx/N, Mx, n_grid)
         return grids
 
     @staticmethod
     def init_hypers(grids, X=None):
-        hypers = {
-            'mu' : np.random.choice(grids['mu']),
-            'alpha' : np.random.choice(grids['alpha']),
-            'beta' : np.random.choice(grids['beta']),
-        }
-        return hypers
-
-    @staticmethod
-    def calc_prior_conditionals(clusters, mu, alpha, beta):
-        lp = 0
-        for cluster in clusters:
-            strength = cluster.strength
-            balance = cluster.balance
-            lp += BetaUC.calc_log_prior(strength, balance, mu, alpha, beta)
-        return lp
-
-    @staticmethod
-    def calc_mu_conditional_logps(clusters, mu_grid, alpha, beta):
-        lps = []
-        for mu in mu_grid:
-            lps.append(BetaUC.calc_prior_conditionals(clusters, mu, alpha,
-                beta))
-        return lps
-
-    @staticmethod
-    def calc_alpha_conditional_logps(clusters, alpha_grid, mu, beta):
-        lps = []
-        for alpha in alpha_grid:
-            lps.append(BetaUC.calc_prior_conditionals(clusters, mu, alpha,
-                beta))
-        return lps
-
-    @staticmethod
-    def calc_beta_conditional_logps(clusters, beta_grid, mu, alpha):
-        lps = []
-        for beta in beta_grid:
-            lps.append(BetaUC.calc_prior_conditionals(clusters, mu, alpha,
-                beta))
-        return lps
-
-    @staticmethod
-    def transition_hypers(clusters, hypers, grids):
-        # resample hypers
-        mu = hypers['mu']
-        alpha = hypers['alpha']
-        beta = hypers['beta']
-
-        which_hypers = [0,1,2]
-        np.random.shuffle(which_hypers)
-
-        for hyper in which_hypers:
-            if hyper == 0:
-                lp_mu = BetaUC.calc_mu_conditional_logps(clusters, grids['mu'],
-                    alpha, beta)
-                mu_index = gu.log_pflip(lp_mu)
-                mu = grids['mu'][mu_index]
-            elif hyper == 1:
-                lp_alpha = BetaUC.calc_alpha_conditional_logps(clusters,
-                    grids['alpha'], mu, beta)
-                alpha_index = gu.log_pflip(lp_alpha)
-                alpha = grids['alpha'][alpha_index]
-            elif hyper == 2:
-                lp_beta = BetaUC.calc_beta_conditional_logps(clusters,
-                    grids['beta'], mu, alpha)
-                beta_index = gu.log_pflip(lp_beta)
-                beta = grids['beta'][beta_index]
-            else:
-                raise ValueError("Invalid hyper.")
-
         hypers = dict()
-        hypers['mu'] = mu
-        hypers['alpha'] = alpha
-        hypers['beta'] = beta
-
-        for cluster in clusters:
-            cluster.set_hypers(hypers)
-
+        hypers['mu'] = np.random.choice(grids['mu'])
+        hypers['alpha'] = np.random.choice(grids['alpha'])
+        hypers['beta'] = np.random.choice(grids['beta'])
         return hypers
+
+    @staticmethod
+    def calc_hyper_logps(clusters, grid, hypers, target):
+        lps = []
+        for g in grid:
+            hypers[target] = g
+            lp = 0
+            for cluster in clusters:
+                lp += BetaUC.calc_log_prior(cluster.strength,
+                    cluster.balance, **hypers)
+            lps.append(lp)
+        return lps
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+        # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
-
+        # Set up x axis.
         if Y is None:
             Y = np.linspace(0.01, .99, 100)
-        N = len(Y)
         K = len(clusters)
-        pdf = np.zeros((K,N))
+        pdf = np.zeros((K, len(Y)))
         denom = log(float(len(X)))
-
         W = [log(clusters[k].N) - denom for k in range(K)]
-        for k in range(K):
-            w = W[k]
-            strength = clusters[k].strength
-            balance = clusters[k].balance
-            for n in range(N):
-                y = Y[n]
-                pdf[k, n] = np.exp(w + BetaUC.calc_singleton_logp(y,
-                    strength, balance))
-            if k >= 8:
-                color = "white"
-                alpha=.3
-            else:
+        for k in xrange(K):
+            for n in xrange(len(Y)):
+                pdf[k, n] = np.exp(W[k] + \
+                    clusters[k].predictive_logp(Y[n]))
+            color = "white"
+            alpha =.3
+            if k < 8:
                 color = gu.colors()[k]
-                alpha=.7
+                alpha =.7
             ax.plot(Y, pdf[k,:],color=color, linewidth=5, alpha=alpha)
-
         # Plot the sum of pdfs.
         ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-
         # Plot the samples.
         if hist:
             nbins = min([len(X)/5, 50])
@@ -278,6 +207,6 @@ class BetaUC(object):
             y_max = ax.get_ylim()[1]
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
-
+        # Title.
         ax.set_title('beta (uncollapsed)')
         return ax
