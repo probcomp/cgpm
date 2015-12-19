@@ -136,26 +136,20 @@ class Normal(object):
 
     @staticmethod
     def transition_hypers(clusters, hypers, grids):
-        new_hypers = dict()
-
-        # m = hypers['m']
-        # s = hypers['s']
-        # r = hypers['r']
-        # nu = hypers['nu']
-
-        # which_hypers = [0,1,2,3]
-        # np.random.shuffle(which_hypers)
+        hypers = hypers.copy()
+        targets = hypers.keys()
+        np.random.shuffle(targets)
 
         for target in hypers.keys():
             lp = Normal.calc_hyper_logps(clusters, grids[target], hypers,
                 target)
             proposal = gu.log_pflip(lp)
-            new_hypers[target] = grids[target][proposal]
+            hypers[target] = grids[target][proposal]
 
         for cluster in clusters:
-            cluster.set_hypers(new_hypers)
+            cluster.set_hypers(hypers)
 
-        return new_hypers
+        return hypers
 
     @staticmethod
     def posterior_update_parameters(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -179,7 +173,8 @@ class Normal(object):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = Normal.calc_full_marginal_conditional(clusters, **hypers)
+            lp = Normal.calc_full_marginal_conditional(clusters,
+                hypers['m'], hypers['r'], hypers['s'], hypers['nu'])
             lps.append(lp)
         return lps
 
