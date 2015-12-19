@@ -1,4 +1,5 @@
 import math
+import warnings
 from math import log
 
 import numpy as np
@@ -155,14 +156,14 @@ class Normal(object):
         mn = (r*m + sum_x)/rn
         sn = s + sum_x_sq + r*m*m - rn*mn*mn
         if sn == 0:
-            print "Posterior_update_parameters: sn(0) truncated."
+            warnings.warn('Posterior_update_parameters: sn truncated.')
             sn = s
         return rn, nun, mn, sn
 
     @staticmethod
     def calc_log_Z(r, s, nu):
-        Z = ((nu+1.0)/2.0)*LOG2 + .5*LOGPI - .5*log(r) - (nu/2.0)*log(s) \
-                + gammaln(nu/2.0)
+        Z = ((nu + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(r) \
+                - (nu / 2.) * log(s) + gammaln(nu/2.0)
         return Z
 
     @staticmethod
@@ -170,13 +171,12 @@ class Normal(object):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = Normal.calc_full_marginal_conditional(clusters,
-                hypers['m'], hypers['r'], hypers['s'], hypers['nu'])
+            lp = Normal.calc_clusters_marginal_logp(clusters, **hypers)
             lps.append(lp)
         return lps
 
     @staticmethod
-    def calc_full_marginal_conditional(clusters, m, r, s, nu):
+    def calc_clusters_marginal_logp(clusters, m, r, s, nu):
         lp = 0
         for cluster in clusters:
             N = cluster.N
