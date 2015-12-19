@@ -123,20 +123,12 @@ class Poisson(object):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = Poisson.calc_clusters_marginal_logp(clusters, **hypers)
+            lp = 0
+            for cluster in clusters:
+                lp += Poisson.calc_marginal_logp(cluster.N, cluster.sum_x,
+                    cluster.sum_log_fact_x, **hypers)
             lps.append(lp)
         return lps
-
-    @staticmethod
-    def calc_clusters_marginal_logp(clusters, a, b):
-        lp = 0
-        for cluster in clusters:
-            N = cluster.N
-            sum_x = cluster.sum_x
-            sum_log_fact_x = cluster.sum_log_fact_x
-            l = Poisson.calc_marginal_logp(N, sum_x, sum_log_fact_x, a, b)
-            lp += l
-        return lp
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):

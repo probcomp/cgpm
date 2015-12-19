@@ -74,14 +74,26 @@ class NormalUC(Normal):
         return mu, rho
 
     @staticmethod
-    def log_normal_gamma(mu, rho, m, r, s, nu):
+    def calc_log_likelihood(N, sum_x, sum_x_sq, rho, mu):
+        log_p = -(N / 2.) * LOG2PI + (N / 2.) * log(rho) - \
+            .5 * (rho * (N * mu * mu - 2 * mu * sum_x + sum_x_sq))
+        return log_p
+
+    @staticmethod
+    def calc_log_prior(mu, rho, m, r, s, nu):
         """Distribution of parameters (mu rho) ~ NG(m, r, s, nu)"""
         log_rho = scipy.stats.gamma.logpdf(rho, nu/2., scale=2./s)
         log_mu = scipy.stats.norm.logpdf(mu, loc=m, scale=1./(r*rho)**.5)
         return log_mu + log_rho
 
     @staticmethod
-    def calc_log_likelihood(N, sum_x, sum_x_sq, rho, mu):
-        log_p = -(N / 2.) * LOG2PI + (N / 2.) * log(rho) - \
-            .5 * (rho * (N * mu * mu - 2 * mu * sum_x + sum_x_sq))
-        return log_p
+    def calc_hyper_logps(clusters, grid, hypers, target):
+        lps = []
+        for g in grid:
+            hypers[target] = g
+            lp = 0
+            for cluster in clusters:
+                lp += NormalUC.calc_log_prior(cluster.mu, cluster.rho,
+                    **hypers)
+            lps.append(lp)
+        return lps

@@ -171,20 +171,12 @@ class Normal(object):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = Normal.calc_clusters_marginal_logp(clusters, **hypers)
+            lp = 0
+            for cluster in clusters:
+                lp += Normal.calc_marginal_logp(cluster.N, cluster.sum_x,
+                    cluster.sum_x_sq, **hypers)
             lps.append(lp)
         return lps
-
-    @staticmethod
-    def calc_clusters_marginal_logp(clusters, m, r, s, nu):
-        lp = 0
-        for cluster in clusters:
-            N = cluster.N
-            sum_x = cluster.sum_x
-            sum_x_sq = cluster.sum_x_sq
-            l = Normal.calc_marginal_logp(N, sum_x, sum_x_sq, m, r, s, nu)
-            lp += l
-        return lp
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
