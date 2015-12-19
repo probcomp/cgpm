@@ -102,7 +102,7 @@ class Engine(object):
         vu.validate_cctypes(cctype)
 
         args = [(self.X, X_f, cctype, distargs, m, self.metadata[i])
-            for i in range(self.num_states) ]
+            for i in range(self.num_states)]
 
         self.metadata = self.map(self._append_feature, args)
 

@@ -140,8 +140,8 @@ class Dim(object):
         """Updates the hyperparameters and the component parameters."""
         for cluster in self.clusters:
             cluster.transition_params()
-        self.hypers = self.model.transition_hypers(self.clusters, self.hypers,
-            self.hypers_grids)
+        self.hypers = self.model.transition_hypers(self.clusters,
+            self.hypers, self.hypers_grids)
 
     def reassign(self, Zr):
         """Reassigns the data to new clusters according to the new
@@ -193,5 +193,5 @@ class Dim(object):
 
     def plot_dist(self, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
-        self.model.plot_dist(self.Xf, self.clusters, distargs=self.distargs,
-            ax=ax, Y=Y, hist=False)
+        self.model.plot_dist(self.Xf, self.clusters,
+            distargs=self.distargs, ax=ax, Y=Y, hist=False)
