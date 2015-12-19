@@ -68,11 +68,6 @@ class Poisson(object):
             self.a, self.b)
         draw = np.random.negative_binomial(an, bn/(bn+1.0))
         return draw
-        # fn = lambda x: np.exp(self.predictive_logp(x))
-        # lower_bound = 0
-        # delta = 1
-        # return utils.inversion_sampling(fn, lower_bound, delta)
-
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
