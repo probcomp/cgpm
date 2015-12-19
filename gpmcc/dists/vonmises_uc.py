@@ -303,24 +303,6 @@ class VonmisesUC(object):
         return lp
 
     @staticmethod
-    def calc_full_marginal_conditional_h(clusters, hypers):
-        lp = 0
-        a = clusters[0].a
-        b = clusters[0].b
-        scale = clusters[0].scale
-        shape = clusters[0].shape
-        for cluster in clusters:
-            N = cluster.N
-            k = cluster.k
-            sum_sin_x = cluster.sum_sin_x
-            sum_cos_x = cluster.sum_cos_x
-            l = VonmisesUC.calc_marginal_logp(N, sum_sin_x, sum_cos_x, k, a, b,
-                scale, shape)
-            lp += l
-
-        return lp
-
-    @staticmethod
     def estimate_kappa(N, ssx, scx):
         if N == 0:
             kappa = 10**-6

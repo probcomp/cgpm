@@ -257,21 +257,6 @@ class Vonmises(object):
         return lp
 
     @staticmethod
-    def calc_full_marginal_conditional_h(clusters, hypers):
-        lp = 0
-        a = clusters[0].a
-        b = clusters[0].b
-        k = clusters[0].k
-        for cluster in clusters:
-            N = cluster.N
-            sum_sin_x = cluster.sum_sin_x
-            sum_cos_x = cluster.sum_cos_x
-            l = Vonmises.calc_marginal_logp(N, sum_sin_x, sum_cos_x, a, b, k)
-            lp += l
-
-        return lp
-
-    @staticmethod
     def estimate_kappa(N, ssx, scx):
         if N == 0:
             return 10.0**-6

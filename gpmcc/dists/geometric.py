@@ -176,19 +176,6 @@ class Geometric(object):
         return lp
 
     @staticmethod
-    def calc_full_marginal_conditional_h(clusters, hypers):
-        lp = 0
-        a = clusters[0].a
-        b = clusters[0].b
-        for cluster in clusters:
-            N = cluster.N
-            sum_x = cluster.sum_x
-            l = Geometric.calc_marginal_logp(N, sum_x, a, b)
-            lp += l
-
-        return lp
-
-    @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()

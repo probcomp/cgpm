@@ -243,22 +243,6 @@ class Normal(object):
         return lp
 
     @staticmethod
-    def calc_full_marginal_conditional_h(clusters, hypers):
-        m = clusters[0].m
-        r = clusters[0].r
-        s = clusters[0].s
-        nu = clusters[0].nu
-        # lp = gamma.logpdf(r, 1.0, 1.0) + gamma.logpdf(s, 1.0, 1.0) + gamma.logpdf(nu, 1.0, 1.0)
-        lp = 0
-        for cluster in clusters:
-            N = cluster.N
-            sum_x = cluster.sum_x
-            sum_x_sq = cluster.sum_x_sq
-            l = Normal.calc_marginal_logp(N, sum_x, sum_x_sq, m, r, s, nu)
-            lp += l
-        return lp
-
-    @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()

@@ -178,20 +178,6 @@ class Poisson(object):
         return lp
 
     @staticmethod
-    def calc_full_marginal_conditional_h(clusters, hypers):
-        lp = 0
-        a = clusters[0].a
-        b = clusters[0].b
-        for cluster in clusters:
-            N = cluster.N
-            sum_x = cluster.sum_x
-            sum_log_fact_x = cluster.sum_log_fact_x
-            l = Poisson.calc_marginal_logp(N, sum_x, sum_log_fact_x, a, b)
-            lp += l
-
-        return lp
-
-    @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()

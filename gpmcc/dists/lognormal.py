@@ -238,23 +238,6 @@ class Lognormal(object):
         return lp
 
     @staticmethod
-    def calc_full_marginal_conditional_h(clusters, hypers):
-        lp = 0
-        a = clusters[0].a
-        b = clusters[0].b
-        t = clusters[0].t
-        m = clusters[0].m
-        for cluster in clusters:
-            N = cluster.N
-            sum_log_x = cluster.sum_log_x
-            sum_log_x_sq = cluster.sum_log_x_sq
-            l = Lognormal.calc_marginal_logp(N, sum_log_x, sum_log_x_sq, a, b,
-                t, m)
-            lp += l
-
-        return lp
-
-    @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         if ax is None:
             _, ax = plt.subplots()
