@@ -108,35 +108,6 @@ class Poisson(object):
         return ZN - Z0 - sum_log_fact_x
 
     @staticmethod
-    def transition_hypers(clusters, hypers, grids):
-        a = hypers['a']
-        b = hypers['b']
-
-        which_hypers = [0,1]
-        np.random.shuffle(which_hypers)
-
-        for hyper in which_hypers:
-            if hyper == 0:
-                lp_a = Poisson.calc_a_conditional_logps(clusters, grids['a'], b)
-                a_index = gu.log_pflip(lp_a)
-                a = grids['a'][a_index]
-            elif hyper == 1:
-                lp_b = Poisson.calc_b_conditional_logps(clusters, grids['b'], a)
-                b_index = gu.log_pflip(lp_b)
-                b = grids['b'][b_index]
-            else:
-                raise ValueError("Invalid hyper.")
-
-        hypers = dict()
-        hypers['a'] = a
-        hypers['b'] = b
-
-        for cluster in clusters:
-            cluster.set_hypers(hypers)
-
-        return hypers
-
-    @staticmethod
     def posterior_update_parameters(N, sum_x, a, b):
         an = a + sum_x
         bn = b + N
@@ -148,25 +119,16 @@ class Poisson(object):
         return Z
 
     @staticmethod
-    def calc_a_conditional_logps(clusters, a_grid, b):
+    def calc_hyper_logps(clusters, grid, hypers, target):
         lps = []
-        for a in a_grid:
-            lp = Poisson.calc_full_marginal_conditional(clusters, a, b)
+        for g in grid:
+            hypers[target] = g
+            lp = Poisson.calc_clusters_marginal_logp(clusters, **hypers)
             lps.append(lp)
-
         return lps
 
     @staticmethod
-    def calc_b_conditional_logps(clusters, b_grid, a):
-        lps = []
-        for b in b_grid:
-            lp = Poisson.calc_full_marginal_conditional(clusters, a, b)
-            lps.append(lp)
-
-        return lps
-
-    @staticmethod
-    def calc_full_marginal_conditional(clusters, a, b):
+    def calc_clusters_marginal_logp(clusters, a, b):
         lp = 0
         for cluster in clusters:
             N = cluster.N
@@ -174,7 +136,6 @@ class Poisson(object):
             sum_log_fact_x = cluster.sum_log_fact_x
             l = Poisson.calc_marginal_logp(N, sum_x, sum_log_fact_x, a, b)
             lp += l
-
         return lp
 
     @staticmethod
