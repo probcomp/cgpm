@@ -136,48 +136,26 @@ class Normal(object):
 
     @staticmethod
     def transition_hypers(clusters, hypers, grids):
-        m = hypers['m']
-        s = hypers['s']
-        r = hypers['r']
-        nu = hypers['nu']
+        new_hypers = dict()
 
-        which_hypers = [0,1,2,3]
-        np.random.shuffle(which_hypers)
+        # m = hypers['m']
+        # s = hypers['s']
+        # r = hypers['r']
+        # nu = hypers['nu']
 
-        for hyper in which_hypers:
-            if hyper == 0:
-                lp_m = Normal.calc_m_conditional_logps(clusters, grids['m'], r,
-                    s, nu)
-                m_index = gu.log_pflip(lp_m)
-                m = grids['m'][m_index]
-            elif hyper == 1:
-                lp_s = Normal.calc_s_conditional_logps(clusters, grids['s'], m,
-                    r, nu)
-                s_index = gu.log_pflip(lp_s)
-                s = grids['s'][s_index]
-            elif hyper == 2:
-                lp_r = Normal.calc_r_conditional_logps(clusters, grids['r'], m,
-                    s, nu)
-                r_index = gu.log_pflip(lp_r)
-                r = grids['r'][r_index]
-            elif hyper == 3:
-                lp_nu = Normal.calc_nu_conditional_logps(clusters, grids['nu'],
-                    m, r, s)
-                nu_index = gu.log_pflip(lp_nu)
-                nu = grids['nu'][nu_index]
-            else:
-                raise ValueError("Invalid hyper.")
+        # which_hypers = [0,1,2,3]
+        # np.random.shuffle(which_hypers)
 
-        hypers = dict()
-        hypers['m'] = m
-        hypers['s'] = s
-        hypers['r'] = r
-        hypers['nu'] = nu
+        for target in hypers.keys():
+            lp = Normal.calc_hyper_logps(clusters, grids[target], hypers,
+                target)
+            proposal = gu.log_pflip(lp)
+            new_hypers[target] = grids[target][proposal]
 
         for cluster in clusters:
-            cluster.set_hypers(hypers)
+            cluster.set_hypers(new_hypers)
 
-        return hypers
+        return new_hypers
 
     @staticmethod
     def posterior_update_parameters(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -185,54 +163,28 @@ class Normal(object):
         nun = nu + float(N)
         mn = (r*m + sum_x)/rn
         sn = s + sum_x_sq + r*m*m - rn*mn*mn
-
         if sn == 0:
             print "Posterior_update_parameters: sn(0) truncated."
             sn = s
-
         return rn, nun, mn, sn
 
     @staticmethod
     def calc_log_Z(r, s, nu):
-        Z = ((nu+1.0)/2.0)*LOG2 + .5*LOGPI - .5*log(r) - (nu/2.0)*log(s) + \
-            gammaln(nu/2.0)
+        Z = ((nu+1.0)/2.0)*LOG2 + .5*LOGPI - .5*log(r) - (nu/2.0)*log(s) \
+                + gammaln(nu/2.0)
         return Z
 
     @staticmethod
-    def calc_m_conditional_logps(clusters, m_grid, r, s, nu):
+    def calc_hyper_logps(clusters, grid, hypers, target):
         lps = []
-        for m in m_grid:
-            lp = Normal.calc_full_marginal_conditional(clusters, m, r, s, nu)
-            lps.append(lp)
-        return lps
-
-    @staticmethod
-    def calc_r_conditional_logps(clusters, r_grid, m, s, nu):
-        lps = []
-        for r in r_grid:
-            lp = Normal.calc_full_marginal_conditional(clusters, m, r, s, nu)
-            lps.append(lp)
-        return lps
-
-    @staticmethod
-    def calc_s_conditional_logps(clusters, s_grid, m, r, nu):
-        lps = []
-        for s in s_grid:
-            lp = Normal.calc_full_marginal_conditional(clusters, m, r, s, nu)
-            lps.append(lp)
-        return lps
-
-    @staticmethod
-    def calc_nu_conditional_logps(clusters, nu_grid, m, r, s):
-        lps = []
-        for nu in nu_grid:
-            lp = Normal.calc_full_marginal_conditional(clusters, m, r, s, nu)
+        for g in grid:
+            hypers[target] = g
+            lp = Normal.calc_full_marginal_conditional(clusters, **hypers)
             lps.append(lp)
         return lps
 
     @staticmethod
     def calc_full_marginal_conditional(clusters, m, r, s, nu):
-        # lp = gamma.logpdf(r, 1.0, 1.0) + gamma.logpdf(s, 1.0, 1.0) + gamma.logpdf(nu, 1.0, 1.0)
         lp = 0
         for cluster in clusters:
             N = cluster.N
