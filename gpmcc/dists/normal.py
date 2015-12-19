@@ -45,18 +45,17 @@ class Normal(object):
         self.s = s
         self.nu = nu
 
-    def set_hypers(self, hypers):
-        assert hypers['s'] > 0.0
-        assert hypers['r'] > 0.0
-        assert hypers['nu'] > 0.0
+    def transition_params(self):
+        return
 
+    def set_hypers(self, hypers):
+        assert hypers['s'] > 0.
+        assert hypers['r'] > 0.
+        assert hypers['nu'] > 0.
         self.m = hypers['m']
         self.r = hypers['r']
         self.s = hypers['s']
         self.nu = hypers['nu']
-
-    def transition_params(self):
-        return
 
     def insert_element(self, x):
         self.N += 1.0
@@ -111,13 +110,12 @@ class Normal(object):
         hypers['s'] = np.random.choice(grids['s'])
         hypers['r'] = np.random.choice(grids['r'])
         hypers['nu'] = np.random.choice(grids['nu'])
-
         return hypers
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x, sum_x_sq,
-            m, r, s, nu)
+        rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x,
+            sum_x_sq, m, r, s, nu)
         rm, num, mm, sm = Normal.posterior_update_parameters(
             N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
@@ -133,23 +131,6 @@ class Normal(object):
         return - (float(N) / 2.0) * LOG2PI + ZN - Z0
 
     @staticmethod
-    def transition_hypers(clusters, hypers, grids):
-        hypers = hypers.copy()
-        targets = hypers.keys()
-        np.random.shuffle(targets)
-
-        for target in hypers.keys():
-            lp = Normal.calc_hyper_logps(clusters, grids[target], hypers,
-                target)
-            proposal = gu.log_pflip(lp)
-            hypers[target] = grids[target][proposal]
-
-        for cluster in clusters:
-            cluster.set_hypers(hypers)
-
-        return hypers
-
-    @staticmethod
     def posterior_update_parameters(N, sum_x, sum_x_sq, m, r, s, nu):
         rn = r + float(N)
         nun = nu + float(N)
@@ -162,9 +143,8 @@ class Normal(object):
 
     @staticmethod
     def calc_log_Z(r, s, nu):
-        Z = ((nu + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(r) \
+        return ((nu + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(r) \
                 - (nu / 2.) * log(s) + gammaln(nu/2.0)
-        return Z
 
     @staticmethod
     def calc_hyper_logps(clusters, grid, hypers, target):
