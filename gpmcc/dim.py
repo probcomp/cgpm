@@ -15,7 +15,8 @@
 import numpy as np
 from math import isnan
 
-from gpmcc.utils import config as cu
+import gpmcc.utils.general as gu
+import gpmcc.utils.config as cu
 
 class Dim(object):
     """Holds data, model type, and hyperparameters."""
@@ -138,10 +139,21 @@ class Dim(object):
 
     def transition_hypers(self):
         """Updates the hyperparameters and the component parameters."""
+        # Transition component parameters.
         for cluster in self.clusters:
             cluster.transition_params()
-        self.hypers = self.model.transition_hypers(self.clusters,
-            self.hypers, self.hypers_grids)
+        # Transition hyperparameters.
+        targets = self.hypers.keys()
+        np.random.shuffle(targets)
+        for target in targets:
+            lp = self.model.calc_hyper_logps(self.clusters,
+                self.hypers_grids[target], self.hypers, target)
+            proposal = gu.log_pflip(lp)
+            self.hypers[target] = self.hypers_grids[target][proposal]
+        # Update the clusters.
+        for cluster in self.clusters:
+            cluster.set_hypers(self.hypers)
+
 
     def reassign(self, Zr):
         """Reassigns the data to new clusters according to the new
