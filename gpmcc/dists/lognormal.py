@@ -156,8 +156,7 @@ class Lognormal(object):
         # Compute weighted pdfs
         K = len(clusters)
         pdf = np.zeros((K, len(Y)))
-        denom = log(float(len(X)))
-        W = [log(clusters[k].N) - denom for k in xrange(K)]
+        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
         for k in xrange(K):
             pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
                     for y in Y])

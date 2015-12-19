@@ -133,10 +133,9 @@ class Poisson(object):
         # Compute weighted pdfs
         K = len(clusters)
         pdf = np.zeros((K, len(Y)))
-        denom = log(float(len(X)))
         toplt = np.array(gu.bincount(X,Y)) / float(len(X))
         ax.bar(Y, toplt, color="gray", edgecolor="none")
-        W = [log(clusters[k].N) - denom for k in range(K)]
+        W = [log(clusters[k].N) - log(float(len(X))) for k in range(K)]
         for k in xrange(K):
             pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
                     for y in Y])
