@@ -35,38 +35,37 @@ class Lognormal(object):
         assert a > 0
         assert b > 0
         assert t > 0
+        # Sufficient statistics.
         self.N = N
         self.sum_log_x_sq = sum_log_x_sq
         self.sum_log_x = sum_log_x
+        # Hyperparameters.
         self.m = m
         self.a = a
         self.b = b
         self.t = t
 
+    def transition_params(self, prior=False):
+        return
+
     def set_hypers(self, hypers):
         assert hypers['a'] > 0
         assert hypers['b'] > 0
         assert hypers['t'] > 0
-
         self.m = hypers['m']
         self.b = hypers['b']
         self.t = hypers['t']
         self.a = hypers['a']
 
-    def transition_params(self, prior=False):
-        return
-
     def insert_element(self, x):
         self.N += 1.0
-        lx = log(x)
-        self.sum_log_x += lx
-        self.sum_log_x_sq += lx*lx
+        self.sum_log_x += log(x)
+        self.sum_log_x_sq += log(x) * log(x)
 
     def remove_element(self, x):
         self.N -= 1.0
-        lx = log(x)
-        self.sum_log_x -= lx
-        self.sum_log_x_sq -= lx*lx
+        self.sum_log_x -= log(x)
+        self.sum_log_x_sq -= log(x) * log(x)
 
     def predictive_logp(self, x):
         return Lognormal.calc_predictive_logp(x, self.N, self.sum_log_x,
@@ -97,145 +96,54 @@ class Lognormal(object):
         hypers['a'] = np.random.choice(grids['a'])
         hypers['b'] = np.random.choice(grids['b'])
         hypers['t'] = np.random.choice(grids['t'])
-
         return hypers
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_log_x, sum_log_x_sq, a, b, t, m):
         if x <= 0:
             return float('-inf')
-
         an, bn, tn, mn = Lognormal.posterior_update_parameters(N, sum_log_x,
             sum_log_x_sq, a, b, t, m)
-
         am, bm, tm, mm = Lognormal.posterior_update_parameters(N + 1,
             sum_log_x + log(x), sum_log_x_sq + log(x) * log(x), a, b, t, m)
-
         ZN = log(x) + Lognormal.calc_log_Z(an, bn, tn)
         ZM = Lognormal.calc_log_Z(am, bm, tm)
-
         return -0.5 * LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_log_x, sum_log_x_sq, a, b, t, m):
         an, bn, tn, mn = Lognormal.posterior_update_parameters(N, sum_log_x,
             sum_log_x_sq, a, b, t, m)
-
         Z0 = sum_log_x+Lognormal.calc_log_Z(a, b, t)
         ZN = Lognormal.calc_log_Z(an, bn, tn)
+        return -(float(N) / 2.) * LOG2PI + ZN - Z0
 
-        return -(float(N) / 2.0) * LOG2PI + ZN - Z0
-
-    @staticmethod
-    def transition_hypers(clusters, hypers, grids):
-        # resample alpha
-        a = hypers['a']
-        b = hypers['b']
-        t = hypers['t']
-        m = hypers['m']
-
-        which_hypers = [0,1,2,3]
-        np.random.shuffle(which_hypers)
-        for hyper in which_hypers:
-            if hyper == 0:
-                lp_a = Lognormal.calc_a_conditional_logps(clusters, grids['a'],
-                    b,t,m)
-                a_index = gu.log_pflip(lp_a)
-                a = grids['a'][a_index]
-            elif hyper == 1:
-                lp_b = Lognormal.calc_b_conditional_logps(clusters, grids['b'],
-                    a,t,m)
-                b_index = gu.log_pflip(lp_b)
-                b = grids['b'][b_index]
-            elif hyper == 2:
-                lp_t = Lognormal.calc_t_conditional_logps(clusters, grids['t'],
-                    a,b,m)
-                t_index = gu.log_pflip(lp_t)
-                t = grids['t'][t_index]
-            elif hyper == 3:
-                lp_m = Lognormal.calc_m_conditional_logps(clusters, grids['m'],
-                    a,b,t)
-                m_index = gu.log_pflip(lp_m)
-                m = grids['m'][m_index]
-            else:
-                raise ValueError("Invalid hyper.")
-
-        hypers = dict()
-        hypers['a'] = a
-        hypers['b'] = b
-        hypers['t'] = t
-        hypers['m'] = m
-
-        for cluster in clusters:
-            cluster.set_hypers(hypers)
-
-        return hypers
 
     @staticmethod
     def posterior_update_parameters(N, sum_log_x, sum_log_x_sq, a, b, t, m):
-        tmn = m*t+N
-
+        tmn = m * t + N
         tn = t + float(N)
         an = a + float(N)
-        mn = (t*m+sum_log_x)/tn
-        bn = b + sum_log_x_sq + t*m*m - tn*mn*mn
-
+        mn = (t * m + sum_log_x)/ tn
+        bn = b + sum_log_x_sq + t * m * m - tn * mn * mn
         return an, bn, tn, mn
 
     @staticmethod
     def calc_log_Z(a, b, t):
-        Z = ((a + 1.0) / 2.0) * LOG2 + .5 * LOGPI - .5 * log(t) - \
-            (a / 2.0) * log(b) + gammaln(a/2.0)
-        return Z
+        return ((a + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(t) - \
+            (a / 2.) * log(b) + gammaln(a / 2.)
 
     @staticmethod
-    def calc_m_conditional_logps(clusters, m_grid, a, b, t):
+    def calc_hyper_logps(clusters, grid, hypers, target):
         lps = []
-        for m in m_grid:
-            lp = Lognormal.calc_full_marginal_conditional(clusters, a, b, t, m)
+        for g in grid:
+            hypers[target] = g
+            lp = 0
+            for cluster in clusters:
+                lp += Lognormal.calc_marginal_logp(cluster.N,
+                    cluster.sum_log_x, cluster.sum_log_x_sq, **hypers)
             lps.append(lp)
-
         return lps
-
-    @staticmethod
-    def calc_a_conditional_logps(clusters, a_grid, b, t, m):
-        lps = []
-        for a in a_grid:
-            lp = Lognormal.calc_full_marginal_conditional(clusters, a, b, t, m)
-            lps.append(lp)
-
-        return lps
-
-    @staticmethod
-    def calc_b_conditional_logps(clusters, b_grid, a, t, m):
-        lps = []
-        for b in b_grid:
-            lp = Lognormal.calc_full_marginal_conditional(clusters, a, b, t, m)
-            lps.append(lp)
-
-        return lps
-
-    @staticmethod
-    def calc_t_conditional_logps(clusters, t_grid, a, b, m):
-        lps = []
-        for t in t_grid:
-            lp = Lognormal.calc_full_marginal_conditional(clusters, a, b, t, m)
-            lps.append(lp)
-
-        return lps
-
-    @staticmethod
-    def calc_full_marginal_conditional(clusters, a, b, t, m):
-        lp = 0
-        for cluster in clusters:
-            N = cluster.N
-            sum_log_x = cluster.sum_log_x
-            sum_log_x_sq = cluster.sum_log_x_sq
-            l = Lognormal.calc_marginal_logp(N, sum_log_x, sum_log_x_sq, a, b,
-                t, m)
-            lp += l
-
-        return lp
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
