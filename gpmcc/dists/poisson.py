@@ -117,10 +117,8 @@ class Poisson(object):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = 0
-            for cluster in clusters:
-                lp += Poisson.calc_marginal_logp(cluster.N, cluster.sum_x,
-                    cluster.sum_log_fact_x, **hypers)
+            lp = sum(Poisson.calc_marginal_logp(cluster.N, cluster.sum_x,
+                cluster.sum_log_fact_x, **hypers) for cluster in clusters)
             lps.append(lp)
         return lps
 

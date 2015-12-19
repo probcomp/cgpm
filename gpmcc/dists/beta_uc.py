@@ -167,10 +167,8 @@ class BetaUC(object):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = 0
-            for cluster in clusters:
-                lp += BetaUC.calc_log_prior(cluster.strength,
-                    cluster.balance, **hypers)
+            lp = sum(BetaUC.calc_log_prior(cluster.strength,
+                cluster.balance, **hypers) for cluster in clusters)
             lps.append(lp)
         return lps
 

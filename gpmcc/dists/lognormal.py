@@ -137,10 +137,9 @@ class Lognormal(object):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = 0
-            for cluster in clusters:
-                lp += Lognormal.calc_marginal_logp(cluster.N,
-                    cluster.sum_log_x, cluster.sum_log_x_sq, **hypers)
+            lp = sum(Lognormal.calc_marginal_logp(cluster.N,
+                cluster.sum_log_x, cluster.sum_log_x_sq, **hypers)
+                for cluster in clusters)
             lps.append(lp)
         return lps
 
