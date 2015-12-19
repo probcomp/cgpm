@@ -31,15 +31,14 @@ class Poisson(object):
         self.a = a
         self.b = b
 
+    def transition_params(self):
+        return
+
     def set_hypers(self, hypers):
         assert hypers['a'] > 0
         assert hypers['b'] > 0
-
         self.b = hypers['b']
         self.a = hypers['a']
-
-    def transition_params(self, prior=False):
-        return
 
     def insert_element(self, x):
         self.N += 1.0
@@ -83,7 +82,6 @@ class Poisson(object):
         hypers = dict()
         hypers['a'] = np.random.choice(grids['a'])
         hypers['b'] = np.random.choice(grids['b'])
-
         return hypers
 
     @staticmethod
@@ -92,19 +90,15 @@ class Poisson(object):
             return float('-inf')
         an, bn = Poisson.posterior_update_parameters(N, sum_x, a, b)
         am, bm = Poisson.posterior_update_parameters(N+1, sum_x+x, a, b)
-
         ZN = Poisson.calc_log_Z(an, bn)
         ZM = Poisson.calc_log_Z(am, bm)
-
         return  ZM - ZN - gammaln(x+1)
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, sum_log_fact_x, a, b):
         an, bn = Poisson.posterior_update_parameters(N, sum_x, a, b)
-
         Z0 = Poisson.calc_log_Z(a, b)
         ZN = Poisson.calc_log_Z(an, bn)
-
         return ZN - Z0 - sum_log_fact_x
 
     @staticmethod
