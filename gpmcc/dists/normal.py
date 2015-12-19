@@ -21,8 +21,7 @@ class Normal(object):
 
     def __init__(self, N=0, sum_x=0, sum_x_sq=0, m=0, r=1, s=1, nu=1,
             distargs=None):
-        """
-        Optional arguments:
+        """Optional arguments:
         -- N: number of data points
         -- sum_x: suffstat, sum(X)
         -- sum_x_sq: suffstat, sum(X^2)
@@ -32,13 +31,14 @@ class Normal(object):
         -- nu: hyperparameter
         -- distargs: not used
         """
-        assert s > 0.0
-        assert r > 0.0
-        assert nu > 0.0
-
+        assert s > 0.
+        assert r > 0.
+        assert nu > 0.
+        # Sufficient statistics.
         self.N = N
         self.sum_x = sum_x
         self.sum_x_sq = sum_x_sq
+        # Hyper parameters.
         self.m = m
         self.r = r
         self.s = s
@@ -54,7 +54,7 @@ class Normal(object):
         self.s = hypers['s']
         self.nu = hypers['nu']
 
-    def transition_params(self, prior=False):
+    def transition_params(self):
         return
 
     def insert_element(self, x):
