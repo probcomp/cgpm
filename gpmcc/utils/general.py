@@ -21,10 +21,11 @@ from scipy.special import i0 as bessel_0
 from scipy.misc import logsumexp
 from scipy.special import gammaln
 
-def colors():
-    """Returns a list of colors for plotting."""
-    return \
-        ["red", "blue", "green", "yellow", "orange", "purple", "brown", "black"]
+colors = ["red", "blue", "green", "yellow", "orange", "purple", "brown",
+    "black"]
+
+def curve_color(k):
+    return (colors[k], .7) if k < len(colors) else ('white', .3)
 
 def log_bessel_0(x):
     besa = bessel_0(x)

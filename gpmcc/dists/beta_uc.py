@@ -187,14 +187,9 @@ class BetaUC(object):
         denom = log(float(len(X)))
         W = [log(clusters[k].N) - denom for k in range(K)]
         for k in xrange(K):
-            for n in xrange(len(Y)):
-                pdf[k, n] = np.exp(W[k] + \
-                    clusters[k].predictive_logp(Y[n]))
-            color = "white"
-            alpha =.3
-            if k < 8:
-                color = gu.colors()[k]
-                alpha =.7
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
             ax.plot(Y, pdf[k,:],color=color, linewidth=5, alpha=alpha)
         # Plot the sum of pdfs.
         ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
@@ -208,5 +203,5 @@ class BetaUC(object):
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
         # Title.
-        ax.set_title('beta (uncollapsed)')
+        ax.set_title(clusters[0].cctype)
         return ax

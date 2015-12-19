@@ -118,7 +118,6 @@ class Lognormal(object):
         ZN = Lognormal.calc_log_Z(an, bn, tn)
         return -(float(N) / 2.) * LOG2PI + ZN - Z0
 
-
     @staticmethod
     def posterior_update_parameters(N, sum_log_x, sum_log_x_sq, a, b, t, m):
         tmn = m * t + N
@@ -147,43 +146,26 @@ class Lognormal(object):
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+        # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
-
+        # Set up x axis.
         x_min = min(X)
         x_max = max(X)
         if Y is None:
             Y = np.linspace(x_min, x_max, 200)
+        # Compute weighted pdfs
         K = len(clusters)
-        pdf = np.zeros((K,200))
+        pdf = np.zeros((K, len(Y)))
         denom = log(float(len(X)))
-
-        a = clusters[0].a
-        b = clusters[0].b
-        t = clusters[0].t
-        m = clusters[0].m
-
-        W = [log(clusters[k].N) - denom for k in range(K)]
-        for k in range(K):
-            w = W[k]
-            N = clusters[k].N
-            sum_log_x = clusters[k].sum_log_x
-            sum_log_x_sq = clusters[k].sum_log_x_sq
-            for n in range(200):
-                y = Y[n]
-                pdf[k, n] = np.exp(w + Lognormal.calc_predictive_logp(y, N,
-                    sum_log_x, sum_log_x_sq, a, b, t, m))
-            if k >= 8:
-                color = "white"
-                alpha=.3
-            else:
-                color = gu.colors()[k]
-                alpha=.7
+        W = [log(clusters[k].N) - denom for k in xrange(K)]
+        for k in xrange(K):
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
             ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-
         # Plot the sum of pdfs.
         ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-
         # Plot the samples.
         if hist:
             nbins = min([len(X)/5, 50])
@@ -193,6 +175,5 @@ class Lognormal(object):
             y_max = ax.get_ylim()[1]
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
-
-        ax.set_title('lognormal')
+        ax.set_title(clusters[0].cctype)
         return ax

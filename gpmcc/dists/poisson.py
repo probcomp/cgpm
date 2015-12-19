@@ -136,18 +136,13 @@ class Poisson(object):
         K = len(clusters)
         pdf = np.zeros((K, len(Y)))
         denom = log(float(len(X)))
-        toplt = np.array(gu.bincount(X,Y))/float(len(X))
+        toplt = np.array(gu.bincount(X,Y)) / float(len(X))
         ax.bar(Y, toplt, color="gray", edgecolor="none")
         W = [log(clusters[k].N) - denom for k in range(K)]
         for k in xrange(K):
-            for n in xrange(len(Y)):
-                pdf[k, n] = np.exp(W[k] + \
-                    clusters[k].predictive_logp(Y[n]))
-            color = "white"
-            alpha =.3
-            if k < 8:
-                color = gu.colors()[k]
-                alpha =.7
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
             ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
         # Plot the sum of pdfs.
         ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
@@ -155,5 +150,5 @@ class Poisson(object):
         # print integral for debugging (should never be greater that 1)
         # print gu.line_quad(Y, np.sum(pdf,axis=0))
         ax.set_xlim([0, x_max+1])
-        ax.set_title('poisson')
+        ax.set_title(clusters[0].cctype)
         return ax
