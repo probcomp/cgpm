@@ -173,5 +173,6 @@ class Lognormal(object):
             y_max = ax.get_ylim()[1]
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
+        # Title.
         ax.set_title(clusters[0].cctype)
         return ax

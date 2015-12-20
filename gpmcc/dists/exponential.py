@@ -24,8 +24,10 @@ class Exponential(object):
         """
         assert a > 0
         assert b > 0
+        # Sufficient statistics.
         self.N = N
         self.sum_x = sum_x
+        # Hyperparameters.
         self.a = a
         self.b = b
 
