@@ -84,8 +84,8 @@ class Normal(object):
             self.s, self.nu)
 
     def predictive_draw(self):
-        rn, nun, mn, sn = Normal.posterior_update_parameters(self.N,
-            self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
+        rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_x,
+            self.sum_x_sq, self.m, self.r, self.s, self.nu)
         coeff = ( ((sn / 2.) * (rn + 1.)) / ((nun / 2.) * rn) ) ** .5
         draw = np.random.standard_t(nun) * coeff + mn
         return draw
@@ -105,24 +105,24 @@ class Normal(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x,
-            sum_x_sq, m, r, s, nu)
-        rm, num, mm, sm = Normal.posterior_update_parameters(
-            N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
+        rn, nun, mn, sn = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
+            s, nu)
+        rm, num, mm, sm = Normal.posterior_hypers(N+1, sum_x+x,
+            sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
         return -.5*LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, sum_x_sq, m, r, s, nu):
-        rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x, sum_x_sq,
-            m, r, s, nu)
+        rn, nun, mn, sn = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
+            s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         return - (float(N) / 2.0) * LOG2PI + ZN - Z0
 
     @staticmethod
-    def posterior_update_parameters(N, sum_x, sum_x_sq, m, r, s, nu):
+    def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
         rn = r + float(N)
         nun = nu + float(N)
         mn = (r*m + sum_x)/rn

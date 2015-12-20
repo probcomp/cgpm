@@ -40,14 +40,13 @@ class NormalUC(Normal):
         # Uncollapsed mean and precision parameters.
         self.mu, self.rho = mu, rho
         if mu is None or rho is None:
-            self.mu, self.rho = NormalUC.draw_params(m, r, s, nu)
+            self.transition_params()
 
     def transition_params(self):
-        rn, nun, mn, sn = NormalUC.posterior_update_parameters(self.N,
-            self.sum_x, self.sum_x_sq, self. m, self.r, self.s, self.nu)
-        mu, rho = self.draw_params(mn, rn, sn, nun)
-        self.mu = mu
-        self.rho = rho
+        rn, nun, mn, sn = NormalUC.posterior_hypers(self.N, self.sum_x,
+            self.sum_x_sq, self. m, self.r, self.s, self.nu)
+        self.rho = np.random.gamma(nun/2., scale=2./sn)
+        self.mu = np.random.normal(loc=mn, scale=1./(self.rho*rn)**.5)
 
     def predictive_logp(self, x):
         return NormalUC.calc_predictive_logp(x, self.mu, self.rho)
@@ -88,9 +87,3 @@ class NormalUC(Normal):
                     **hypers) for cluster in clusters)
             lps.append(lp)
         return lps
-
-    @staticmethod
-    def draw_params(m, r, s, nu):
-        rho = np.random.gamma(nu/2., scale=2./s)
-        mu = np.random.normal(loc=m, scale=1./(rho*r)**.5)
-        return mu, rho

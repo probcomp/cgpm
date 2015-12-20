@@ -59,7 +59,7 @@ class Geometric(object):
         return Geometric.calc_predictive_logp(x, 0, 0, self.a, self.b)
 
     def predictive_draw(self):
-        # an, bn = Geometric.posterior_update_parameters(self.N, self.sum_x,
+        # an, bn = Geometric.posterior_hypers(self.N, self.sum_x,
             # self.a, self.b)
         # XXX Fix.
         # draw = np.random.negative_binomial(an, bn/(bn+1.0))
@@ -80,21 +80,21 @@ class Geometric(object):
     def calc_predictive_logp(x, N, sum_x, a, b):
         if float(x) != int(x) or x < 0:
             return float('-inf')
-        an, bn = Geometric.posterior_update_parameters(N, sum_x, a, b)
-        am, bm = Geometric.posterior_update_parameters(N+1, sum_x+x, a, b)
+        an, bn = Geometric.posterior_hypers(N, sum_x, a, b)
+        am, bm = Geometric.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Geometric.calc_log_Z(an, bn)
         ZM = Geometric.calc_log_Z(am, bm)
         return  ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, a, b):
-        an, bn = Geometric.posterior_update_parameters(N, sum_x, a, b)
+        an, bn = Geometric.posterior_hypers(N, sum_x, a, b)
         Z0 = Geometric.calc_log_Z(a, b)
         ZN = Geometric.calc_log_Z(an, bn)
         return ZN - Z0
 
     @staticmethod
-    def posterior_update_parameters(N, sum_x, a, b):
+    def posterior_hypers(N, sum_x, a, b):
         an = a + N
         bn = b + sum_x
         return an, bn

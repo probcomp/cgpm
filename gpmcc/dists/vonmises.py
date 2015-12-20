@@ -109,10 +109,9 @@ class Vonmises(object):
         assert k > 0
         if x < 0 or x > math.pi * 2.:
             return float('-inf')
-        an, bn = Vonmises.posterior_update_parameters(N, sum_sin_x,
-            sum_cos_x, a, b, k)
-        am, bm = Vonmises.posterior_update_parameters(N + 1.,
-            sum_sin_x + sin(x), sum_cos_x + cos(x), a, b, k)
+        an, bn = Vonmises.posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k)
+        am, bm = Vonmises.posterior_hypers(N + 1., sum_sin_x + sin(x),
+            sum_cos_x + cos(x), a, b, k)
         ZN = Vonmises.calc_log_Z(an)
         ZM = Vonmises.calc_log_Z(am)
         return - LOG2PI - gu.log_bessel_0(k) + ZM - ZN
@@ -123,7 +122,7 @@ class Vonmises(object):
         assert a > 0
         assert 0 <= b and b <= 2 * math.pi
         assert k > 0
-        an, bn = Vonmises.posterior_update_parameters(N, sum_sin_x,
+        an, bn = Vonmises.posterior_hypers(N, sum_sin_x,
             sum_cos_x, a, b, k)
         Z0 = Vonmises.calc_log_Z(a)
         ZN = Vonmises.calc_log_Z(an)
@@ -133,7 +132,7 @@ class Vonmises(object):
         return lp
 
     @staticmethod
-    def posterior_update_parameters(N, sum_sin_x, sum_cos_x, a, b, k):
+    def posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k):
         assert N >= 0
         assert a > 0
         assert 0 <= b and b <= 2*math.pi

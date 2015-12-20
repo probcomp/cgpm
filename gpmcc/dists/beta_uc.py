@@ -46,6 +46,9 @@ class BetaUC(object):
         if strength is None or balance is None:
             self.strength, self.balance = BetaUC.draw_params(mu, alpha,
                 beta)
+            self.strength = np.random.exponential(scale=mu)
+            self.balance = np.random.beta(alpha, beta)
+            assert self.strength > 0 and 0 < self.balance < 1
 
     def transition_params(self):
         n_samples = 25
@@ -99,11 +102,6 @@ class BetaUC(object):
         lp += BetaUC.calc_log_prior(self.strength, self.balance, self.mu,
             self.alpha, self.beta)
         return lp
-
-    def predictive_draw(self):
-        alpha = self.strength*self.balance
-        beta = self.strength*(1.0-self.balance)
-        return np.random.beta(alpha, beta)
 
     @staticmethod
     def calc_predictive_logp(x, strength, balance):

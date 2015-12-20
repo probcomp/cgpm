@@ -93,9 +93,9 @@ class Lognormal(object):
     def calc_predictive_logp(x, N, sum_log_x, sum_log_x_sq, a, b, t, m):
         if x <= 0:
             return float('-inf')
-        an, bn, tn, mn = Lognormal.posterior_update_parameters(N, sum_log_x,
+        an, bn, tn, mn = Lognormal.posterior_hypers(N, sum_log_x,
             sum_log_x_sq, a, b, t, m)
-        am, bm, tm, mm = Lognormal.posterior_update_parameters(N + 1,
+        am, bm, tm, mm = Lognormal.posterior_hypers(N + 1,
             sum_log_x + log(x), sum_log_x_sq + log(x) * log(x), a, b, t, m)
         ZN = log(x) + Lognormal.calc_log_Z(an, bn, tn)
         ZM = Lognormal.calc_log_Z(am, bm, tm)
@@ -103,14 +103,14 @@ class Lognormal(object):
 
     @staticmethod
     def calc_marginal_logp(N, sum_log_x, sum_log_x_sq, a, b, t, m):
-        an, bn, tn, mn = Lognormal.posterior_update_parameters(N, sum_log_x,
+        an, bn, tn, mn = Lognormal.posterior_hypers(N, sum_log_x,
             sum_log_x_sq, a, b, t, m)
         Z0 = sum_log_x+Lognormal.calc_log_Z(a, b, t)
         ZN = Lognormal.calc_log_Z(an, bn, tn)
         return -(float(N) / 2.) * LOG2PI + ZN - Z0
 
     @staticmethod
-    def posterior_update_parameters(N, sum_log_x, sum_log_x_sq, a, b, t, m):
+    def posterior_hypers(N, sum_log_x, sum_log_x_sq, a, b, t, m):
         tmn = m * t + N
         tn = t + float(N)
         an = a + float(N)

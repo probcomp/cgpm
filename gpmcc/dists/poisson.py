@@ -63,9 +63,9 @@ class Poisson(object):
             self.b)
 
     def predictive_draw(self):
-        an, bn = Poisson.posterior_update_parameters(self.N, self.sum_x,
+        an, bn = Poisson.posterior_hypers(self.N, self.sum_x,
             self.a, self.b)
-        draw = np.random.negative_binomial(an, bn/(bn+1.0))
+        draw = np.random.negative_binomial(an, bn/(bn+1.))
         return draw
 
     @staticmethod
@@ -81,21 +81,21 @@ class Poisson(object):
     def calc_predictive_logp(x, N, sum_x, sum_log_fact_x, a, b):
         if float(x) != x or x < 0:
             return float('-inf')
-        an, bn = Poisson.posterior_update_parameters(N, sum_x, a, b)
-        am, bm = Poisson.posterior_update_parameters(N+1, sum_x+x, a, b)
+        an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
+        am, bm = Poisson.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Poisson.calc_log_Z(an, bn)
         ZM = Poisson.calc_log_Z(am, bm)
         return  ZM - ZN - gammaln(x+1)
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, sum_log_fact_x, a, b):
-        an, bn = Poisson.posterior_update_parameters(N, sum_x, a, b)
+        an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
         Z0 = Poisson.calc_log_Z(a, b)
         ZN = Poisson.calc_log_Z(an, bn)
         return ZN - Z0 - sum_log_fact_x
 
     @staticmethod
-    def posterior_update_parameters(N, sum_x, a, b):
+    def posterior_hypers(N, sum_x, a, b):
         an = a + sum_x
         bn = b + N
         return an, bn

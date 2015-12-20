@@ -27,13 +27,12 @@ class ExponentialUC(Exponential):
             distargs=distargs)
         # Uncollapsed mean parameter.
         if mu is None:
-            self.mu = ExponentialUC.draw_params(self.a, self.b)
+            self.transition_params()
 
     def transition_params(self):
-        an, bn = ExponentialUC.posterior_update_parameters(self.N,
-            self.sum_x, self.a, self.b)
-        mu = self.draw_params(an, bn)
-        self.mu = mu
+        an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a,
+            self.b)
+        self.mu = gamma.rvs(an, scale=1./bn)
 
     def predictive_logp(self, x):
         return ExponentialUC.calc_predictive_logp(x, self.mu)
@@ -69,7 +68,3 @@ class ExponentialUC(Exponential):
                 for cluster in clusters)
             lps.append(lp)
         return lps
-
-    @staticmethod
-    def draw_params(a, b):
-        return gamma.rvs(a, scale=1./b)

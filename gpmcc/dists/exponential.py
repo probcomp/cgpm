@@ -61,7 +61,7 @@ class Exponential(object):
             self.b)
 
     def predictive_draw(self):
-        an, bn = Exponential.posterior_update_parameters(self.N,
+        an, bn = Exponential.posterior_hypers(self.N,
             self.sum_x, self.a, self.b)
         draw = lomax.rvs(an, loc=1-bn) - (1 - bn)
         return draw
@@ -79,21 +79,21 @@ class Exponential(object):
     def calc_predictive_logp(x, N, sum_x, a, b):
         if x < 0:
             return float('-inf')
-        an,bn = Exponential.posterior_update_parameters(N, sum_x, a, b)
-        am,bm = Exponential.posterior_update_parameters(N+1, sum_x+x, a, b)
+        an,bn = Exponential.posterior_hypers(N, sum_x, a, b)
+        am,bm = Exponential.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Exponential.calc_log_Z(an, bn)
         ZM = Exponential.calc_log_Z(am, bm)
         return  ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, a, b):
-        an, bn = Exponential.posterior_update_parameters(N, sum_x, a, b)
+        an, bn = Exponential.posterior_hypers(N, sum_x, a, b)
         Z0 = Exponential.calc_log_Z(a, b)
         ZN = Exponential.calc_log_Z(an, bn)
         return ZN - Z0
 
     @staticmethod
-    def posterior_update_parameters(N, sum_x, a, b):
+    def posterior_hypers(N, sum_x, a, b):
         an = a + N
         bn = b + sum_x
         return an, bn
