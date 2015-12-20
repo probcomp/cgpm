@@ -47,8 +47,10 @@ class ExponentialUC(Exponential):
         return ExponentialUC.calc_predictive_logp(x, self.mu)
 
     def marginal_logp(self):
-        lp = ExponentialUC.calc_log_likelihood(self.N, self.sum_x, self.mu)
-        return lp
+        data_logp = ExponentialUC.calc_log_likelihood(self.N, self.sum_x,
+            self.mu)
+        prior_logp = ExponentialUC.calc_log_prior(self.mu, self.a, self.b)
+        return data_logp + prior_logp
 
     def singleton_logp(self, x):
         return ExponentialUC.calc_predictive_logp(x, self.mu)

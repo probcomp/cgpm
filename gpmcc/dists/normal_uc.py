@@ -61,9 +61,11 @@ class NormalUC(Normal):
         return NormalUC.calc_predictive_logp(x, self.mu, self.rho)
 
     def marginal_logp(self):
-        lp = NormalUC.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
-            self.rho, self.mu)
-        return lp
+        data_logp = NormalUC.calc_log_likelihood(self.N, self.sum_x,
+            self.sum_x_sq, self.rho, self.mu)
+        prior_logp = NormalUC.calc_log_prior(self.mu, self.rho, self.m,
+            self.r, self.s, self.nu)
+        return data_logp + prior_logp
 
     def singleton_logp(self, x):
         return NormalUC.calc_predictive_logp(x, self.mu, self.rho)
