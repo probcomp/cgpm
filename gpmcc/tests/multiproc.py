@@ -24,8 +24,8 @@ import numpy as np
 n_rows = 200
 view_weights = np.asarray([0.7, .3])
 cluster_weights = [np.array([.33, .33, .34]), np.array([.2, .8])]
-cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial','vonmises',
-    'vonmises_uc','binomial', 'lognormal']
+cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial',
+    'vonmises', 'binomial', 'lognormal']
 
 separation = [.7] * 9
 distargs = [None, None, None, None, {"K":5}, None, None, None, None]

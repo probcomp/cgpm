@@ -226,7 +226,6 @@ def clean_data(X, cctypes):
         'exponential_uc'    : False,
         'geometric'         : True,
         'vonmises'          : False,
-        'vonmises_uc'       : False,
     }
 
     for i in xrange(len(X)):

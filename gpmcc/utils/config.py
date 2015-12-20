@@ -25,7 +25,6 @@ from gpmcc.dists import exponential
 from gpmcc.dists import exponential_uc
 from gpmcc.dists import geometric
 from gpmcc.dists import vonmises
-from gpmcc.dists import vonmises_uc
 
 dist_class_lookup = {
     'normal'            : normal.Normal,
@@ -39,7 +38,6 @@ dist_class_lookup = {
     'exponential_uc'    : exponential_uc.ExponentialUC,
     'geometric'         : geometric.Geometric,
     'vonmises'          : vonmises.Vonmises,
-    'vonmises_uc'       : vonmises_uc.VonmisesUC,
 }
 
 dist_collapsed_lookup = {
@@ -54,7 +52,6 @@ dist_collapsed_lookup = {
         'exponential_uc'    : True,
         'geometric'         : False,
         'vonmises'          : False,
-        'vonmises_uc'       : True,
 }
 
 def colors():

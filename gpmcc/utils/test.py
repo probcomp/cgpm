@@ -329,7 +329,6 @@ _gen_data = {
     'geometric'         : _gen_geometric_data_column,
     'lognormal'         : _gen_lognormal_data_column,
     'vonmises'          : _gen_vonmises_data_column,
-    'vonmises_uc'       : _gen_vonmises_data_column,
 }
 
 _gen_data_cpp = {
