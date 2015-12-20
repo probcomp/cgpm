@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 import math
 from math import log
 from math import sin
@@ -14,11 +28,7 @@ TWOPI = 2 * math.pi
 LOG2PI = log(2 * math.pi)
 
 class Vonmises(object):
-    """Von Mises data type. Currently assumes fixed concentration parameter.
-
-    All data should be in the range [0, 2*pi]
-    Does not require additional argumets (distargs=None).
-    """
+    """Von Mises distribution, assuming fixed concentration k."""
 
     cctype = 'vonmises'
 
