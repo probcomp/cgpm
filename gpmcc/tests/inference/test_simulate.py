@@ -87,11 +87,11 @@ def test_simulate_indicator():
     for t in indicators:
         # Plot original data.
         data_subpop = data[data[:,1] == t]
-        ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors()[t])
+        ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
         # Plot simulated data.
         samples_subpop = samples[samples[:,1] == t]
         ax.scatter(samples_subpop[:,1] + .25, samples_subpop[:,0],
-            color=gu.colors()[t])
+            color=gu.colors[t])
     ax.set_xlabel('Indicator')
     ax.set_ylabel('x')
     ax.grid()
