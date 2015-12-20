@@ -154,7 +154,6 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
 
-
     def reassign(self, Zr):
         """Reassigns the data to new clusters according to the new
         partitioning, Zr.

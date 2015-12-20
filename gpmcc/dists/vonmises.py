@@ -220,12 +220,12 @@ class Vonmises(object):
         # Plot the samples.
         if hist:
             nbins = min([len(X)/5, 50])
-            ax.hist(X, nbins, normed=True, color="black", alpha=.5,
-                edgecolor="none")
+            ax.hist(X, nbins, normed=True, color='black', alpha=.5,
+                edgecolor='none')
         else:
             y_max = ax.get_ylim()[1]
             for x in X:
-                ax.vlines(x, 0, y_max / float(10), linewidth=1)
+                ax.vlines(x, 0, y_max/10., linewidth=1)
         # Title.
         ax.set_title(clusters[0].cctype)
         return ax

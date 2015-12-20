@@ -21,8 +21,8 @@ from scipy.special import i0 as bessel_0
 from scipy.misc import logsumexp
 from scipy.special import gammaln
 
-colors = ["red", "blue", "green", "yellow", "orange", "purple", "brown",
-    "black"]
+colors = ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'brown',
+    'black']
 
 def curve_color(k):
     return (colors[k], .7) if k < len(colors) else ('white', .3)
@@ -178,9 +178,6 @@ def bincount(X, bins=None):
         maxval = np.max(Y)
         bins = range(minval, maxval+1)
 
-    # if not isinstance(bins, list):
-    #     raise TypeError('bins should be a list')
-
     counts = [0]*len(bins)
 
     for y in Y:
@@ -197,7 +194,6 @@ def csv_to_list(filename):
     T = []
     with open(filename, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
-        i = 0
         for row in reader:
             T.append(row)
     return T
@@ -218,19 +214,19 @@ def csv_to_data_and_colnames(filename):
     return np.asarray(X).T, colnames
 
 def clean_data(X, cctypes):
-    """Makes sure that descrete data columns are integer types."""
+    """Makes sure that discrete data columns are integer types."""
     is_discrete = {
-    'normal'      : False,
-    'normal_uc'   : False,
-    'binomial'    : False,  # should be 0.0 or 1.0
-    'multinomial' : True,
-    'lognormal'   : False,
-    'poisson'     : False,
-    'exponential' : False,
-    'exponential_uc' : False,
-    'geometric'   : True,
-    'vonmises'    : False,
-    'vonmises_uc' : False,
+        'normal'            : False,
+        'normal_uc'         : False,
+        'binomial'          : False,  # 0. or 1.
+        'multinomial'       : True,
+        'lognormal'         : False,
+        'poisson'           : False,
+        'exponential'       : False,
+        'exponential_uc'    : False,
+        'geometric'         : True,
+        'vonmises'          : False,
+        'vonmises_uc'       : False,
     }
 
     for i in xrange(len(X)):
