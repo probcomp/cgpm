@@ -64,7 +64,7 @@ class Dim(object):
             K = max(Zr)+1
             for k in xrange(K):
                 self.clusters.append(self.model(distargs=distargs,
-                    **hypers))
+                    **self.hypers))
             for i in xrange(len(X)):
                 k = Zr[i]
                 if not isnan(X[i]):
