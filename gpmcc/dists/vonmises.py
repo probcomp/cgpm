@@ -24,8 +24,7 @@ class Vonmises(object):
 
     def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, a=1, b=math.pi, k=1.5,
             distargs=None):
-        """
-        Optional arguments:
+        """Optional arguments:
         N -- number of data points assigned to this category. N >= 0
         sum_sin_x -- sufficient statistic sum(sin(X))
         sum_cos_x -- sufficient statistic sum(cos(X))
@@ -38,25 +37,25 @@ class Vonmises(object):
         assert a > 0
         assert 0 <= b and b <= 2 * math.pi
         assert k > 0
-
+        # Sufficient statistics.
         self.N = N
         self.sum_sin_x = sum_sin_x
         self.sum_cos_x = sum_cos_x
+        # Hyperparameters.
         self.a = a
         self.b = b
         self.k = k
+
+    def transition_params(self, prior=False):
+        return
 
     def set_hypers(self, hypers):
         assert hypers['a'] > 0
         assert hypers['b'] > 0
         assert 0 <= hypers['b'] and hypers['b'] <= TWOPI
-
         self.a = hypers['a']
         self.b = hypers['b']
         self.k = hypers['k']
-
-    def transition_params(self, prior=False):
-        return
 
     def insert_element(self, x):
         assert 0 <= x and x <= 2*math.pi
@@ -75,12 +74,13 @@ class Vonmises(object):
             self.sum_cos_x, self.a, self.b, self.k)
 
     def marginal_logp(self):
-        logp = Vonmises.calc_marginal_logp(self.N, self.sum_sin_x, self.sum_cos_x,
-            self.a, self.b, self.k)
+        logp = Vonmises.calc_marginal_logp(self.N, self.sum_sin_x,
+            self.sum_cos_x, self.a, self.b, self.k)
         return logp
 
     def singleton_logp(self, x):
-        return Vonmises.calc_predictive_logp(x, 0, 0, 0, self.a, self.b, self.k)
+        return Vonmises.calc_predictive_logp(x, 0, 0, 0, self.a, self.b,
+            self.k)
 
     def predictive_draw(self):
         fn = lambda x: np.exp(self.predictive_logp(x))
@@ -89,19 +89,15 @@ class Vonmises(object):
         return gu.inversion_sampling(fn, lower_bound, delta)
 
     @staticmethod
-    def construct_hyper_grids(X,n_grid=30):
-        grid_interval = TWOPI / n_grid
+    def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-
+        N = float(len(X))
         ssx = np.sum(np.sin(X))
         scx = np.sum(np.cos(X))
-        N = float(len(X))
         k = Vonmises.estimate_kappa(N, ssx, scx)
-
-        grids['a'] = gu.log_linspace(1/N,N, n_grid)
-        grids['b'] = np.linspace(grid_interval,TWOPI, n_grid)
-        grids['k'] = np.linspace(k,N*k, n_grid)
-
+        grids['a'] = gu.log_linspace(1/N, N, n_grid)
+        grids['b'] = np.linspace(TWOPI/n_grid, TWOPI, n_grid)
+        grids['k'] = np.linspace(k, N*k, n_grid)
         return grids
 
     @staticmethod
@@ -114,27 +110,20 @@ class Vonmises(object):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_sin_x, sum_cos_x, a, b, k):
-        assert 0 <= x and x <= 2*math.pi
+        assert 0 <= x and x <= 2 * math.pi
         assert N >= 0
         assert a > 0
-        assert 0 <= b and b <= 2*math.pi
+        assert 0 <= b and b <= 2 * math.pi
         assert k > 0
-
-        if x < 0 or x > math.pi*2.0:
+        if x < 0 or x > math.pi * 2.:
             return float('-inf')
-
         an, bn = Vonmises.posterior_update_parameters(N, sum_sin_x,
             sum_cos_x, a, b, k)
-
-        am, bm = Vonmises.posterior_update_parameters(N + 1.0,
+        am, bm = Vonmises.posterior_update_parameters(N + 1.,
             sum_sin_x + sin(x), sum_cos_x + cos(x), a, b, k)
-
         ZN = Vonmises.calc_log_Z(an)
         ZM = Vonmises.calc_log_Z(am)
-
-        lp = - LOG2PI - gu.log_bessel_0(k) + ZM - ZN
-
-        return lp
+        return - LOG2PI - gu.log_bessel_0(k) + ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_sin_x, sum_cos_x, a, b, k):
@@ -142,18 +131,13 @@ class Vonmises(object):
         assert a > 0
         assert 0 <= b and b <= 2 * math.pi
         assert k > 0
-        an, bn = Vonmises.posterior_update_parameters(
-            N, sum_sin_x, sum_cos_x, a, b, k)
-
+        an, bn = Vonmises.posterior_update_parameters(N, sum_sin_x,
+            sum_cos_x, a, b, k)
         Z0 = Vonmises.calc_log_Z(a)
         ZN = Vonmises.calc_log_Z(an)
-
-        lp = -(float(N))*(LOG2PI + gu.log_bessel_0(k)) + ZN-Z0
-
+        lp = float(-N) * (LOG2PI + gu.log_bessel_0(k)) + ZN - Z0
         if np.isnan(lp) or np.isinf(lp):
-            import ipdb
-            ipdb.set_trace()
-
+            import ipdb; ipdb.set_trace()
         return lp
 
     @staticmethod
@@ -162,13 +146,10 @@ class Vonmises(object):
         assert a > 0
         assert 0 <= b and b <= 2*math.pi
         assert k > 0
-
         p_cos = k*sum_cos_x+a*math.cos(b)
         p_sin = k*sum_sin_x+a*math.sin(b)
-
         an = (p_cos**2.0+p_sin**2.0)**.5
         bn = -1 # not used. There may be a time...
-
         return an, bn
 
     @staticmethod
@@ -177,152 +158,65 @@ class Vonmises(object):
         return gu.log_bessel_0(a)
 
     @staticmethod
-    def transition_hypers(clusters, hypers, grids):
-        a = hypers['a']
-        b = hypers['b']
-        k = hypers['k']
-
-        which_hypers = [0,1,2]
-        np.random.shuffle(which_hypers)
-
-        for hyper in which_hypers:
-            if hyper == 0:
-                lp_a = Vonmises.calc_a_conditional_logps(clusters, grids['a'],
-                    b, k)
-                a_index = gu.log_pflip(lp_a)
-                a = grids['a'][a_index]
-            elif hyper == 1:
-                lp_b = Vonmises.calc_b_conditional_logps(clusters, grids['b'],
-                    a, k)
-                b_index = gu.log_pflip(lp_b)
-                b = grids['b'][b_index]
-            elif hyper == 2:
-                lp_k = Vonmises.calc_k_conditional_logps(clusters, grids['k'],
-                    a, b)
-                k_index = gu.log_pflip(lp_k)
-                k = grids['k'][k_index]
-            else:
-                raise ValueError("Invalid hyper.")
-
-        hypers = dict()
-        hypers['a'] = a
-        hypers['b'] = b
-        hypers['k'] = k
-
-        for cluster in clusters:
-            cluster.set_hypers(hypers)
-
-        return hypers
-
-    @staticmethod
-    def calc_a_conditional_logps(clusters, a_grid, b, k):
+    def calc_hyper_logps(clusters, grid, hypers, target):
         lps = []
-        for a in a_grid:
-            lp = Vonmises.calc_full_marginal_conditional(clusters, a, b, k)
+        for g in grid:
+            hypers[target] = g
+            lp = sum(Vonmises.calc_marginal_logp(cluster.N,
+                cluster.sum_sin_x, cluster.sum_cos_x, **hypers)
+                for cluster in clusters)
             lps.append(lp)
-
         return lps
-
-    @staticmethod
-    def calc_b_conditional_logps(clusters, b_grid, a, k):
-        lps = []
-        for b in b_grid:
-            lp = Vonmises.calc_full_marginal_conditional(clusters, a, b, k)
-            lps.append(lp)
-
-        return lps
-
-    @staticmethod
-    def calc_k_conditional_logps(clusters, k_grid, a, b):
-        lps = []
-        for k in k_grid:
-            lp = Vonmises.calc_full_marginal_conditional(clusters, a, b, k)
-            lps.append(lp)
-
-        return lps
-
-    @staticmethod
-    def calc_full_marginal_conditional(clusters, a, b, k):
-        assert a > 0
-        assert 0 <= b and b <= 2 * math.pi
-        assert k > 0
-        lp = 0
-        for cluster in clusters:
-            N = cluster.N
-            sum_sin_x = cluster.sum_sin_x
-            sum_cos_x = cluster.sum_cos_x
-            l = Vonmises.calc_marginal_logp(N, sum_sin_x, sum_cos_x, a, b, k)
-            lp += l
-
-        return lp
 
     @staticmethod
     def estimate_kappa(N, ssx, scx):
         if N == 0:
-            return 10.0**-6
+            return 10.**-6
         elif N == 1:
-            return 10*math.pi
+            return 10 * math.pi
         else:
-            rbar2 = (ssx/N)**2. + (scx/N)**2.
-            rbar = rbar2**.5
-            kappa = rbar*(2.-rbar2)/(1.-rbar2)
+            rbar2 = (ssx / N) ** 2. + (scx / N) ** 2.
+            rbar = rbar2 ** .5
+            kappa = rbar*(2. - rbar2) / (1. - rbar2)
 
-        A_p = lambda k : bessel_1(k)/bessel_0(k)
+        A_p = lambda k : bessel_1(k) / bessel_0(k)
 
         Apk = A_p(kappa)
-        kappa_1 = kappa - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa)*Apk)
+        kappa_1 = kappa - (Apk - rbar)/(1. - Apk**2 - (1. / kappa) * Apk)
         Apk = A_p(kappa_1)
-        kappa = kappa_1 - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa_1)*Apk)
+        kappa = kappa_1 - (Apk - rbar)/(1. - Apk**2 - (1. / kappa_1) * Apk)
         Apk = A_p(kappa)
-        kappa_1 = kappa - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa)*Apk)
+        kappa_1 = kappa - (Apk - rbar)/(1. - Apk**2 - (1. / kappa) * Apk)
         Apk = A_p(kappa_1)
-        kappa = kappa_1 - (Apk - rbar)/(1.0-Apk**2-(1.0/kappa_1)*Apk)
+        kappa = kappa_1 - (Apk - rbar)/(1. - Apk**2 - (1. / kappa_1) * Apk)
 
         if np.isnan(kappa):
-            return 10.0**-6
+            return 10.**-6
         else:
             return np.abs(kappa)
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+        # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
-
+        # Set up x axis.
         x_min = 0
-        x_max = 2*math.pi
+        x_max = 2 * math.pi
         Y = np.linspace(x_min, x_max, 200)
+        # Compute weighted pdfs
         K = len(clusters)
-        pdf = np.zeros((K,200))
-        denom = log(float(len(X)))
-
-        a = clusters[0].a
-        b = clusters[0].b
-        vmk = clusters[0].k
-
-        W = [log(clusters[k].N) - denom for k in range(K)]
+        pdf = np.zeros((K, 200))
+        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
         if math.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
-            import ipdb;
-            ipdb.set_trace()
-        for k in range(K):
-            w = W[k]
-            N = clusters[k].N
-            sum_sin_x = clusters[k].sum_sin_x
-            sum_cos_x = clusters[k].sum_cos_x
-            for n in range(200):
-                y = Y[n]
-                pdf[k, n] = np.exp(w + Vonmises.calc_predictive_logp(y, N,
-                    sum_sin_x, sum_cos_x, a, b, vmk))
-            if k >= 8:
-                color = "white"
-                alpha = .3
-            else:
-                color = gu.colors()[k]
-                alpha = .7
+            import ipdb; ipdb.set_trace()
+        for k in xrange(K):
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
             ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-
         # Plot the sum of pdfs.
         ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-
         # Plot the samples.
         if hist:
             nbins = min([len(X)/5, 50])
@@ -331,7 +225,7 @@ class Vonmises(object):
         else:
             y_max = ax.get_ylim()[1]
             for x in X:
-                ax.vlines(x, 0, y_max/float(10), linewidth=1)
-
-        ax.set_title('vonmises')
+                ax.vlines(x, 0, y_max / float(10), linewidth=1)
+        # Title.
+        ax.set_title(clusters[0].cctype)
         return ax
