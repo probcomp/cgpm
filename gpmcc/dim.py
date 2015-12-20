@@ -58,19 +58,16 @@ class Dim(object):
             for h in self.hypers_grids:
                 self.hypers[h] = np.random.choice(self.hypers_grids[h])
 
-        # Row partitioning.
-        if Zr is None:
-            self.clusters = []
-            self.pX = 0
-        else:
-            self.clusters = []
+        # Row clusters.
+        self.clusters = []
+        if Zr is not None:
             K = max(Zr)+1
             for k in xrange(K):
-                self.clusters.append(self.model(distargs=distargs))
-                self.clusters[k].set_hypers(self.hypers)
+                self.clusters.append(self.model(distargs=distargs,
+                    **hypers))
             for i in xrange(len(X)):
                 k = Zr[i]
-                if isnan(X[i]):
+                if not isnan(X[i]):
                     self.clusters[k].insert_element(X[i])
 
     def predictive_logp(self, rowid, k):
