@@ -68,16 +68,9 @@ class NormalUC(Normal):
         return scipy.stats.norm.logpdf(x, loc=mu, scale=1./rho**.5)
 
     @staticmethod
-    def draw_params(m, r, s, nu):
-        rho = np.random.gamma(nu/2., scale=2./s)
-        mu = np.random.normal(loc=m, scale=1./(rho*r)**.5)
-        return mu, rho
-
-    @staticmethod
     def calc_log_likelihood(N, sum_x, sum_x_sq, rho, mu):
-        log_p = -(N / 2.) * LOG2PI + (N / 2.) * log(rho) - \
+        return -(N / 2.) * LOG2PI + (N / 2.) * log(rho) - \
             .5 * (rho * (N * mu * mu - 2 * mu * sum_x + sum_x_sq))
-        return log_p
 
     @staticmethod
     def calc_log_prior(mu, rho, m, r, s, nu):
@@ -91,9 +84,13 @@ class NormalUC(Normal):
         lps = []
         for g in grid:
             hypers[target] = g
-            lp = 0
-            for cluster in clusters:
-                lp += NormalUC.calc_log_prior(cluster.mu, cluster.rho,
-                    **hypers)
+            lp = sum(NormalUC.calc_log_prior(cluster.mu, cluster.rho,
+                    **hypers) for cluster in clusters)
             lps.append(lp)
         return lps
+
+    @staticmethod
+    def draw_params(m, r, s, nu):
+        rho = np.random.gamma(nu/2., scale=2./s)
+        mu = np.random.normal(loc=m, scale=1./(rho*r)**.5)
+        return mu, rho
