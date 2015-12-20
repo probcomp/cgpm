@@ -14,8 +14,7 @@ class Multinomial(object):
     cctype = 'multinomial'
 
     def __init__(self, N=0, w=None, alpha=1, distargs=None):
-        """
-        Optional arguments:
+        """ Optional arguments:
         -- N: number of data points
         -- w: weights
         -- alpha: dirichlet prior parameter
@@ -23,20 +22,22 @@ class Multinomial(object):
         """
         assert float(distargs['k']) == int(distargs['k'])
         self.k = int(distargs['k'])
+        # Sufficient statistics.
+        self.N = N
         if w is None:
             self.w = [0]*self.k
         else:
             assert self.k == len(w)
             self.w = w
+        # Hyperparameter.
         self.alpha = alpha
-        self.N = N
+
+    def transition_params(self, prior=False):
+        return
 
     def set_hypers(self, hypers):
         assert hypers['alpha'] > 0
         self.alpha = hypers['alpha']
-
-    def transition_params(self, prior=False):
-        return
 
     def insert_element(self, x):
         if not Multinomial.validate(x, self.k):
@@ -72,7 +73,7 @@ class Multinomial(object):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['alpha'] = gu.log_linspace(1.0 / float(len(X)), float(len(X)),
+        grids['alpha'] = gu.log_linspace(1./float(len(X)), float(len(X)),
             n_grid)
         return grids
 
@@ -99,61 +100,38 @@ class Multinomial(object):
         return gammaln(A) - gammaln(A+N) + lg - K * gammaln(alpha)
 
     @staticmethod
-    def transition_hypers(clusters, hypers, grids):
-        # Do not need to extract any hypers since alpha is the only one.
-        lp_alpha = Multinomial.calc_alpha_conditional_logps(clusters,
-            grids['alpha'])
-        alpha_index = gu.log_pflip(lp_alpha)
-        hypers = dict()
-        hypers['alpha'] = grids['alpha'][alpha_index]
-
-        for cluster in clusters:
-            cluster.set_hypers(hypers)
-
-        return hypers
-
-    @staticmethod
-    def calc_alpha_conditional_logps(clusters, alpha_grid):
+    def calc_hyper_logps(clusters, grid, hypers, target):
         lps = []
-        for alpha in alpha_grid:
-            lp = 0
-            for cluster in clusters:
-                N = cluster.N
-                w = cluster.w
-                lp += Multinomial.calc_marginal_logp(N, w, alpha)
+        for g in grid:
+            hypers[target] = g
+            lp = sum(Multinomial.calc_marginal_logp(cluster.N, cluster.w,
+                **hypers) for cluster in clusters)
             lps.append(lp)
-
         return lps
 
     @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+        # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
-
+        # Set up x axis.
         Y = range(int(distargs['k']))
         X_hist = np.array(gu.bincount(X,Y))
         X_hist = X_hist / float(len(X))
-
+        # Compute weighted pdfs
         K = len(clusters)
         pdf = np.zeros((K, int(distargs['k'])))
-        denom = log(float(len(X)))
-
-        a = clusters[0].alpha
-
-        ax.bar(Y, X_hist, color="black", alpha=1, edgecolor="none")
-        W = [log(clusters[k].N) - denom for k in range(K)]
-        for k in range(K):
-            w = W[k]
-            N = clusters[k].N
-            ww = clusters[k].w
-            for n in range(len(Y)):
-                y = Y[n]
-                pdf[k, n] = np.exp(w + Multinomial.calc_predictive_logp(y, N,
-                    ww, a))
-            ax.bar(Y, pdf[k,:], color="white", edgecolor="none", alpha=.5)
-
+        ax.bar(Y, X_hist, color='black', alpha=1, edgecolor='none')
+        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
+        for k in xrange(K):
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
+            ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
+        # Plot the sum of pdfs.
         ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor="red",
             linewidth=1)
         # ax.ylim([0,1.0])
-        ax.set_title('multinomial')
+        # Title
+        ax.set_title(clusters[0].cctype)
         return ax
