@@ -90,15 +90,6 @@ class Lognormal(object):
         return grids
 
     @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['m'] = np.random.choice(grids['m'])
-        hypers['a'] = np.random.choice(grids['a'])
-        hypers['b'] = np.random.choice(grids['b'])
-        hypers['t'] = np.random.choice(grids['t'])
-        return hypers
-
-    @staticmethod
     def calc_predictive_logp(x, N, sum_log_x, sum_log_x_sq, a, b, t, m):
         if x <= 0:
             return float('-inf')

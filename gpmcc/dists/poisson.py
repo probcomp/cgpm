@@ -69,20 +69,13 @@ class Poisson(object):
         return draw
 
     @staticmethod
-    def construct_hyper_grids(X,n_grid=30):
+    def construct_hyper_grids(X, n_grid=30):
         grids = dict()
         # only use integers for a so we can nicely draw from a negative binomial
         # in predictive_draw
         grids['a'] = np.unique(np.round(np.linspace(1, len(X), n_grid)))
         grids['b'] = gu.log_linspace(.1, float(len(X)), n_grid)
         return grids
-
-    @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['a'] = np.random.choice(grids['a'])
-        hypers['b'] = np.random.choice(grids['b'])
-        return hypers
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_log_fact_x, a, b):

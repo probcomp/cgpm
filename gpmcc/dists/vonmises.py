@@ -101,14 +101,6 @@ class Vonmises(object):
         return grids
 
     @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['a'] = np.random.choice(grids['a'])
-        hypers['b'] = np.random.choice(grids['b'])
-        hypers['k'] = np.random.choice(grids['k'])
-        return hypers
-
-    @staticmethod
     def calc_predictive_logp(x, N, sum_sin_x, sum_cos_x, a, b, k):
         assert 0 <= x and x <= 2 * math.pi
         assert N >= 0

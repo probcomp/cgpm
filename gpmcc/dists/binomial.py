@@ -76,12 +76,6 @@ class Binomial(object):
             n_grid)
         return grids
 
-    @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['alpha'] = np.random.choice(grids['alpha'])
-        hypers['beta'] = np.random.choice(grids['beta'])
-        return hypers
 
     @staticmethod
     def calc_predictive_logp(x, N, k, alpha, beta):

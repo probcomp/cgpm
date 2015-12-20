@@ -77,13 +77,6 @@ class Geometric(object):
         return grids
 
     @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['a'] = np.random.choice(grids['a'])
-        hypers['b'] = np.random.choice(grids['b'])
-        return hypers
-
-    @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
         if float(x) != int(x) or x < 0:
             return float('-inf')

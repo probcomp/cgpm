@@ -104,15 +104,6 @@ class Normal(object):
         return grids
 
     @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['m'] = np.random.choice(grids['m'])
-        hypers['s'] = np.random.choice(grids['s'])
-        hypers['r'] = np.random.choice(grids['r'])
-        hypers['nu'] = np.random.choice(grids['nu'])
-        return hypers
-
-    @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
         rn, nun, mn, sn = Normal.posterior_update_parameters(N, sum_x,
             sum_x_sq, m, r, s, nu)

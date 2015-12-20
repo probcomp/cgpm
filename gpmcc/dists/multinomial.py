@@ -78,12 +78,6 @@ class Multinomial(object):
         return grids
 
     @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['alpha'] = np.random.choice(grids['alpha'])
-        return hypers
-
-    @staticmethod
     def calc_predictive_logp(x, N, w, alpha):
         if not Multinomial.validate(x, len(w)):
             return float('-inf')

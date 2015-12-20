@@ -51,10 +51,12 @@ class Dim(object):
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
-        self.hypers_grids = self.model.construct_hyper_grids(self.Xf, n_grid)
+        self.hypers_grids = self.model.construct_hyper_grids(self.Xf,n_grid)
         self.hypers = hypers
         if hypers is None:
-            self.hypers = self.model.init_hypers(self.hypers_grids, self.Xf)
+            self.hypers = dict()
+            for h in self.hypers_grids:
+                self.hypers[h] = np.random.choice(self.hypers_grids[h])
 
         # Row partitioning.
         if Zr is None:

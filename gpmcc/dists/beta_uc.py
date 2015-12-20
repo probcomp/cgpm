@@ -155,14 +155,6 @@ class BetaUC(object):
         return grids
 
     @staticmethod
-    def init_hypers(grids, X=None):
-        hypers = dict()
-        hypers['mu'] = np.random.choice(grids['mu'])
-        hypers['alpha'] = np.random.choice(grids['alpha'])
-        hypers['beta'] = np.random.choice(grids['beta'])
-        return hypers
-
-    @staticmethod
     def calc_hyper_logps(clusters, grid, hypers, target):
         lps = []
         for g in grid:
