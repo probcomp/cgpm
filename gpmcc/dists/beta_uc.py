@@ -44,8 +44,6 @@ class BetaUC(object):
         # Parameters.
         self.strength, self.balance = strength, balance
         if strength is None or balance is None:
-            self.strength, self.balance = BetaUC.draw_params(mu, alpha,
-                beta)
             self.strength = np.random.exponential(scale=mu)
             self.balance = np.random.beta(alpha, beta)
             assert self.strength > 0 and 0 < self.balance < 1
@@ -133,13 +131,6 @@ class BetaUC(object):
         lp += (beta - 1.) * sum_minus_log_x
         assert not np.isnan(lp)
         return lp
-
-    @staticmethod
-    def draw_params(mu, alpha, beta):
-        strength = np.random.exponential(scale=mu)
-        balance = np.random.beta(alpha, beta)
-        assert strength > 0 and balance > 0 and balance < 1
-        return strength, balance
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
