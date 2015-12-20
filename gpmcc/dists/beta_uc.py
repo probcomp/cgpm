@@ -23,10 +23,9 @@ import gpmcc.utils.sampling as su
 
 class BetaUC(object):
     """Beta distribution parameterized by strength s and balance b.
-    s ~ exp(mu),
-    b ~ beta(alpha, beta).
-    theta ~ beta(s*b, s*(1-b)),
-    Does not require additional argumets (distargs=None).
+    s ~ exp(mu)
+    b ~ beta(alpha, beta)
+    theta ~ beta(s*b, s*(1-b))
     """
 
     cctype = 'beta_uc'
@@ -69,7 +68,7 @@ class BetaUC(object):
             + BetaUC.calc_log_prior(strength, self.balance, self.mu,
                 self.alpha, self.beta)
         self.strength = su.mh_sample(self.strength, log_pdf_lambda_str,
-            .5, [0.0,float('Inf')], burn=n_samples)
+            .5, [.0, float('Inf')], burn=n_samples)
         # Transition balance.
         log_pdf_lambda_bal = lambda balance : \
             BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
@@ -77,7 +76,7 @@ class BetaUC(object):
             + BetaUC.calc_log_prior(self.strength, balance, self.mu,
                 self.alpha, self.beta)
         self.balance = su.mh_sample(self.balance, log_pdf_lambda_bal,
-            .25, [0,1], burn=n_samples)
+            .25, [0, 1], burn=n_samples)
 
     def set_hypers(self, hypers):
         self.mu = hypers['mu']
@@ -86,19 +85,19 @@ class BetaUC(object):
 
     def insert_element(self, x):
         assert x > 0 and x < 1
-        self.N += 1.0
+        self.N += 1.
         self.sum_log_x += log(x)
-        self.sum_minus_log_x += log(1.0-x)
+        self.sum_minus_log_x += log(1.-x)
 
     def remove_element(self, x):
         assert x > 0 and x < 1
-        self.N -= 1.0
+        self.N -= 1.
         if self.N <= 0:
             self.sum_log_x = 0
             self.sum_minus_log_x = 0
         else:
             self.sum_log_x -= log(x)
-            self.sum_minus_log_x -= log(1.0-x)
+            self.sum_minus_log_x -= log(1.-x)
 
     def predictive_logp(self, x):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
