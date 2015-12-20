@@ -41,7 +41,6 @@ class Dim(object):
         # Data information.
         self.N = len(X)
         self.X = X
-        self.Xf = X[~np.isnan(X)]
         self.index = index
 
         # Mddel type.
@@ -51,7 +50,8 @@ class Dim(object):
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
-        self.hypers_grids = self.model.construct_hyper_grids(self.Xf,n_grid)
+        self.hypers_grids = self.model.construct_hyper_grids(
+            self.X[~np.isnan(X)], n_grid)
         self.hypers = hypers
         if hypers is None:
             self.hypers = dict()
@@ -204,5 +204,5 @@ class Dim(object):
 
     def plot_dist(self, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
-        self.model.plot_dist(self.Xf, self.clusters,
+        self.model.plot_dist(self.X[~np.isnan(self.X)], self.clusters,
             distargs=self.distargs, ax=ax, Y=Y, hist=False)
