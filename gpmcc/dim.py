@@ -70,6 +70,9 @@ class Dim(object):
                 if not isnan(X[i]):
                     self.clusters[k].insert_element(X[i])
 
+        # Auxiliary singleton model.
+        self.aux_model = None
+
     def predictive_logp(self, rowid, k):
         """Returns the predictive logp of X[rowid] in clusters[k]."""
         x = self.X[rowid]
