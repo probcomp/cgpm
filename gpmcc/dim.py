@@ -19,31 +19,40 @@ import gpmcc.utils.general as gu
 import gpmcc.utils.config as cu
 
 class Dim(object):
-    """Holds data, model type, and hyperparameters."""
+    """Holds data, model type, clusters, and shared hyperparameters of
+    component GPMs. Exposes the cluster of each row for model dependent
+    composition."""
 
     def __init__(self, X, dist, index, distargs=None, Zr=None, n_grid=30,
             hypers=None, mode='collapsed'):
         """Dimension constructor.
 
-        Arguments:
-        -- X: a numpy array of data.
-        -- dist: The name of the distribution.
-        -- index: the column index (int)
-
-        Optional arguments:
-        -- Zr: partition of data to clusters. If not specified, no clusters are
-        initialized.
-        -- n_grid: number of hyperparameter grid bins. Default is 30.
-        -- distargs: some data types require additional information, for example
-        multinomial data requires the number of multinomial categories. See the
-        documentation for each type for details
+        Parameters
+        ----------
+        X : np.array
+            Array of data. Must be compatible with `dist`. Missing entries
+            must be np.nan.
+        dist : str
+            Name of the distribution cctype, see `gpmcc.utils.config`.
+        index : int
+            Identifier for this dimension.
+        Zr : list (default None)
+            Partition of data into clusters. If None, no cluster models
+            are created.
+        n_grid : int (default 30)
+            Number of bins in the hyperparameter grid.
+        distargs : dict, (default None)
+            Some `dist` types require additional arguments, such as
+            `gpmcc.dists.multinomial`. Defaults to None.
+        mode (optional) : str ('collapsed')
+            Either 'collapsed' or 'uncollapsed'.
         """
         # Data information.
         self.N = len(X)
         self.X = X
         self.index = index
 
-        # Mddel type.
+        # Model type.
         self.mode = mode
         self.model = cu.dist_class(dist)
         self.cctype = self.model.cctype
