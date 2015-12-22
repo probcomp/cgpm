@@ -88,13 +88,3 @@ class NormalUC(Normal):
         log_rho = scipy.stats.gamma.logpdf(rho, nu/2., scale=2./s)
         log_mu = scipy.stats.norm.logpdf(mu, loc=m, scale=1./(r*rho)**.5)
         return log_mu + log_rho
-
-    @staticmethod
-    def calc_hyper_logps(clusters, grid, hypers, target):
-        lps = []
-        for g in grid:
-            hypers[target] = g
-            lp = sum(NormalUC.calc_log_prior(cluster.mu, cluster.rho,
-                    **hypers) for cluster in clusters)
-            lps.append(lp)
-        return lps

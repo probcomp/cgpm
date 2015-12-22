@@ -155,16 +155,6 @@ class BetaUC(object):
         return grids
 
     @staticmethod
-    def calc_hyper_logps(clusters, grid, hypers, target):
-        lps = []
-        for g in grid:
-            hypers[target] = g
-            lp = sum(BetaUC.calc_log_prior(cluster.strength,
-                cluster.balance, **hypers) for cluster in clusters)
-            lps.append(lp)
-        return lps
-
-    @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         # Create a new axis?
         if ax is None:

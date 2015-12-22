@@ -150,16 +150,6 @@ class Normal(object):
                 - (nu / 2.) * log(s) + gammaln(nu/2.0)
 
     @staticmethod
-    def calc_hyper_logps(clusters, grid, hypers, target):
-        lps = []
-        for g in grid:
-            hypers[target] = g
-            lp = sum(Normal.calc_marginal_logp(cluster.N, cluster.sum_x,
-                cluster.sum_x_sq, **hypers) for cluster in clusters)
-            lps.append(lp)
-        return lps
-
-    @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         # Create a new axis?
         if ax is None:

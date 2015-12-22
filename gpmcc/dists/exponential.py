@@ -116,16 +116,6 @@ class Exponential(object):
         return Z
 
     @staticmethod
-    def calc_hyper_logps(clusters, grid, hypers, target):
-        lps = []
-        for g in grid:
-            hypers[target] = g
-            lp = sum(Exponential.calc_marginal_logp(cluster.N,
-                cluster.sum_x, **hypers) for cluster in clusters)
-            lps.append(lp)
-        return lps
-
-    @staticmethod
     def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
         # Create a new axis?
         if ax is None:

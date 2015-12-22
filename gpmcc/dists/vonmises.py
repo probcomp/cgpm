@@ -159,17 +159,6 @@ class Vonmises(object):
         return gu.log_bessel_0(a)
 
     @staticmethod
-    def calc_hyper_logps(clusters, grid, hypers, target):
-        lps = []
-        for g in grid:
-            hypers[target] = g
-            lp = sum(Vonmises.calc_marginal_logp(cluster.N,
-                cluster.sum_sin_x, cluster.sum_cos_x, **hypers)
-                for cluster in clusters)
-            lps.append(lp)
-        return lps
-
-    @staticmethod
     def estimate_kappa(N, ssx, scx):
         if N == 0:
             return 10.**-6

@@ -69,13 +69,3 @@ class ExponentialUC(Exponential):
     @staticmethod
     def calc_log_prior(mu, a, b):
         return gamma.logpdf(mu, a, scale=1./b)
-
-    @staticmethod
-    def calc_hyper_logps(clusters, grid, hypers, target):
-        lps = []
-        for g in grid:
-            hypers[target] = g
-            lp = sum(ExponentialUC.calc_log_prior(cluster.mu, **hypers)
-                for cluster in clusters)
-            lps.append(lp)
-        return lps

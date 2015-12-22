@@ -157,13 +157,27 @@ class Dim(object):
         targets = self.hypers.keys()
         np.random.shuffle(targets)
         for target in targets:
-            lp = self.model.calc_hyper_logps(self.clusters,
-                self.hypers_grids[target], self.hypers, target)
-            proposal = gu.log_pflip(lp)
+            logps = self.calc_hyper_proposal_logps(target)
+            proposal = gu.log_pflip(logps)
             self.hypers[target] = self.hypers_grids[target][proposal]
         # Update the clusters.
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
+
+    def calc_hyper_proposal_logps(self, target):
+        """Computes the marginal likelihood (over all clusters) for each
+        hyperparameter value in self.hypers_grids[target]."""
+        logps = []
+        hypers = self.hypers.copy()
+        for g in self.hypers_grids[target]:
+            hypers[target] = g
+            logp = 0
+            for cluster in self.clusters:
+                cluster.set_hypers(hypers)
+                logp += cluster.marginal_logp()
+                cluster.set_hypers(self.hypers)
+            logps.append(logp)
+        return logps
 
     def reassign(self, Zr):
         """Reassigns the data to new clusters according to the new
