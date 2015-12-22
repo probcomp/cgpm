@@ -180,9 +180,9 @@ class State(object):
             plt.show()
             layout = pu.get_state_plot_layout(self.n_cols)
             fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
-                layout['plot_inches_x']), dpi=75, facecolor='w', edgecolor='k',
-                frameon=False,tight_layout=True)
-            self._plot(fig, layout)
+                layout['plot_inches_x']), dpi=75, facecolor='w',
+                edgecolor='k', frameon=False, tight_layout=True)
+            self._do_plot(fig, layout)
 
         for i in xrange(N):
             percentage = float(i+1) / N
@@ -194,7 +194,7 @@ class State(object):
             for kernel in kernel_fns:
                 kernel()
             if do_plot:
-                self._plot(fig, layout)
+                self._do_plot(fig, layout)
                 plt.pause(0.0001)
         print
 
@@ -210,6 +210,15 @@ class State(object):
         """Clears the suffstats in all clusters in all dims."""
         for view in self.views:
             view.clear_data()
+
+    def plot(self):
+        """Plots sample histogram and learned distribution for each dim."""
+        layout = pu.get_state_plot_layout(self.n_cols)
+        fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
+            layout['plot_inches_x']), dpi=75, facecolor='w',
+            edgecolor='k', frameon=False, tight_layout=True)
+        self._do_plot(fig, layout)
+        plt.show()
 
     def _update_prior_grids(self):
         for dim in self.dims:
@@ -393,8 +402,8 @@ class State(object):
             p_crp[view] -= 1
         return np.log(np.asarray(p_crp))
 
-    def _plot(self, fig, layout):
-        # do not plot more than 6 by 4
+    def _do_plot(self, fig, layout):
+        # Do not plot more than 6 by 4.
         if self.n_cols > 24:
             return
         fig.clear()
