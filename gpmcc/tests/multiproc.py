@@ -24,18 +24,18 @@ import numpy as np
 n_rows = 200
 view_weights = np.asarray([0.7, .3])
 cluster_weights = [np.array([.33, .33, .34]), np.array([.2, .8])]
-cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial',
-    'vonmises', 'binomial', 'lognormal']
+cctypes = ['beta_uc', 'normal','normal_uc','poisson','categorical',
+    'vonmises', 'bernoulli', 'lognormal']
 
 separation = [.7] * 9
-distargs = [None, None, None, None, {"K":5}, None, None, None, None]
+distargs = [None, None, None, None, {'k':5}, None, None, None, None]
 
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
 
-# runner = engine.Engine()
-# runner.initialize(T, cctypes, distargs, num_states=6)
-# runner.transition(N=2)
+runner = engine.Engine()
+runner.initialize(T, cctypes, distargs, num_states=6)
+runner.transition(N=2)
 
 # state = State(T, cctypes, distargs)
 # state.transition(N=10, do_plot=True)

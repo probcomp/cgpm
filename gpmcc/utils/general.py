@@ -64,7 +64,7 @@ def unorm_lcrp_post(alpha, N, K, log_prior_fun):
         + log_prior_fun(alpha)
 
 def log_pflip(logp):
-    """Multinomial draw from a vector logp of log probabilities."""
+    """Categorical draw from a vector logp of log probabilities."""
     if len(logp) == 1:
         return 0
     P = log_normalize(logp)
@@ -73,7 +73,7 @@ def log_pflip(logp):
     return pflip(NP)
 
 def pflip(p):
-    """Multinomial draw from a vector p of probabilities."""
+    """Categorical draw from a vector p of probabilities."""
     if len(p) == 1:
         return 0
     p = np.asarray(p).astype(float)
@@ -218,8 +218,8 @@ def clean_data(X, cctypes):
     is_discrete = {
         'normal'            : False,
         'normal_uc'         : False,
-        'binomial'          : False,  # 0. or 1.
-        'multinomial'       : True,
+        'bernoulli'         : False,  # 0. or 1.
+        'categorical'       : True,
         'lognormal'         : False,
         'poisson'           : False,
         'exponential'       : False,

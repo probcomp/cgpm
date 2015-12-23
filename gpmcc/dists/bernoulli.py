@@ -22,11 +22,11 @@ from scipy.special import betaln
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
-class Binomial(DistributionGpm):
-    """Binomial distribution with beta prior on bias theta.
+class Bernoulli(DistributionGpm):
+    """Bernoulli distribution with beta prior on bias theta.
 
     theta ~ Beta(alpha, beta)
-    x ~ Binomial(theta)
+    x ~ Bernoulli(theta)
     """
 
     def __init__(self, N=0, k=0, alpha=1, beta=1, distargs=None):
@@ -50,15 +50,15 @@ class Binomial(DistributionGpm):
         self.k -= x
 
     def predictive_logp(self, x):
-        return Binomial.calc_predictive_logp(x, self.N, self.k, self.alpha,
+        return Bernoulli.calc_predictive_logp(x, self.N, self.k, self.alpha,
             self.beta)
 
     def marginal_logp(self):
-        return Binomial.calc_marginal_logp(self.N, self.k, self.alpha,
+        return Bernoulli.calc_marginal_logp(self.N, self.k, self.alpha,
             self.beta)
 
     def singleton_logp(self, x):
-        return Binomial.calc_predictive_logp(x, 0, 0, self.alpha, self.beta)
+        return Bernoulli.calc_predictive_logp(x, 0, 0, self.alpha, self.beta)
 
     def simulate(self):
         if np.random.random() < self.alpha / (self.alpha + self.beta):
@@ -128,7 +128,7 @@ class Binomial(DistributionGpm):
 
     @staticmethod
     def name():
-        return 'binomial'
+        return 'bernoulli'
 
     ##################
     # HELPER METHODS #

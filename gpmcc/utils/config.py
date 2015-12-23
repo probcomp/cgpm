@@ -17,8 +17,8 @@ import re
 from gpmcc.dists import normal_uc
 from gpmcc.dists import beta_uc
 from gpmcc.dists import normal
-from gpmcc.dists import binomial
-from gpmcc.dists import multinomial
+from gpmcc.dists import bernoulli
+from gpmcc.dists import categorical
 from gpmcc.dists import lognormal
 from gpmcc.dists import poisson
 from gpmcc.dists import exponential
@@ -30,8 +30,8 @@ dist_class_lookup = {
     'normal'            : normal.Normal,
     'normal_uc'         : normal_uc.NormalUC,
     'beta_uc'           : beta_uc.BetaUC,
-    'binomial'          : binomial.Binomial,
-    'multinomial'       : multinomial.Multinomial,
+    'bernoulli'         : bernoulli.Bernoulli,
+    'categorical'       : categorical.Categorical,
     'lognormal'         : lognormal.Lognormal,
     'poisson'           : poisson.Poisson,
     'exponential'       : exponential.Exponential,
@@ -44,8 +44,8 @@ dist_collapsed_lookup = {
         'normal'            : False,
         'normal_uc'         : True,
         'beta_uc'           : True,
-        'binomial'          : False,
-        'multinomial'       : False,
+        'bernoulli'         : False,
+        'categorical'       : False,
         'lognormal'         : False,
         'poisson'           : False,
         'exponential'       : False,
@@ -77,8 +77,8 @@ def all_dists():
 
 def parse_distargs(dists):
     """Parses a list of disttypes, where distargs are in parenthesis.
-    >>> Input ['normal','multinomial(k=8)','beta_uc'].
-    >>> Output ['normal','multinomial','beta_uc'], [None, {'k':8}, None].
+    >>> Input ['normal','categorical(k=8)','beta_uc'].
+    >>> Output ['normal','categorical','beta_uc'], [None, {'k':8}, None].
     """
     cctypes, distargs = [], []
     for cctype in dists:

@@ -74,7 +74,7 @@ def test_simulate_indicator():
 
     # Create an engine.
     state = Engine()
-    state.initialize(data.T, ['normal', 'multinomial'], [None, {'k':6}],
+    state.initialize(data.T, ['normal', 'categorical'], [None, {'k':6}],
         num_states=1)
     state.transition(N=150)
     model = state.get_state(0)

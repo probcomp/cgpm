@@ -50,8 +50,8 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
      >>> n_rows = 500
      >>> view_weights = np.ones(1)
      >>> cluster_weights = [np.ones(2)/2.0]
-     >>> cctypes = ['lognormal','normal','poisson','multinomial(k=9)','vonmises',
-            'binomial']
+     >>> cctypes = ['lognormal','normal','poisson','categorical(k=9)','vonmises',
+            'bernoulli']
      >>> separation = [.9] * 6
      >>> T, Zv, Zc, dims = tu.gen_data_table( n_rows, view_weights,
              cluster_weights, dists, distargs, separation, return_dims=True)
@@ -184,7 +184,7 @@ def _gen_lognormal_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_binomial_data_column(Z, separation=.9, distargs=None):
+def _gen_bernoulli_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     Tc = np.zeros(n_rows)
@@ -200,7 +200,7 @@ def _gen_binomial_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_multinomial_data_column(Z, separation=.9, distargs=None):
+def _gen_categorical_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
     k = distargs['k']
     if separation > .95:
@@ -321,8 +321,8 @@ _gen_data = {
     'normal_uc'         : _gen_normal_data_column,
     'beta_uc'           : _gen_beta_data_column,
     'normal'            : _gen_normal_data_column,
-    'binomial'          : _gen_binomial_data_column,
-    'multinomial'       : _gen_multinomial_data_column,
+    'bernoulli'         : _gen_bernoulli_data_column,
+    'categorical'       : _gen_categorical_data_column,
     'poisson'           : _gen_poisson_data_column,
     'exponential'       : _gen_exponential_data_column,
     'exponential_uc'    : _gen_exponential_data_column,
@@ -333,6 +333,6 @@ _gen_data = {
 
 _gen_data_cpp = {
     'continuous' : _gen_normal_data_column,
-    'multinomial': _gen_multinomial_data_column,
+    'categorical': _gen_categorical_data_column,
     'magnitude'  : _gen_lognormal_data_column,
 }

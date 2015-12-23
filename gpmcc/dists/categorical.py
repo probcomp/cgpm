@@ -21,13 +21,13 @@ from scipy.special import gammaln
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
-class Multinomial(DistributionGpm):
-    """Multinomial distribution with symmetric dirichlet prior on
+class Categorical(DistributionGpm):
+    """Categorical distribution with symmetric dirichlet prior on
     category weight vector v.
 
     k := distarg
     v ~ Symmetric-Dirichlet(alpha/k)
-    x ~ Multinomial(v)
+    x ~ Categorical(v)
     """
 
     def __init__(self, N=0, counts=None, alpha=1, distargs=None):
@@ -45,27 +45,27 @@ class Multinomial(DistributionGpm):
         self.alpha = alpha
 
     def incorporate(self, x):
-        if not Multinomial.validate(x, self.k):
+        if not Categorical.validate(x, self.k):
             raise ValueError('Invalid categorical observation inserted.')
         self.N += 1
         self.counts[int(x)] += 1
 
     def unincorporate(self, x):
-        if not Multinomial.validate(x, self.k):
+        if not Categorical.validate(x, self.k):
             raise ValueError('Invalid categorical observation removed.')
         self.N -= 1
         self.counts[int(x)] -= 1
 
     def predictive_logp(self, x):
-        return Multinomial.calc_predictive_logp(x, self.N, self.counts,
+        return Categorical.calc_predictive_logp(x, self.N, self.counts,
             self.alpha)
 
     def marginal_logp(self):
-        return Multinomial.calc_marginal_logp(self.N, self.counts,
+        return Categorical.calc_marginal_logp(self.N, self.counts,
             self.alpha)
 
     def singleton_logp(self, x):
-        return Multinomial.calc_predictive_logp(x, 0, [0]*self.k,
+        return Categorical.calc_predictive_logp(x, 0, [0]*self.k,
             self.alpha)
 
     def simulate(self):
@@ -125,7 +125,7 @@ class Multinomial(DistributionGpm):
 
     @staticmethod
     def name():
-        return 'multinomial'
+        return 'categorical'
 
     ##################
     # HELPER METHODS #
@@ -139,7 +139,7 @@ class Multinomial(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, counts, alpha):
-        if not Multinomial.validate(x, len(counts)):
+        if not Categorical.validate(x, len(counts)):
             return float('-inf')
         x = int(x)
         numer = log(alpha + counts[x])

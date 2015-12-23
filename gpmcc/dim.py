@@ -43,7 +43,7 @@ class Dim(object):
             Number of bins in the hyperparameter grid.
         distargs : dict, optional
             Some `dist` types require additional arguments, such as
-            `gpmcc.dists.multinomial`. Defaults to None.
+            `gpmcc.dists.categorical`. Defaults to None.
         mode : {'collapsed', 'uncollapsed'}, optional
             Are the mixture components collapsed or uncollapsed?
         """
