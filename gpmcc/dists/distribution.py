@@ -133,7 +133,7 @@ class DistributionGpm(object):
         raise NotImplementedError
 
     @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
         """Plot the mixture distribution of the DistributionGpm
         represented by `clusters`. The weight of each cluster is
         proportional to its number of observations N.
