@@ -20,20 +20,18 @@ import matplotlib.pyplot as plt
 from scipy.special import betaln
 
 import gpmcc.utils.general as gu
+from gpmcc.dists.distribution import DistributionGpm
 
-class Binomial(object):
-    """Binomial distribution with beta prior on bias theta."""
+class Binomial(DistributionGpm):
+    """Binomial distribution with beta prior on bias theta.
 
-    cctype = 'binomial'
+    theta ~ Beta(alpha, beta)
+    x ~ Binomial(theta)
+    """
 
     def __init__(self, N=0, k=0, alpha=1, beta=1, distargs=None):
-        """Optional arguments:
-        -- N: number of datapoints
-        -- k: number of hits (1)
-        -- alpha: beta hyperparameter
-        -- beta: beta hyperparameter
-        -- distargs: not used
-        """
+        assert alpha > 0
+        assert beta > 0
         # Sufficient statistics.
         self.N = N
         self.k = k
@@ -41,21 +39,12 @@ class Binomial(object):
         self.alpha = alpha
         self.beta = beta
 
-    def set_hypers(self, hypers):
-        assert hypers['alpha'] > 0
-        assert hypers['beta'] > 0
-        self.alpha = hypers['alpha']
-        self.beta = hypers['beta']
-
-    def transition_params(self, prior=False):
-        return
-
-    def insert_element(self, x):
+    def incorporate(self, x):
         assert x == 1.0 or x == 0.0
         self.N += 1
         self.k += x
 
-    def remove_element(self, x):
+    def unincorporate(self, x):
         assert x == 1. or x == 0.
         self.N -= 1
         self.k -= x
@@ -71,11 +60,32 @@ class Binomial(object):
     def singleton_logp(self, x):
         return Binomial.calc_predictive_logp(x, 0, 0, self.alpha, self.beta)
 
-    def predictive_draw(self):
+    def simulate(self):
         if np.random.random() < self.alpha / (self.alpha + self.beta):
             return 1.
         else:
             return 0.
+
+    def transition_params(self):
+        return
+
+    def set_hypers(self, hypers):
+        assert hypers['alpha'] > 0
+        assert hypers['beta'] > 0
+        self.alpha = hypers['alpha']
+        self.beta = hypers['beta']
+
+    def get_hypers(self):
+        return {
+            'alpha': self.alpha,
+            'beta': self.beta
+        }
+
+    def get_suffstats(self):
+        return {
+            'N' : self.N,
+            'k' : self.k
+        }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -86,24 +96,8 @@ class Binomial(object):
             n_grid)
         return grids
 
-
     @staticmethod
-    def calc_predictive_logp(x, N, k, alpha, beta):
-        if int(x) not in [0, 1]:
-            return float('-inf')
-        log_denom = log(N + alpha + beta)
-        if x == 1.0:
-            return log(k + alpha) - log_denom
-        else:
-            return log(N - k + beta) - log_denom
-
-    @staticmethod
-    def calc_marginal_logp(N, k, alpha, beta):
-        return gu.log_nchoosek(N, k) + betaln(k + alpha, N - k + beta) \
-            - betaln(alpha, beta)
-
-    @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
         # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
@@ -129,5 +123,28 @@ class Binomial(object):
         ax.set_xlim([-.1,1.9])
         ax.set_ylim([0,1.0])
         # Title
-        ax.set_title(clusters[0].cctype)
+        ax.set_title(clusters[0].name())
         return ax
+
+    @staticmethod
+    def name():
+        return 'binomial'
+
+    ##################
+    # HELPER METHODS #
+    ##################
+
+    @staticmethod
+    def calc_predictive_logp(x, N, k, alpha, beta):
+        if int(x) not in [0, 1]:
+            return float('-inf')
+        log_denom = log(N + alpha + beta)
+        if x == 1.0:
+            return log(k + alpha) - log_denom
+        else:
+            return log(N - k + beta) - log_denom
+
+    @staticmethod
+    def calc_marginal_logp(N, k, alpha, beta):
+        return gu.log_nchoosek(N, k) + betaln(k + alpha, N - k + beta) \
+            - betaln(alpha, beta)

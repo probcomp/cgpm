@@ -55,7 +55,7 @@ class Dim(object):
         # Model type.
         self.mode = mode
         self.model = cu.dist_class(dist)
-        self.cctype = self.model.cctype
+        self.cctype = self.model.name()
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
@@ -77,7 +77,7 @@ class Dim(object):
             for i in xrange(len(X)):
                 k = Zr[i]
                 if not isnan(X[i]):
-                    self.clusters[k].insert_element(X[i])
+                    self.clusters[k].incorporate(X[i])
 
         # Auxiliary singleton model.
         self.aux_model = None
@@ -104,29 +104,29 @@ class Dim(object):
         x = self.X[rowid]
         if isnan(x):
             return
-        self.clusters[k].insert_element(x)
+        self.clusters[k].incorporate(x)
 
     def remove_element(self, rowid, k):
         """Remove x from clusters[k]."""
         x = self.X[rowid]
         if isnan(x):
             return
-        self.clusters[k].remove_element(x)
+        self.clusters[k].unincorporate(x)
 
     def move_to_cluster(self, rowid, move_from, move_to):
         """Move X[rowid] from clusters[move_from] to clusters[move_to]."""
         x = self.X[rowid]
         if isnan(x):
             return
-        self.clusters[move_from].remove_element(x)
-        self.clusters[move_to].insert_element(x)
+        self.clusters[move_from].unincorporate(x)
+        self.clusters[move_to].incorporate(x)
 
     def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
         """Move X[rowid] tp clusters[move_to], destroy clusters[to_destroy]."""
         x = self.X[rowid]
         if isnan(x):
             return
-        self.clusters[move_to].insert_element(x)
+        self.clusters[move_to].incorporate(x)
         del self.clusters[to_destroy]
 
     def create_singleton_cluster(self, rowid, current):
@@ -137,8 +137,8 @@ class Dim(object):
         self.clusters.append(self.aux_model)       # create the singleton
         if isnan(x):
             return
-        self.clusters[current].remove_element(x)   # remove from current cluster
-        self.clusters[-1].insert_element(x)        # add element to new cluster
+        self.clusters[current].unincorporate(x)   # remove from current cluster
+        self.clusters[-1].incorporate(x)        # add element to new cluster
 
     def marginal_logp(self, k):
         """Returns the marginal log_p of clusters[k]."""
@@ -196,7 +196,7 @@ class Dim(object):
         for i in xrange(self.N):
             k = Zr[i]
             if not isnan(self.X[i]):
-                self.clusters[k].insert_element(self.X[i])
+                self.clusters[k].incorporate(self.X[i])
 
         for cluster in self.clusters:
             cluster.transition_params()
@@ -219,13 +219,12 @@ class Dim(object):
             cluster.set_hypers(hypers)
 
     def get_suffstats(self):
-        # FIXME: add get_suffstats() method to all types
         suffstats =[]
-        # for cluster in self.clusters:
-        #     suffstats.append(cluster.get_suffstats())
+        for cluster in self.clusters:
+            suffstats.append(cluster.get_suffstats())
         return suffstats
 
     def plot_dist(self, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(self.X[~np.isnan(self.X)], self.clusters,
-            distargs=self.distargs, ax=ax, Y=Y, hist=False)
+            ax=ax, Y=Y, hist=False)

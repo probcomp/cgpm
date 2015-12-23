@@ -19,29 +19,19 @@ from scipy.stats import gamma, expon
 from gpmcc.dists.exponential import Exponential
 
 class ExponentialUC(Exponential):
-    """Exponential distribution with gamma prior on mu."""
+    """Exponential distribution with gamma prior on mu. Uncollapsed.
 
-    cctype = 'exponential_uc'
+    mu ~ Gamma(a, b)
+    x ~ Exponential(mu)
+    """
 
     def __init__(self, N=0, sum_x=0, a=2, b=2, mu=None, distargs=None):
-        """
-        Optional arguments:
-        -- N: number of data points
-        -- sum_x: suffstat, sum(X)
-        -- a: hyperparameter
-        -- b: hyperparameter
-        -- distargs: not used
-        """
+        # Invoke parent.
         super(ExponentialUC, self).__init__(N=N, sum_x=sum_x, a=a, b=b,
             distargs=distargs)
         # Uncollapsed mean parameter.
         if mu is None:
             self.transition_params()
-
-    def transition_params(self):
-        an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a,
-            self.b)
-        self.mu = gamma.rvs(an, scale=1./bn)
 
     def predictive_logp(self, x):
         return ExponentialUC.calc_predictive_logp(x, self.mu)
@@ -55,8 +45,21 @@ class ExponentialUC(Exponential):
     def singleton_logp(self, x):
         return ExponentialUC.calc_predictive_logp(x, self.mu)
 
-    def predictive_draw(self):
+    def simulate(self):
         return expon.rvs(scale=1./self.mu)
+
+    def transition_params(self):
+        an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a,
+            self.b)
+        self.mu = gamma.rvs(an, scale=1./bn)
+
+    @staticmethod
+    def name():
+        return 'exponential_uc'
+
+    ##################
+    # HELPER METHODS #
+    ##################
 
     @staticmethod
     def calc_predictive_logp(x, mu):

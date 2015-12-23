@@ -277,7 +277,7 @@ def simulate_observed(state, rowid, query, N=1):
         row_draw = []
         for col in query:
             cluster = create_cluster(state, rowid, col)
-            row_draw.append(cluster.predictive_draw())
+            row_draw.append(cluster.simulate())
         samples.append(row_draw)
     return samples
 
@@ -319,7 +319,7 @@ def simulate_unobserved(state, query, evidence=None, N=1):
             k = gu.pflip(clusterps_for[v])
             for col in cols_in[v]:
                 # Sample data from the cluster.
-                x = clusters_for[col][k].predictive_draw()
+                x = clusters_for[col][k].simulate()
                 draw.append(x)
         samples.append(draw)
 

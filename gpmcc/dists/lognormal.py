@@ -20,30 +20,24 @@ import matplotlib.pyplot as plt
 from scipy.special import gammaln
 
 import gpmcc.utils.general as gu
+from gpmcc.dists.distribution import DistributionGpm
 
 LOG2 = log(2.0)
 LOGPI = log(math.pi)
 LOG2PI = log(2.0*math.pi)
 
 
-class Lognormal(object):
-    """Log-normal (zero-bounded) distribution with normal prior on mu and
-    gamma prior on precision. """
+class Lognormal(DistributionGpm):
+    """Log-normal (zero-bounded) distribution with normal prior on mean and
+    gamma prior on precision. Collapsed.
 
-    cctype = 'lognormal'
+    rho ~ Gamma(a, b)
+    mu ~ Normal(m, t)
+    x ~ Lognormal(mu, rho)
+    """
 
     def __init__(self, N=0, sum_log_x=0, sum_log_x_sq=0, a=1, b=1, t=1,
             m=0, distargs=None):
-        """
-        -- N: number of data points
-        -- sum_log_x: suffstat, sum(log(x))
-        -- sum_log_x_sq: suffstat, sum(log(x*x))
-        -- a: hyperparameter
-        -- b: hyperparameter
-        -- t: hyperparameter
-        -- m: hyperparameter
-        -- distargs: not used
-        """
         assert a > 0
         assert b > 0
         assert t > 0
@@ -57,24 +51,12 @@ class Lognormal(object):
         self.b = b
         self.t = t
 
-    def transition_params(self, prior=False):
-        return
-
-    def set_hypers(self, hypers):
-        assert hypers['a'] > 0
-        assert hypers['b'] > 0
-        assert hypers['t'] > 0
-        self.m = hypers['m']
-        self.b = hypers['b']
-        self.t = hypers['t']
-        self.a = hypers['a']
-
-    def insert_element(self, x):
+    def incorporate(self, x):
         self.N += 1.0
         self.sum_log_x += log(x)
         self.sum_log_x_sq += log(x) * log(x)
 
-    def remove_element(self, x):
+    def unincorporate(self, x):
         self.N -= 1.0
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
@@ -91,6 +73,37 @@ class Lognormal(object):
         return Lognormal.calc_predictive_logp(x, 0, 0, 0, self.a, self.b,
             self.t, self.m)
 
+    def simulate(self):
+        # XXX TODO
+        raise NotImplementedError
+
+    def transition_params(self):
+        return
+
+    def set_hypers(self, hypers):
+        assert hypers['a'] > 0
+        assert hypers['b'] > 0
+        assert hypers['t'] > 0
+        self.a = hypers['a']
+        self.b = hypers['b']
+        self.t = hypers['t']
+        self.m = hypers['m']
+
+    def get_hypers(self):
+        return {
+            'a': self.a,
+            'b': self.b,
+            't': self.t,
+            'm': self.m
+        }
+
+    def get_suffstats(self):
+        return {
+            'N': self.N,
+            'sum_log_x': self.sum_log_x,
+            'sum_log_x_sq': self.sum_log_x_sq
+        }
+
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
         grids = dict()
@@ -100,6 +113,48 @@ class Lognormal(object):
         grids['t'] = gu.log_linspace(.1,float(len(X)), n_grid)
         grids['m'] = gu.log_linspace(.0001, max(X), n_grid)
         return grids
+
+    @staticmethod
+    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
+        # Create a new axis?
+        if ax is None:
+            _, ax = plt.subplots()
+        # Set up x axis.
+        x_min = min(X)
+        x_max = max(X)
+        if Y is None:
+            Y = np.linspace(x_min, x_max, 200)
+        # Compute weighted pdfs
+        K = len(clusters)
+        pdf = np.zeros((K, len(Y)))
+        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
+        for k in xrange(K):
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
+            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
+        # Plot the sum of pdfs.
+        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
+        # Plot the samples.
+        if hist:
+            nbins = min([len(X)/5, 50])
+            ax.hist(X, nbins, normed=True, color='black', alpha=.5,
+                edgecolor='none')
+        else:
+            y_max = ax.get_ylim()[1]
+            for x in X:
+                ax.vlines(x, 0, y_max/10., linewidth=1)
+        # Title.
+        ax.set_title(clusters[0].name())
+        return ax
+
+    @staticmethod
+    def name():
+        return 'lognormal'
+
+    ##################
+    # HELPER METHODS #
+    ##################
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_log_x, sum_log_x_sq, a, b, t, m):
@@ -134,37 +189,3 @@ class Lognormal(object):
     def calc_log_Z(a, b, t):
         return ((a + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(t) - \
             (a / 2.) * log(b) + gammaln(a / 2.)
-
-    @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        x_min = min(X)
-        x_max = max(X)
-        if Y is None:
-            Y = np.linspace(x_min, x_max, 200)
-        # Compute weighted pdfs
-        K = len(clusters)
-        pdf = np.zeros((K, len(Y)))
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-        # Plot the samples.
-        if hist:
-            nbins = min([len(X)/5, 50])
-            ax.hist(X, nbins, normed=True, color='black', alpha=.5,
-                edgecolor='none')
-        else:
-            y_max = ax.get_ylim()[1]
-            for x in X:
-                ax.vlines(x, 0, y_max/10., linewidth=1)
-        # Title.
-        ax.set_title(clusters[0].cctype)
-        return ax

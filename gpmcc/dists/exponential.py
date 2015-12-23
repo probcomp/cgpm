@@ -20,20 +20,16 @@ from scipy.special import gammaln
 from scipy.stats import lomax
 
 import gpmcc.utils.general as gu
+from gpmcc.dists.distribution import DistributionGpm
 
-class Exponential(object):
-    """Exponential distribution with gamma prior on mu."""
+class Exponential(DistributionGpm):
+    """Exponential distribution with gamma prior on mu. Collapsed.
 
-    cctype = 'exponential'
+    mu ~ Gamma(a, b)
+    x ~ Exponential(mu)
+    """
 
     def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None):
-        """Optional arguments:
-        -- N: number of data points
-        -- sum_x: suffstat, sum(X)
-        -- a: hyperparameter
-        -- b: hyperparameter
-        -- distargs: not used
-        """
         assert a > 0
         assert b > 0
         # Sufficient statistics.
@@ -43,20 +39,11 @@ class Exponential(object):
         self.a = a
         self.b = b
 
-    def transition_params(self):
-        return
-
-    def set_hypers(self, hypers):
-        assert hypers['a'] > 0
-        assert hypers['b'] > 0
-        self.b = hypers['b']
-        self.a = hypers['a']
-
-    def insert_element(self, x):
+    def incorporate(self, x):
         self.N += 1.0
         self.sum_x += x
 
-    def remove_element(self, x):
+    def unincorporate(self, x):
         self.N -= 1.0
         self.sum_x -= x
 
@@ -72,11 +59,32 @@ class Exponential(object):
         return Exponential.calc_predictive_logp(x, 0, 0, self.a,
             self.b)
 
-    def predictive_draw(self):
+    def simulate(self):
         an, bn = Exponential.posterior_hypers(self.N,
             self.sum_x, self.a, self.b)
         draw = lomax.rvs(an, loc=1-bn) - (1 - bn)
         return draw
+
+    def transition_params(self):
+        return
+
+    def set_hypers(self, hypers):
+        assert hypers['a'] > 0
+        assert hypers['b'] > 0
+        self.b = hypers['b']
+        self.a = hypers['a']
+
+    def get_hypers(self):
+        return {
+            'a': self.a,
+            'b': self.b,
+        }
+
+    def get_suffstats(self):
+        return {
+            'N': self.N,
+            'sum_x': self.sum_x,
+        }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -88,35 +96,7 @@ class Exponential(object):
         return grids
 
     @staticmethod
-    def calc_predictive_logp(x, N, sum_x, a, b):
-        if x < 0:
-            return float('-inf')
-        an,bn = Exponential.posterior_hypers(N, sum_x, a, b)
-        am,bm = Exponential.posterior_hypers(N+1, sum_x+x, a, b)
-        ZN = Exponential.calc_log_Z(an, bn)
-        ZM = Exponential.calc_log_Z(am, bm)
-        return  ZM - ZN
-
-    @staticmethod
-    def calc_marginal_logp(N, sum_x, a, b):
-        an, bn = Exponential.posterior_hypers(N, sum_x, a, b)
-        Z0 = Exponential.calc_log_Z(a, b)
-        ZN = Exponential.calc_log_Z(an, bn)
-        return ZN - Z0
-
-    @staticmethod
-    def posterior_hypers(N, sum_x, a, b):
-        an = a + N
-        bn = b + sum_x
-        return an, bn
-
-    @staticmethod
-    def calc_log_Z(a, b):
-        Z =  gammaln(a) - a*log(b)
-        return Z
-
-    @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
+    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
         # Create a new axis?
         if ax is None:
             _, ax = plt.subplots()
@@ -146,5 +126,41 @@ class Exponential(object):
             y_max = ax.get_ylim()[1]
             for x in X:
                 ax.vlines(x, 0, y_max/float(10), linewidth=1)
-        ax.set_title(clusters[0].cctype)
+        ax.set_title(clusters[0].name())
         return ax
+
+    @staticmethod
+    def name():
+        return 'exponential'
+
+    ##################
+    # HELPER METHODS #
+    ##################
+
+    @staticmethod
+    def calc_predictive_logp(x, N, sum_x, a, b):
+        if x < 0:
+            return float('-inf')
+        an,bn = Exponential.posterior_hypers(N, sum_x, a, b)
+        am,bm = Exponential.posterior_hypers(N+1, sum_x+x, a, b)
+        ZN = Exponential.calc_log_Z(an, bn)
+        ZM = Exponential.calc_log_Z(am, bm)
+        return  ZM - ZN
+
+    @staticmethod
+    def calc_marginal_logp(N, sum_x, a, b):
+        an, bn = Exponential.posterior_hypers(N, sum_x, a, b)
+        Z0 = Exponential.calc_log_Z(a, b)
+        ZN = Exponential.calc_log_Z(an, bn)
+        return ZN - Z0
+
+    @staticmethod
+    def posterior_hypers(N, sum_x, a, b):
+        an = a + N
+        bn = b + sum_x
+        return an, bn
+
+    @staticmethod
+    def calc_log_Z(a, b):
+        Z =  gammaln(a) - a*log(b)
+        return Z

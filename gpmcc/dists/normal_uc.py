@@ -24,38 +24,26 @@ LOGPI = log(np.pi)
 LOG2PI = log(2*np.pi)
 
 class NormalUC(Normal):
-    """Normal distribution with normal prior on mu and gamma prior on
-    precision."""
+    """Normal distribution with normal prior on mean and gamma prior on
+    precision. Uncollapsed.
 
-    cctype = 'normal_uc'
+    rho ~ Gamma(nu/2, s/2)
+    mu ~ Normal(m, rho)
+    X ~ Normal(mu, r*rho)
+
+    http://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
+    Note that Teh uses Normal-InverseGamma to mean Normal-Gamma for prior.
+    """
 
     def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, rho=None, m=0,
             r=1, s=1, nu=1, distargs=None):
-        """
-        Optional arguments:
-        -- N: number of data points
-        -- sum_x: suffstat, sum(X)
-        -- sum_x_sq: suffstat, sum(X^2)
-        -- mu: parameter
-        -- rho: parameter
-        -- m: hyperparameter
-        -- r: hyperparameter
-        -- s: hyperparameter
-        -- nu: hyperparameter
-        -- distargs: not used
-        """
+        # Invoke parent.
         super(NormalUC, self).__init__(N=N, sum_x=sum_x, sum_x_sq=sum_x_sq,
             m=m, r=r, s=s, nu=nu, distargs=distargs)
         # Uncollapsed mean and precision parameters.
         self.mu, self.rho = mu, rho
         if mu is None or rho is None:
             self.transition_params()
-
-    def transition_params(self):
-        rn, nun, mn, sn = NormalUC.posterior_hypers(self.N, self.sum_x,
-            self.sum_x_sq, self. m, self.r, self.s, self.nu)
-        self.rho = np.random.gamma(nun/2., scale=2./sn)
-        self.mu = np.random.normal(loc=mn, scale=1./(self.rho*rn)**.5)
 
     def predictive_logp(self, x):
         return NormalUC.calc_predictive_logp(x, self.mu, self.rho)
@@ -70,8 +58,22 @@ class NormalUC(Normal):
     def singleton_logp(self, x):
         return NormalUC.calc_predictive_logp(x, self.mu, self.rho)
 
-    def predictive_draw(self):
+    def simulate(self):
         return np.random.normal(self.mu, 1./self.rho**.5)
+
+    def transition_params(self):
+        rn, nun, mn, sn = NormalUC.posterior_hypers(self.N, self.sum_x,
+            self.sum_x_sq, self. m, self.r, self.s, self.nu)
+        self.rho = np.random.gamma(nun/2., scale=2./sn)
+        self.mu = np.random.normal(loc=mn, scale=1./(self.rho*rn)**.5)
+
+    @staticmethod
+    def name():
+        return 'normal_uc'
+
+    ##################
+    # HELPER METHODS #
+    ##################
 
     @staticmethod
     def calc_predictive_logp(x, mu, rho):

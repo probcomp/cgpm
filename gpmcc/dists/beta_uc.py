@@ -20,30 +20,22 @@ import scipy
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.sampling as su
+from gpmcc.dists.distribution import DistributionGpm
 
-class BetaUC(object):
-    """Beta distribution parameterized by strength s and balance b.
-    s ~ exp(mu)
-    b ~ beta(alpha, beta)
-    theta ~ beta(s*b, s*(1-b))
+class BetaUC(DistributionGpm):
+    """Beta distribution with exponential prior on strength and beta
+    prior on balance. Uncollapsed.
+
+    s ~ Exponential(mu)
+    b ~ Beta(alpha, beta)
+    x ~ Beta(s*b, s*(1-b))
     """
-
-    cctype = 'beta_uc'
 
     def __init__(self, N=0, sum_log_x=0, sum_minus_log_x=0, strength=None,
             balance=None, mu=1, alpha=.5, beta=.5, distargs=None):
-        """
-        Optional arguments:
-        -- N: number of data points
-        -- sum_log_x: suffstat, sum(log(X))
-        -- sum_minus_log_x: suffstat, sum(log(1-X))
-        -- strength: higher strength -> lower variance
-        -- balance: analogous to mean
-        -- mu: hyperparam, exponential distribution parameter for strength prior
-        -- alpha: hyperparam, beta distribution parameter for balance
-        -- beta: hyperparam, beta distribution parameter for balance
-        -- distargs: not used
-        """
+        assert mu > 0
+        assert alpha > 0
+        assert beta > 0
         # Sufficient statistics.
         self.N = N
         self.sum_log_x = sum_log_x
@@ -58,6 +50,39 @@ class BetaUC(object):
             self.strength = np.random.exponential(scale=mu)
             self.balance = np.random.beta(alpha, beta)
             assert self.strength > 0 and 0 < self.balance < 1
+
+    def incorporate(self, x):
+        assert x > 0 and x < 1
+        self.N += 1.
+        self.sum_log_x += log(x)
+        self.sum_minus_log_x += log(1.-x)
+
+    def unincorporate(self, x):
+        assert x > 0 and x < 1
+        self.N -= 1.
+        if self.N <= 0:
+            self.sum_log_x = 0
+            self.sum_minus_log_x = 0
+        else:
+            self.sum_log_x -= log(x)
+            self.sum_minus_log_x -= log(1.-x)
+
+    def predictive_logp(self, x):
+        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
+
+    def marginal_logp(self):
+        lp = BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
+            self.sum_minus_log_x, self.strength, self.balance)
+        lp += BetaUC.calc_log_prior(self.strength, self.balance, self.mu,
+            self.alpha, self.beta)
+        return lp
+
+    def singleton_logp(self, x):
+        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
+
+    def simulate(self):
+        # XXX TODO
+        raise NotImplementedError
 
     def transition_params(self):
         n_samples = 25
@@ -79,38 +104,77 @@ class BetaUC(object):
             .25, [0, 1], burn=n_samples)
 
     def set_hypers(self, hypers):
+        assert hypers['mu'] > 0
+        assert hypers['alpha'] > 0
+        assert hypers['beta'] > 0
         self.mu = hypers['mu']
         self.alpha = hypers['alpha']
         self.beta = hypers['beta']
 
-    def insert_element(self, x):
-        assert x > 0 and x < 1
-        self.N += 1.
-        self.sum_log_x += log(x)
-        self.sum_minus_log_x += log(1.-x)
+    def get_hypers(self):
+        return {
+            'mu': self.mu,
+            'alpha': self.alpha,
+            'beta': self.beta
+        }
 
-    def remove_element(self, x):
-        assert x > 0 and x < 1
-        self.N -= 1.
-        if self.N <= 0:
-            self.sum_log_x = 0
-            self.sum_minus_log_x = 0
+    def get_suffstats(self):
+        return {
+            'N': self.N,
+            'sum_log_x': self.sum_log_x,
+            'sum_minus_log_x': self.sum_minus_log_x
+        }
+
+    @staticmethod
+    def construct_hyper_grids(X, n_grid=30):
+        grids = dict()
+        N = float(len(X))
+        Sx = np.sum(X)
+        Mx = np.sum(1-X)
+        grids['mu'] = gu.log_linspace(1/N, N, n_grid)
+        grids['alpha'] = gu.log_linspace(Sx/N, Sx, n_grid)
+        grids['beta'] = gu.log_linspace(Mx/N, Mx, n_grid)
+        return grids
+
+    @staticmethod
+    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
+        # Create a new axis?
+        if ax is None:
+            _, ax = plt.subplots()
+        # Set up x axis.
+        if Y is None:
+            Y = np.linspace(.01, .99, 100)
+        # Compute weighted pdfs.
+        K = len(clusters)
+        pdf = np.zeros((K, len(Y)))
+        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
+        for k in xrange(K):
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
+            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
+        # Plot the sum of pdfs.
+        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
+        # Plot the samples.
+        if hist:
+            nbins = min([len(X)/5, 50])
+            ax.hist(X, nbins, normed=True, color='black', alpha=.5,
+                edgecolor='none')
         else:
-            self.sum_log_x -= log(x)
-            self.sum_minus_log_x -= log(1.-x)
+            y_max = ax.get_ylim()[1]
+            for x in X:
+                ax.vlines(x, 0, y_max/10., linewidth=1)
+        # Title.
+        ax.set_title(clusters[0].name())
+        return ax
 
-    def predictive_logp(self, x):
-        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
+    @staticmethod
+    def name():
+        return 'beta_uc'
 
-    def singleton_logp(self, x):
-        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
-
-    def marginal_logp(self):
-        lp = BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
-            self.sum_minus_log_x, self.strength, self.balance)
-        lp += BetaUC.calc_log_prior(self.strength, self.balance, self.mu,
-            self.alpha, self.beta)
-        return lp
+    ##################
+    # HELPER METHODS #
+    ##################
 
     @staticmethod
     def calc_predictive_logp(x, strength, balance):
@@ -142,46 +206,3 @@ class BetaUC(object):
         lp += (beta - 1.) * sum_minus_log_x
         assert not np.isnan(lp)
         return lp
-
-    @staticmethod
-    def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        N = float(len(X))
-        Sx = np.sum(X)
-        Mx = np.sum(1-X)
-        grids['mu'] = gu.log_linspace(1/N, N, n_grid)
-        grids['alpha'] = gu.log_linspace(Sx/N, Sx, n_grid)
-        grids['beta'] = gu.log_linspace(Mx/N, Mx, n_grid)
-        return grids
-
-    @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        if Y is None:
-            Y = np.linspace(.01, .99, 100)
-        # Compute weighted pdfs.
-        K = len(clusters)
-        pdf = np.zeros((K, len(Y)))
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-        # Plot the samples.
-        if hist:
-            nbins = min([len(X)/5, 50])
-            ax.hist(X, nbins, normed=True, color='black', alpha=.5,
-                edgecolor='none')
-        else:
-            y_max = ax.get_ylim()[1]
-            for x in X:
-                ax.vlines(x, 0, y_max/10., linewidth=1)
-        # Title.
-        ax.set_title(clusters[0].cctype)
-        return ax

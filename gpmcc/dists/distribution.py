@@ -29,13 +29,11 @@ class DistributionGpm(object):
     recovered in the limit n \to \infty.
     """
 
-    def __init__(self, N, suffstats, params, hypers):
+    def __init__(self, suffstats, params, hypers):
         """Initialize the Gpm.
 
         Parameters
         ----------
-        N : int, optional
-            Number of observations.
         suffstats : kwargs, optional
             Initial values of suffstats.
         params : kwargs, optional
@@ -77,7 +75,7 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def marginal_logp(self, x):
+    def marginal_logp(self):
         """Compute an estimate of the probability of all incorporated
         observations X, conditioned on the current GPM state.
 
@@ -93,7 +91,7 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def simulate(self, x):
+    def simulate(self):
         """Simulate from the posterior predictive_logp p(x|T,Q,H). The
         sample returned by this method must necessarily be from the same
         distribution of `predictive_logp`.
@@ -109,16 +107,12 @@ class DistributionGpm(object):
         """Force the hyperparameters H to new values."""
         raise NotImplementedError
 
-    def get_hypers(self, hypers):
+    def get_hypers(self):
         """Return a dictionary of hyperparameters."""
         raise NotImplementedError
 
-    def get_suffstats(self, hypers):
+    def get_suffstats(self):
         """Return a dictionary of sufficient statistics."""
-        raise NotImplementedError
-
-    def get_name(self):
-        """Return the name of the distribution as a string."""
         raise NotImplementedError
 
     @staticmethod
@@ -154,4 +148,9 @@ class DistributionGpm(object):
             Show a histogram of samples X? Otherwise samples will be shown
             as small vertical lines.
         """
+        raise NotImplementedError
+
+    @staticmethod
+    def name():
+        """Return the name of the distribution as a string."""
         raise NotImplementedError

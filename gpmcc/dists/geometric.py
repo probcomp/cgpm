@@ -19,20 +19,16 @@ import matplotlib.pyplot as plt
 from scipy.special import betaln
 
 import gpmcc.utils.general as gu
+from gpmcc.dists.distribution import DistributionGpm
 
-class Geometric(object):
-    """Geometric distribution data with beta prior on mu."""
+class Geometric(DistributionGpm):
+    """Geometric distribution data with beta prior on mu. Collapsed.
 
-    cctype = 'geometric'
+    mu ~ Beta(a, b)
+    x ~ Geometric(mu)
+    """
 
     def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None):
-        """Optional arguments:
-        -- N: number of data points
-        -- sum_x: suffstat, sum(X)
-        -- a: hyperparameter
-        -- b: hyperparameter
-        -- distargs: not used
-        """
         assert a > 0
         assert b > 0
         # Sufficient statistics.
@@ -42,20 +38,11 @@ class Geometric(object):
         self.a = a
         self.b = b
 
-    def transition_params(self, prior=False):
-        return
-
-    def set_hypers(self, hypers):
-        assert hypers['a'] > 0
-        assert hypers['b'] > 0
-        self.b = hypers['b']
-        self.a = hypers['a']
-
-    def insert_element(self, x):
+    def incorporate(self, x):
         self.N += 1.0
         self.sum_x += x
 
-    def remove_element(self, x):
+    def unincorporate(self, x):
         self.N -= 1.0
         self.sum_x -= x
 
@@ -70,16 +57,30 @@ class Geometric(object):
     def singleton_logp(self, x):
         return Geometric.calc_predictive_logp(x, 0, 0, self.a, self.b)
 
-    def predictive_draw(self):
-        # an, bn = Geometric.posterior_hypers(self.N, self.sum_x,
-            # self.a, self.b)
-        # XXX Fix.
-        # draw = np.random.negative_binomial(an, bn/(bn+1.0))
-        return 1
-        # fn = lambda x: np.exp(self.predictive_logp(x))
-        # lower_bound = 0
-        # delta = 1
-        # return utils.inversion_sampling(fn, lower_bound, delta)
+    def simulate(self):
+        # XXX TODO
+        raise NotImplementedError
+
+    def transition_params(self):
+        return
+
+    def set_hypers(self, hypers):
+        assert hypers['a'] > 0
+        assert hypers['b'] > 0
+        self.b = hypers['b']
+        self.a = hypers['a']
+
+    def get_hypers(self):
+        return {
+            'a': self.a,
+            'b': self.b,
+        }
+
+    def get_suffstats(self):
+        return {
+            'N': self.N,
+            'sum_x': self.sum_x,
+        }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -87,6 +88,41 @@ class Geometric(object):
         grids['a'] = gu.log_linspace(1, float(len(X)) / 2., n_grid)
         grids['b'] = gu.log_linspace(.1, float(len(X)) / 2., n_grid)
         return grids
+
+    @staticmethod
+    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
+        # Create a new axis?
+        if ax is None:
+            _, ax = plt.subplots()
+        # Set up x axis.
+        x_max = max(X)
+        Y = range(int(x_max)+1)
+        # Compute weighted pdfs
+        K = len(clusters)
+        pdf = np.zeros((K,len(Y)))
+        toplt = np.array(gu.bincount(X,Y))/float(len(X))
+        ax.bar(Y, toplt, color='gray', edgecolor='none')
+        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
+        for k in xrange(K):
+            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
+                    for y in Y])
+            color, alpha = gu.curve_color(k)
+            ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
+        # Plot the sum of pdfs.
+        ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
+            linewidth=3)
+        ax.set_xlim([0, x_max+1])
+        # Title.
+        ax.set_title(clusters[0].name())
+        return ax
+
+    @staticmethod
+    def name():
+        return 'geometric'
+
+    ##################
+    # HELPER METHODS #
+    ##################
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
@@ -115,30 +151,3 @@ class Geometric(object):
     def calc_log_Z(a, b):
         Z =  betaln(a, b)
         return Z
-
-    @staticmethod
-    def plot_dist(X, clusters, distargs=None, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        x_max = max(X)
-        Y = range(int(x_max)+1)
-        # Compute weighted pdfs
-        K = len(clusters)
-        pdf = np.zeros((K,len(Y)))
-        toplt = np.array(gu.bincount(X,Y))/float(len(X))
-        ax.bar(Y, toplt, color='gray', edgecolor='none')
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
-            linewidth=3)
-        ax.set_xlim([0, x_max+1])
-        # Title.
-        ax.set_title(clusters[0].cctype)
-        return ax
