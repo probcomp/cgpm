@@ -36,16 +36,16 @@ class Dim(object):
             Name of the distribution cctype, see `gpmcc.utils.config`.
         index : int
             Identifier for this dimension.
-        Zr : list (default None)
+        Zr : list, optional
             Partition of data into clusters. If None, no cluster models
             are created.
-        n_grid : int (default 30)
+        n_grid : int, optional
             Number of bins in the hyperparameter grid.
-        distargs : dict, (default None)
+        distargs : dict, optional
             Some `dist` types require additional arguments, such as
             `gpmcc.dists.multinomial`. Defaults to None.
-        mode (optional) : str ('collapsed')
-            Either 'collapsed' or 'uncollapsed'.
+        mode : {'collapsed', 'uncollapsed'}, optional
+            Are the mixture components collapsed or uncollapsed?
         """
         # Data information.
         self.N = len(X)
