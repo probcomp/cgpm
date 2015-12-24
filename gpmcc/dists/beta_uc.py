@@ -58,6 +58,8 @@ class BetaUC(DistributionGpm):
         self.sum_minus_log_x += log(1.-x)
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         assert x > 0 and x < 1
         self.N -= 1.
         if self.N <= 0:

@@ -55,6 +55,8 @@ class Vonmises(DistributionGpm):
         self.sum_cos_x += cos(x)
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         assert 0 <= x and x <= 2*math.pi
         self.N -= 1.0
         self.sum_sin_x -= sin(x)

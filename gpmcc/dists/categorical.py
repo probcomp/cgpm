@@ -51,6 +51,8 @@ class Categorical(DistributionGpm):
         self.counts[int(x)] += 1
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         if not Categorical.validate(x, self.k):
             raise ValueError('Invalid categorical observation removed.')
         self.N -= 1

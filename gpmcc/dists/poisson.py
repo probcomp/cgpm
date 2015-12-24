@@ -46,6 +46,8 @@ class Poisson(DistributionGpm):
         self.sum_log_fact_x += gammaln(x+1)
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
         self.sum_x -= x
         self.sum_log_fact_x -= gammaln(x+1)

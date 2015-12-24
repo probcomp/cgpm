@@ -43,6 +43,8 @@ class Geometric(DistributionGpm):
         self.sum_x += x
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
         self.sum_x -= x
 

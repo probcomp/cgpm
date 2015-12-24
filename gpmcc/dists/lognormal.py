@@ -57,6 +57,8 @@ class Lognormal(DistributionGpm):
         self.sum_log_x_sq += log(x) * log(x)
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)

@@ -60,6 +60,8 @@ class Normal(DistributionGpm):
         self.sum_x_sq += x*x
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
         if self.N == 0:
             self.sum_x = 0.0

@@ -45,6 +45,8 @@ class Bernoulli(DistributionGpm):
         self.k += x
 
     def unincorporate(self, x):
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
         assert x == 1. or x == 0.
         self.N -= 1
         self.k -= x
