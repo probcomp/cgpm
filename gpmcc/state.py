@@ -278,7 +278,7 @@ class State(object):
         for v in xrange(len(self.Nv)):
             dim.reassign(self.views[v].Zr)
             # Total view prob is data + crp.
-            p_view_v = dim.full_marginal_logp() + p_crp[v]
+            p_view_v = dim.marginal_logp() + p_crp[v]
             p_view.append(p_view_v)
 
         # If not a singleton, propose m auxiliary parameters (views)
@@ -291,7 +291,7 @@ class State(object):
                 proposal_view = View([dim], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
                 dim.reassign(proposal_view.Zr)
-                p_view_aux = dim.full_marginal_logp() + p_crp_aux
+                p_view_aux = dim.marginal_logp() + p_crp_aux
                 p_view.append(p_view_aux)
 
         # Draw a view.
@@ -326,7 +326,7 @@ class State(object):
             else:
                 dim_holder.append(copy.deepcopy(dim))
                 dim_holder[-1].reassign(self.views[v].Zr)
-            p_view_v = dim_holder[-1].full_marginal_logp() + p_crp[v]
+            p_view_v = dim_holder[-1].marginal_logp() + p_crp[v]
             p_view.append(p_view_v)
 
         # If not a singleton, propose m auxiliary parameters (views)
@@ -340,7 +340,7 @@ class State(object):
                 proposal_view = View([dim_holder[-1]], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
                 dim_holder[-1].reassign(proposal_view.Zr)
-                p_view_aux = dim_holder[-1].full_marginal_logp() + log_aux
+                p_view_aux = dim_holder[-1].marginal_logp() + log_aux
                 p_view.append(p_view_aux)
 
         # Draw a view

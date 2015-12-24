@@ -138,14 +138,13 @@ class Dim(object):
         if isnan(x):
             return
         self.clusters[current].unincorporate(x)   # remove from current cluster
-        self.clusters[-1].incorporate(x)        # add element to new cluster
+        self.clusters[-1].incorporate(x)          # add element to new cluster
 
-    def marginal_logp(self, k):
-        """Returns the marginal log_p of clusters[k]."""
-        return self.clusters[k].marginal_logp()
-
-    def full_marginal_logp(self):
-        """Returns the marginal log_p over all clusters."""
+    def marginal_logp(self, k=None):
+        """If k is not None, teturns the marginal log_p of clusters[k].
+        Otherwise returns the sum of marginal log_p over all clusters."""
+        if k is not None:
+            return self.clusters[k].marginal_logp()
         return sum(cluster.marginal_logp() for cluster in self.clusters)
 
     def transition_hypers(self):
