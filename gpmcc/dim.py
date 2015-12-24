@@ -88,20 +88,6 @@ class Dim(object):
         lp = self.aux_model.singleton_logp(x)
         return lp
 
-    def insert_element(self, rowid, k):
-        """Insert x into clusters[k]."""
-        x = self.X[rowid]
-        if isnan(x):
-            return
-        self.clusters[k].incorporate(x)
-
-    def remove_element(self, rowid, k):
-        """Remove x from clusters[k]."""
-        x = self.X[rowid]
-        if isnan(x):
-            return
-        self.clusters[k].unincorporate(x)
-
     def move_to_cluster(self, rowid, move_from, move_to):
         """Move X[rowid] from clusters[move_from] to clusters[move_to]."""
         x = self.X[rowid]
