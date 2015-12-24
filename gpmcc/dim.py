@@ -30,8 +30,7 @@ class Dim(object):
         Arguments:
         ... X (np.array) : Array of data. Must be compatible with `dist`.
         Missing entries must be np.nan.
-        ... dist (str) : Name of the DistributionGpm, see
-        `gpmcc.utils.config`.
+        ... dist (str) : DistributionGpm name see `gpmcc.utils.config`.
         ... index (int) : Identifier for this dim.
 
         Keyword Arguments:
