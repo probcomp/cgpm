@@ -66,7 +66,6 @@ class View(object):
 
     def transition_rows(self, target_rows=None):
         """Reassign rows to clusters.
-
         Keyword Arguments:
         ... target_rows (list<int>): Rows to reassign. If None, transitions
         every row.
@@ -124,7 +123,7 @@ class View(object):
             # self._check_partitions()
 
     def transition(self, N):
-        """Run all the transitions."""
+        """Run all the transitions N times."""
         for _ in xrange(N):
             self.transition_Z()
             self.transition_alpha()
@@ -140,18 +139,18 @@ class View(object):
         self.alpha = self.alpha_grid[index]
 
     def transition_column_hypers(self):
-        """Calculate column (Dim) hyperparameter conditionals over grid and
+        """Calculate column (dim) hyperparameter conditionals over grid and
         transition.
         """
         for dim in self.dims.values():
             dim.transition_hypers()
 
     def transition_Z(self, target_rows=None, N=1):
-        """Transition row assignment.
-        Optional arguments:
-        -- target_rows: a list of rows to reassign. If not specified, reassigns
-        every row
-        -- N: number of times to transition (defualt: 1)
+        """Transition row assignments.
+        Keyword arguments:
+        ... target_rows (list<int>): List of rows to reassign.
+        If not specified, reassigns every row.
+        ... N (int): Number of times to transition.
         """
         for _ in range(N):
             self.transition_rows(target_rows=target_rows)
