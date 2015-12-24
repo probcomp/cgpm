@@ -175,23 +175,6 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.transition_params()
 
-    def clear_data(self):
-        """Removes all data from the clusters. Cleans suffstats."""
-        K = len(self.clusters)
-        for k in xrange(K):
-            cluster = self.model(distargs=self.distargs)
-            cluster.set_hypers(self.hypers)
-            self.clusters[k] = cluster
-
-    def update_prior_grids(self):
-        n_grid = len(self.hypers_grids.values()[0])
-        hypers_grids = self.model.construct_hyper_grids(self.X, n_grid)
-        hypers = self.model.init_hypers(hypers_grids, self.X)
-        self.hypers_grids = hypers_grids
-        self.hypers = hypers
-        for cluster in self.clusters:
-            cluster.set_hypers(hypers)
-
     def get_suffstats(self):
         return [cluster.get_suffstats() for cluster in self.clusters]
 

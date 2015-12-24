@@ -206,11 +206,6 @@ class State(object):
             self.dims[col].X = data[col]
             self.dims[col].reassign(self.views[self.Zv[col]].Zr)
 
-    def clear_data(self):
-        """Clears the suffstats in all clusters in all dims."""
-        for view in self.views:
-            view.clear_data()
-
     def plot(self):
         """Plots sample histogram and learned distribution for each dim."""
         layout = pu.get_state_plot_layout(self.n_cols)
@@ -219,10 +214,6 @@ class State(object):
             edgecolor='k', frameon=False, tight_layout=True)
         self._do_plot(fig, layout)
         plt.show()
-
-    def _update_prior_grids(self):
-        for dim in self.dims:
-            dim.update_prior_grids()
 
     def _transition_rows(self, target_rows=None):
         for view in self.views:

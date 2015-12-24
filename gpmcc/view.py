@@ -198,10 +198,6 @@ class View(object):
     def remove_dim(self, dim_index):
         del self.dims[dim_index]
 
-    def clear_data(self):
-        for dim in self.dims.values():
-            dim.clear_data()
-
     def _check_partitions(self):
         # For debugging only.
         # The counts for all clusters are accounted for.
