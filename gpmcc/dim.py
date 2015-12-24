@@ -36,13 +36,12 @@ class Dim(object):
 
         Keyword Arguments:
         ... Zr (list) L Partition of data into clusters, where Zr[i] is the
-        cluster index of row i. If None, no clusters created.
+        cluster index of row i. If None, is intialized from CRP(alpha=1).
         ... n_grid (int) : Number of bins in the hyperparameter grid.
         """
         # Data information.
         self.N = len(X)
         self.X = X
-        self.Zr = Zr
         self.index = index
 
         # Model type.
@@ -59,17 +58,11 @@ class Dim(object):
             for h in self.hypers_grids:
                 self.hypers[h] = np.random.choice(self.hypers_grids[h])
 
-        # Row clusters.
-        self.clusters = []
-        if Zr is not None:
-            K = max(Zr)+1
-            for k in xrange(K):
-                self.clusters.append(self.model(distargs=distargs,
-                    **self.hypers))
-            for i in xrange(len(X)):
-                k = Zr[i]
-                if not isnan(X[i]):
-                    self.clusters[k].incorporate(X[i])
+        # Row partitioning.
+        self.Zr = Zr
+        if Zr is None:
+            self.Zr, _, _ = gu.crp_gen(len(self.X), 1)
+        self.reassign(self.Zr)
 
         # Auxiliary singleton model.
         self.aux_model = None
@@ -215,10 +208,7 @@ class Dim(object):
             cluster.set_hypers(hypers)
 
     def get_suffstats(self):
-        suffstats =[]
-        for cluster in self.clusters:
-            suffstats.append(cluster.get_suffstats())
-        return suffstats
+        return [cluster.get_suffstats() for cluster in self.clusters]
 
     def is_collapsed(self):
         return self.model.is_collapsed()
