@@ -27,25 +27,17 @@ class Dim(object):
             hypers=None, mode='collapsed'):
         """Dimension constructor.
 
-        Parameters
-        ----------
-        X : np.array
-            Array of data. Must be compatible with `dist`. Missing entries
-            must be np.nan.
-        dist : str
-            Name of the distribution cctype, see `gpmcc.utils.config`.
-        index : int
-            Identifier for this dimension.
-        Zr : list, optional
-            Partition of data into clusters. If None, no cluster models
-            are created.
-        n_grid : int, optional
-            Number of bins in the hyperparameter grid.
-        distargs : dict, optional
-            Some `dist` types require additional arguments, such as
-            `gpmcc.dists.categorical`. Defaults to None.
-        mode : {'collapsed', 'uncollapsed'}, optional
-            Are the mixture components collapsed or uncollapsed?
+        Arguments:
+        ... X (np.array) : Array of data. Must be compatible with `dist`.
+        Missing entries must be np.nan.
+        ... dist (str) : Name of the DistributionGpm, see
+        `gpmcc.utils.config`.
+        ... index (int) : Identifier for this dim.
+
+        Keyword Arguments:
+        ... Zr (list) L Partition of data into clusters, where Zr[i] is the
+        cluster index of row i. If None, no clusters created.
+        ... n_grid (int) : Number of bins in the hyperparameter grid.
         """
         # Data information.
         self.N = len(X)
@@ -165,7 +157,9 @@ class Dim(object):
 
     def calc_hyper_proposal_logps(self, target):
         """Computes the marginal likelihood (over all clusters) for each
-        hyperparameter value in self.hypers_grids[target]."""
+        hyperparameter value in self.hypers_grids[target].
+        p(h|X) \prop p(h)p(X|h)
+        """
         logps = []
         hypers = self.hypers.copy()
         for g in self.hypers_grids[target]:
@@ -182,7 +176,7 @@ class Dim(object):
         """Reassigns the data to new clusters according to the new
         partitioning, Zr.
 
-        Destroys and recreates dims.
+        Destroys and recreates clusters.
         """
         self.clusters = []
         self.Zr = Zr
