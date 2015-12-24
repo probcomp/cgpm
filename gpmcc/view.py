@@ -23,24 +23,26 @@ class View(object):
     def __init__(self, dims, alpha=None, Zr=None, n_grid=30):
         """View constructor.
 
-        Input arguments:
-        -- dims: a list of cc_dim objects
-        Optional arguments:
-        -- alpha: crp concentration parameter. If none, is selected from grid.
-        -- Zr: starting partiton of rows to categories. If none, is intialized
-        from CRP(alpha)
-        -- n_grid: number of grid points in the hyperparameter grids
+        Arguments:
+        ... dims (list<dim>): A list of Dim objects in this View.
+
+        Keyword Arguments:
+        ... alpha (float): CRP concentration parameter. If None, selected
+        from grid uniformly at random.
+        ... Zr (list<int>): Starting partiton of rows to categories.
+        If None, is intialized from CRP(alpha)
+        ... n_grid (int): Number of grid points in hyperparameter grids.
         """
         N = dims[0].N
         self.N = N
 
-        # generate alpha
-        self.alpha_grid = gu.log_linspace(1.0 / self.N, self.N, n_grid)
+        # Generate alpha.
+        self.alpha_grid = gu.log_linspace(1. / self.N, self.N, n_grid)
 
         if alpha is None:
             alpha = np.random.choice(self.alpha_grid)
         else:
-            assert alpha > 0.0
+            assert alpha > 0.
 
         if Zr is None:
             Zr, Nk, K = gu.crp_gen(N, alpha)
@@ -63,11 +65,11 @@ class View(object):
         self.Nk = Nk
 
     def transition_rows(self, target_rows=None):
-        """It do what it say -- reassign rows to categories.
+        """Reassign rows to clusters.
 
-        Optional arguments:
-        -- target_rows: a list of rows to reassign. If not specified, reassigns
-        every row
+        Keyword Arguments:
+        ... target_rows (list<int>): Rows to reassign. If None, transitions
+        every row.
         """
         log_alpha = log(self.alpha)
 
@@ -75,37 +77,41 @@ class View(object):
             target_rows = [i for i in xrange(self.N)]
 
         for rowid in target_rows:
-            # Get current assignment, z_a, and determine if it is a singleton.
+            # Get current assignment z_a.
             z_a = self.Zr[rowid]
             is_singleton = (self.Nk[z_a] == 1)
 
             # Get CRP probabilities.
-            pv = list(self.Nk)
+            p_crp = list(self.Nk)
             if is_singleton:
-                # If z_a is a singleton, do not consider a new singleton
-                pv[z_a] = self.alpha
+                # If z_a is singleton do not consider a new singleton.
+                p_crp[z_a] = self.alpha
             else:
-                pv[z_a] -= 1
+                # Decrement current cluster count.
+                p_crp[z_a] -= 1
+                # Append to the CRP an alpha for singleton.
+                p_crp.append(self.alpha)
 
-            # Take the log of the CRP probabilities.
-            pv = np.log(np.array(pv))
+            # Log-normalize p_crp.
+            p_crp = np.log(np.array(p_crp))
+            p_crp = gu.log_normalize(p_crp)
 
-            # Calculate the probability of each row in each category, k \in K.
-            ps = []
+            # Calculate probability of rowid in each cluster k \in K.
+            p_cluster = []
             for k in xrange(self.K):
                 if k == z_a and is_singleton:
-                    lp = self.row_singleton_logp(rowid) + pv[k]
+                    lp = self.row_singleton_logp(rowid) + p_crp[k]
                 else:
-                    lp = self.row_predictive_logp(rowid, k) + pv[k]
-                ps.append(lp)
+                    lp = self.row_predictive_logp(rowid, k) + p_crp[k]
+                p_cluster.append(lp)
 
             # Propose singleton.
             if not is_singleton:
-                lp = self.row_singleton_logp(rowid) + log_alpha
-                ps.append(lp)
+                lp = self.row_singleton_logp(rowid) + p_crp[-1]
+                p_cluster.append(lp)
 
             # Draw new assignment, z_b
-            z_b = gu.log_pflip(ps)
+            z_b = gu.log_pflip(p_cluster)
 
             if z_a != z_b:
                 if is_singleton:
@@ -118,10 +124,7 @@ class View(object):
             # self._check_partitions()
 
     def transition(self, N):
-        """Do all the transitions. Do_plot is mainly for debugging and is only
-        meant to be used to watch multiple transitions in a single view and not
-        in full state transitions---cc_state.transition has its own do_plot arg.
-        """
+        """Run all the transitions."""
         for _ in xrange(N):
             self.transition_Z()
             self.transition_alpha()
@@ -155,22 +158,12 @@ class View(object):
 
     def row_predictive_logp(self, rowid, cluster):
         """Get the predictive log_p of rowid being in cluster."""
-        lp = 0
-        for dim in self.dims.values():
-            if self.Zr[rowid] == cluster:
-                dim.remove_element(rowid, cluster)
-                lp += dim.predictive_logp(rowid, cluster)
-                dim.insert_element(rowid, cluster)
-            else:
-                lp += dim.predictive_logp(rowid, cluster)
-        return lp
+        return sum(dim.predictive_logp(rowid, cluster) for dim in
+            self.dims.values())
 
     def row_singleton_logp(self, rowid):
         """Get the predictive log_p of rowid being a singleton cluster."""
-        lp = 0
-        for dim in self.dims.values():
-            lp += dim.singleton_logp(rowid)
-        return lp
+        return sum(dim.singleton_logp(rowid) for dim in self.dims.values())
 
     def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
         self.Zr[rowid] = move_to

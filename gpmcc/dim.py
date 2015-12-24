@@ -42,6 +42,7 @@ class Dim(object):
         # Data information.
         self.N = len(X)
         self.X = X
+        self.Zr = Zr
         self.index = index
 
         # Model type.
@@ -78,7 +79,12 @@ class Dim(object):
         x = self.X[rowid]
         if isnan(x):
             return 0
-        lp = self.clusters[k].predictive_logp(x)
+        if self.Zr[rowid] == k:
+            self.clusters[k].unincorporate(x)
+            lp = self.clusters[k].predictive_logp(x)
+            self.clusters[k].incorporate(x)
+        else:
+            lp = self.clusters[k].predictive_logp(x)
         return lp
 
     def singleton_logp(self, rowid):
@@ -173,9 +179,7 @@ class Dim(object):
 
     def reassign(self, Zr):
         """Reassigns the data to new clusters according to the new
-        partitioning, Zr.
-
-        Destroys and recreates clusters.
+        partitioning, Zr. Destroys and recreates clusters.
         """
         self.clusters = []
         self.Zr = Zr
