@@ -172,6 +172,10 @@ class BetaUC(DistributionGpm):
     def name():
         return 'beta_uc'
 
+    @staticmethod
+    def is_collapsed():
+        return False
+
     ##################
     # HELPER METHODS #
     ##################

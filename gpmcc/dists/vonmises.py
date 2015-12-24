@@ -155,6 +155,10 @@ class Vonmises(DistributionGpm):
     def name():
         return 'vonmises'
 
+    @staticmethod
+    def is_collapsed():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

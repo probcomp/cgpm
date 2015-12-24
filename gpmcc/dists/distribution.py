@@ -32,21 +32,17 @@ class DistributionGpm(object):
     def __init__(self, suffstats, params, hypers):
         """Initialize the Gpm.
 
-        Parameters
-        ----------
-        suffstats : kwargs, optional
-            Initial values of suffstats.
-        params : kwargs, optional
-            Initial values of params.
-        hypers : kwargs, optional
-            Initial values of hyperparams.
-
         This constructor signature is abstract. `suffstats`, `params`, and
         `hypers` will be unrolled into actual names by each GPM, but the
         order of arguments must be as above. The idea is that
         a user who has suffstats, params, and hypers in named dicts
         can successfully invoke the consructor with
             __init__(N, **suffstats, **params, **hypers) should work.
+
+        Keyword Arguments:
+        ... suffstats : Initial values of suffstats.
+        ... params : Initial values of params.
+        ... hypers : Initial values of hyperparams.
         """
         raise NotImplementedError
 
@@ -153,4 +149,9 @@ class DistributionGpm(object):
     @staticmethod
     def name():
         """Return the name of the distribution as a string."""
+        raise NotImplementedError
+
+    @staticmethod
+    def is_collapsed():
+        """Is the sampler collapsed?."""
         raise NotImplementedError

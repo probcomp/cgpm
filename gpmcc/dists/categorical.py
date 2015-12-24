@@ -127,6 +127,10 @@ class Categorical(DistributionGpm):
     def name():
         return 'categorical'
 
+    @staticmethod
+    def is_collapsed():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

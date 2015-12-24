@@ -152,6 +152,10 @@ class Lognormal(DistributionGpm):
     def name():
         return 'lognormal'
 
+    @staticmethod
+    def is_collapsed():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

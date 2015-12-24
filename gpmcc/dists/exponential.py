@@ -133,6 +133,10 @@ class Exponential(DistributionGpm):
     def name():
         return 'exponential'
 
+    @staticmethod
+    def is_collapsed():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

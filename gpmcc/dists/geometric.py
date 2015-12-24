@@ -120,6 +120,10 @@ class Geometric(DistributionGpm):
     def name():
         return 'geometric'
 
+    @staticmethod
+    def is_collapsed():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

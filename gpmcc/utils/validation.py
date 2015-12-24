@@ -21,9 +21,9 @@ def validate_metadata(metadata):
 
 def validate_cctypes(cctypes):
     for cctype in cctypes:
-        if not cu.valid_dist(cctype):
+        if not cu.valid_distgpm(cctype):
             raise ValueError("Invalid cctype %s. Valid values: %s" % \
-                (str(cctype), str(cu.all_dists())))
+                (str(cctype), str(cu.all_distgpms())))
 
 def validate_data(X):
     if not (isinstance(X, list) or isinstance(X, np.ndarray)):

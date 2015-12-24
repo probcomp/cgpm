@@ -130,6 +130,10 @@ class Poisson(DistributionGpm):
     def name():
         return 'poisson'
 
+    @staticmethod
+    def is_collapsed():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

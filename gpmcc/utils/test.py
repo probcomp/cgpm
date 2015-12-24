@@ -80,13 +80,9 @@ def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
     for col in xrange(n_cols):
         v = Zv[col]
         cctype = cctypes[col]
-        mode = 'collapsed'
-        if cu.is_uncollapsed(cctype):
-            mode = 'uncollapsed'
-        dim_c = dim.Dim(T[col], cctype, col, Zr=Zc[v], mode=mode,
+        dim_c = dim.Dim(T[col], cctype, col, Zr=Zc[v],
             distargs=distargs[col])
         dims.append(dim_c)
-
     return dims
 
 def _gen_beta_data_column(Z, separation=.9, distargs=None):

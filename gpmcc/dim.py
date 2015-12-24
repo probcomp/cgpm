@@ -45,8 +45,7 @@ class Dim(object):
         self.index = index
 
         # Model type.
-        self.mode = mode
-        self.model = cu.dist_class(dist)
+        self.model = cu.distgpm_class(dist)
         self.cctype = self.model.name()
         self.distargs = distargs if distargs is not None else {}
 
@@ -216,6 +215,9 @@ class Dim(object):
         for cluster in self.clusters:
             suffstats.append(cluster.get_suffstats())
         return suffstats
+
+    def is_collapsed(self):
+        return self.model.is_collapsed()
 
     def plot_dist(self, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""

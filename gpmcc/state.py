@@ -42,19 +42,20 @@ class State(object):
         """State constructor.
 
         Input arguments:
-        -- X: A tranposed data matrix DxN, where D is the number of variables
-            and N is the number of observations.
-        -- cctypes: a list of strings where each entry is the data type for
-            each column.
-        -- distargs: a list of distargs appropriate for each type in cctype.
-            For details on distrags see the documentation for each data type.
+        ... X (np.ndarray) : A tranposed data matrix DxN, where D is the
+        number of variables and N is the number of observations.
+        ... cctypes (list<str>) : A list of strings where each entry is the
+        data type for each column. See `utils.config` for valid cctypes.
+        ... distargs: A list of distargs appropriate for each type in
+        cctype. For details on distrags see the documentation for each data
+        type.
 
-        Optional arguments:
-        -- n_grid: number of bins for hyperparameter grids. Default = 30.
-        -- Zv: The assignment of columns to views. If not specified, a
-            partition is generated randomly
-        -- Zrcv: The assignment of rows to clusters for each view
-        -- seed: seed the random number generator. Default = system time.
+        Keyword arguments:
+        ... n_grid (int): number of bins for hyperparameter grids.
+        ... Zv: The assignment of columns to views. If not specified,
+        partition generated randomly
+        ... Zrcv (list<list>): Assignment of rows to clusters in each view.
+        ... seed (int): Seed the random number generator.
 
         Example:
         >>> import np
@@ -73,10 +74,9 @@ class State(object):
         for col in xrange(self.n_cols):
             Y = X[col]
             cctype = cctypes[col]
-            mode = 'uncollapsed' if cu.is_uncollapsed(cctype) else 'collapsed'
             dim_hypers = None if hypers is None else hypers[col]
             dim = Dim(Y, cctype, col, n_grid=n_grid, hypers=dim_hypers,
-                mode=mode, distargs=distargs[col])
+                distargs=distargs[col])
             self.dims.append(dim)
 
         # Initialize CRP alpha.
@@ -258,13 +258,10 @@ class State(object):
         np.random.shuffle(target_cols)
 
         for col in target_cols:
-            if self.dims[col].mode == 'collapsed':
+            if self.dims[col].is_collapsed():
                 self._transition_columns_kernel_collapsed(col, m=m)
-            elif self.dims[col].mode == 'uncollapsed':
-                self._transition_columns_kernel_uncollapsed(col, m=m)
             else:
-                raise ValueError('unsupported dim.mode for column %i: %s' \
-                    % (col, self.dims[col].mode))
+                self._transition_columns_kernel_uncollapsed(col, m=m)
 
     def _transition_columns_kernel_collapsed(self, col, m=3):
         """Gibbs with auxiliary parameters for collapsed data types."""

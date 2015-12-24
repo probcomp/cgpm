@@ -57,6 +57,10 @@ class ExponentialUC(Exponential):
     def name():
         return 'exponential_uc'
 
+    @staticmethod
+    def is_collapsed():
+        return False
+
     ##################
     # HELPER METHODS #
     ##################

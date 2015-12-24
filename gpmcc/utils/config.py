@@ -26,7 +26,7 @@ from gpmcc.dists import exponential_uc
 from gpmcc.dists import geometric
 from gpmcc.dists import vonmises
 
-dist_class_lookup = {
+distgpm_class_lookup = {
     'normal'            : normal.Normal,
     'normal_uc'         : normal_uc.NormalUC,
     'beta_uc'           : beta_uc.BetaUC,
@@ -40,43 +40,25 @@ dist_class_lookup = {
     'vonmises'          : vonmises.Vonmises,
 }
 
-dist_collapsed_lookup = {
-        'normal'            : False,
-        'normal_uc'         : True,
-        'beta_uc'           : True,
-        'bernoulli'         : False,
-        'categorical'       : False,
-        'lognormal'         : False,
-        'poisson'           : False,
-        'exponential'       : False,
-        'exponential_uc'    : True,
-        'geometric'         : False,
-        'vonmises'          : False,
-}
-
 def colors():
-    """Returns a list of colors for plotting."""
+    """Returns a list of colors."""
     return ["red", "blue", "green", "yellow", "orange", "purple", "brown",
         "black"]
 
-def is_uncollapsed(dist):
-    """Returns a dict of collapsed, uncollapsed column types."""
-    return dist_collapsed_lookup[dist]
+def distgpm_class(dist):
+    """Return a class object for initializing a named DistributionGpm."""
+    return distgpm_class_lookup[dist]
 
-def dist_class(dist):
-    """Return a dict of class objects for initializing distributions."""
-    return dist_class_lookup[dist]
+def valid_distgpm(dist):
+    """Returns True if dist is a valid DistributionGpm."""
+    return dist in distgpm_class_lookup
 
-def valid_dist(dist):
-    """Returns Ture if dist is a valid distribution."""
-    return dist in dist_class_lookup
-
-def all_dists():
-    """Returns Ture if dist is a valid distribution."""
-    return dist_class_lookup.keys()
+def all_distgpms():
+    """Returns a list of all known DistributionGpm."""
+    return distgpm_class_lookup.keys()
 
 def parse_distargs(dists):
-    """Parses a list of disttypes, where distargs are in parenthesis.
+    """Parses a list of distgpms, where distargs are in parenthesis.
     >>> Input ['normal','categorical(k=8)','beta_uc'].
     >>> Output ['normal','categorical','beta_uc'], [None, {'k':8}, None].
     """

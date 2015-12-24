@@ -130,6 +130,10 @@ class Bernoulli(DistributionGpm):
     def name():
         return 'bernoulli'
 
+    @staticmethod
+    def is_collapsed():
+        return False
+
     ##################
     # HELPER METHODS #
     ##################

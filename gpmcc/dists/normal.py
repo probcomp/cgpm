@@ -165,6 +165,10 @@ class Normal(DistributionGpm):
     def name():
         return 'normal'
 
+    @staticmethod
+    def is_collapsed():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

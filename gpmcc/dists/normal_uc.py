@@ -71,6 +71,10 @@ class NormalUC(Normal):
     def name():
         return 'normal_uc'
 
+    @staticmethod
+    def is_collapsed():
+        return False
+
     ##################
     # HELPER METHODS #
     ##################
