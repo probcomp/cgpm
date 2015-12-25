@@ -68,61 +68,76 @@ class Dim(object):
         self.reassign(X, Zr)
 
         # Auxiliary singleton model.
-        self.aux_model = None
+        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
 
     def incorporate(self, x, k):
-        """Record an observation x in clusters[k]."""
+        """Record an observation x in clusters[k]. k must be either an
+        existing cluster, or one higher to create a new cluster."""
+        assert k <= len(self.clusters)
         self.N += 1
-        if isnan(x):
-            return
-        self.clusters[k].incorporate(x)
+        if k == len(self.clusters):
+            self.clusters.append(self.aux_model)
+            self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+        if not isnan(x):
+            self.clusters[k].incorporate(x)
 
     def unincorporate(self, x, k):
         """Remove observation x from clusters[k]."""
         self.N -= 1
-        if isnan(x):
-            return
-        self.clusters[k].unincorporate(x)
+        if not isnan(x):
+            self.clusters[k].unincorporate(x)
 
     def predictive_logp(self, x, k):
         """Returns the predictive logp of x in clusters[k]. If x has been
         assigned to clusters[k], then use the unincorporate/incorporate
         interface to compute the true predictive logp."""
-        if isnan(x):
-            return 0
-        return self.clusters[k].predictive_logp(x)
+        assert k <= len(self.clusters)
+        if k == len(self.clusters):
+            # Good for inference quality, always uses latest hypers.
+            self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+            cluster = self.aux_model
+        else:
+            cluster = self.clusters[k]
+        return cluster.predictive_logp(x) if not isnan(x) else 0
 
-    def singleton_logp(self, x):
-        """Returns the predictive log_p of X[rowid] in a new cluster."""
-        if isnan(x):
-            return 0
-        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
-        lp = self.aux_model.singleton_logp(x)
-        return lp
+    # def singleton_logp(self, x):
+    #     """Returns the predictive log_p of X[rowid] in a new cluster."""
+    #     if isnan(x):
+    #         return 0
+    #     self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+    #     lp = self.aux_model.singleton_logp(x)
+    #     return lp
 
-    def move_to_cluster(self, x, move_from, move_to):
-        """Move x from clusters[move_from] to clusters[move_to]."""
-        if isnan(x):
-            return
-        self.clusters[move_from].unincorporate(x)
-        self.clusters[move_to].incorporate(x)
+    def destroy_cluster(self, k):
+        assert k < len(self.clusters)
+        del self.clusters[k]
 
-    def destroy_singleton_cluster(self, x, to_destroy, move_to):
-        """Move x from clusters[move_to], destroy clusters[to_destroy]."""
-        del self.clusters[to_destroy]
-        if isnan(x):
-            return
-        self.clusters[move_to].incorporate(x)
+    # def move_to_cluster(self, x, move_from, move_to):
+    #     """Move x from clusters[move_from] to clusters[move_to]."""
+    #     if move_to == len(self.clusters):
+    #         self.create_singleton_cluster(x, move_from)
+    #     else:
+    #         if isnan(x):
+    #             return
+    #         self.clusters[move_from].unincorporate(x)
+    #         self.clusters[move_to].incorporate(x)
 
-    def create_singleton_cluster(self, x, current):
-        """Remove x from clusters[current] and create a new singleton
-        cluster.
-        """
-        self.clusters.append(self.aux_model)
-        if isnan(x):
-            return
-        self.clusters[current].unincorporate(x)
-        self.clusters[-1].incorporate(x)
+    # def destroy_singleton_cluster(self, x, to_destroy, move_to):
+    #     """Move x from clusters[move_to], destroy clusters[to_destroy]."""
+    #     del self.clusters[to_destroy]
+    #     if isnan(x):
+    #         return
+    #     self.clusters[move_to].incorporate(x)
+
+    # def create_singleton_cluster(self, x, current):
+    #     """Remove x from clusters[current] and create a new singleton
+    #     cluster.
+    #     """
+    #     self.clusters.append(self.aux_model)
+    #     if isnan(x):
+    #         return
+    #     self.clusters[current].unincorporate(x)
+    #     self.clusters[-1].incorporate(x)
 
     def marginal_logp(self, k=None):
         """If k is not None, teturns the marginal log_p of clusters[k].

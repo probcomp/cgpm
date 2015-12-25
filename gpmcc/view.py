@@ -168,7 +168,7 @@ class View(object):
         """Get the predictive logp of rowid being a singleton cluster."""
         logp = 0
         for dim in self.dims.values():
-            logp += dim.singleton_logp(self.X[rowid, dim.index])
+            logp += dim.predictive_logp(self.X[rowid, dim.index], len(self.Nk))
         return logp
 
     def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
@@ -184,9 +184,14 @@ class View(object):
     def create_singleton_cluster(self, rowid, current):
         self.Zr[rowid] = len(self.Nk)
         self.Nk[current] -= 1
-        self.Nk.append(1)
+        # Never create a singleton cluster from a singleton.
+        assert self.Nk[current] != 0
         for dim in self.dims.values():
-            dim.create_singleton_cluster(self.X[rowid, dim.index], current)
+            # Creating a singleton must be for len(self.Nk)
+            assert len(dim.clusters) == len(self.Nk)
+            dim.unincorporate(self.X[rowid, dim.index], current)
+            dim.incorporate(self.X[rowid, dim.index], len(self.Nk))
+        self.Nk.append(1)
 
     def move_row_to_cluster(self, rowid, move_from, move_to):
         """If move_from is now an empty cluster, will destroy."""
@@ -194,14 +199,15 @@ class View(object):
         self.Nk[move_from] -= 1
         self.Nk[move_to] += 1
         for dim in self.dims.values():
-            dim.move_to_cluster(self.X[rowid, dim.index], move_from, move_to)
-
+            dim.unincorporate(self.X[rowid, dim.index], move_from)
+            dim.incorporate(self.X[rowid, dim.index], move_to)
+            # dim.move_to_cluster(self.X[rowid, dim.index], move_from, move_to)
         # If move_from is now empty, delete.
         if self.Nk[move_from] == 0:
             zminus = np.nonzero(self.Zr>move_from)
             self.Zr[zminus] -= 1
             for dim in self.dims.values():
-                dim.destroy_singleton_cluster(np.nan, move_from, move_to)
+                dim.destroy_cluster(move_from)
             del self.Nk[move_from]
 
     def insert_dim(self, dim):
