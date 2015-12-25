@@ -111,9 +111,7 @@ class View(object):
             z_b = gu.log_pflip(p_cluster)
 
             if z_a != z_b:
-                if is_singleton:
-                    self.destroy_singleton_cluster(rowid, z_a, z_b)
-                elif z_b == len(self.Nk):
+                if z_b == len(self.Nk):
                     self.create_singleton_cluster(rowid, z_a)
                 else:
                     self.move_row_to_cluster(rowid, z_a, z_b)
@@ -191,11 +189,20 @@ class View(object):
             dim.create_singleton_cluster(self.X[rowid, dim.index], current)
 
     def move_row_to_cluster(self, rowid, move_from, move_to):
+        """If move_from is now an empty cluster, will destroy."""
         self.Zr[rowid] = move_to
         self.Nk[move_from] -= 1
         self.Nk[move_to] += 1
         for dim in self.dims.values():
             dim.move_to_cluster(self.X[rowid, dim.index], move_from, move_to)
+
+        # If move_from is now empty, delete.
+        if self.Nk[move_from] == 0:
+            zminus = np.nonzero(self.Zr>move_from)
+            self.Zr[zminus] -= 1
+            for dim in self.dims.values():
+                dim.destroy_singleton_cluster(np.nan, move_from, move_to)
+            del self.Nk[move_from]
 
     def insert_dim(self, dim):
         dim.reassign(self.X[:, dim.index], self.Zr)

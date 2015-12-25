@@ -109,10 +109,10 @@ class Dim(object):
 
     def destroy_singleton_cluster(self, x, to_destroy, move_to):
         """Move x from clusters[move_to], destroy clusters[to_destroy]."""
+        del self.clusters[to_destroy]
         if isnan(x):
             return
         self.clusters[move_to].incorporate(x)
-        del self.clusters[to_destroy]
 
     def create_singleton_cluster(self, x, current):
         """Remove x from clusters[current] and create a new singleton
