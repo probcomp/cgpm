@@ -25,7 +25,9 @@ class Dim(object):
 
     def __init__(self, X, dist, index, distargs=None, Zr=None, n_grid=30,
             hypers=None, mode='collapsed'):
-        """Dimension constructor.
+        """Dimension constructor. Assignment of rows to clusters (Zr) is
+        not maintained internally. The dataset X is also summarized by the
+        sufficient statistics and is not stored.
 
         Arguments:
         ... X (np.array) : Array of data. Must be compatible with `dist`.
@@ -38,10 +40,11 @@ class Dim(object):
         cluster index of row i. If None, is intialized from CRP(alpha=1).
         ... n_grid (int) : Number of bins in the hyperparameter grid.
         """
-        # Data information.
-        self.N = len(X)
-        self.X = X
+        # Identifier.
         self.index = index
+
+        # Number of observations.
+        self.N = len(X)
 
         # Model type.
         self.model = cu.distgpm_class(dist)
@@ -49,71 +52,77 @@ class Dim(object):
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
-        self.hypers_grids = self.model.construct_hyper_grids(
-            self.X[~np.isnan(X)], n_grid)
+        self.hyper_grids = self.model.construct_hyper_grids(
+            X[~np.isnan(X)], n_grid)
         self.hypers = hypers
         if hypers is None:
             self.hypers = dict()
-            for h in self.hypers_grids:
-                self.hypers[h] = np.random.choice(self.hypers_grids[h])
+            # Randomly initialize each hyper h by sampling from grid.
+            for h in self.hyper_grids:
+                self.hypers[h] = np.random.choice(self.hyper_grids[h])
+        assert self.hypers.keys() == self.hyper_grids.keys()
 
         # Row partitioning.
-        self.Zr = Zr
         if Zr is None:
-            self.Zr, _, _ = gu.crp_gen(len(self.X), 1)
-        self.reassign(self.Zr)
+            Zr, _, _ = gu.crp_gen(len(X), 1)
+        self.reassign(X, Zr)
 
         # Auxiliary singleton model.
         self.aux_model = None
 
-    def predictive_logp(self, rowid, k):
-        """Returns the predictive logp of X[rowid] in clusters[k]."""
-        x = self.X[rowid]
+    def incorporate(self, x, k):
+        """Record an observation x in clusters[k]."""
+        self.N += 1
+        if isnan(x):
+            return
+        self.clusters[k].incorporate(x)
+
+    def unincorporate(self, x, k):
+        """Remove observation x from clusters[k]."""
+        self.N -= 1
+        if isnan(x):
+            return
+        self.clusters[k].unincorporate(x)
+
+    def predictive_logp(self, x, k):
+        """Returns the predictive logp of x in clusters[k]. If x has been
+        assigned to clusters[k], then use the unincorporate/incorporate
+        interface to compute the true predictive logp."""
         if isnan(x):
             return 0
-        if self.Zr[rowid] == k:
-            self.clusters[k].unincorporate(x)
-            lp = self.clusters[k].predictive_logp(x)
-            self.clusters[k].incorporate(x)
-        else:
-            lp = self.clusters[k].predictive_logp(x)
-        return lp
+        return self.clusters[k].predictive_logp(x)
 
-    def singleton_logp(self, rowid):
-        """Returns the predictive log_p of X[rowid] in its own cluster."""
-        x = self.X[rowid]
+    def singleton_logp(self, x):
+        """Returns the predictive log_p of X[rowid] in a new cluster."""
         if isnan(x):
             return 0
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
         lp = self.aux_model.singleton_logp(x)
         return lp
 
-    def move_to_cluster(self, rowid, move_from, move_to):
-        """Move X[rowid] from clusters[move_from] to clusters[move_to]."""
-        x = self.X[rowid]
+    def move_to_cluster(self, x, move_from, move_to):
+        """Move x from clusters[move_from] to clusters[move_to]."""
         if isnan(x):
             return
         self.clusters[move_from].unincorporate(x)
         self.clusters[move_to].incorporate(x)
 
-    def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
-        """Move X[rowid] tp clusters[move_to], destroy clusters[to_destroy]."""
-        x = self.X[rowid]
+    def destroy_singleton_cluster(self, x, to_destroy, move_to):
+        """Move x from clusters[move_to], destroy clusters[to_destroy]."""
         if isnan(x):
             return
         self.clusters[move_to].incorporate(x)
         del self.clusters[to_destroy]
 
-    def create_singleton_cluster(self, rowid, current):
-        """Remove X[rowid] from clusters[current] and create a new singleton
+    def create_singleton_cluster(self, x, current):
+        """Remove x from clusters[current] and create a new singleton
         cluster.
         """
-        x = self.X[rowid]                          # get the element
-        self.clusters.append(self.aux_model)       # create the singleton
+        self.clusters.append(self.aux_model)
         if isnan(x):
             return
-        self.clusters[current].unincorporate(x)   # remove from current cluster
-        self.clusters[-1].incorporate(x)          # add element to new cluster
+        self.clusters[current].unincorporate(x)
+        self.clusters[-1].incorporate(x)
 
     def marginal_logp(self, k=None):
         """If k is not None, teturns the marginal log_p of clusters[k].
@@ -133,19 +142,19 @@ class Dim(object):
         for target in targets:
             logps = self.calc_hyper_proposal_logps(target)
             proposal = gu.log_pflip(logps)
-            self.hypers[target] = self.hypers_grids[target][proposal]
+            self.hypers[target] = self.hyper_grids[target][proposal]
         # Update the clusters.
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
 
     def calc_hyper_proposal_logps(self, target):
         """Computes the marginal likelihood (over all clusters) for each
-        hyperparameter value in self.hypers_grids[target].
+        hyperparameter value in self.hyper_grids[target].
         p(h|X) \prop p(h)p(X|h)
         """
         logps = []
         hypers = self.hypers.copy()
-        for g in self.hypers_grids[target]:
+        for g in self.hyper_grids[target]:
             hypers[target] = g
             logp = 0
             for cluster in self.clusters:
@@ -155,22 +164,21 @@ class Dim(object):
             logps.append(logp)
         return logps
 
-    def reassign(self, Zr):
-        """Reassigns the data to new clusters according to the new
-        partitioning, Zr. Destroys and recreates clusters.
+    def reassign(self, X, Zr):
+        """Reassigns data X to new clusters according to partitioning, Zr.
+        Destroys and recreates clusters.
         """
+        assert len(X) == len(Zr)
         self.clusters = []
-        self.Zr = Zr
         K = max(Zr) + 1
 
         for k in xrange(K):
             cluster = self.model(distargs=self.distargs, **self.hypers)
             self.clusters.append(cluster)
 
-        for i in xrange(self.N):
-            k = Zr[i]
-            if not isnan(self.X[i]):
-                self.clusters[k].incorporate(self.X[i])
+        for x, k in zip(X, Zr):
+            if not isnan(x):
+                self.clusters[k].incorporate(x)
 
         for cluster in self.clusters:
             cluster.transition_params()
@@ -181,7 +189,7 @@ class Dim(object):
     def is_collapsed(self):
         return self.model.is_collapsed()
 
-    def plot_dist(self, Y=None, ax=None):
+    def plot_dist(self, X, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
-        self.model.plot_dist(self.X[~np.isnan(self.X)], self.clusters,
+        self.model.plot_dist(X[~np.isnan(X)], self.clusters,
             ax=ax, Y=Y, hist=False)
