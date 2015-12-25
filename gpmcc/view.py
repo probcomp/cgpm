@@ -168,8 +168,11 @@ class View(object):
         return logp
 
     def insert_dim(self, dim):
-        dim.reassign(self.X[:, dim.index], self.Zr)
         self.dims[dim.index] = dim
+        if hasattr(dim, 'Zr'):
+            if np.allclose(dim.Zr, self.Zr):
+                return
+        dim.reassign(self.X[:, dim.index], self.Zr)
 
     def remove_dim(self, dim_index):
         del self.dims[dim_index]

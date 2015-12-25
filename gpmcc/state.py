@@ -65,6 +65,8 @@ class State(object):
         # Dataset.
         self.X = np.asarray(X)
         self.n_rows, self.n_cols = np.shape(X)
+        self.cctypes = cctypes
+        self.distargs = distargs
 
         # Hyperparameters.
         self.n_grid = n_grid
@@ -239,14 +241,13 @@ class State(object):
 
         # If not a singleton, propose m auxiliary parameters (views)
         if not is_singleton:
-            # Crp probability of singleton, split m times.
+            # CRP probability of singleton, split m times.
             p_crp_aux = log(self.alpha/float(m))
             proposal_views = []
             for  _ in range(m):
                 # Propose (from prior) and calculate probability under each view
                 proposal_view = View(self.X, [dim], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
-                # dim.reassign(self.X[:,dim.index], proposal_view.Zr)
                 p_view_aux = dim.marginal_logp() + p_crp_aux
                 p_view.append(p_view_aux)
 
@@ -257,8 +258,7 @@ class State(object):
         if len(self.Nv) <= v_b:
             index = v_b - len(self.Nv)
             assert 0 <= index and index < m
-            proposal_view = proposal_views[index]
-            self._create_singleton_view(dim, v_a, proposal_view)
+            self._create_singleton_view(dim, v_a, proposal_views[index])
         else:
             if is_singleton:
                 assert v_b < len(self.Nv)
@@ -283,6 +283,7 @@ class State(object):
                 dim_holder.append(copy.deepcopy(dim))
                 dim_holder[-1].reassign(self.X[:,dim.index],
                     self.views[v].Zr)
+                dim_holder[-1].Zr = self.views[v].Zr
             p_view_v = dim_holder[-1].marginal_logp() + p_crp[v]
             p_view.append(p_view_v)
 
@@ -292,12 +293,13 @@ class State(object):
             log_aux = log(self.alpha/float(m))
             proposal_views = []
             for  _ in range(m):
-                # propose (from prior) and calculate probability under each view
+                # Propose Zr from prior, holding hyperparams fixed.
                 dim_holder.append(copy.deepcopy(dim))
                 proposal_view = View(self.X, [dim_holder[-1]],
                     n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
                 dim_holder[-1].reassign(self.X[:,dim.index], proposal_view.Zr)
+                dim_holder[-1].Zr = proposal_view.Zr
                 p_view_aux = dim_holder[-1].marginal_logp() + log_aux
                 p_view.append(p_view_aux)
 
