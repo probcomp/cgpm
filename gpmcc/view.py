@@ -20,11 +20,13 @@ import gpmcc.utils.general as gu
 class View(object):
     """View. A collection of Dim."""
 
-    def __init__(self, dims, alpha=None, Zr=None, n_grid=30):
+    def __init__(self, X, dims, alpha=None, Zr=None, n_grid=30):
         """View constructor.
 
         Arguments:
-        ... dims (list<dim>): A list of Dim objects in this View.
+        ... X (np.ndarray) : Global dataset NxD. The invariant is that
+        the data from dim.index should be in X[:,dim.index].
+        ... dims (list<dim>) : A list of Dim objects in this View.
 
         Keyword Arguments:
         ... alpha (float): CRP concentration parameter. If None, selected
@@ -33,36 +35,34 @@ class View(object):
         If None, is intialized from CRP(alpha)
         ... n_grid (int): Number of grid points in hyperparameter grids.
         """
-        N = dims[0].N
-        self.N = N
+        # Dataset.
+        self.X = X
+        self.N = len(X)
+        for dim in dims:
+            assert self.N == dim.N
 
         # Generate alpha.
-        self.alpha_grid = gu.log_linspace(1. / self.N, self.N, n_grid)
-
+        self.alpha_grid = gu.log_linspace(1./self.N, self.N, n_grid)
         if alpha is None:
             alpha = np.random.choice(self.alpha_grid)
-        else:
-            assert alpha > 0.
+        assert alpha > 0.
+        self.alpha = alpha
 
+        # Generate row partition.
         if Zr is None:
-            Zr, Nk, K = gu.crp_gen(N, alpha)
+            Zr, Nk, _ = gu.crp_gen(self.N, alpha)
         else:
-            assert len(Zr) == dims[0].X.shape[0]
             Nk = gu.bincount(Zr)
-            K = len(Nk)
+        assert len(Zr) == self.N
+        assert sum(Nk) == self.N
+        self.Zr = np.array(Zr)
+        self.Nk = Nk
 
-        assert sum(Nk) == N
-        assert K == len(Nk)
-
+        # Initialize the dimensions.
         self.dims = dict()
         for dim in dims:
-            dim.reassign(Zr)
+            dim.reassign(X[:,dim.index], Zr)
             self.dims[dim.index] = dim
-
-        self.alpha = alpha
-        self.Zr = np.array(Zr)
-        self.K = K
-        self.Nk = Nk
 
     def transition_rows(self, target_rows=None):
         """Reassign rows to clusters.
@@ -70,8 +70,6 @@ class View(object):
         ... target_rows (list<int>): Rows to reassign. If None, transitions
         every row.
         """
-        log_alpha = log(self.alpha)
-
         if target_rows is None:
             target_rows = [i for i in xrange(self.N)]
 
@@ -97,7 +95,7 @@ class View(object):
 
             # Calculate probability of rowid in each cluster k \in K.
             p_cluster = []
-            for k in xrange(self.K):
+            for k in xrange(len(self.Nk)):
                 if k == z_a and is_singleton:
                     lp = self.row_singleton_logp(rowid) + p_crp[k]
                 else:
@@ -115,12 +113,10 @@ class View(object):
             if z_a != z_b:
                 if is_singleton:
                     self.destroy_singleton_cluster(rowid, z_a, z_b)
-                elif z_b == self.K:
+                elif z_b == len(self.Nk):
                     self.create_singleton_cluster(rowid, z_a)
                 else:
                     self.move_row_to_cluster(rowid, z_a, z_b)
-
-            # self._check_partitions()
 
     def transition(self, N):
         """Run all the transitions N times."""
@@ -134,7 +130,8 @@ class View(object):
         logps = np.zeros(len(self.alpha_grid))
         for i in range(len(self.alpha_grid)):
             alpha = self.alpha_grid[i]
-            logps[i] = gu.unorm_lcrp_post(alpha, self.N, self.K, lambda x: 0)
+            logps[i] = gu.unorm_lcrp_post(alpha, self.N, len(self.Nk),
+                lambda x: 0)
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
@@ -157,54 +154,52 @@ class View(object):
 
     def row_predictive_logp(self, rowid, cluster):
         """Get the predictive log_p of rowid being in cluster."""
-        return sum(dim.predictive_logp(rowid, cluster) for dim in
-            self.dims.values())
+        logp = 0
+        for dim in self.dims.values():
+            x = self.X[rowid, dim.index]
+            # If rowid already in cluster, need to unincorporate first.
+            if self.Zr[rowid] == cluster:
+                dim.unincorporate(x, cluster)
+                logp += dim.predictive_logp(x, cluster)
+                dim.incorporate(x, cluster)
+            else:
+                logp += dim.predictive_logp(x, cluster)
+        return logp
 
     def row_singleton_logp(self, rowid):
-        """Get the predictive log_p of rowid being a singleton cluster."""
-        return sum(dim.singleton_logp(rowid) for dim in self.dims.values())
+        """Get the predictive logp of rowid being a singleton cluster."""
+        logp = 0
+        for dim in self.dims.values():
+            logp += dim.singleton_logp(self.X[rowid, dim.index])
+        return logp
 
     def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
         self.Zr[rowid] = move_to
         zminus = np.nonzero(self.Zr>to_destroy)
         self.Zr[zminus] -= 1
         for dim in self.dims.values():
-            dim.destroy_singleton_cluster(rowid, to_destroy, move_to)
+            dim.destroy_singleton_cluster(self.X[rowid, dim.index],
+                to_destroy, move_to)
         self.Nk[move_to] += 1
         del self.Nk[to_destroy]
-        self.K -= 1
 
     def create_singleton_cluster(self, rowid, current):
-        self.Zr[rowid] = self.K
-        self.K += 1
+        self.Zr[rowid] = len(self.Nk)
         self.Nk[current] -= 1
         self.Nk.append(1)
         for dim in self.dims.values():
-            dim.create_singleton_cluster(rowid, current)
+            dim.create_singleton_cluster(self.X[rowid, dim.index], current)
 
     def move_row_to_cluster(self, rowid, move_from, move_to):
         self.Zr[rowid] = move_to
         self.Nk[move_from] -= 1
         self.Nk[move_to] += 1
         for dim in self.dims.values():
-            dim.move_to_cluster(rowid, move_from, move_to)
+            dim.move_to_cluster(self.X[rowid, dim.index], move_from, move_to)
 
     def insert_dim(self, dim):
-        if not np.allclose(dim.Zr, self.Zr):
-            dim.reassign(self.Zr)
+        dim.reassign(self.X[:, dim.index], self.Zr)
         self.dims[dim.index] = dim
 
     def remove_dim(self, dim_index):
         del self.dims[dim_index]
-
-    def _check_partitions(self):
-        # For debugging only.
-        # The counts for all clusters are accounted for.
-        assert len(self.Nk) == self.K
-        # All rows must be accounted for in the clustering.
-        assert sum(self.Nk) == self.N
-        zs = sorted(list(set(self.Zr)))
-        for j in xrange(self.K):
-          assert zs[j] == j
-          for dim in self.dims.keys():
-              assert self.dims[dim].clusters[j].N == self.Nk[j]
