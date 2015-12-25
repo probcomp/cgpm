@@ -246,7 +246,7 @@ class State(object):
                 # Propose (from prior) and calculate probability under each view
                 proposal_view = View(self.X, [dim], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
-                dim.reassign(self.X[:,dim.index], proposal_view.Zr)
+                # dim.reassign(self.X[:,dim.index], proposal_view.Zr)
                 p_view_aux = dim.marginal_logp() + p_crp_aux
                 p_view.append(p_view_aux)
 
