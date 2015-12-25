@@ -75,9 +75,9 @@ class State(object):
         self.dims = []
         for col in xrange(self.n_cols):
             dim_hypers = None if hypers is None else hypers[col]
-            dim = Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
-                hypers=dim_hypers, distargs=distargs[col])
-            self.dims.append(dim)
+            self.dims.append(
+                Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
+                hypers=dim_hypers, distargs=distargs[col]))
         assert len(self.dims) == self.n_cols
 
         # Initialize CRP alpha.
@@ -101,14 +101,13 @@ class State(object):
 
         # Construct views.
         self.views = []
-        for view in range(V):
-            indices = [i for i in range(self.n_cols) if Zv[i] == view]
-            dims_view = []
-            for index in indices:
-                dims_view.append(self.dims[index])
-            Zr = None if Zrcv is None else np.asarray(Zrcv[view])
-            view = View(self.X, dims_view, Zr=Zr, n_grid=n_grid)
-            self.views.append(view)
+        for v in range(V):
+            # Obtain dimensions in view v.
+            dims = [self.dims[i] for i in xrange(self.n_cols) if Zv[i] == v]
+            # Obtain initial row partition.
+            Zr = None if Zrcv is None else np.asarray(Zrcv[v])
+            self.views.append(
+                View(self.X, dims, Zr=Zr, n_grid=n_grid))
 
     def transition(self, N=1, kernel_list=None, target_rows=None,
             target_cols=None, m=1, do_plot=False):
