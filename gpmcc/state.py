@@ -29,20 +29,14 @@ from gpmcc.dim import Dim
 _all_kernels = ['column_z','state_alpha','row_z','column_hypers','view_alphas']
 
 class State(object):
-    """State. The main crosscat object.
-
-    Attributes:
-    -- n_rows: (int) number of rows.
-    -- n_cols: (int) number of columns.
-    -- n_grid: (int) number of bins in hyperparameter grids.
-    """
+    """State. The main crosscat object."""
 
     def __init__(self, X, cctypes, distargs, n_grid=30, Zv=None, Zrcv=None,
             hypers=None, seed=None):
         """State constructor.
 
         Input arguments:
-        ... X (np.ndarray) : A tranposed data matrix DxN, where D is the
+        ... X (np.ndarray) : A data matrix DxN, where D is the
         number of variables and N is the number of observations.
         ... cctypes (list<str>) : A list of strings where each entry is the
         data type for each column. See `utils.config` for valid cctypes.
@@ -53,8 +47,9 @@ class State(object):
         Keyword arguments:
         ... n_grid (int): number of bins for hyperparameter grids.
         ... Zv: The assignment of columns to views. If not specified,
-        partition generated randomly
-        ... Zrcv (list<list>): Assignment of rows to clusters in each view.
+        partition generated randomly.
+        ... Zrcv (list<list>): Assignment of rows to clusters in each view,
+        where Zrcv[k] is the Zr for View k.
         ... seed (int): Seed the random number generator.
 
         Example:
@@ -63,41 +58,45 @@ class State(object):
         >>> X = [np.random.normal(n_rows), np.random.normal(n_rows)]
         >>> state = State(X, ['normal', 'normal'], [None, None])
         """
+        # Seed.
         self.seed = 0 if seed is None else seed
         np.random.seed(self.seed)
 
-        self.n_rows = len(X[0])
-        self.n_cols = len(X)
+        # Dataset.
+        self.X = np.asarray(X)
+        self.n_rows, self.n_cols = np.shape(X)
+
+        # Hyperparameters.
         self.n_grid = n_grid
 
+        # Construct dimensions.
         self.dims = []
         for col in xrange(self.n_cols):
-            Y = X[col]
-            cctype = cctypes[col]
             dim_hypers = None if hypers is None else hypers[col]
-            dim = Dim(Y, cctype, col, n_grid=n_grid, hypers=dim_hypers,
-                distargs=distargs[col])
+            dim = Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
+                hypers=dim_hypers, distargs=distargs[col])
             self.dims.append(dim)
+        assert len(self.dims) == self.n_cols
 
         # Initialize CRP alpha.
-        self.alpha_grid = gu.log_linspace(1.0 / self.n_cols, self.n_cols,
+        self.alpha_grid = gu.log_linspace(1./self.n_cols, self.n_cols,
             self.n_grid)
         self.alpha = np.random.choice(self.alpha_grid)
 
-        assert len(self.dims) == self.n_cols
 
+        # Construct the view partition.
         if Zrcv is not None:
             assert Zv is not None
             assert len(Zv) == self.n_cols
             assert len(Zrcv) == max(Zv)+1
             assert len(Zrcv[0]) == self.n_rows
-
-        # Construct the view partition.
         if Zv is None:
             Zv, Nv, V = gu.crp_gen(self.n_cols, self.alpha)
         else:
             Nv = gu.bincount(Zv)
             V = len(Nv)
+        self.Zv = np.array(Zv)
+        self.Nv = Nv
 
         # Construct views.
         self.views = []
@@ -107,39 +106,8 @@ class State(object):
             for index in indices:
                 dims_view.append(self.dims[index])
             Zr = None if Zrcv is None else np.asarray(Zrcv[view])
-            view = View(dims_view, Zr=Zr, n_grid=n_grid)
+            view = View(self.X, dims_view, Zr=Zr, n_grid=n_grid)
             self.views.append(view)
-
-        self.X = X
-        self.Zv = np.array(Zv)
-        self.Nv = Nv
-
-    # def append_dim(self, X_f, cctype, distargs=None, m=1):
-    #     """Add a new data column to X.
-
-    #     Input arguments:
-    #     -- X_f: a np array of data
-    #     -- cctype: type of the data
-
-    #     Optional arguments:
-    #     -- distargs: for multinomial data
-    #     -- m: Number of auxiliary parameters
-    #     """
-    #     col = self.n_cols
-    #     n_grid = self.n_grid
-    #     mode = 'collapsed'
-    #     if cu.is_uncollapsed(cctype):
-    #         mode = 'uncollapsed'
-    #     dim = Dim(X_f, cu.dist_class(cctype), col, n_grid=n_grid,
-    #         mode=mode, distargs=distargs)
-    #     self.n_cols += 1
-    #     self.dims.append(dim)
-    #     self.Zv = np.append(self.Zv, -1)
-    #     if cu.is_uncollapsed(cctype):
-    #         self._transition_columns_kernel_collapsed(-1, m=m, append=True)
-    #     else:
-    #         self._transition_columns_kernel_uncollapsed(-1, m=m, append=True)
-    #     self._check_partitions()
 
     def transition(self, N=1, kernel_list=None, target_rows=None,
             target_cols=None, m=1, do_plot=False):
@@ -203,8 +171,8 @@ class State(object):
         the new data.
         """
         for col in range(self.n_cols):
-            self.dims[col].X = data[col]
-            self.dims[col].reassign(self.views[self.Zv[col]].Zr)
+            self.dims[col].reassign(self.X[:,col],
+                self.views[self.Zv[col]].Zr)
 
     def plot(self):
         """Plots sample histogram and learned distribution for each dim."""
@@ -264,7 +232,7 @@ class State(object):
         p_view = []
         dim = self.dims[col]
         for v in xrange(len(self.Nv)):
-            dim.reassign(self.views[v].Zr)
+            dim.reassign(self.X[:,dim.index], self.views[v].Zr)
             # Total view prob is data + crp.
             p_view_v = dim.marginal_logp() + p_crp[v]
             p_view.append(p_view_v)
@@ -276,9 +244,9 @@ class State(object):
             proposal_views = []
             for  _ in range(m):
                 # Propose (from prior) and calculate probability under each view
-                proposal_view = View([dim], n_grid=self.n_grid)
+                proposal_view = View(self.X, [dim], n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
-                dim.reassign(proposal_view.Zr)
+                dim.reassign(self.X[:,dim.index], proposal_view.Zr)
                 p_view_aux = dim.marginal_logp() + p_crp_aux
                 p_view.append(p_view_aux)
 
@@ -296,7 +264,7 @@ class State(object):
                 assert v_b < len(self.Nv)
             self._move_dim_to_view(dim, v_a, v_b)
 
-        # self._check_partitions()
+        self._check_partitions()
 
     def _transition_columns_kernel_uncollapsed(self, col, m=3):
         """Gibbs with auxiliary parameters for uncollapsed data types"""
@@ -313,7 +281,8 @@ class State(object):
                 dim_holder.append(dim)
             else:
                 dim_holder.append(copy.deepcopy(dim))
-                dim_holder[-1].reassign(self.views[v].Zr)
+                dim_holder[-1].reassign(self.X[:,dim.index],
+                    self.views[v].Zr)
             p_view_v = dim_holder[-1].marginal_logp() + p_crp[v]
             p_view.append(p_view_v)
 
@@ -325,9 +294,10 @@ class State(object):
             for  _ in range(m):
                 # propose (from prior) and calculate probability under each view
                 dim_holder.append(copy.deepcopy(dim))
-                proposal_view = View([dim_holder[-1]], n_grid=self.n_grid)
+                proposal_view = View(self.X, [dim_holder[-1]],
+                    n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
-                dim_holder[-1].reassign(proposal_view.Zr)
+                dim_holder[-1].reassign(self.X[:,dim.index], proposal_view.Zr)
                 p_view_aux = dim_holder[-1].marginal_logp() + log_aux
                 p_view.append(p_view_aux)
 
@@ -347,11 +317,11 @@ class State(object):
                 assert v_b < len(self.Nv)
             self._move_dim_to_view(new_dim, v_a, v_b)
 
-        # self._check_partitions()
+        self._check_partitions()
 
     def _create_singleton_view(self, dim, current_view_index, proposal_view):
         self.Zv[dim.index] = len(self.Nv)
-        dim.reassign(proposal_view.Zr)
+        dim.reassign(self.X[:,dim.index], proposal_view.Zr)
         self.views[current_view_index].remove_dim(dim.index)
         self.Nv[current_view_index] -= 1
         self.Nv.append(1)
@@ -402,7 +372,7 @@ class State(object):
                 border_color = 'gray'
             else:
                 border_color = layout['border_color'][self.Zv[index]]
-            dim.plot_dist(ax=ax)
+            dim.plot_dist(self.X[:,dim.index], ax=ax)
             ax.text(1,1, "K: %i " % len(dim.clusters),
                 transform=ax.transAxes,
                 fontsize=12, weight='bold', color='blue',
@@ -420,15 +390,12 @@ class State(object):
             # matches the count in Nv
             assert len(self.views[v].dims) == self.Nv[v]
             Nk = self.views[v].Nk
-            K = self.views[v].K
             assert sum(Nk) == self.n_rows
-            assert len(Nk) == K
-            assert max(self.views[v].Zr) == K-1
+            assert max(self.views[v].Zr) == len(Nk)-1
             for dim in self.views[v].dims.values():
                 # make sure the number of clusters in each dim in the view is the same
                 # and is the same as described in the view (K, Nk)
                 assert len(dim.clusters) == len(Nk)
-                assert len(dim.clusters) == K
                 for k in range(len(dim.clusters)):
                     assert dim.clusters[k].N == Nk[k]
 
@@ -447,7 +414,6 @@ class State(object):
         metadata['Zv'] = self.Zv
 
         # Category data.
-        metadata['K'] = []
         metadata['Nk'] = []
         metadata['Zrcv'] = []
 
@@ -464,7 +430,6 @@ class State(object):
             metadata['suffstats'].append(dim.get_suffstats())
 
         for view in self.views:
-            metadata['K'].append(view.K)
             metadata['Nk'].append(view.Nk)
             metadata['Zrcv'].append(view.Zr)
 
