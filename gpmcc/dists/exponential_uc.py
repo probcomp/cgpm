@@ -14,15 +14,18 @@
 
 from math import log
 
-from scipy.stats import gamma, expon
+import numpy as np
+from scipy.stats import invgamma, expon
 
 from gpmcc.dists.exponential import Exponential
 
 class ExponentialUC(Exponential):
-    """Exponential distribution with gamma prior on mu. Uncollapsed.
+    """Exponential distribution with gamma prior on mu, the mean.
+    Uncollapsed.
 
-    mu ~ Gamma(a, b)
+    mu ~ InvGamma(a, b)
     x ~ Exponential(mu)
+    http://seor.gmu.edu/~klaskey/SYST664/Bayes_Unit3.pdf
     """
 
     def __init__(self, N=0, sum_x=0, a=2, b=2, mu=None, distargs=None):
@@ -46,12 +49,14 @@ class ExponentialUC(Exponential):
         return ExponentialUC.calc_predictive_logp(x, self.mu)
 
     def simulate(self):
-        return expon.rvs(scale=1./self.mu)
+        return expon.rvs(scale=self.mu)
 
     def transition_params(self):
         an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a,
             self.b)
-        self.mu = gamma.rvs(an, scale=1./bn)
+        self.mu = invgamma.rvs(an, scale=bn)
+        if np.isinf(self.mu):
+            import ipdb; ipdb.set_trace()
 
     @staticmethod
     def name():
@@ -66,13 +71,21 @@ class ExponentialUC(Exponential):
     ##################
 
     @staticmethod
+    def posterior_hypers(N, sum_x, a, b):
+        an = a + N
+        bn = 1. / (1./b + sum_x)
+        return an, bn
+
+    @staticmethod
     def calc_predictive_logp(x, mu):
-        return expon.logpdf(x, scale=1./mu)
+        return expon.logpdf(x, scale=mu)
 
     @staticmethod
     def calc_log_likelihood(N, sum_x, mu):
-        return  N * log(mu) - mu * sum_x
+        return  - N * log(mu) - sum_x / mu
 
     @staticmethod
     def calc_log_prior(mu, a, b):
-        return gamma.logpdf(mu, a, scale=1./b)
+        if np.isinf(mu):
+            import ipdb; ipdb.set_trace()
+        return invgamma.logpdf(mu, a, scale=b)
