@@ -204,8 +204,6 @@ class State(object):
             alpha = self.alpha_grid[i]
             logps[i] = gu.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
                 lambda x: 0)
-        # log_pdf_lambda = lambda a : gu.lcrp(self.n_cols, self.Nv, a) +
-        # self.alpha_prior_lambda(a)
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
@@ -216,10 +214,6 @@ class State(object):
         np.random.shuffle(target_cols)
         for col in target_cols:
             self._transition_columns_kernel(col, m=m)
-            # if self.dims[col].is_collapsed():
-            #     self._transition_columns_kernel_collapsed(col, m=m)
-            # else:
-            #     self._transition_columns_kernel_uncollapsed(col, m=m)
 
     def _transition_columns_kernel(self, col, m=3):
         """Gibbs with auxiliary parameters for collapsed data types."""
@@ -273,106 +267,6 @@ class State(object):
         if self.dims[col].is_collapsed() or self.Zv[col] == v:
             return self.dims[col]
         return copy.deepcopy(self.dims[col])
-
-    def _transition_columns_kernel_collapsed(self, col, m=3):
-        """Gibbs with auxiliary parameters for collapsed data types."""
-        v_a = self.Zv[col]
-        is_singleton = (self.Nv[v_a] == 1)
-        p_crp = self._compute_view_crp_logps(v_a)
-
-        # Calculate probability under each view's assignment
-        p_view = []
-        dim = self.dims[col]
-        dim_holder = []
-        for v in xrange(len(self.Nv)):
-            dim_holder.append(dim)
-            dim_holder[-1].reassign(self.X[:,dim.index], self.views[v].Zr)
-            # Total view prob is data + crp.
-            p_view_v = dim.marginal_logp() + p_crp[v]
-            p_view.append(p_view_v)
-
-        # If not a singleton, propose m auxiliary parameters (views)
-        if not is_singleton:
-            # CRP probability of singleton, split m times.
-            p_crp_aux = log(self.alpha/float(m))
-            proposal_views = []
-            for  _ in range(m):
-                # Propose (from prior) and calculate probability under each view
-                dim_holder.append(dim)
-                proposal_view = View(self.X, [dim_holder[-1]],
-                    n_grid=self.n_grid)
-                proposal_views.append(proposal_view)
-                p_view_aux = dim.marginal_logp() + p_crp_aux
-                p_view.append(p_view_aux)
-
-        # Draw a view.
-        v_b = gu.log_pflip(p_view)
-        new_dim = dim_holder[v_b]
-        self.dims[dim.index] = new_dim
-
-        # Register the dim with the new view.
-        if len(self.Nv) <= v_b:
-            index = v_b - len(self.Nv)
-            assert 0 <= index and index < m
-            self._create_singleton_view(dim, v_a, proposal_views[index])
-        else:
-            if is_singleton:
-                assert v_b < len(self.Nv)
-            self._move_dim_to_view(dim, v_a, v_b)
-
-        self._check_partitions()
-
-    def _transition_columns_kernel_uncollapsed(self, col, m=3):
-        """Gibbs with auxiliary parameters for uncollapsed data types"""
-        v_a = self.Zv[col]
-        is_singleton = (self.Nv[v_a] == 1)
-        p_crp = self._compute_view_crp_logps(v_a)
-
-        # Calculate column probability under each view's assignment.
-        p_view = []
-        dim = self.dims[col]
-        dim_holder = []
-        for v in xrange(len(self.Nv)):
-            if v == v_a:
-                dim_holder.append(dim)
-            else:
-                dim_holder.append(copy.deepcopy(dim))
-                dim_holder[-1].reassign(self.X[:,dim.index],
-                    self.views[v].Zr)
-            p_view_v = dim_holder[-1].marginal_logp() + p_crp[v]
-            p_view.append(p_view_v)
-
-        # If not a singleton, propose m auxiliary parameters (views)
-        if not is_singleton:
-            # Crp probability of singleton, split m times.
-            log_aux = log(self.alpha/float(m))
-            proposal_views = []
-            for  _ in range(m):
-                # Propose Zr from prior, holding hyperparams fixed.
-                dim_holder.append(copy.deepcopy(dim))
-                proposal_view = View(self.X, [dim_holder[-1]],
-                    n_grid=self.n_grid)
-                proposal_views.append(proposal_view)
-                # dim_holder[-1].reassign(self.X[:,dim.index], proposal_view.Zr)
-                p_view_aux = dim_holder[-1].marginal_logp() + log_aux
-                p_view.append(p_view_aux)
-
-        # Draw a view
-        v_b = gu.log_pflip(p_view)
-        new_dim = dim_holder[v_b]
-        self.dims[dim.index] = new_dim
-
-        # Register the dim with the new view.
-        if len(self.Nv) <= v_b:
-            index = v_b - len(self.Nv)
-            assert 0 <= index and index < m
-            self._create_singleton_view(new_dim, v_a, proposal_views[index])
-        else:
-            if is_singleton:
-                assert v_b < len(self.Nv)
-            self._move_dim_to_view(new_dim, v_a, v_b)
-
-        self._check_partitions()
 
     def _create_singleton_view(self, dim, current_view_index, proposal_view):
         self.Zv[dim.index] = len(self.Nv)
