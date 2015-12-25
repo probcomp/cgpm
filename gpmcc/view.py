@@ -96,15 +96,17 @@ class View(object):
             # Calculate probability of rowid in each cluster k \in K.
             p_cluster = []
             for k in xrange(len(self.Nk)):
+                # If rowid is a singleton, compute new singleton logp by
+                # resampling the parameters.
                 if k == z_a and is_singleton:
-                    lp = self.row_singleton_logp(rowid) + p_crp[k]
+                    lp = self.row_predictive_logp(rowid, len(self.Nk)) + p_crp[k]
                 else:
                     lp = self.row_predictive_logp(rowid, k) + p_crp[k]
                 p_cluster.append(lp)
 
             # Propose singleton.
             if not is_singleton:
-                lp = self.row_singleton_logp(rowid) + p_crp[-1]
+                lp = self.row_predictive_logp(rowid, len(self.Nk)) + p_crp[-1]
                 p_cluster.append(lp)
 
             # Draw new assignment, z_b
@@ -149,35 +151,22 @@ class View(object):
             self.transition_rows(target_rows=target_rows)
 
     def row_predictive_logp(self, rowid, cluster):
-        """Get the predictive log_p of rowid being in cluster."""
+        """Get the predictive log_p of rowid being in cluster. If cluster
+        is existing (less than len(self.Nk)) then the predictive is taken.
+        If cluster is new (equal to len(self.Nk)) then new parameters
+        are sampled for the predictive."""
         logp = 0
         for dim in self.dims.values():
             x = self.X[rowid, dim.index]
             # If rowid already in cluster, need to unincorporate first.
             if self.Zr[rowid] == cluster:
+                assert cluster < len(self.Nk)
                 dim.unincorporate(x, cluster)
                 logp += dim.predictive_logp(x, cluster)
                 dim.incorporate(x, cluster)
             else:
                 logp += dim.predictive_logp(x, cluster)
         return logp
-
-    def row_singleton_logp(self, rowid):
-        """Get the predictive logp of rowid being a singleton cluster."""
-        logp = 0
-        for dim in self.dims.values():
-            logp += dim.predictive_logp(self.X[rowid, dim.index], len(self.Nk))
-        return logp
-
-    def destroy_singleton_cluster(self, rowid, to_destroy, move_to):
-        self.Zr[rowid] = move_to
-        zminus = np.nonzero(self.Zr>to_destroy)
-        self.Zr[zminus] -= 1
-        for dim in self.dims.values():
-            dim.destroy_singleton_cluster(self.X[rowid, dim.index],
-                to_destroy, move_to)
-        self.Nk[move_to] += 1
-        del self.Nk[to_destroy]
 
     def move_row_to_cluster(self, rowid, move_from, move_to):
         """Move rowid from cluster move_from to move_to. If move_to
