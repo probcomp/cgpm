@@ -187,6 +187,9 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.transition_params()
 
+        # XXX BREAKS ALL ABSTRACTION BARRIERS.
+        self._Zr_last = Zr
+
     def get_suffstats(self):
         return [cluster.get_suffstats() for cluster in self.clusters]
 
