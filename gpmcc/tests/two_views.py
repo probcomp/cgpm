@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 from gpmcc.utils import test as tu
+from gpmcc.utils import config as cu
 from gpmcc import state
 import numpy as np
 
@@ -23,14 +24,14 @@ import numpy as np
 n_rows = 200
 view_weights = np.asarray([0.7, .3])
 cluster_weights = [np.array([.33, .33, .34]), np.array([.2, .8])]
-cctypes = ['beta_uc', 'normal','normal_uc','poisson','multinomial',
-    'vonmises', 'binomial', 'lognormal']
+cctypes = ['beta_uc', 'normal','normal_uc','poisson','categorical(k=3)',
+    'vonmises', 'bernoulli', 'lognormal']
 
 separation = [.95] * 9
-distargs = [None, None, None, None, {"K":5}, None, None, None, None]
+cctypes, distargs = cu.parse_distargs(cctypes)
 
 T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
 
-S = state.State(T, cctypes, distargs)
-S.transition(N=1, do_plot=True)
+S = state.State(T.T, cctypes, distargs)
+S.transition(N=100, do_plot=False)

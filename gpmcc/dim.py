@@ -26,8 +26,11 @@ class Dim(object):
     def __init__(self, X, dist, index, distargs=None, Zr=None, n_grid=30,
             hypers=None, mode='collapsed'):
         """Dimension constructor. Assignment of rows to clusters (Zr) is
-        not maintained internally. The dataset X is also summarized by the
-        sufficient statistics and is not stored.
+        not maintained internally and is the responsibility of the user
+        to track.
+
+        The dataset X is summarized by the sufficient statistics only and
+        is not stored.
 
         Arguments:
         ... X (np.array) : Array of data. Must be compatible with `dist`.
@@ -71,21 +74,46 @@ class Dim(object):
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
 
     def incorporate(self, x, k):
-        """Record an observation x in clusters[k]. k must be either an
-        existing cluster, or one higher to create a new cluster."""
+        """Record an observation x in clusters[k].
+
+        Arguments:
+        ... x (float) : Value to incorporate. Must be compatible with the
+        DistributionGpm support.
+        ... k (int) : Cluster to incorporate x. If k < len(self.clusters)
+        then x will be incorporated. If k == len(self.clusters) a new
+        cluster will be created. If k > len(self.clusters) an error will
+        be thrown.
+        """
         assert k <= len(self.clusters)
         self.N += 1
         if k == len(self.clusters):
             self.clusters.append(self.aux_model)
-            self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+            self.aux_model = self.model(distargs=self.distargs,
+                **self.hypers)
         if not isnan(x):
             self.clusters[k].incorporate(x)
 
     def unincorporate(self, x, k):
-        """Remove observation x from clusters[k]."""
+        """Remove observation x from clusters[k].
+
+        Arguments:
+        ... x (float) : Value to incorporate. Must be compatible with the
+        DistributionGpm support.
+        ... k (int) : Cluster to remove x. k is strictly less than
+        len(self.clusters). Bad things will happen if x was not
+        incorporated into cluster k before calling this method.
+        """
+        assert k < len(self.clusters)
         self.N -= 1
         if not isnan(x):
             self.clusters[k].unincorporate(x)
+
+    def destroy_cluster(self, k):
+        """Destroy cluster k, and all its incorporated data (if any). The
+        cluster id of all clusters greater than k will be decremented by
+        one."""
+        assert k < len(self.clusters)
+        del self.clusters[k]
 
     def predictive_logp(self, x, k):
         """Returns the predictive logp of x in clusters[k]. If x has been
@@ -99,45 +127,6 @@ class Dim(object):
         else:
             cluster = self.clusters[k]
         return cluster.predictive_logp(x) if not isnan(x) else 0
-
-    # def singleton_logp(self, x):
-    #     """Returns the predictive log_p of X[rowid] in a new cluster."""
-    #     if isnan(x):
-    #         return 0
-    #     self.aux_model = self.model(distargs=self.distargs, **self.hypers)
-    #     lp = self.aux_model.singleton_logp(x)
-    #     return lp
-
-    def destroy_cluster(self, k):
-        assert k < len(self.clusters)
-        del self.clusters[k]
-
-    # def move_to_cluster(self, x, move_from, move_to):
-    #     """Move x from clusters[move_from] to clusters[move_to]."""
-    #     if move_to == len(self.clusters):
-    #         self.create_singleton_cluster(x, move_from)
-    #     else:
-    #         if isnan(x):
-    #             return
-    #         self.clusters[move_from].unincorporate(x)
-    #         self.clusters[move_to].incorporate(x)
-
-    # def destroy_singleton_cluster(self, x, to_destroy, move_to):
-    #     """Move x from clusters[move_to], destroy clusters[to_destroy]."""
-    #     del self.clusters[to_destroy]
-    #     if isnan(x):
-    #         return
-    #     self.clusters[move_to].incorporate(x)
-
-    # def create_singleton_cluster(self, x, current):
-    #     """Remove x from clusters[current] and create a new singleton
-    #     cluster.
-    #     """
-    #     self.clusters.append(self.aux_model)
-    #     if isnan(x):
-    #         return
-    #     self.clusters[current].unincorporate(x)
-    #     self.clusters[-1].incorporate(x)
 
     def marginal_logp(self, k=None):
         """If k is not None, teturns the marginal log_p of clusters[k].
@@ -155,14 +144,14 @@ class Dim(object):
         targets = self.hypers.keys()
         np.random.shuffle(targets)
         for target in targets:
-            logps = self.calc_hyper_proposal_logps(target)
+            logps = self._calc_hyper_proposal_logps(target)
             proposal = gu.log_pflip(logps)
             self.hypers[target] = self.hyper_grids[target][proposal]
         # Update the clusters.
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
 
-    def calc_hyper_proposal_logps(self, target):
+    def _calc_hyper_proposal_logps(self, target):
         """Computes the marginal likelihood (over all clusters) for each
         hyperparameter value in self.hyper_grids[target].
         p(h|X) \prop p(h)p(X|h)
