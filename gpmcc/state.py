@@ -85,7 +85,6 @@ class State(object):
             self.n_grid)
         self.alpha = np.random.choice(self.alpha_grid)
 
-
         # Construct the view partition.
         if Zrcv is not None:
             assert Zv is not None
@@ -298,7 +297,7 @@ class State(object):
                 proposal_view = View(self.X, [dim_holder[-1]],
                     n_grid=self.n_grid)
                 proposal_views.append(proposal_view)
-                dim_holder[-1].reassign(self.X[:,dim.index], proposal_view.Zr)
+                # dim_holder[-1].reassign(self.X[:,dim.index], proposal_view.Zr)
                 dim_holder[-1].Zr = proposal_view.Zr
                 p_view_aux = dim_holder[-1].marginal_logp() + log_aux
                 p_view.append(p_view_aux)
