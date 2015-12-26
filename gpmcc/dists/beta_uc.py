@@ -83,8 +83,9 @@ class BetaUC(DistributionGpm):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def simulate(self):
-        # XXX TODO
-        raise NotImplementedError
+        alpha = self.strength * self.balance
+        beta = self.strength * (1. - self.balance)
+        return scipy.stats.beta.rvs(alpha, beta)
 
     def transition_params(self):
         n_samples = 25
