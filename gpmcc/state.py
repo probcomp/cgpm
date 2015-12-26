@@ -216,9 +216,11 @@ class State(object):
             self._transition_columns_kernel(col, m=m)
 
     def _transition_columns_kernel(self, col, m=3):
-        """Gibbs with auxiliary parameters for collapsed data types."""
+        """Gibbs with auxiliary parameters. Currently resampled uncollapsed
+        parameters as a side-effect."""
+        dim = self.dims[col]
         v_a = self.Zv[col]
-        is_singleton = (self.Nv[v_a] == 1)
+        singleton = (self.Nv[v_a] == 1)
         p_crp = self._compute_view_crp_logps(v_a)
 
         # XXX Major hack. Save logp under current view assignment.
@@ -226,11 +228,11 @@ class State(object):
 
         # Calculate probability under each view's assignment
         p_view = []
-        dim = self.dims[col]
         proposal_dims = []
         for v in xrange(len(self.Nv)):
             proposal_dims.append(dim)
-            proposal_dims[-1].reassign(self.X[:,dim.index], self.views[v].Zr)
+            proposal_dims[-1].reassign(self.X[:,dim.index],
+                self.views[v].Zr)
             p_view_v = dim.marginal_logp() + p_crp[v]
             # XXX Major hack continued,
             if v == v_a:
@@ -238,12 +240,11 @@ class State(object):
             p_view.append(p_view_v)
 
         # If not a singleton, propose m auxiliary parameters (views)
-        if not is_singleton:
+        if not singleton:
             # CRP probability of singleton, split m times.
             p_crp_aux = log(self.alpha/float(m))
             proposal_views = []
             for  _ in range(m):
-                # Propose (from prior) and calculate probability under each view
                 proposal_dims.append(dim)
                 proposal_view = View(self.X, [proposal_dims[-1]],
                     n_grid=self.n_grid)
@@ -261,11 +262,9 @@ class State(object):
             assert 0 <= index and index < m
             self._create_singleton_view(dim, v_a, proposal_views[index])
         else:
-            if is_singleton:
-                assert v_b < len(self.Nv)
             self._move_dim_to_view(dim, v_a, v_b)
 
-        self._check_partitions()
+        # self._check_partitions()
 
     def _retrieve_proposal_dim(self, col, v):
         if self.dims[col].is_collapsed() or self.Zv[col] == v:
