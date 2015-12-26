@@ -228,7 +228,6 @@ class State(object):
         for v in xrange(len(self.Nv)):
             proposal_dims.append(dim)
             proposal_dims[-1].reassign(self.X[:,dim.index], self.views[v].Zr)
-            # Total view prob is data + crp.
             p_view_v = dim.marginal_logp() + p_crp[v]
             p_view.append(p_view_v)
 
@@ -248,7 +247,6 @@ class State(object):
 
         # Draw a view.
         v_b = gu.log_pflip(p_view)
-        # new_dim = proposal_dims[v_b]
         self.dims[dim.index] = proposal_dims[v_b]
 
         # Register the dim with the new view.

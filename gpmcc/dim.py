@@ -170,7 +170,8 @@ class Dim(object):
 
     def reassign(self, X, Zr):
         """Reassigns data X to new clusters according to partitioning, Zr.
-        Destroys and recreates clusters.
+        Destroys and recreates clusters. Uncollapsed parameters are
+        transitioned but hyperparameters are not transitioned.
         """
         assert len(X) == len(Zr)
         self.clusters = []
