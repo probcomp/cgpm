@@ -221,6 +221,9 @@ class State(object):
         is_singleton = (self.Nv[v_a] == 1)
         p_crp = self._compute_view_crp_logps(v_a)
 
+        # XXX Major hack. Save logp under current view assignment.
+        va_marginal_logp = self.dims[col].marginal_logp()
+
         # Calculate probability under each view's assignment
         p_view = []
         dim = self.dims[col]
@@ -229,6 +232,9 @@ class State(object):
             proposal_dims.append(dim)
             proposal_dims[-1].reassign(self.X[:,dim.index], self.views[v].Zr)
             p_view_v = dim.marginal_logp() + p_crp[v]
+            # XXX Major hack continued,
+            if v == v_a:
+                p_view_v = va_marginal_logp + p_crp[v]
             p_view.append(p_view_v)
 
         # If not a singleton, propose m auxiliary parameters (views)
