@@ -151,23 +151,6 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
 
-    def _calc_hyper_proposal_logps(self, target):
-        """Computes the marginal likelihood (over all clusters) for each
-        hyperparameter value in self.hyper_grids[target].
-        p(h|X) \prop p(h)p(X|h)
-        """
-        logps = []
-        hypers = self.hypers.copy()
-        for g in self.hyper_grids[target]:
-            hypers[target] = g
-            logp = 0
-            for cluster in self.clusters:
-                cluster.set_hypers(hypers)
-                logp += cluster.marginal_logp()
-                cluster.set_hypers(self.hypers)
-            logps.append(logp)
-        return logps
-
     def reassign(self, X, Zr):
         """Reassigns data X to new clusters according to partitioning, Zr.
         Destroys and recreates clusters. Uncollapsed parameters are
@@ -201,3 +184,20 @@ class Dim(object):
         """Plots the predictive distribution and histogram of X."""
         self.model.plot_dist(X[~np.isnan(X)], self.clusters,
             ax=ax, Y=Y, hist=False)
+
+    def _calc_hyper_proposal_logps(self, target):
+        """Computes the marginal likelihood (over all clusters) for each
+        hyperparameter value in self.hyper_grids[target].
+        p(h|X) \prop p(h)p(X|h)
+        """
+        logps = []
+        hypers = self.hypers.copy()
+        for g in self.hyper_grids[target]:
+            hypers[target] = g
+            logp = 0
+            for cluster in self.clusters:
+                cluster.set_hypers(hypers)
+                logp += cluster.marginal_logp()
+                cluster.set_hypers(self.hypers)
+            logps.append(logp)
+        return logps
