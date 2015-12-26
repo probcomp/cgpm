@@ -91,9 +91,9 @@ class Exponential(DistributionGpm):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['a'] = gu.log_linspace(1./float(len(X)), float(len(X)),
+        grids['a'] = gu.log_linspace(.5, float(len(X)),
             n_grid)
-        grids['b'] = gu.log_linspace(1./float(len(X)), float(len(X)),
+        grids['b'] = gu.log_linspace(.5, float(len(X)),
             n_grid)
         return grids
 
