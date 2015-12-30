@@ -60,8 +60,10 @@ class Geometric(DistributionGpm):
         return Geometric.calc_predictive_logp(x, 0, 0, self.a, self.b)
 
     def simulate(self):
-        # XXX TODO
-        raise NotImplementedError
+        an, bn = Geometric.posterior_hypers(self.N, self.sum_x, self.a,
+            self.b)
+        pn = beta.rvs(an, bn)
+        return geom.rvs(pn) - 1
 
     def transition_params(self):
         return
