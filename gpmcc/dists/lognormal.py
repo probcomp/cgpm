@@ -178,13 +178,12 @@ class Lognormal(DistributionGpm):
     def calc_marginal_logp(N, sum_log_x, sum_log_x_sq, a, b, t, m):
         an, bn, tn, mn = Lognormal.posterior_hypers(N, sum_log_x,
             sum_log_x_sq, a, b, t, m)
-        Z0 = sum_log_x+Lognormal.calc_log_Z(a, b, t)
+        Z0 = sum_log_x + Lognormal.calc_log_Z(a, b, t)
         ZN = Lognormal.calc_log_Z(an, bn, tn)
         return -(float(N) / 2.) * LOG2PI + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, sum_log_x, sum_log_x_sq, a, b, t, m):
-        tmn = m * t + N
         tn = t + float(N)
         an = a + float(N)
         mn = (t * m + sum_log_x)/ tn
