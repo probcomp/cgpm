@@ -39,7 +39,7 @@ class Dim(object):
         ... index (int) : Identifier for this dim.
 
         Keyword Arguments:
-        ... Zr (list) L Partition of data into clusters, where Zr[i] is the
+        ... Zr (list) : Partition of data into clusters, where Zr[i] is the
         cluster index of row i. If None, is intialized from CRP(alpha=1).
         ... n_grid (int) : Number of bins in the hyperparameter grid.
         """

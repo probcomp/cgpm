@@ -183,7 +183,7 @@ class Normal(DistributionGpm):
             sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
-        return -.5*LOG2PI + ZM - ZN
+        return -.5 * LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, sum_x_sq, m, r, s, nu):
