@@ -193,21 +193,21 @@ class BetaUC(DistributionGpm):
         return scipy.stats.beta.logpdf(x, alpha, beta)
 
     @staticmethod
-    def calc_log_prior(strength, balance, mu, alpha, beta):
-        assert strength > 0 and balance > 0 and balance < 1
-        log_strength = scipy.stats.expon.logpdf(strength, scale=mu)
-        log_balance = scipy.stats.beta.logpdf(balance, alpha, beta)
-        return log_strength + log_balance
-
-    @staticmethod
     def calc_log_likelihood(N, sum_log_x, sum_minus_log_x, strength,
             balance):
         assert strength > 0 and balance > 0 and balance < 1
         alpha = strength * balance
         beta = strength * (1. - balance)
         lp = 0
-        lp -= N*scipy.special.betaln(alpha, beta)
+        lp -= N * scipy.special.betaln(alpha, beta)
         lp += (alpha - 1.) * sum_log_x
         lp += (beta - 1.) * sum_minus_log_x
         assert not np.isnan(lp)
         return lp
+
+    @staticmethod
+    def calc_log_prior(strength, balance, mu, alpha, beta):
+        assert strength > 0 and balance > 0 and balance < 1
+        log_strength = scipy.stats.expon.logpdf(strength, scale=mu)
+        log_balance = scipy.stats.beta.logpdf(balance, alpha, beta)
+        return log_strength + log_balance
