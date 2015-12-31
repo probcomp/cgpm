@@ -19,6 +19,7 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import gammaln
+from scipy.stats import gamma, norm
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
@@ -85,9 +86,9 @@ class Normal(DistributionGpm):
     def simulate(self):
         rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
-        coeff = ( ((sn / 2.) * (rn + 1.)) / ((nun / 2.) * rn) ) ** .5
-        draw = np.random.standard_t(nun) * coeff + mn
-        return draw
+        rho = gamma.rvs(nun/2., scale=1./(sn/2.))
+        mu = norm.rvs(loc=mn, scale=(rn*rho)**-.5)
+        return norm.rvs(loc=mu, scale=rho**-.5)
 
     def transition_params(self):
         return
