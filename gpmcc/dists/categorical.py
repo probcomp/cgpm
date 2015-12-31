@@ -38,10 +38,10 @@ class Categorical(DistributionGpm):
         # Sufficient statistics.
         self.N = N
         if counts is None:
-            self.counts = [0]*self.k
+            self.counts = np.zeros(self.k)
         else:
             assert self.k == len(counts)
-            self.counts = counts
+            self.counts = np.asarray(counts)
         # Hyperparameter.
         self.alpha = alpha
 
