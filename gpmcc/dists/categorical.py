@@ -28,6 +28,7 @@ class Categorical(DistributionGpm):
     k := distarg
     v ~ Symmetric-Dirichlet(alpha/k)
     x ~ Categorical(v)
+    http://www.cs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
     """
 
     def __init__(self, N=0, counts=None, alpha=1, distargs=None):
