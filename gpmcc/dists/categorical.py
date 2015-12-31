@@ -47,7 +47,7 @@ class Categorical(DistributionGpm):
 
     def incorporate(self, x):
         if not Categorical.validate(x, self.k):
-            raise ValueError('Invalid categorical observation inserted.')
+            raise ValueError('Invalid categorical observation %s.' % str(x))
         self.N += 1
         self.counts[int(x)] += 1
 
