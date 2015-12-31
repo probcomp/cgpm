@@ -71,7 +71,7 @@ class Categorical(DistributionGpm):
             self.alpha)
 
     def simulate(self):
-        return gu.pflip(self.counts)
+        return gu.pflip(self.counts + self.alpha)
 
     def transition_params(self):
         return
