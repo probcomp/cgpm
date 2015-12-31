@@ -86,8 +86,7 @@ class Normal(DistributionGpm):
     def simulate(self):
         rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
-        rho = gamma.rvs(nun/2., scale=1./(sn/2.))
-        mu = norm.rvs(loc=mn, scale=(rn*rho)**-.5)
+        mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
         return norm.rvs(loc=mu, scale=rho**-.5)
 
     def transition_params(self):
@@ -209,3 +208,9 @@ class Normal(DistributionGpm):
     def calc_log_Z(r, s, nu):
         return ((nu + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(r) \
                 - (nu / 2.) * log(s) + gammaln(nu/2.0)
+
+    @staticmethod
+    def sample_parameters(m, r, s, nu):
+        rho = np.random.gamma(nu/2., scale=2./s)
+        mu = np.random.normal(loc=m, scale=1./(rho*r)**.5)
+        return mu, rho
