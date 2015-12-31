@@ -191,7 +191,7 @@ class Normal(DistributionGpm):
             s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
-        return - (float(N) / 2.0) * LOG2PI + ZN - Z0
+        return -(N/2.) * LOG2PI + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
