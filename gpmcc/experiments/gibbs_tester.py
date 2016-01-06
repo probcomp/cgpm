@@ -2,7 +2,6 @@
 
 # The MIT License (MIT)
 
-# Copyright (c) 2014 Baxter S. Eaves Jr,
 # Copyright (c) 2015-2016 MIT Probabilistic Computing Project
 
 # Lead Developer: Feras Saad <fsaad@mit.edu>
@@ -26,17 +25,40 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-def check_entries_vald(valid_entries_list, user_entries_list):
-	all_valid = True
-	invalid_entries = []
-	for user_entry in user_entries_list:
-		if user_entry not in valid_entries_list:
-			invalid_entries.append(user_entry)
-			all_valid = False
+from gpmcc.utils import config as cu
+from gpmcc.utils import test as tu
+from gpmcc.engine import Engine
+from scipy.misc import logsumexp
+import numpy as np
+import matplotlib.pyplot as plt
 
-	if not all_valid:
-		errmsg = "Invalid entries: %s. Valid entries are: %s." % \
-					(str(invalid_entries), str(valid_entries_list))
-		return False, errmsg
-	else:
-		return True, []
+# Fix seed for random dataset.
+np.random.seed(10)
+
+# Set up the data generation.
+n_rows = 100
+view_weights = np.ones(1)
+cluster_weights = [np.asarray([.5, .3, .2])]
+dists = ['normal']
+separation = [.8]
+distargs = [None]
+T, Zv, Zc,= tu.gen_data_table(n_rows, view_weights, cluster_weights, dists,
+    distargs, separation)
+
+# Initialize the engine.
+num_states = 50
+engine = Engine()
+engine.initialize(T, ['normal'], distargs, num_states=num_states)
+engine.transition(N=100)
+
+# Obtain the marginal logps from each chain.
+marginal_logps = np.zeros(num_states)
+dims = []
+for i in xrange(num_states):
+    state = engine.get_state(i)
+    marginal_logps[i] = state.dims[0].marginal_logp()
+    dims.append(state.dims[0])
+print marginal_logps
+
+# Compute the harmonic mean estimator of logZ.
+logZ = np.log(num_states) - logsumexp(-marginal_logps)
