@@ -93,7 +93,7 @@ through the hypothesis space
 
 <a href="url"><img
 src="http://web.mit.edu/fsaad/www/figures/smc.gif"
-width="600" ></a>
+width="400" ></a>
 
 The values printed in the console after each click are estimates of the
 marginal-log-likelihood of observations, based on the single particle
