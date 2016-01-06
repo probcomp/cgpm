@@ -38,7 +38,9 @@ Key ideas on the development roadmap are:
   not analysis, time.
 
 - Subsampling, where each model is responsible for a subset of data from an
-  overlapping partition of the overall dataset. Multiprocessing.
+  overlapping partition of the overall dataset.
+
+- Multiprocessing for analysis. Distributed?
 
 - Several DistributionGpms for the different MML data-types, not just
   Normal and Multinomial.
@@ -54,8 +56,8 @@ clone the repository and add the source directory to your `PYTHONPATH`, for
 example:
 
 ```
-$ git clone https://bitbucket.org/saadf/gpmcc/ $ export
-PYTHONPATH=$PYTHONPATH:/your/path/to/gpmcc
+$ git clone https://bitbucket.org/saadf/gpmcc/
+$ export PYTHONPATH=$PYTHONPATH:/your/path/to/gpmcc
 ```
 
 ## Static Example
@@ -89,7 +91,9 @@ $ python -i particle_demo.py
 Click on the graph to produce observations and watch, the Gibbs kernel cycle
 through the hypothesis space
 
-![SMC](http://web.mit.edu/fsaad/www/figures/smc.gif)
+<a href="url"><img
+src="http://web.mit.edu/fsaad/www/figures/smc.gif"
+width="600" ></a>
 
 The values printed in the console after each click are estimates of the
 marginal-log-likelihood of observations, based on the single particle
