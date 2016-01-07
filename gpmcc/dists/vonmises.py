@@ -39,7 +39,12 @@ TWOPI = 2*pi
 LOG2PI = log(2*pi)
 
 class Vonmises(DistributionGpm):
-    """Von Mises distribution, assuming fixed concentration k."""
+    """Von Mises distribution on [0, 2pi] with Vonmises prior on the mean
+    mu. The concentration k is fixed at construct time (defaults to 1.5).
+
+    mu ~ Vonmises(mean=b, concentration=a)
+    x ~ Vonmises(mean=mu, concentration=k)
+    """
 
     cctype = 'vonmises'
 
@@ -86,10 +91,13 @@ class Vonmises(DistributionGpm):
             self.k)
 
     def simulate(self):
-        fn = lambda x: np.exp(self.predictive_logp(x))
-        lower_bound = 0.0
-        delta = 2*pi/10000
-        return gu.inversion_sampling(fn, lower_bound, delta)
+        an, bn = Vonmises.posterior_hypers(self.N, self.sum_sin_x,
+            self.sum_cos_x, self.a, self.b, self.k)
+        assert 0 <= bn <= 2*pi
+        mu = np.random.vonmises(bn - pi, an) + pi
+        x = np.random.vonmises(mu - pi, self.k) + pi
+        assert 0 <= x <= 2*pi
+        return x
 
     def transition_params(self):
         return
