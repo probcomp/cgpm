@@ -17,3 +17,28 @@ Generally follow PEP 8, with these exceptions:
   => Using alignment penalizes descriptive function names and renaming.
 
 - Prefer single-quoted strings, except use """ for docstrings.
+
+* Python imports
+
+Should be organized as follows:
+
+    [Standard library imports]
+    - blank line -
+    [Third party library imports]
+    - blank line -
+    [Sister projects library imports]
+    - blank line -
+    [gpmcc module imports]
+
+Each import block should be organized alphabetically, first all unqualified
+imports (import baz), then all named imports (from foo import nix).
+For example
+
+import math
+import multiprocessing as mp
+from array import ArrayType
+from struct import pack
+
+import numpy as np
+from scipy.stats import geom, norm, laplace
+... etc ...

@@ -332,7 +332,8 @@ class State(object):
         fig.clear()
         for dim in self.dims:
             index = dim.index
-            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index)
+            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'],
+                index+1)
             if self.Zv[index] >= len(layout['border_color']):
                 border_color = 'gray'
             else:
