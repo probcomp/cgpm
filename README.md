@@ -107,6 +107,11 @@ Observation 8.000000: 0.209677
 means the eigth observation is 0.209677, and the estimated marginal
 log-liklelihood is -8.0740236375201153.
 
+## Tests
+At this moment, running code in the `gpmcc/tests` directory is unlikely to
+be a pleasant experience.
+See the open [issue](https://github.com/probcomp/gpmcc/issues/8).
+
 ## Acknowledgements
 This repository was originally forked off
 [BaxCat](https://github.com/BaxterEaves/BaxCat/). Most of the

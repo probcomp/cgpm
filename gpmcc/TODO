@@ -4,4 +4,5 @@
 [x] Use numpy arrays for dataset.
 [x] Unify uncollapsed and collapsed dim.
 [x] Handle missing data.
-[ ] Explore high number of cluster in exponential, geometric.
+[x] Explore high number of cluster in exponential, geometric.
+[ ] Remove this TODO, since I am on Github issue tracker now.
