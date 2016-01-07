@@ -42,7 +42,7 @@ n_rows = 200
 view_weights = numpy.ones(1)
 cluster_weights = [ numpy.array([.33, .33, .34]) ]
 cctypes = ['normal','poisson','bernoulli', 'lognormal', 'exponential','normal_uc',
-'beta_uc', 'exponential_uc','geometric']
+'beta_uc', 'exponential_uc','geometric','vonmises']
 separation = [.95] * len(cctypes)
 cctypes, distargs = cu.parse_distargs(cctypes)
 
