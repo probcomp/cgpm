@@ -26,7 +26,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from math import cos, log, pi, sin
+from math import atan2, cos, log, pi, sin
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -214,7 +214,7 @@ class Vonmises(DistributionGpm):
         p_cos = k * sum_cos_x + a * cos(b)
         p_sin = k * sum_sin_x + a * sin(b)
         an = (p_cos**2.0 + p_sin**2.0)**.5
-        bn = -1 # not used. There may be a time...
+        bn = -atan2(p_cos, p_sin) + pi/2
         return an, bn
 
     @staticmethod
