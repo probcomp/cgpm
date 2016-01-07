@@ -117,7 +117,8 @@ copyright headers and license have been maintained where necessary.
 The MIT License (MIT)
 
 Copyright (c) 2014 Baxter S. Eaves Jr.
-Copyright (c) 2015 MIT Probabilistic Computing Project
+
+Copyright (c) 2015-2016 MIT Probabilistic Computing Project
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
