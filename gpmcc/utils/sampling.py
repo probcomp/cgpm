@@ -38,27 +38,36 @@ import gpmcc.utils.general as gu
 def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     """Uses MH to sample from log_pdf_lambda.
 
-    Arguments:
-    ... x: seed point
-    ... log_pdf_lambda: function that evaluates the log pdf at x
-    ... jump_std: standard deviation of jump distance (tunes itself)
-    ... D: domain
+    Parameters
+    ----------
+    x : float
+        Seed point.
+    log_pdf_lambda : function(x)
+        Evaluates the log pdf of the target distribution at x.
+    jump_std : float
+        Standard deviation of jump distance, auto-tunes.
+    D : tuple<float, float>
+        Support of the target distribution.
+    num_samples : int, optional
+        Number of samples to return, default 1.
+    burn : int, optional
+        Number of samples to discard before any are collected, default 1.
+    lag : int, optional
+        Number of moves between successive samples, default 1.
 
-    Keyword arguments:
-    ... num_samples: number of samples to take
-    ... burn: samples to throw out before any are collected
-    ... lag: moves between samples
+    Returns
+    -------
+    samples : int or list
+        If num_samples == 1 returns a float. Othewrise returns a
+        `num_samples` length list.
 
-    Returns:
-    ... If num_samples == 1, returns a float, else resturns an num_samples length
-        list
-
-    Example:
+    Example
+    -------
     >>> # Sample from posterior of CRP(x) with exponential(1) prior
     >>> x = 1.0
     >>> log_pdf_lambda = lambda x : gu.lcrp(10, [5,3,2] , x) - x
     >>> jump_std = 0.5
-    >>> D = (0.0,float('Inf'))
+    >>> D = (0.0, float('Inf'))
     >>> sample = mh_sample(x log_pdf_lambda, jump_std, D)
     """
     num_collected = 0
@@ -127,18 +136,26 @@ def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1,
         w=1.0):
     """Slice samples from the disitrbution defined by log_pdf_lambda.
 
-    Arguments:
-    ... proposal_fun: function that draws the initial point e.g. random.random
-    ... log_pdf_lambda: function that evaluates the log pdf at x
-    ... D: tuple. The domain.
+    Parameters
+    ----------
+    proposal_fun : function()
+        Draws the initial point from proposal distribution.
+    log_pdf_lambda : function(x)
+        Evaluates the log pdf of the target distribution at x.
+    D : tuple<float, float>
+        Support of the target distribution.
+    num_samples : int, optional
+        Number of samples to return, default 1.
+    burn : int, optional
+        Number of samples to discard before any are collected, default 1.
+    lag : int, optional
+        Number of moves between successive samples, default 1.
 
-    Keyword arguments:
-    ... num_samples: number of samples to take
-    ... burn: samples to throw out before any are collected
-    ... lag: moves between samples
-
-    Returns:
-    ... If num_samples == 1, returns a float, else resturns an num_samples length list
+    Returns
+    -------
+    samples : int or list
+        If num_samples == 1 returns a float. Othewrise returns a
+        `num_samples` length list.
 
     Example:
     >>> # Sample from posterior of CRP(x) with exponential(x) prior
@@ -205,23 +222,21 @@ def _find_slice_interval(f, x, u, D, w=1.0):
 def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
     """Samples from target pdf using rejection sampling.
 
-    Input arguments:
-    -- target_pdf_fn: the target distribution pdf. Should take a single
-    argument, x.
-    -- proposal_pdf_fn: the propsal distribution pdf. Should take a single
-    argument, x. Should also contain the target for all x, that is,
-    target_pdf_fn(x) <= proposal_pdf_fn(x)
-    -- proposal_draw_fn: draws x randomly from the domain of the target pdf
-    according to the proposal distribution.
+    Parameters
+    ----------
+    target_pdf_fn : function(x)
+        Evaluates the log pdf of the target distribution at x.
+    proposal_pdf_fn : function(x)
+        Evaluates the log pdf of the proposal distribution at x. Should
+        contain the target density, such that
+        target_pdf_fn(x) <= proposal_fun(x) for all x.
+    N : int, optional
+        Number of samples to return, default 1.
 
-    Keyword Arguments:
-    -- N: the number of samples to take.
-
-    NOTES:
-    This was specifically implemented for the VonMiese predictive distribution
-    which, because it is cyclic, is not super obvious to me how to apply
-    adaptive rejection sampling strategies. This is wasteful, but it's correct
-    and quicker than esitimating the CDF for inversion sampling.
+    Returns
+    -------
+    samples : int or list
+        If N == 1 returns a float. Othewrise returns an `N` length list.
     """
     samples = []
 
@@ -244,6 +259,9 @@ def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
         return samples[0]
     else:
         return samples
+
+# XXX MOVE TO query.py and then document XXX
+# Also possible to implement in the state gpm.
 
 def simple_predictive_probability(state, row, col, X):
     logps = np.zeros(len(X))
@@ -373,7 +391,9 @@ def create_cluster(state, rowid, col):
     return cluster
 
 def resample_data(state):
-    """Samples and resets data in the state."""
+    """Samples and resets data in the state.
+    XXX Currently broken.
+    """
     n_rows = state.n_rows
     n_cols = state.n_cols
     table = np.zeros( (n_rows, n_cols) )
