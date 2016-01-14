@@ -26,28 +26,29 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import math
-from math import log
-from math import sin
-from math import cos
+from math import atan2, cos, log, pi, sin
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.special import i0 as bessel_0
-from scipy.special import i1 as bessel_1
+from scipy.special import i0 as bessel_0, i1 as bessel_1
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
-TWOPI = 2 * math.pi
-LOG2PI = log(2 * math.pi)
+TWOPI = 2*pi
+LOG2PI = log(2*pi)
 
 class Vonmises(DistributionGpm):
-    """Von Mises distribution, assuming fixed concentration k."""
+    """Von Mises distribution on [0, 2pi] with Vonmises prior on the mean
+    mu. The concentration k is fixed at construct time (defaults to 1.5).
+
+    mu ~ Vonmises(mean=b, concentration=a)
+    x ~ Vonmises(mean=mu, concentration=k)
+    """
 
     cctype = 'vonmises'
 
-    def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, a=1, b=math.pi, k=1.5,
+    def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, a=1, b=pi, k=1.5,
             distargs=None):
         assert N >= 0
         assert a > 0
@@ -63,7 +64,7 @@ class Vonmises(DistributionGpm):
         self.k = k    # Vonmises kappa.
 
     def incorporate(self, x):
-        assert 0 <= x <= 2*math.pi
+        assert 0 <= x <= 2*pi
         self.N += 1.0
         self.sum_sin_x += sin(x)
         self.sum_cos_x += cos(x)
@@ -71,7 +72,7 @@ class Vonmises(DistributionGpm):
     def unincorporate(self, x):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        assert 0 <= x and x <= 2*math.pi
+        assert 0 <= x and x <= 2*pi
         self.N -= 1.0
         self.sum_sin_x -= sin(x)
         self.sum_cos_x -= cos(x)
@@ -90,10 +91,13 @@ class Vonmises(DistributionGpm):
             self.k)
 
     def simulate(self):
-        fn = lambda x: np.exp(self.predictive_logp(x))
-        lower_bound = 0.0
-        delta = 2*math.pi/10000
-        return gu.inversion_sampling(fn, lower_bound, delta)
+        an, bn = Vonmises.posterior_hypers(self.N, self.sum_sin_x,
+            self.sum_cos_x, self.a, self.b, self.k)
+        assert 0 <= bn <= 2*pi
+        mu = np.random.vonmises(bn - pi, an) + pi
+        x = np.random.vonmises(mu - pi, self.k) + pi
+        assert 0 <= x <= 2*pi
+        return x
 
     def transition_params(self):
         return
@@ -127,7 +131,7 @@ class Vonmises(DistributionGpm):
         ssx = np.sum(np.sin(X))
         scx = np.sum(np.cos(X))
         k = Vonmises.estimate_kappa(N, ssx, scx)
-        grids['a'] = gu.log_linspace(1/N, N, n_grid)
+        grids['a'] = gu.log_linspace(1./N, N, n_grid)
         grids['b'] = np.linspace(TWOPI/n_grid, TWOPI, n_grid)
         grids['k'] = np.linspace(k, N*k, n_grid)
         return grids
@@ -139,13 +143,13 @@ class Vonmises(DistributionGpm):
             _, ax = plt.subplots()
         # Set up x axis.
         x_min = 0
-        x_max = 2 * math.pi
+        x_max = 2*pi
         Y = np.linspace(x_min, x_max, 200)
         # Compute weighted pdfs
         K = len(clusters)
         pdf = np.zeros((K, 200))
         W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        if math.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
+        if np.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
             import ipdb; ipdb.set_trace()
         for k in xrange(K):
             pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
@@ -181,15 +185,15 @@ class Vonmises(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_sin_x, sum_cos_x, a, b, k):
-        assert 0 <= x and x <= 2 * math.pi
+        assert 0 <= x and x <= 2*pi
         assert N >= 0
         assert a > 0
-        assert 0 <= b and b <= 2 * math.pi
+        assert 0 <= b and b <= 2*pi
         assert k > 0
-        if x < 0 or x > math.pi * 2.:
+        if x < 0 or x > 2*pi:
             return float('-inf')
-        an, bn = Vonmises.posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k)
-        am, bm = Vonmises.posterior_hypers(N + 1., sum_sin_x + sin(x),
+        an, _ = Vonmises.posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k)
+        am, _ = Vonmises.posterior_hypers(N + 1., sum_sin_x + sin(x),
             sum_cos_x + cos(x), a, b, k)
         ZN = Vonmises.calc_log_Z(an)
         ZM = Vonmises.calc_log_Z(am)
@@ -199,10 +203,9 @@ class Vonmises(DistributionGpm):
     def calc_marginal_logp(N, sum_sin_x, sum_cos_x, a, b, k):
         assert N >= 0
         assert a > 0
-        assert 0 <= b and b <= 2 * math.pi
+        assert 0 <= b and b <= 2*pi
         assert k > 0
-        an, bn = Vonmises.posterior_hypers(N, sum_sin_x,
-            sum_cos_x, a, b, k)
+        an, _ = Vonmises.posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k)
         Z0 = Vonmises.calc_log_Z(a)
         ZN = Vonmises.calc_log_Z(an)
         lp = float(-N) * (LOG2PI + gu.log_bessel_0(k)) + ZN - Z0
@@ -214,12 +217,12 @@ class Vonmises(DistributionGpm):
     def posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k):
         assert N >= 0
         assert a > 0
-        assert 0 <= b and b <= 2*math.pi
+        assert 0 <= b and b <= 2*pi
         assert k > 0
-        p_cos = k * sum_cos_x + a * math.cos(b)
-        p_sin = k * sum_sin_x + a * math.sin(b)
+        p_cos = k * sum_cos_x + a * cos(b)
+        p_sin = k * sum_sin_x + a * sin(b)
         an = (p_cos**2.0 + p_sin**2.0)**.5
-        bn = -1 # not used. There may be a time...
+        bn = -atan2(p_cos, p_sin) + pi/2
         return an, bn
 
     @staticmethod
@@ -232,7 +235,7 @@ class Vonmises(DistributionGpm):
         if N == 0:
             return 10.**-6
         elif N == 1:
-            return 10 * math.pi
+            return 10*pi
         else:
             rbar2 = (ssx / N) ** 2. + (scx / N) ** 2.
             rbar = rbar2 ** .5

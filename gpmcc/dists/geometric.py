@@ -30,15 +30,19 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import betaln
+from scipy.stats import beta, geom
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
 class Geometric(DistributionGpm):
-    """Geometric distribution data with beta prior on mu. Collapsed.
+    """Geometric distribution data with beta prior on mu. Distirbution
+    takes values x in 0,1,2,... where f(x) = p*(1-p)**x i.e. number of
+    failures before the first success. Collapsed.
 
     mu ~ Beta(a, b)
     x ~ Geometric(mu)
+    http://halweb.uc3m.es/esp/Personal/personas/mwiper/docencia/English/PhD_Bayesian_Statistics/ch3_2009.pdf
     """
 
     def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None):
@@ -73,8 +77,10 @@ class Geometric(DistributionGpm):
         return Geometric.calc_predictive_logp(x, 0, 0, self.a, self.b)
 
     def simulate(self):
-        # XXX TODO
-        raise NotImplementedError
+        an, bn = Geometric.posterior_hypers(self.N, self.sum_x, self.a,
+            self.b)
+        pn = beta.rvs(an, bn)
+        return geom.rvs(pn) - 1
 
     def transition_params(self):
         return
@@ -168,5 +174,4 @@ class Geometric(DistributionGpm):
 
     @staticmethod
     def calc_log_Z(a, b):
-        Z =  betaln(a, b)
-        return Z
+        return betaln(a, b)

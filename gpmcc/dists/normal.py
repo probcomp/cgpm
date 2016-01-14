@@ -99,16 +99,15 @@ class Normal(DistributionGpm):
     def simulate(self):
         rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
-        coeff = ( ((sn / 2.) * (rn + 1.)) / ((nun / 2.) * rn) ) ** .5
-        draw = np.random.standard_t(nun) * coeff + mn
-        return draw
+        mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
+        return np.random.normal(loc=mu, scale=rho**-.5)
 
     def transition_params(self):
         return
 
     def set_hypers(self, hypers):
-        assert hypers['s'] > 0.
         assert hypers['r'] > 0.
+        assert hypers['s'] > 0.
         assert hypers['nu'] > 0.
         self.m = hypers['m']
         self.r = hypers['r']
@@ -116,19 +115,11 @@ class Normal(DistributionGpm):
         self.nu = hypers['nu']
 
     def get_hypers(self):
-        return {
-            'm': self.m,
-            'r': self.r,
-            's': self.s,
-            'nu': self.nu
-        }
+        return {'m': self.m, 'r': self.r, 's': self.s, 'nu': self.nu}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_x': self.sum_x,
-            'sum_x_sq': self.sum_x_sq,
-        }
+        return {'N': self.N, 'sum_x': self.sum_x,
+            'sum_x_sq': self.sum_x_sq}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -197,7 +188,7 @@ class Normal(DistributionGpm):
             sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
-        return -.5*LOG2PI + ZM - ZN
+        return -.5 * LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_marginal_logp(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -205,7 +196,7 @@ class Normal(DistributionGpm):
             s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
-        return - (float(N) / 2.0) * LOG2PI + ZN - Z0
+        return -(N/2.) * LOG2PI + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -222,3 +213,9 @@ class Normal(DistributionGpm):
     def calc_log_Z(r, s, nu):
         return ((nu + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(r) \
                 - (nu / 2.) * log(s) + gammaln(nu/2.0)
+
+    @staticmethod
+    def sample_parameters(m, r, s, nu):
+        rho = np.random.gamma(nu/2., scale=2./s)
+        mu = np.random.normal(loc=m, scale=1./(rho*r)**.5)
+        return mu, rho

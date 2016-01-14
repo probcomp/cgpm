@@ -73,9 +73,10 @@ def test_predictive_draw(state, N=None):
     pylab.show()
 
 def test_simulate_indicator():
-    # Number of rows in synthetic dataset.
+    # Entropy.
+    np.random.seed(0)
+    # Generate synthetic dataset.
     n_rows = 250
-
     mus = [-1, 5, 9]
     sigmas = [2, 2, 1.5]
     data = np.zeros((n_rows, 2))

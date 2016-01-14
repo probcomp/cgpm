@@ -87,18 +87,19 @@ class BetaUC(DistributionGpm):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def marginal_logp(self):
-        lp = BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
+        data_logp = BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
             self.sum_minus_log_x, self.strength, self.balance)
-        lp += BetaUC.calc_log_prior(self.strength, self.balance, self.mu,
-            self.alpha, self.beta)
-        return lp
+        prior_logp = BetaUC.calc_log_prior(self.strength, self.balance,
+            self.mu, self.alpha, self.beta)
+        return data_logp + prior_logp
 
     def singleton_logp(self, x):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def simulate(self):
-        # XXX TODO
-        raise NotImplementedError
+        alpha = self.strength * self.balance
+        beta = self.strength * (1. - self.balance)
+        return scipy.stats.beta.rvs(alpha, beta)
 
     def transition_params(self):
         n_samples = 25
@@ -202,8 +203,19 @@ class BetaUC(DistributionGpm):
         if not 0 < x < 1:
             return float('-inf')
         alpha = strength * balance
-        beta = strength * (1.0-balance)
-        lp = scipy.stats.beta.logpdf(x, alpha, beta)
+        beta = strength * (1.-balance)
+        return scipy.stats.beta.logpdf(x, alpha, beta)
+
+    @staticmethod
+    def calc_log_likelihood(N, sum_log_x, sum_minus_log_x, strength,
+            balance):
+        assert strength > 0 and balance > 0 and balance < 1
+        alpha = strength * balance
+        beta = strength * (1. - balance)
+        lp = 0
+        lp -= N * scipy.special.betaln(alpha, beta)
+        lp += (alpha - 1.) * sum_log_x
+        lp += (beta - 1.) * sum_minus_log_x
         assert not np.isnan(lp)
         return lp
 
@@ -213,16 +225,3 @@ class BetaUC(DistributionGpm):
         log_strength = scipy.stats.expon.logpdf(strength, scale=mu)
         log_balance = scipy.stats.beta.logpdf(balance, alpha, beta)
         return log_strength + log_balance
-
-    @staticmethod
-    def calc_log_likelihood(N, sum_log_x, sum_minus_log_x, strength,
-            balance):
-        assert strength > 0 and balance > 0 and balance < 1
-        alpha = strength * balance
-        beta = strength * (1. - balance)
-        lp = 0
-        lp -= N*scipy.special.betaln(alpha, beta)
-        lp += (alpha - 1.) * sum_log_x
-        lp += (beta - 1.) * sum_minus_log_x
-        assert not np.isnan(lp)
-        return lp

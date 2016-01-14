@@ -78,8 +78,7 @@ class NormalUC(Normal):
     def transition_params(self):
         rn, nun, mn, sn = NormalUC.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self. m, self.r, self.s, self.nu)
-        self.rho = np.random.gamma(nun/2., scale=2./sn)
-        self.mu = np.random.normal(loc=mn, scale=1./(self.rho*rn)**.5)
+        self.mu, self.rho = NormalUC.sample_parameters(mn, rn, sn, nun)
 
     @staticmethod
     def name():

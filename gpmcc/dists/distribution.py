@@ -60,26 +60,27 @@ class DistributionGpm(object):
         raise NotImplementedError
 
     def incorporate(self, x):
-        """Record a single observation x, increment any suffstats."""
+        """Record a single observation x. Increments suffstats."""
         raise NotImplementedError
 
     def unincorporate(self, x):
-        """Remove a single observation x, decrement any suffstats.
-        An error will be thrown if `self.N` drops below zero.
+        """Remove a single observation x. Decrements any suffstats.
+        An error will be thrown if `self.N` drops below zero or other
+        distribution-specific invariants are violated.
         """
         raise NotImplementedError
 
     def predictive_logp(self, x):
         """Compute the probability of a new observation x, conditioned on
         the sufficient statistics, parameters (if uncollapsed), and
-        hyperparameters. P(x|T,Q,H).
+        hyperparameters, ie P(x|T,Q,H).
         """
         raise NotImplementedError
 
     def singleton_logp(self, x):
         """Compute the probability of a new observation x, conditioned on
-        parameters (if uncollapsed), and hyperparameters. P(x|Q,H). Note
-        that previous observations (suffstats) are ignored in this
+        parameters (if uncollapsed), and hyperparameters, ie P(x|Q,H).
+        Note that previous observations (suffstats) are ignored in this
         computation.
         """
         raise NotImplementedError
@@ -89,21 +90,30 @@ class DistributionGpm(object):
         observations X, conditioned on the current GPM state.
 
         A collapsed model can compute P(X|H) exactly by integrating over Q.
+
         An uncollapsed model might approximate this marginal by
+            Qi ~ P(Qi|H) i = 1 .. N
             P(X|H) \appx avg{P(X|Qi)P(Qi|H) for i = 1 .. N}
 
         While this probability is necessarily a function of the data only
         through the sufficient statistics, the probability is
-        **not the probability of the sufficient statistics**
-        rather the exchangeable sequence of observations that are
-        summarized by the sufficient statistics.
+        **not the probability of the sufficient statistics**.
+        It is the probably of the exchangeable sequence of observations that
+        are summarized by the sufficient statistics.
         """
         raise NotImplementedError
 
     def simulate(self):
-        """Simulate from the posterior predictive_logp p(x|T,Q,H). The
-        sample returned by this method must necessarily be from the same
-        distribution of `predictive_logp`.
+        """Simulate from the distribution p(x|T,Q,H).  The sample returned
+        by this method must necessarily be from the same distribution that
+        `predictive_logp` evaluates.
+
+        A collapsed sampler will typically simulate by marginalizing over
+        parameters Q.
+
+        An uncollapsed sampler will typically require a call to
+        `transition_params` for observations to have an effect on the
+        simulation of the next sample.
         """
         raise NotImplementedError
 
@@ -141,21 +151,18 @@ class DistributionGpm(object):
         represented by `clusters`. The weight of each cluster is
         proportional to its number of observations N.
 
-        Parameters
-        ----------
-        X : list
-            List of samples from the empirical distribution to plot, very
-            poorly named for historical reasons.
-        clusters : list
-            List of DistributionGpm objects, all of the same type.
-        ax : matplotlib.axes, optional
-            Axes object on which to plot the distribution. If None, a new
-            axis will be created.
-        Y : list, optional
-            Values on which to evaluate the probability density function.
-        hist : bool, optional
-            Show a histogram of samples X? Otherwise samples will be shown
-            as small vertical lines.
+        Arguments:
+        ... X (list) : List of samples from the empirical distribution to
+        plot, very poorly named for historical reasons.
+        ... clusters (list) : List of DistributionGpm objects,
+        all of the same type.
+
+        Keyword Arguments:
+        ... ax (matplotlib.axes) : Object on which to plot distribution. If
+        not specified a new axis will be created.
+        ... Y (list) : Values on which to evaluate the density function.
+        ... hist (bool) : Show a histogram of samples X? Otherwise samples
+        shown as small vertical lines.
         """
         raise NotImplementedError
 

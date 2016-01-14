@@ -42,6 +42,7 @@ class Categorical(DistributionGpm):
     k := distarg
     v ~ Symmetric-Dirichlet(alpha/k)
     x ~ Categorical(v)
+    http://www.cs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
     """
 
     def __init__(self, N=0, counts=None, alpha=1, distargs=None):
@@ -51,16 +52,16 @@ class Categorical(DistributionGpm):
         # Sufficient statistics.
         self.N = N
         if counts is None:
-            self.counts = [0]*self.k
+            self.counts = np.zeros(self.k)
         else:
             assert self.k == len(counts)
-            self.counts = counts
+            self.counts = np.asarray(counts)
         # Hyperparameter.
         self.alpha = alpha
 
     def incorporate(self, x):
         if not Categorical.validate(x, self.k):
-            raise ValueError('Invalid categorical observation inserted.')
+            raise ValueError('Invalid categorical observation %s.' % str(x))
         self.N += 1
         self.counts[int(x)] += 1
 
@@ -85,7 +86,7 @@ class Categorical(DistributionGpm):
             self.alpha)
 
     def simulate(self):
-        return gu.pflip(self.counts)
+        return gu.pflip(self.counts + self.alpha)
 
     def transition_params(self):
         return
