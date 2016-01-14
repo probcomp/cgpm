@@ -26,7 +26,6 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import copy
 import sys
 from math import log
 
@@ -35,12 +34,12 @@ import matplotlib.pyplot as plt
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
-import gpmcc.utils.config as cu
 
 from gpmcc.view import View
 from gpmcc.dim import Dim
 
-_all_kernels = ['column_z','state_alpha','row_z','column_hypers','view_alphas']
+_all_kernels = ['column_z', 'state_alpha', 'row_z', 'column_hypers',
+    'view_alphas']
 
 class State(object):
     """State. The main crosscat object."""
