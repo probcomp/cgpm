@@ -52,10 +52,14 @@ class DistributionGpm(object):
         can successfully invoke the consructor with
             __init__(N, **suffstats, **params, **hypers) should work.
 
-        Keyword Arguments:
-        ... suffstats : Initial values of suffstats.
-        ... params : Initial values of params.
-        ... hypers : Initial values of hyperparams.
+        Parameters
+        ----------
+        suffstats : **kwargs
+            Initial values of suffstats.
+        params : **kwargs
+            Initial values of params.
+        hypers : **kwargs
+            Initial values of hyperparams.
         """
         raise NotImplementedError
 
@@ -151,18 +155,20 @@ class DistributionGpm(object):
         represented by `clusters`. The weight of each cluster is
         proportional to its number of observations N.
 
-        Arguments:
-        ... X (list) : List of samples from the empirical distribution to
-        plot, very poorly named for historical reasons.
-        ... clusters (list) : List of DistributionGpm objects,
-        all of the same type.
-
-        Keyword Arguments:
-        ... ax (matplotlib.axes) : Object on which to plot distribution. If
-        not specified a new axis will be created.
-        ... Y (list) : Values on which to evaluate the density function.
-        ... hist (bool) : Show a histogram of samples X? Otherwise samples
-        shown as small vertical lines.
+        Parameters
+        ----------
+        X : np.array
+            List of samples from the empirical distribution to plot. Very
+            poorly named for historical reasons.
+        clusters : list<DistributionGpm>
+            List of DistributionGpm objects, all of the same cctype.
+        ax : matplotlib.axes, optional
+            Axis on which to plot distribution. If not specified a new axis
+            will be created.
+        Y : list, optional
+            Values on which to evaluate the density function.
+        hist : bool, optional
+            Show histogram of samples X? Otherwise samples shown as lines.
         """
         raise NotImplementedError
 

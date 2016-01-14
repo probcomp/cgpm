@@ -66,7 +66,7 @@ class View(object):
         if Zr is None:
             Zr, Nk, _ = gu.crp_gen(self.N, alpha)
         else:
-            Nk = gu.bincount(Zr)
+            Nk = list(np.bincount(Zr))
         assert len(Zr) == self.N
         assert sum(Nk) == self.N
         self.Zr = np.array(Zr)

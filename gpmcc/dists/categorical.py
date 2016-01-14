@@ -120,12 +120,11 @@ class Categorical(DistributionGpm):
             _, ax = plt.subplots()
         # Set up x axis.
         Y = range(int(clusters[0].k))
-        X_hist = np.array(gu.bincount(X,Y))
-        X_hist = X_hist / float(len(X))
+        X_hist = [np.sum(X==i) / float(len(X)) for i in Y]
+        ax.bar(Y, X_hist, color='black', alpha=1, edgecolor='none')
         # Compute weighted pdfs
         K = len(clusters)
         pdf = np.zeros((K, int(clusters[0].k)))
-        ax.bar(Y, X_hist, color='black', alpha=1, edgecolor='none')
         W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
         for k in xrange(K):
             pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)

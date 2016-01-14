@@ -48,8 +48,8 @@ T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation, return_dims=True)
 
 runner = engine.Engine()
-runner.initialize(T, cctypes, distargs, num_states=6)
-runner.transition(N=2)
+runner.initialize(T.T, cctypes, distargs, num_states=6, multithread=True)
+runner.transition(N=2, multithread=True)
 
 # state = State(T, cctypes, distargs)
 # state.transition(N=10, do_plot=True)

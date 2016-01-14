@@ -26,7 +26,6 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import copy
 import sys
 from math import log
 
@@ -35,12 +34,12 @@ import matplotlib.pyplot as plt
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
-import gpmcc.utils.config as cu
 
 from gpmcc.view import View
 from gpmcc.dim import Dim
 
-_all_kernels = ['column_z','state_alpha','row_z','column_hypers','view_alphas']
+_all_kernels = ['column_z', 'state_alpha', 'row_z', 'column_hypers',
+    'view_alphas']
 
 class State(object):
     """State. The main crosscat object."""
@@ -49,28 +48,26 @@ class State(object):
             hypers=None, seed=None):
         """State constructor.
 
-        Input arguments:
-        ... X (np.ndarray) : A data matrix DxN, where D is the
-        number of variables and N is the number of observations.
-        ... cctypes (list<str>) : A list of strings where each entry is the
-        data type for each column. See `utils.config` for valid cctypes.
-        ... distargs: A list of distargs appropriate for each type in
-        cctype. For details on distrags see the documentation for each data
-        type.
-
-        Keyword arguments:
-        ... n_grid (int): number of bins for hyperparameter grids.
-        ... Zv: The assignment of columns to views. If not specified,
-        partition generated randomly.
-        ... Zrcv (list<list>): Assignment of rows to clusters in each view,
-        where Zrcv[k] is the Zr for View k.
-        ... seed (int): Seed the random number generator.
-
-        Example:
-        >>> import np
-        >>> n_rows = 100
-        >>> X = [np.random.normal(n_rows), np.random.normal(n_rows)]
-        >>> state = State(X, ['normal', 'normal'], [None, None])
+        Parameters
+        ----------
+        X : np.ndarray
+            A data matrix DxN, where D is the number of variabels and N is
+            the number of observations.
+        cctypes : list<str>
+            Data type of each colum, see `utils.config` for valid cctypes.
+        distargs : list
+            Distargs appropriate for each cctype in cctypes. For details on
+            distargs see the documentation for each DistributionGpm.
+        n_grid : int, optional
+            Number of bins for hyperparameter grids.
+        Zv : list<int>, optional
+            Assignmet of columns to views. If not specified a random
+            partition is sampled.
+        Zrcv : list, optional
+            Assignment of rows to clusters in each view, where Zrcv[k] is
+            the Zr for View k. If not specified a random partition is sampled.
+        seed : int
+            Seed the random number generator.
         """
         # Seed.
         self.seed = 0 if seed is None else seed
@@ -108,7 +105,7 @@ class State(object):
         if Zv is None:
             Zv, Nv, V = gu.crp_gen(self.n_cols, self.alpha)
         else:
-            Nv = gu.bincount(Zv)
+            Nv = list(np.bincount(Zv))
             V = len(Nv)
         self.Zv = np.array(Zv)
         self.Nv = Nv
@@ -177,16 +174,8 @@ class State(object):
                 kernel()
             if do_plot:
                 self._do_plot(fig, layout)
-                plt.pause(0.0001)
+                plt.pause(1e-4)
         print
-
-    def set_data(self, data):
-        """Testing. Resets the suffstats in all clusters in all dims to reflect
-        the new data.
-        """
-        for col in range(self.n_cols):
-            self.dims[col].reassign(self.X[:,col],
-                self.views[self.Zv[col]].Zr)
 
     def plot(self):
         """Plots sample histogram and learned distribution for each dim."""
@@ -278,12 +267,7 @@ class State(object):
         else:
             self._move_dim_to_view(dim, v_a, v_b)
 
-        # self._check_partitions()
-
-    def _retrieve_proposal_dim(self, col, v):
-        if self.dims[col].is_collapsed() or self.Zv[col] == v:
-            return self.dims[col]
-        return copy.deepcopy(self.dims[col])
+        self._check_partitions()
 
     def _create_singleton_view(self, dim, current_view_index, proposal_view):
         self.Zv[dim.index] = len(self.Nv)
@@ -306,16 +290,6 @@ class State(object):
             self.Zv[zminus] -= 1
             del self.Nv[move_from]
             del self.views[move_from]
-
-    def _append_new_dim_to_view(self, dim, append_to, proposal_view):
-        self.Zv[dim.index] = append_to
-        if append_to == len(self.Nv):
-            self.Nv.append(1)
-            self.views.append(proposal_view)
-        else:
-            self.Nv[append_to] += 1
-            self.views[append_to].insert_dim(dim)
-        self._check_partitions()
 
     def _compute_view_crp_logps(self, view):
         p_crp = list(self.Nv)
