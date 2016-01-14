@@ -33,7 +33,6 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import gammaln
-from scipy.stats import gamma, norm
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
@@ -101,14 +100,14 @@ class Normal(DistributionGpm):
         rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
-        return norm.rvs(loc=mu, scale=rho**-.5)
+        return np.random.normal(loc=mu, scale=rho**-.5)
 
     def transition_params(self):
         return
 
     def set_hypers(self, hypers):
-        assert hypers['s'] > 0.
         assert hypers['r'] > 0.
+        assert hypers['s'] > 0.
         assert hypers['nu'] > 0.
         self.m = hypers['m']
         self.r = hypers['r']
@@ -116,19 +115,11 @@ class Normal(DistributionGpm):
         self.nu = hypers['nu']
 
     def get_hypers(self):
-        return {
-            'm': self.m,
-            'r': self.r,
-            's': self.s,
-            'nu': self.nu
-        }
+        return {'m': self.m, 'r': self.r, 's': self.s, 'nu': self.nu}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_x': self.sum_x,
-            'sum_x_sq': self.sum_x_sq,
-        }
+        return {'N': self.N, 'sum_x': self.sum_x,
+            'sum_x_sq': self.sum_x_sq}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):

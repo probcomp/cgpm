@@ -30,7 +30,6 @@ import math
 from math import log
 
 import numpy as np
-from scipy.stats import norm
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
@@ -106,7 +105,7 @@ class Lognormal(DistributionGpm):
         rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_log_x,
             self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
-        x = norm.rvs(loc=mu, scale=rho**-.5)
+        x = np.random.norm(loc=mu, scale=rho**-.5)
         return np.exp(x)
 
     def transition_params(self):
