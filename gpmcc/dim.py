@@ -46,16 +46,20 @@ class Dim(object):
         The dataset X is summarized by the sufficient statistics only and
         is not stored.
 
-        Arguments:
-        ... X (np.array) : Array of data. Must be compatible with `dist`.
-        Missing entries must be np.nan.
-        ... dist (str) : DistributionGpm name see `gpmcc.utils.config`.
-        ... index (int) : Identifier for this dim.
-
-        Keyword Arguments:
-        ... Zr (list) : Partition of data into clusters, where Zr[i] is the
-        cluster index of row i. If None, is intialized from CRP(alpha=1).
-        ... n_grid (int) : Number of bins in the hyperparameter grid.
+        Parameters
+        ----------
+        X : np.array
+            Array of data. Must be compatible with `dist`. Missing entries
+            must be np.nan.
+        dist : str
+            DistributionGpm name see `gpmcc.utils.config`.
+        index : int
+            Unique identifier for this dim.
+        Zr : list<int>, optional
+            Partition of data X into clusters, where Zr[i] is the cluster
+            index of row X[i]. If None, intialized from CRP(1).
+        n_grid : int, optional
+            Number of bins in the hyperparameter grid.
         """
         # Identifier.
         self.index = index
@@ -74,12 +78,11 @@ class Dim(object):
         self.hypers = hypers
         if hypers is None:
             self.hypers = dict()
-            # Randomly initialize each hyper h by sampling from grid.
             for h in self.hyper_grids:
                 self.hypers[h] = np.random.choice(self.hyper_grids[h])
         assert self.hypers.keys() == self.hyper_grids.keys()
 
-        # Row partitioning.
+        # Row partition.
         if Zr is None:
             Zr, _, _ = gu.crp_gen(len(X), 1)
         self.reassign(X, Zr)
@@ -90,13 +93,16 @@ class Dim(object):
     def incorporate(self, x, k):
         """Record an observation x in clusters[k].
 
-        Arguments:
-        ... x (float) : Value to incorporate. Must be compatible with the
-        DistributionGpm support.
-        ... k (int) : Cluster to incorporate x. If k < len(self.clusters)
-        then x will be incorporated. If k == len(self.clusters) a new
-        cluster will be created. If k > len(self.clusters) an error will
-        be thrown.
+        Parameters
+        ----------
+        x : float
+            Value to incorporate. Must be compatible with the
+            DistributionGpm support.
+        k : int
+            Cluster to incorporate x. If k < len(self.clusters)
+            then x will be incorporated to cluster k. If
+            k == len(self.clusters) a new cluster will be created.
+            If k > len(self.clusters) an error will be thrown.
         """
         assert k <= len(self.clusters)
         self.N += 1
@@ -110,12 +116,15 @@ class Dim(object):
     def unincorporate(self, x, k):
         """Remove observation x from clusters[k].
 
-        Arguments:
-        ... x (float) : Value to incorporate. Must be compatible with the
-        DistributionGpm support.
-        ... k (int) : Cluster to remove x. k is strictly less than
-        len(self.clusters). Bad things will happen if x was not
-        incorporated into cluster k before calling this method.
+        Parameters
+        ----------
+        x : float
+            Value to incorporate. Must be compatible with DistributionGpm
+            support.
+        k : int
+            Cluster to remove x. k is strictly less than
+            len(self.clusters). Bad things will happen if x was not
+            incorporated into cluster k before calling this method.
         """
         assert k < len(self.clusters)
         self.N -= 1
@@ -123,9 +132,7 @@ class Dim(object):
             self.clusters[k].unincorporate(x)
 
     def destroy_cluster(self, k):
-        """Destroy cluster k, and all its incorporated data (if any). The
-        cluster id of all clusters greater than k will be decremented by
-        one."""
+        """Destroy cluster k, and all its incorporated data (if any)."""
         assert k < len(self.clusters)
         del self.clusters[k]
 
@@ -136,21 +143,23 @@ class Dim(object):
         assert k <= len(self.clusters)
         if k == len(self.clusters):
             # Good for inference quality, always uses latest hypers.
-            self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+            self.aux_model = self.model(distargs=self.distargs,
+                **self.hypers)
             cluster = self.aux_model
         else:
             cluster = self.clusters[k]
         return cluster.predictive_logp(x) if not isnan(x) else 0
 
     def marginal_logp(self, k=None):
-        """If k is not None, teturns the marginal log_p of clusters[k].
+        """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
         if k is not None:
             return self.clusters[k].marginal_logp()
         return sum(cluster.marginal_logp() for cluster in self.clusters)
 
     def transition_hypers(self):
-        """Updates the hyperparameters and the component parameters."""
+        """Updates the hyperparameters and the component parameters of each
+        cluster."""
         # Transition component parameters.
         for cluster in self.clusters:
             cluster.transition_params()
@@ -166,8 +175,8 @@ class Dim(object):
             cluster.set_hypers(self.hypers)
 
     def reassign(self, X, Zr):
-        """Reassigns data X to new clusters according to partitioning, Zr.
-        Destroys and recreates clusters. Uncollapsed parameters are
+        """Reassigns data X to new clusters according to partitioning Zr.
+        Destroys and recreates all clusters. Uncollapsed parameters are
         transitioned but hyperparameters are not transitioned.
         """
         assert len(X) == len(Zr)
