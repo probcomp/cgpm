@@ -48,28 +48,26 @@ class State(object):
             hypers=None, seed=None):
         """State constructor.
 
-        Input arguments:
-        ... X (np.ndarray) : A data matrix DxN, where D is the
-        number of variables and N is the number of observations.
-        ... cctypes (list<str>) : A list of strings where each entry is the
-        data type for each column. See `utils.config` for valid cctypes.
-        ... distargs: A list of distargs appropriate for each type in
-        cctype. For details on distrags see the documentation for each data
-        type.
-
-        Keyword arguments:
-        ... n_grid (int): number of bins for hyperparameter grids.
-        ... Zv: The assignment of columns to views. If not specified,
-        partition generated randomly.
-        ... Zrcv (list<list>): Assignment of rows to clusters in each view,
-        where Zrcv[k] is the Zr for View k.
-        ... seed (int): Seed the random number generator.
-
-        Example:
-        >>> import np
-        >>> n_rows = 100
-        >>> X = [np.random.normal(n_rows), np.random.normal(n_rows)]
-        >>> state = State(X, ['normal', 'normal'], [None, None])
+        Parameters
+        ----------
+        X : np.ndarray
+            A data matrix DxN, where D is the number of variabels and N is
+            the number of observations.
+        cctypes : list<str>
+            Data type of each colum, see `utils.config` for valid cctypes.
+        distargs : list
+            Distargs appropriate for each cctype in cctypes. For details on
+            distargs see the documentation for each DistributionGpm.
+        n_grid : int, optional
+            Number of bins for hyperparameter grids.
+        Zv : list<int>, optional
+            Assignmet of columns to views. If not specified a random
+            partition is sampled.
+        Zrcv : list, optional
+            Assignment of rows to clusters in each view, where Zrcv[k] is
+            the Zr for View k. If not specified a random partition is sampled.
+        seed : int
+            Seed the random number generator.
         """
         # Seed.
         self.seed = 0 if seed is None else seed
