@@ -116,19 +116,26 @@ class State(object):
 
     def transition(self, N=1, kernel_list=None, target_rows=None,
             target_cols=None, m=1, do_plot=False):
-        """Do transitions.
+        """Run inference transitions.
 
-        Optional arguments:
-        -- N: number of transitions.
-        -- kernel_list: which kernels to do.
-        -- target_rows: list of rows to apply the transitions to
-        -- target_cols: list of columns to apply the transitions to
-        -- do_plot: plot the state of the sampler (real-time)
+        Parameters
+        ----------
+        N : int, optional
+            Number of transitions.
+        kernel_list : {'column_z', 'state_alpha', 'row_z', 'column_hypers',
+                'view_alphas'}, optional
+            List of kernels to transition through.
+        target_rows, target_cols : list<int>, optional
+            Rows and columns to apply the transitions to.
+        do_plot : boolean, optional
+            Plot the state of the sampler (real-time).
 
-        Examples:
+        Examples
+        --------
         >>> State.transition()
         >>> State.transition(N=100)
-        >>> State.transition(N=100, kernel_list=['column_z','row_z'])
+        >>> State.transition(N=100, kernel_list=['column_z','row_z'],
+        ...     cols=[1,2], rows=range(100))
         """
         kernel_dict = {
             'column_z' :
@@ -308,9 +315,9 @@ class State(object):
                 border_color = layout['border_color'][self.Zv[index]]
             dim.plot_dist(self.X[:,dim.index], ax=ax)
             ax.text(1,1, "K: %i " % len(dim.clusters),
-                transform=ax.transAxes,
-                fontsize=12, weight='bold', color='blue',
-                horizontalalignment='right',verticalalignment='top')
+                transform=ax.transAxes, fontsize=12, weight='bold',
+                color='blue', horizontalalignment='right',
+                verticalalignment='top')
         plt.draw()
 
     def _check_partitions(self):
