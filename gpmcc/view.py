@@ -99,15 +99,14 @@ class View(object):
         for dim in self.dims.values():
             dim.transition_hypers()
 
-    def transition_rows(self, target_rows=None, N=1):
-        """Transition the row partitiong. target_rows is an optional list of
-        rows to transition.
+    def transition_rows(self, target_rows=None):
+        """Transition the row partitioning. target_rows is an optional list
+        of rows to transition.
         """
         if target_rows is None:
-            target_rows = xrange(self.N)
-        for _ in xrange(N):
-            for rowid in target_rows:
-                self.transition_row(rowid)
+            target_rows = range(self.N)
+        for rowid in target_rows:
+            self.transition_row(rowid)
 
     def transition_row(self, rowid):
         """Trasition a single row"""

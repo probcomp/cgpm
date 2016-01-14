@@ -214,12 +214,12 @@ class State(object):
     def _transition_columns(self, target_cols=None, m=3):
         """Transition column assignment to views."""
         if target_cols is None:
-            target_cols = [i for i in range(self.n_cols)]
+            target_cols = range(self.n_cols)
         np.random.shuffle(target_cols)
         for col in target_cols:
-            self._transition_columns_kernel(col, m=m)
+            self._transition_column(col, m=m)
 
-    def _transition_columns_kernel(self, col, m=3):
+    def _transition_column(self, col, m=3):
         """Gibbs with auxiliary parameters. Currently resampled uncollapsed
         parameters as a side-effect."""
         dim = self.dims[col]
