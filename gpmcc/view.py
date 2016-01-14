@@ -78,7 +78,7 @@ class View(object):
     def transition(self, N):
         """Run all the transitions N times."""
         for _ in xrange(N):
-            self.transition_Zr()
+            self.transition_rows()
             self.transition_alpha()
             self.transition_column_hypers()
 
@@ -99,66 +99,57 @@ class View(object):
         for dim in self.dims.values():
             dim.transition_hypers()
 
-    def transition_Zr(self, target_rows=None, N=1):
-        """Transition row assignments.
-
-        Keyword arguments:
-        ... target_rows (list<int>): List of rows to reassign.
-        If not specified, reassigns every row.
-        ... N (int): Number of times to transition.
-        """
-        for _ in range(N):
-            self.transition_rows(target_rows=target_rows)
-
-    def transition_rows(self, target_rows=None):
-        """Reassign rows to clusters.
-        Keyword Arguments:
-        ... target_rows (list<int>): Rows to reassign. If None, transitions
-        every row.
+    def transition_rows(self, target_rows=None, N=1):
+        """Transition the row partitiong. target_rows is an optional list of
+        rows to transition.
         """
         if target_rows is None:
-            target_rows = [i for i in xrange(self.N)]
+            target_rows = xrange(self.N)
+        for _ in xrange(N):
+            for rowid in target_rows:
+                self.transition_row(rowid)
 
-        for rowid in target_rows:
-            # Get current assignment z_a.
-            z_a = self.Zr[rowid]
-            is_singleton = (self.Nk[z_a] == 1)
+    def transition_row(self, rowid):
+        """Trasition a single row"""
+        # Get current assignment z_a.
+        z_a = self.Zr[rowid]
+        is_singleton = (self.Nk[z_a] == 1)
 
-            # Get CRP probabilities.
-            p_crp = list(self.Nk)
-            if is_singleton:
-                # If z_a is singleton do not consider a new singleton.
-                p_crp[z_a] = self.alpha
-            else:
-                # Decrement current cluster count.
-                p_crp[z_a] -= 1
-                # Append to the CRP an alpha for singleton.
-                p_crp.append(self.alpha)
+        # Get CRP probabilities.
+        p_crp = list(self.Nk)
+        if is_singleton:
+            # If z_a is singleton do not consider a new singleton.
+            p_crp[z_a] = self.alpha
+        else:
+            # Decrement current cluster count.
+            p_crp[z_a] -= 1
+            # Append to the CRP an alpha for singleton.
+            p_crp.append(self.alpha)
 
-            # Log-normalize p_crp.
-            p_crp = np.log(np.array(p_crp))
-            p_crp = gu.log_normalize(p_crp)
+        # Log-normalize p_crp.
+        p_crp = np.log(np.array(p_crp))
+        p_crp = gu.log_normalize(p_crp)
 
-            # Calculate probability of rowid in each cluster k \in K.
-            p_cluster = []
-            for k in xrange(len(self.Nk)):
-                # If k == z_a then predictive_logp will remove rowid's
-                # suffstats and reuse parameters.
-                lp = self.row_predictive_logp(rowid, k) + p_crp[k]
-                p_cluster.append(lp)
+        # Calculate probability of rowid in each cluster k \in K.
+        p_cluster = []
+        for k in xrange(len(self.Nk)):
+            # If k == z_a then predictive_logp will remove rowid's
+            # suffstats and reuse parameters.
+            lp = self.row_predictive_logp(rowid, k) + p_crp[k]
+            p_cluster.append(lp)
 
-            # Propose singleton.
-            if not is_singleton:
-                # Using len(self.Nk) will resample parameters.
-                lp = self.row_predictive_logp(rowid, len(self.Nk)) + \
-                    p_crp[-1]
-                p_cluster.append(lp)
+        # Propose singleton.
+        if not is_singleton:
+            # Using len(self.Nk) will resample parameters.
+            lp = self.row_predictive_logp(rowid, len(self.Nk)) + \
+                p_crp[-1]
+            p_cluster.append(lp)
 
-            # Draw new assignment, z_b
-            z_b = gu.log_pflip(p_cluster)
+        # Draw new assignment, z_b
+        z_b = gu.log_pflip(p_cluster)
 
-            # Migrate the row.
-            self._move_row_to_cluster(rowid, z_a, z_b)
+        # Migrate the row.
+        self._move_row_to_cluster(rowid, z_a, z_b)
 
         # self._check_partitions()
 
