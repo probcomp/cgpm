@@ -52,14 +52,11 @@ class View(object):
         # Dataset.
         self.X = X
         self.N = len(X)
-        for dim in dims:
-            assert self.N == dim.N
 
         # Generate alpha.
         self.alpha_grid = gu.log_linspace(1./self.N, self.N, n_grid)
         if alpha is None:
             alpha = np.random.choice(self.alpha_grid)
-        assert alpha > 0.
         self.alpha = alpha
 
         # Generate row partition.
@@ -67,8 +64,6 @@ class View(object):
             Zr, Nk, _ = gu.crp_gen(self.N, alpha)
         else:
             Nk = list(np.bincount(Zr))
-        assert len(Zr) == self.N
-        assert sum(Nk) == self.N
         self.Zr = np.array(Zr)
         self.Nk = Nk
 
@@ -77,6 +72,8 @@ class View(object):
         for dim in dims:
             dim.reassign(X[:,dim.index], Zr)
             self.dims[dim.index] = dim
+
+        self._check_partitions()
 
     def transition(self, N):
         """Run all the transitions N times."""
@@ -163,6 +160,8 @@ class View(object):
             # Migrate the row.
             self._move_row_to_cluster(rowid, z_a, z_b)
 
+        # self._check_partitions()
+
     def row_predictive_logp(self, rowid, k):
         """Get the predictive log_p of rowid being in cluster k. If k
         is existing (less than len(self.Nk)) then the predictive is taken.
@@ -223,3 +222,11 @@ class View(object):
             for dim in self.dims.values():
                 dim.destroy_cluster(move_from)
             del self.Nk[move_from]
+
+    def _check_partitions(self):
+        # For debugging only.
+        assert self.alpha > 0.
+        for dim in self.dims:
+            assert self.N == dim.N
+        assert len(self.Zr) == self.N
+        assert sum(self.Nk) == self.N
