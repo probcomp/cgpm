@@ -65,7 +65,8 @@ class State(object):
             partition is sampled.
         Zrcv : list, optional
             Assignment of rows to clusters in each view, where Zrcv[k] is
-            the Zr for View k. If not specified a random partition is sampled.
+            the Zr for View k. If not specified a random partition is
+            sampled. If specified, then Zv must also be specified.
         seed : int
             Seed the random number generator.
         """
@@ -89,19 +90,13 @@ class State(object):
             self.dims.append(
                 Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
                 hypers=dim_hypers, distargs=distargs[col]))
-        assert len(self.dims) == self.n_cols
 
         # Initialize CRP alpha.
         self.alpha_grid = gu.log_linspace(1./self.n_cols, self.n_cols,
             self.n_grid)
         self.alpha = np.random.choice(self.alpha_grid)
 
-        # Construct the view partition.
-        if Zrcv is not None:
-            assert Zv is not None
-            assert len(Zv) == self.n_cols
-            assert len(Zrcv) == max(Zv)+1
-            assert len(Zrcv[0]) == self.n_rows
+        # Construct view partition.
         if Zv is None:
             Zv, Nv, V = gu.crp_gen(self.n_cols, self.alpha)
         else:
@@ -112,13 +107,12 @@ class State(object):
 
         # Construct views.
         self.views = []
-        for v in range(V):
-            # Obtain dimensions in view v.
+        for v in xrange(V):
             dims = [self.dims[i] for i in xrange(self.n_cols) if Zv[i] == v]
-            # Obtain initial row partition.
             Zr = None if Zrcv is None else np.asarray(Zrcv[v])
-            self.views.append(
-                View(self.X, dims, Zr=Zr, n_grid=n_grid))
+            self.views.append(View(self.X, dims, Zr=Zr, n_grid=n_grid))
+
+        self._check_partitions()
 
     def transition(self, N=1, kernel_list=None, target_rows=None,
             target_cols=None, m=1, do_plot=False):
@@ -321,22 +315,26 @@ class State(object):
 
     def _check_partitions(self):
         # For debugging only.
-        # Nv should account for each column
+        assert self.alpha > 0.
+        # Zv and dims should match n_cols.
+        assert len(self.Zv) == self.n_cols
+        assert len(self.dims) == self.n_cols
+        # Nv should account for each column.
         assert sum(self.Nv) == self.n_cols
-        # Nv should have an entry for each view
-        assert max(self.Zv) == len(self.Nv)-1
-        for v in range(len(self.Nv)):
-            # check that the number of dims actually assigned to the view
-            # matches the count in Nv
+        # Nv should have an entry for each view.
+        assert len(self.Nv) == max(self.Zv)+1
+        for v in xrange(len(self.Nv)):
+            # Check that the number of dims actually assigned to the view
+            # matches the count in Nv.
             assert len(self.views[v].dims) == self.Nv[v]
             Nk = self.views[v].Nk
             assert sum(Nk) == self.n_rows
             assert max(self.views[v].Zr) == len(Nk)-1
             for dim in self.views[v].dims.values():
-                # make sure the number of clusters in each dim in the view is the same
-                # and is the same as described in the view (K, Nk)
+                # Ensure number of clusters in each dim in views[v]
+                # is the same and as described in the view (K, Nk).
                 assert len(dim.clusters) == len(Nk)
-                for k in range(len(dim.clusters)):
+                for k in xrange(len(dim.clusters)):
                     assert dim.clusters[k].N == Nk[k]
 
     def get_metadata(self):
