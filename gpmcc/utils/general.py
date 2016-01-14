@@ -182,27 +182,6 @@ def kl_array(support, log_true, log_inferred, is_discrete):
         kld = np.sum(intervals*fs)
     return kld
 
-def bincount(X, bins=None):
-    """Returns the frequency of each entry in bins of X. If bins is not
-    specified, then bins is [0,1,..,max(X)].
-    """
-    Y = np.array(X, dtype=int)
-    if bins == None:
-        minval = np.min(Y)
-        maxval = np.max(Y)
-        bins = range(minval, maxval+1)
-
-    counts = [0]*len(bins)
-
-    for y in Y:
-        bin_index = bins.index(y)
-        counts[bin_index] += 1
-
-    assert len(counts) == len(bins)
-    assert sum(counts) == len(Y)
-
-    return counts
-
 def csv_to_list(filename):
     """Reads the csv filename into a list of lists."""
     T = []

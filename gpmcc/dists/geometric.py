@@ -118,11 +118,11 @@ class Geometric(DistributionGpm):
         # Set up x axis.
         x_max = max(X)
         Y = range(int(x_max)+1)
+        X_hist = [np.sum(X==i) / float(len(X)) for i in Y]
+        ax.bar(Y, X_hist, color='gray', edgecolor='none')
         # Compute weighted pdfs
         K = len(clusters)
-        pdf = np.zeros((K,len(Y)))
-        toplt = np.array(gu.bincount(X,Y))/float(len(X))
-        ax.bar(Y, toplt, color='gray', edgecolor='none')
+        pdf = np.zeros((K, len(Y)))
         W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
         for k in xrange(K):
             pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)

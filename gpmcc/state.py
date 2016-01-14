@@ -108,7 +108,7 @@ class State(object):
         if Zv is None:
             Zv, Nv, V = gu.crp_gen(self.n_cols, self.alpha)
         else:
-            Nv = gu.bincount(Zv)
+            Nv = list(np.bincount(Zv))
             V = len(Nv)
         self.Zv = np.array(Zv)
         self.Nv = Nv
