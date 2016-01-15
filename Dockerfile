@@ -1,3 +1,6 @@
+# Dockerfile that builds, installs, and tests gpmcc. It is for development
+# only; users should use the python package.
+
 FROM ubuntu
 RUN apt-get update -qq
 

@@ -42,3 +42,7 @@ from struct import pack
 import numpy as np
 from scipy.stats import geom, norm, laplace
 ... etc ...
+
+* Testing
+
+Before pushing any changes, run check.sh.
