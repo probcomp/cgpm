@@ -26,67 +26,42 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from gpmccc import state
-from gpmcc.utils import general as gu
-
+import matplotlib.pyplot as plt
 import numpy as np
-import pylab
+import seaborn as sns
 
-n_rows = 300
-n_states = 32
+from gpmcc.engine import Engine
+from gpmcc.utils import config as cu
 
-distargs = [ {'K':n_rows} ]
-distargs.extend( [None]*8 )
-cctypes = ['multinomial']
-cctypes.extend(['normal']*8)
-column_names = ['id']
-column_names.extend( ['one cluster']*4 )
-column_names.extend( ['four cluster']*4 )
+np.random.seed(0)
 
-np.random.seed(10)
+N_ROWS = 300
+N_STATES = 12
+N_ITERS = 50
 
-# id col
-X = [np.array([i for i in range(n_rows)], dtype=int)]
+cctypes = ['categorical(k={})'.format(N_ROWS)] + ['normal']*8
+cctypes, distargs = cu.parse_distargs(cctypes)
+column_names = ['id'] + ['one cluster']*4 + ['four cluster']*4
 
-# four cols of one cluster
-for i in range(4):
-    X.append( np.random.randn(n_rows) )
+# id column.
+X = np.zeros((N_ROWS, 9))
+X[:,0] = np.arange(N_ROWS)
 
-Z = []
-for i in range(n_rows):
-    Z.append(np.random.randrange(4))
+# Four columns of one cluster from the standard normal.
+X[:,1:5] = np.random.randn(N_ROWS, 4)
 
-# four cols of
-for _ in range(4):
-    x_clustered = []
-    for i in range(n_rows):
-        x_clustered.append( np.random.randn()+Z[i]*4 )
+# Four columns of four clusters with unit variance and means \in {0,1,2,3}.
+Z = np.random.randint(4, size=(N_ROWS))
+X[:,5:] = 4*np.reshape(np.repeat(Z,4), (len(Z),4)) + np.random.randn(N_ROWS, 4)
 
-    X.append(np.array( x_clustered))
+# Inference.
+engine = Engine(X, cctypes, distargs, num_states=N_STATES, initialize=True)
+engine.initialize()
+engine.transition(N=N_ITERS)
 
-states = []
-for s in range(n_states):
-    states.append(state.State(X, cctypes, distargs,
-        seed=np.random.randrange(200000)))
-
-num_iters = 200
-i = 0
-for state in states:
-    i += 1
-    state.transition(N=num_iters)
-    print "state %i of %i" % (i, n_states)
-
-Zvs = []
-for state in states:
-    Zvs.append(state.Zv.tolist())
-
-for Zv in Zvs:
-    print Zv
-
-fig = pylab.figure(num=None, figsize=(8,6),
-            facecolor='w', edgecolor='k',frameon=False,
-            tight_layout=True)
-
-gu.generate_Z_matrix(Zvs, column_names)
-
-# pylab.show()
+# Dependence probability.
+D = engine.dependence_probability_pairwise()
+zmat = sns.clustermap(D, yticklabels=column_names, xticklabels=column_names)
+plt.setp(zmat.ax_heatmap.get_yticklabels(), rotation=0)
+plt.setp(zmat.ax_heatmap.get_xticklabels(), rotation=90)
+plt.show()
