@@ -26,12 +26,14 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import itertools
 import multiprocessing
+import pickle
+
+import numpy as np
 
 import gpmcc.utils.plots as pu
-import gpmcc.utils.general as gu
 import gpmcc.utils.validation as vu
-
 from gpmcc.state import State
 
 _transition_kernels = ['column_z','state_alpha', 'row_z', 'column_hypers',
@@ -47,33 +49,27 @@ def _intialize((X, cctypes, distargs, seed)):
     return chain.get_metadata()
 
 class Engine(object):
-    """Multiprocessing engine for StateGPMs running in parallel."""
+    """Multiprocessing engine for a stochastic ensemble of parallel StateGPMs."""
 
-    def __init__(self):
-        self.metadata = None
-
-    def initialize(self, X, cctypes, distargs, num_states=1,
-            col_names=None, seeds=None, multithread=True):
-        """Initialize `num_states` States."""
+    def __init__(self, X, cctypes, distargs, num_states=1, seeds=None,
+            metadatas=None, initialize=False):
+        """If initialize is True metadatas will be resampled!"""
         vu.validate_data(X)
         vu.validate_cctypes(cctypes)
-
         self.X = X
         self.cctypes = cctypes
+        self.distargs = distargs
         self.num_states = num_states
-        self.n_rows = len(X[0])
-        self.n_cols = len(X)
+        self.seeds = range(num_states) if seeds is None else seeds
+        self.metadata = metadatas
+        if initialize:
+            self.initialize()
 
-        if col_names is None:
-            col_names = [ "col%i" % i for i in xrange(len(X))]
-        self.col_names = col_names
-
-        if seeds is None:
-            seeds = range(num_states)
-        self.seeds = seeds
-
+    def initialize(self, multithread=True):
+        """Reinitializes all the states from the prior. """
         _, mapper = self._get_mapper(multithread=multithread)
-        args = ((X, cctypes, distargs, seed) for seed in seeds)
+        args = ((self.X, self.cctypes, self.distargs, seed) for
+                    seed in self.seeds)
         self.metadata = mapper(_intialize, args)
 
     def get_state(self, index):
@@ -118,3 +114,28 @@ class Engine(object):
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
             mapper = pool.map
         return pool, mapper
+
+    def get_metadata(self):
+        metadata = dict()
+        metadata['num_states'] = self.num_states
+        metadata['seeds'] = self.seeds
+        metadata['metadatas'] = self.metadata
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata):
+        num_states = metadata['num_states']
+        seeds = metadata['seeds']
+        metadatas = metadata['metadatas']
+        return cls(metadatas[0]['X'], metadatas[0]['cctypes'],
+            metadatas[0]['distargs'], num_states=num_states, seeds=seeds,
+            metadatas=metadatas)
+
+    def to_pickle(self, fileptr):
+        metadata = self.get_metadata()
+        pickle.dump(metadata, fileptr)
+
+    @classmethod
+    def from_pickle(cls, fileptr):
+        metadata = pickle.load(fileptr)
+        return cls.from_metadata(metadata)
