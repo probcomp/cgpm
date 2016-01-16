@@ -40,8 +40,8 @@ class TestBinomial(unittest.TestCase):
         # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
         data = np.transpose(np.array([[0] * DATA_NUM_0 + [1] * DATA_NUM_1]))
         # Run a single chain for a few iterations.
-        engine = gpmcc.engine.Engine()
-        engine.initialize(data, ['categorical'], [{'k': 2}])
+        engine = gpmcc.engine.Engine(
+            data, ['categorical'], [{'k': 2}], initialize=True)
         engine.transition(NUM_ITER)
         state = engine.get_state(0)
         # Simulate from the current state and compute the proportion of ones.

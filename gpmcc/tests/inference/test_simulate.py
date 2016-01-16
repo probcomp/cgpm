@@ -88,9 +88,8 @@ def test_simulate_indicator():
         data[i, 0] = np.random.normal(loc=mus[idx], scale=sigmas[idx])
 
     # Create an engine.
-    state = Engine()
-    state.initialize(data, ['normal', 'categorical'], [None, {'k':6}],
-        num_states=1)
+    state = Engine(data, ['normal', 'categorical'], [None, {'k':6}],
+        num_states=1, initialize=True)
     state.transition(N=150)
     model = state.get_state(0)
 

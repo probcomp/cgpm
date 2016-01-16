@@ -57,14 +57,14 @@ def run_test(args):
     k = 0
     for shape in shapes:
         print "Shape: %s" % shape
-        T_o = gen_function[shape](n_rows)
+        T_o = np.asarray(gen_function[shape](n_rows))
         T_i = []
 
-        engine = Engine()
-        engine.initialize(T_o, cctypes, distargs, num_states=n_chains)
+        engine = Engine(T_o.T, cctypes, distargs, num_states=n_chains,
+            initialize=True)
         engine.transition(N=n_iters)
 
-        for chain in range(n_chains):
+        for chain in xrange(n_chains):
             state = engine.get_state(chain)
             print "chain %i of %i" % (chain+1, n_chains)
             T_i.extend(su.simulate(state, -1, [0,1], N=n_per_chain))
