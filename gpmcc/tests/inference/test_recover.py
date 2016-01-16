@@ -52,7 +52,7 @@ def run_test(args):
 
     n_per_chain = int(float(n_rows)/n_chains)
 
-    fig, axes = plt.subplots(nrows=2,ncols=4)
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(16,9))
     axes = axes.ravel()
     k = 0
     for shape in shapes:
@@ -88,8 +88,9 @@ def run_test(args):
         k += 1
 
     print "Done."
-    plt.show()
+    return fig
 
 if __name__ == "__main__":
     args = dict(num_rows=1000, num_iters=5000, num_chains=6)
-    run_test(args)
+    fig = run_test(args)
+    fig.savefig('recover.png')
