@@ -84,20 +84,29 @@ class Engine(object):
             self.metadata[i]) for i in xrange(self.num_states)]
         self.metadata = mapper(_transition, args)
 
-    def predictive_probabiilty(self, query, constraints=None):
+    def logpdf(self, query, constraints=None):
         """Predictive probability."""
 
-    def predictive_sample(self, query, constraints=None):
+    def simulate(self, query, constraints=None):
         """Predictive sample."""
 
     def impute(self, query):
         """Impute data."""
 
-    def plot_Z(self):
-        """Plot data in different ways."""
+    def dependence_probability(self, col0, col1):
+        """Compute dependence probability between `col0, col1` as float."""
         Zvs = [metadata['Zv'] for metadata in self.metadata]
-        col_names = list(self.col_names)
-        pu.generate_Z_matrix(Zvs, col_names)
+        counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
+        return sum(counts) / float(self.num_states)
+
+    def dependence_probability_pairwise(self):
+        """Compute dependence probability between all pairs as pd.DataFrame."""
+        _, n_cols = self.metadata[0]['X'].shape
+        D = np.eye(n_cols)
+        for i,j in itertools.combinations(range(n_cols), 2):
+            d = self.dependence_probability(i, j)
+            D[i,j] = D[j,i] = d
+        return D
 
     def incorporate_dim(self, X_f, cctype, distargs=None, m=1,
             col_name=None):

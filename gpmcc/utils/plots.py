@@ -26,13 +26,8 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import numpy
-import itertools
-import scipy
-import pylab
-import scipy.cluster.hierarchy as sch
-
-_colors = ["black", "red", "blue", "green", "yellow", "orange", "purple", "pink"]
+_colors = ['black', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
+    'pink']
 
 _plot_layout = {
     1: (1,1),
@@ -62,57 +57,10 @@ _plot_layout = {
 }
 
 def get_state_plot_layout(n_cols):
-    pl = _plot_layout[n_cols]
-    plots_x = pl[0]
-    plots_y = pl[1]
-
-    plot_inches_x = 13/6.0 * plots_x
-    plot_inches_y = 6.0 * plots_y
-
-    ret = {
-        'plots_x': plots_x,
-        'plots_y': plots_y,
-        'plot_inches_x': plot_inches_x,
-        'plot_inches_y': plot_inches_y,
-        'border_color': _colors
-        }
-    return ret
-
-def generate_Z_matrix(Zvs, col_names):
-    n_cols = len(Zvs[0])
-    D = numpy.eye(n_cols)*float(len(Zvs))
-    combs = itertools.combinations( range(n_cols), 2 )
-    for idx in combs:
-        i, j = idx
-        for Zv in Zvs:
-            if Zv[i] == Zv[j]:
-                D[i,j] += 1.0
-                D[j,i] += 1.0
-
-    D /= float(len(Zvs))
-    x_labels = [i for i in range(n_cols)]
-
-    Y = sch.linkage(D, method='centroid')
-    Z = sch.dendrogram(Y, no_plot=True)
-
-    ax = pylab.gca()
-    D = D[Z['leaves'],:]
-    D = D[:,Z['leaves']]
-
-    ticknames = [col_names[z] for z in Z['leaves']]
-
-    im = ax.matshow(D, aspect='auto', cmap='YlGnBu', vmin=0.0, vmax=1.0)
-    # im = ax.matshow(D, aspect='auto', cmap='cool')
-    ax.set_xticks([i for i in range(len(Z['leaves']))])
-    ax.set_yticks([i for i in range(len(Z['leaves']))])
-    ax.set_xticklabels(ticknames)
-    ax.set_yticklabels(ticknames)
-
-    pylab.xticks(rotation=90, fontsize=8)
-    pylab.yticks(fontsize=8)
-
-    pylab.colorbar(im)
-
-    pylab.show()
-
-    return D
+    layout = dict()
+    layout['plots_x'] = _plot_layout[n_cols][0]
+    layout['plots_y'] = _plot_layout[n_cols][1]
+    layout['plot_inches_x'] = 13/6. * layout['plots_x']
+    layout['plot_inches_y'] = 6. * layout['plots_y']
+    layout['border_color'] = _colors
+    return layout
