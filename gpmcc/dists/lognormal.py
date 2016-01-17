@@ -105,7 +105,7 @@ class Lognormal(DistributionGpm):
         rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_log_x,
             self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
-        x = np.random.norm(loc=mu, scale=rho**-.5)
+        x = np.random.normal(loc=mu, scale=rho**-.5)
         return np.exp(x)
 
     def transition_params(self):
