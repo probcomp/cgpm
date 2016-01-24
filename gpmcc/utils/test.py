@@ -70,8 +70,8 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
         An n_cols length list of integers, where Zv[i] is the view assignment
         of column i.
     Zc : list<list>
-        An n_cols length list of lists, where Zc[i][r] is the cluster assignment
-        of row r in column i.
+        An n_view length list of lists, where Zc[v][r] is the cluster assignment
+        of row r in view v.
 
     Example
     -------
@@ -259,7 +259,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
         Zc.append(Z)
 
     assert len(Zc) == n_views
-    assert all(len(Zc[i]) == n_rows for i in xrange(n_cols))
+    assert len(Zc[0]) == n_rows
 
     return Zv, Zc
 
