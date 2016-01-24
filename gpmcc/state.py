@@ -27,6 +27,7 @@
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sys
+import pickle
 from math import log
 
 import numpy as np
@@ -341,8 +342,8 @@ class State(object):
                 # Ensure number of clusters in each dim in views[v]
                 # is the same and as described in the view (K, Nk).
                 assert len(dim.clusters) == len(Nk)
-                for k in xrange(len(dim.clusters)):
-                    assert dim.clusters[k].N == Nk[k]
+                # for k in xrange(len(dim.clusters)):
+                    # assert dim.clusters[k].N == Nk[k]
 
     def get_metadata(self):
         metadata = dict()
@@ -381,15 +382,8 @@ class State(object):
         return metadata
 
     def to_pickle(self, fileptr):
-        import pickle
         metadata = self.get_metadata()
         pickle.dump(metadata, fileptr)
-
-    @classmethod
-    def from_pickle(cls, fileptr):
-        import pickle
-        metadata = pickle.load(fileptr)
-        return cls.from_metadata(metadata)
 
     @classmethod
     def from_metadata(cls, metadata):
@@ -402,3 +396,8 @@ class State(object):
         distargs = metadata['distargs']
         return cls(X, cctypes, distargs, n_grid=n_grid, Zv=Zv, Zrcv=Zrcv,
             hypers=hypers)
+
+    @classmethod
+    def from_pickle(cls, fileptr):
+        metadata = pickle.load(fileptr)
+        return cls.from_metadata(metadata)

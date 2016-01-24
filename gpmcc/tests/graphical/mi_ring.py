@@ -27,54 +27,46 @@
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import numpy as np
-import pylab
+import matplotlib.pyplot as plt
 
-import gpmcc.utils.inference as iu
 from gpmcc import state
+from gpmcc.utils import inference as iu
+from gpmcc.utils import test as tu
 
-rho_list = [0.0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0]
+W = [.9, .75, .5, .25, .1]
 n_data_sets = 3
 n_samples = 5
-N = 50
-mu = np.zeros(2)
-i = 0
-distargs = [None,None]
 
-# for kernel in range(2):
-for kernel in range(2):
-    L = np.zeros((n_data_sets*n_samples, len(rho_list)))
+N = 250
+i = 0
+
+for kernel in xrange(2):
+    MI = np.zeros((n_data_sets*n_samples, len(W)))
     c = 0
-    for rho in rho_list:
+    for w in W:
         r = 0
-        for ds in range(n_data_sets):
-            # seed control so that data is always the same
+        for ds in xrange(n_data_sets):
             np.random.seed(r+ds)
-            sigma = np.array([[1,rho],[rho,1]])
-            X = np.random.multivariate_normal(mu,sigma,N)
+            X = np.asarray(tu.gen_ring(N, width=w)).T + 100
+            print X
             for _ in range(n_samples):
-                S = state.State([X[:,0], X[:,1]], ['normal']*2, Zv=[0,0],
-                    distargs=distargs)
-                S.transition(N=100)
-                MI = iu.mutual_information(S, 0, 1)
-                linfoot = iu.mutual_information_to_linfoot(MI)
-                # del S
-                L[r,c] = linfoot
-                print \
-                    "rho: %1.2f, MI: %1.6f, Linfoot: %1.6f" %(rho, MI, linfoot)
-                print \
-                    "%i of %i" % (i+1, len(rho_list)*n_data_sets*n_samples*2)
+                S = state.State(X, ['normal','normal'], distargs=[None, None])
+                S.transition(N=200)
+                mi = iu.mutual_information(S, 0, 1)
+                MI[r,c] = mi
+                print 'w: %1.2f, MI: %1.6f' % (w, mi)
+                print '%i of %i' % (i+1, len(W)*n_data_sets*n_samples*2)
                 del S
                 i += 1
                 r += 1
         c += 1
+    w_labs = [str(w) for w in W]
+    ax = plt.subplot(1,2,kernel+1)
+    plt.boxplot(MI)
+    plt.ylim([0,1])
+    plt.ylabel('MI')
+    plt.xlabel('Ring Width')
+    plt.title('Kernel %i' % kernel)
+    ax.set_xticklabels(w_labs)
 
-    rho_labs = [str(rho) for rho in rho_list]
-    ax = pylab.subplot(1,2,kernel+1)
-    pylab.boxplot(L)
-    pylab.ylim([0,1])
-    pylab.ylabel('Linfoot')
-    pylab.xlabel('rho')
-    pylab.title("kernel %i" % kernel)
-    ax.set_xticklabels(rho_labs)
-
-pylab.show()
+plt.show()

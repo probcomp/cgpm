@@ -26,49 +26,42 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import math
-
+import matplotlib.pyplot as plt
 import numpy as np
-from scipy.misc import logsumexp
+import seaborn as sns
 
-import gpmcc.utils.sampling as su
-import gpmcc.utils.general as utils
+from gpmcc.engine import Engine
+from gpmcc.utils import config as cu
 
-def mutual_information_to_linfoot(MI):
-    return (1.-math.exp(-2.*MI))**.5
+np.random.seed(0)
 
-def mutual_information(state, col1, col2, N=1000):
-    if state.Zv[col1] != state.Zv[col2]:
-        return 0.
+N_ROWS = 300
+N_STATES = 12
+N_ITERS = 50
 
-    log_crp = su.compute_cluster_crp_logps(state, state.Zv[col1])
-    K = len(log_crp)
-    clusters_col1 = su.create_clusters(state, col1)
-    clusters_col2 = su.create_clusters(state, col2)
+cctypes = ['categorical(k={})'.format(N_ROWS)] + ['normal']*8
+cctypes, distargs = cu.parse_distargs(cctypes)
+column_names = ['id'] + ['one cluster']*4 + ['four cluster']*4
 
-    MI = 0
-    Px = np.zeros(K)
-    Py = np.zeros(K)
-    Pxy = np.zeros(K)
+# id column.
+X = np.zeros((N_ROWS, 9))
+X[:,0] = np.arange(N_ROWS)
 
-    for _ in xrange(N):
-        c = utils.log_pflip(log_crp)
-        x = clusters_col1[c].simulate()
-        y = clusters_col2[c].simulate()
-        for k in range(K):
-            Px[k] = clusters_col1[k].predictive_logp(x)
-            Py[k] = clusters_col2[k].predictive_logp(y)
-            Pxy[k] = Px[k] + Py[k] + log_crp[k]
-            Px[k] += log_crp[k]
-            Py[k] += log_crp[k]
-        PX = logsumexp(Px)
-        PY = logsumexp(Py)
-        PXY = logsumexp(Pxy)
-        MI += (PXY - PX - PY)
+# Four columns of one cluster from the standard normal.
+X[:,1:5] = np.random.randn(N_ROWS, 4)
 
-    MI /= float(N)
-    if MI < 0.:
-        print 'mutual_information: MI < 0 (%f)' % MI
-        MI = 0.
+# Four columns of four clusters with unit variance and means \in {0,1,2,3}.
+Z = np.random.randint(4, size=(N_ROWS))
+X[:,5:] = 4*np.reshape(np.repeat(Z,4), (len(Z),4)) + np.random.randn(N_ROWS, 4)
 
-    return MI
+# Inference.
+engine = Engine(X, cctypes, distargs, num_states=N_STATES, initialize=True)
+engine.initialize()
+engine.transition(N=N_ITERS)
+
+# Dependence probability.
+D = engine.dependence_probability_pairwise()
+zmat = sns.clustermap(D, yticklabels=column_names, xticklabels=column_names)
+plt.setp(zmat.ax_heatmap.get_yticklabels(), rotation=0)
+plt.setp(zmat.ax_heatmap.get_xticklabels(), rotation=90)
+plt.show()

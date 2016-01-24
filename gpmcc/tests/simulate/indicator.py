@@ -26,51 +26,23 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+"""
+This graphical test trains a gpmcc state on a bivariate population [X, Z] where
+X is normally distributed data and Z is a (transformed) latent cluster
+assignment for each row. We then simulate from the joint posterior distribution
+of gpmcc, and compare the simulations to the ingested data at different
+subpopulations of X (which are identified by the Z).
+"""
+
 import math
 import numpy as np
 import pylab
 import matplotlib.pyplot as plt
 
 import gpmcc.utils.sampling as su
+import gpmcc.utils.sampling as tu
 import gpmcc.utils.general as gu
 from gpmcc.engine import Engine
-
-def test_predictive_draw(state, N=None):
-    if state.n_cols != 2:
-        print "State must have exactly 2 columns."
-        return
-
-    if N is None:
-        N = state.n_rows
-
-    view_1 = state.Zv[0]
-    view_2 = state.Zv[1]
-
-    if view_1 != view_2:
-        print "Columns not in same view."
-        return
-
-    log_crp = su.get_cluster_crps(state, 0)
-    K = len(log_crp)
-
-    X = np.zeros(N)
-    Y = np.zeros(N)
-
-    clusters_col_1 = su.create_cluster_set(state, 0)
-    clusters_col_2 = su.create_cluster_set(state, 1)
-
-    for i in xrange(N):
-        c = gu.log_pflip(log_crp)
-        x = clusters_col_1[c].predictive_draw()
-        y = clusters_col_2[c].predictive_draw()
-
-        X[i] = x
-        Y[i] = y
-
-    pylab.scatter(X,Y, color='red', label='inferred')
-    pylab.scatter(state.dims[0].X, state.dims[1].X, color='blue',
-        label='actual')
-    pylab.show()
 
 def test_simulate_indicator():
     # Entropy.
@@ -88,9 +60,8 @@ def test_simulate_indicator():
         data[i, 0] = np.random.normal(loc=mus[idx], scale=sigmas[idx])
 
     # Create an engine.
-    state = Engine()
-    state.initialize(data, ['normal', 'categorical'], [None, {'k':6}],
-        num_states=1)
+    state = Engine(data, ['normal', 'categorical'], [None, {'k':6}],
+        num_states=1, initialize=True)
     state.transition(N=150)
     model = state.get_state(0)
 
@@ -110,8 +81,4 @@ def test_simulate_indicator():
     ax.set_xlabel('Indicator')
     ax.set_ylabel('x')
     ax.grid()
-
-    # Simulate from the conditional distribution (x|i=4)
-    samples = su.simulate(model, -1, [0], evidence=[(1,4)], N=100)
-
-    # XXX TODO PLOT.
+    plt.show()

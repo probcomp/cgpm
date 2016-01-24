@@ -52,19 +52,19 @@ def run_test(args):
 
     n_per_chain = int(float(n_rows)/n_chains)
 
-    fig, axes = plt.subplots(nrows=2,ncols=4)
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(16,9))
     axes = axes.ravel()
     k = 0
     for shape in shapes:
         print "Shape: %s" % shape
-        T_o = gen_function[shape](n_rows)
+        T_o = np.asarray(gen_function[shape](n_rows))
         T_i = []
 
-        engine = Engine()
-        engine.initialize(T_o, cctypes, distargs, num_states=n_chains)
+        engine = Engine(T_o.T, cctypes, distargs, num_states=n_chains,
+            initialize=True)
         engine.transition(N=n_iters)
 
-        for chain in range(n_chains):
+        for chain in xrange(n_chains):
             state = engine.get_state(chain)
             print "chain %i of %i" % (chain+1, n_chains)
             T_i.extend(su.simulate(state, -1, [0,1], N=n_per_chain))
@@ -88,8 +88,9 @@ def run_test(args):
         k += 1
 
     print "Done."
-    plt.show()
+    return fig
 
 if __name__ == "__main__":
     args = dict(num_rows=1000, num_iters=5000, num_chains=6)
-    run_test(args)
+    fig = run_test(args)
+    fig.savefig('recover.png')
