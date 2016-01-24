@@ -26,19 +26,20 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import gpmcc.utils.sampling as su
-import gpmcc.utils.general as gu
-from scipy.integrate import trapz
 import math
 import numpy as np
-import pylab
+from scipy.integrate import trapz
+
+import gpmcc.utils.general as gu
+import gpmcc.utils.sampling as su
+import matplotlib.pyplot as plt
 
 def main(num_samples, burn, lag, w):
     alpha = 1.0
     N = 25
     Z, Nk, K = gu.crp_gen(N, alpha)
 
-    # crp with gamma prior
+    # CRP with gamma prior.
     log_prior_fun = lambda a: -a
     log_pdf_lambda = lambda a : gu.unorm_lcrp_post(a, N, K, log_prior_fun)
     proposal_fun = lambda : np.random.gamma(1.0, 1.0)
@@ -53,15 +54,15 @@ def main(num_samples, burn, lag, w):
     yvals = np.array([math.exp(log_pdf_lambda(x)) for x in xvals])
     yvals /= trapz(xvals, yvals)
 
-    ax = pylab.subplot(2,1,1)
-    pylab.hist(samples, 50, normed=True)
+    fig, ax = plt.subplots(2,1)
 
-    ax_1 = pylab.subplot(2,1,2)
-    pylab.hist(samples, 100, normed=True)
-    pylab.plot(xvals,-yvals, c='red', lw=3, alpha=.8)
-    pylab.xlim(ax.get_xlim())
-    pylab.ylim(ax.get_ylim())
-    pylab.show()
+    ax[0].hist(samples, 50, normed=True)
+
+    ax[1].hist(samples, 100, normed=True)
+    ax[1].plot(xvals,-yvals, c='red', lw=3, alpha=.8)
+    ax[1].set_xlim(ax[0].get_xlim())
+    ax[1].set_ylim(ax[0].get_ylim())
+    plt.show()
 
 if __name__ == '__main__':
     import argparse
