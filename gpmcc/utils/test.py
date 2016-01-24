@@ -37,56 +37,67 @@ import gpmcc.utils.general as gu
 import gpmcc.utils.config as cu
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
-        separation, return_dims=False):
+        separation):
     """Generates data, partitions, and Dim.
 
-     input arguments:
-     -- n_rows: number of rows (data points)
-     -- view_weights: A n_views length np array of floats that sum to one.
-     Weights for generating views.
-     -- cluster_weights: A n_views length list of n_cluster length np arrays
-     that sum to one. Weights for row tp cluster assignments.
-     -- cctypes: n_columns length list of string specifying the data types for
-     each column.
-     -- distargs: a list of distargs for each column (see documentation for
-     each data type for info on distargs)
-     -- separation: a n_cols length list of cluster separation values [0,1].
-     Larger C implies more separation
+     Parameters
+     ----------
+     n_rows : int
+        Mumber of rows (data points) to generate.
+     view_weights : np.ndarray
+        An n_views length list of floats that sum to one. The weights indicate
+        the proportion of columns in each view.
+    cluster_weights : np.ndarray
+        An n_views length list of n_cluster length lists that sum to one.
+        The weights indicate the proportion of rows in each cluster.
+     cctypes : list<str>
+        n_columns length list of string specifying the distribution types for
+        each column.
+     distargs : list
+        List of distargs for each column (see documentation for each data type
+            for info on distargs).
+     separation : list
+        An n_cols length list of values between [0,1], where seperation[i] is
+        the seperation of clusters in column i. Values closer to 1 imply higher
+        seperation.
 
-     optional_arguments:
-     -- return_dims: return the cc_dim objects for each column
+     Returns
+     -------
+     T : np.ndarray
+        An (n_cols, n_rows) matrix, where each row T[i,:] is the data for
+        column i (tranpose of a design matrix).
+    Zv : list
+        An n_cols length list of integers, where Zv[i] is the view assignment
+        of column i.
+    Zc : list<list>
+        An n_cols length list of lists, where Zc[i][r] is the cluster assignment
+        of row r in column i.
 
-     Returns:
-     -- T : np.ndarray(n_cols, n_rows), each row in T is a column of data,
-     (tranpose of a design matrix).
-
-     example:
-     >>> n_rows = 500
-     >>> view_weights = np.ones(1)
-     >>> cluster_weights = [np.ones(2)/2.0]
-     >>> cctypes = ['lognormal','normal','poisson','categorical(k=9)','vonmises',
-            'bernoulli']
-     >>> separation = [.9] * 6
-     >>> T, Zv, Zc, dims = tu.gen_data_table( n_rows, view_weights,
-             cluster_weights, dists, distargs, separation, return_dims=True)
+    Example
+    -------
+    >>> n_rows = 500
+    >>> view_weights = [.2, .8]
+    >>> cluster_weights = [[.3, .2, .5], [.4, .6]]
+    >>> cctypes = ['lognormal','normal','poisson','categorical',
+    ...     'vonmises', 'bernoulli']
+    >>> distargs = [None, None, None, {'k':8}, None, None]
+    >>> separation = [.8, .7, .9, .6, .7, .85]
+    >>> T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights,
+    ...     cluster_weights, dists, distargs, separation)
     """
     n_cols = len(cctypes)
     Zv, Zc = gen_partition_from_weights(n_rows, n_cols, view_weights,
         cluster_weights)
     T = np.zeros((n_cols, n_rows))
 
-    for col in range(n_cols):
+    for col in xrange(n_cols):
         cctype = cctypes[col]
         args = distargs[col]
         view = Zv[col]
         Tc = _gen_data[cctype](Zc[view], separation[col], distargs=args)
         T[col] = Tc
 
-    if return_dims:
-        dims = gen_dims_from_structure(T, Zv, Zc, cctypes, distargs)
-        return T, Zv, Zc, dims
-    else:
-        return T, Zv, Zc
+    return T, Zv, Zc
 
 def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
     n_cols = len(Zv)
@@ -239,7 +250,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
     Zc = []
     for v in xrange(n_views):
         n_clusters = len(clusters_weights[v])
-        Z = [c for c in range(n_clusters)]
+        Z = [c for c in xrange(n_clusters)]
         for _ in range(n_rows-n_clusters):
             c_weights = np.copy(clusters_weights[v])
             c = gu.pflip(c_weights)
@@ -248,7 +259,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
         Zc.append(Z)
 
     assert len(Zc) == n_views
-    assert len(Zc[0]) == n_rows
+    assert all(len(Zc[i]) == n_rows for i in xrange(n_cols))
 
     return Zv, Zc
 
