@@ -26,8 +26,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-_colors = ['black', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
-    'pink']
+from gpmcc.utils.config import colors
 
 _plot_layout = {
     1: (1,1),
@@ -62,5 +61,5 @@ def get_state_plot_layout(n_cols):
     layout['plots_y'] = _plot_layout[n_cols][1]
     layout['plot_inches_x'] = 13/6. * layout['plots_x']
     layout['plot_inches_y'] = 6. * layout['plots_y']
-    layout['border_color'] = _colors
+    layout['border_color'] = colors()
     return layout
