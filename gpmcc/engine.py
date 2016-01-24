@@ -32,8 +32,6 @@ import pickle
 
 import numpy as np
 
-import gpmcc.utils.plots as pu
-import gpmcc.utils.validation as vu
 from gpmcc.state import State
 
 _transition_kernels = ['column_z','state_alpha', 'row_z', 'column_hypers',
@@ -53,9 +51,7 @@ class Engine(object):
 
     def __init__(self, X, cctypes, distargs, num_states=1, seeds=None,
             metadatas=None, initialize=False):
-        """If initialize is True metadatas will be resampled!"""
-        vu.validate_data(X)
-        vu.validate_cctypes(cctypes)
+        """If initialize is True, all metadatas will be resampled!"""
         self.X = X
         self.cctypes = cctypes
         self.distargs = distargs
