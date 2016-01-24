@@ -57,7 +57,8 @@ class Dim(object):
             Unique identifier for this dim.
         Zr : list<int>, optional
             Partition of data X into clusters, where Zr[i] is the cluster
-            index of row X[i]. If None, intialized from CRP(1).
+            index of row X[i]. If None, intialized from CRP(1). The partition
+            is only for initialization and not stored internally.
         n_grid : int, optional
             Number of bins in the hyperparameter grid.
         """
@@ -68,7 +69,7 @@ class Dim(object):
         self.N = len(X)
 
         # Model type.
-        self.model = cu.distgpm_class(dist)
+        self.model = cu.cctype_class(dist)
         self.cctype = self.model.name()
         self.distargs = distargs if distargs is not None else {}
 
@@ -92,17 +93,9 @@ class Dim(object):
 
     def incorporate(self, x, k):
         """Record an observation x in clusters[k].
-
-        Parameters
-        ----------
-        x : float
-            Value to incorporate. Must be compatible with the
-            DistributionGpm support.
-        k : int
-            Cluster to incorporate x. If k < len(self.clusters)
-            then x will be incorporated to cluster k. If
-            k == len(self.clusters) a new cluster will be created.
-            If k > len(self.clusters) an error will be thrown.
+        If k < len(self.clusters) then x will be incorporated to cluster k.
+        If k == len(self.clusters) a new cluster will be created.
+        If k > len(self.clusters) an error will be thrown.
         """
         assert k <= len(self.clusters)
         self.N += 1
@@ -114,17 +107,8 @@ class Dim(object):
             self.clusters[k].incorporate(x)
 
     def unincorporate(self, x, k):
-        """Remove observation x from clusters[k].
-
-        Parameters
-        ----------
-        x : float
-            Value to incorporate. Must be compatible with DistributionGpm
-            support.
-        k : int
-            Cluster to remove x. k is strictly less than
-            len(self.clusters). Bad things will happen if x was not
-            incorporated into cluster k before calling this method.
+        """Remove observation x from clusters[k]. Bad things will happen if x
+        was not incorporated into cluster k before calling this method.
         """
         assert k < len(self.clusters)
         self.N -= 1
@@ -177,7 +161,8 @@ class Dim(object):
     def reassign(self, X, Zr):
         """Reassigns data X to new clusters according to partitioning Zr.
         Destroys and recreates all clusters. Uncollapsed parameters are
-        transitioned but hyperparameters are not transitioned.
+        transitioned but hyperparameters are not transitioned. The partition
+        is only for reassigning, and not stored internally.
         """
         assert len(X) == len(Zr)
         self.clusters = []

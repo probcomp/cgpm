@@ -39,7 +39,7 @@ from gpmcc.dists import exponential_uc
 from gpmcc.dists import geometric
 from gpmcc.dists import vonmises
 
-distgpm_class_lookup = {
+cctype_class_lookup = {
     'normal'            : normal.Normal,
     'normal_uc'         : normal_uc.NormalUC,
     'beta_uc'           : beta_uc.BetaUC,
@@ -55,23 +55,23 @@ distgpm_class_lookup = {
 
 def colors():
     """Returns a list of colors."""
-    return ["red", "blue", "green", "yellow", "orange", "purple", "brown",
-        "black"]
+    return ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'brown',
+        'black', 'pink']
 
-def distgpm_class(dist):
+def cctype_class(dist):
     """Return a class object for initializing a named DistributionGpm."""
-    return distgpm_class_lookup[dist]
+    return cctype_class_lookup[dist]
 
-def valid_distgpm(dist):
+def valid_cctype(dist):
     """Returns True if dist is a valid DistributionGpm."""
-    return dist in distgpm_class_lookup
+    return dist in cctype_class_lookup
 
-def all_distgpms():
+def all_cctypes():
     """Returns a list of all known DistributionGpm."""
-    return distgpm_class_lookup.keys()
+    return cctype_class_lookup.keys()
 
 def parse_distargs(dists):
-    """Parses a list of distgpms, where distargs are in parenthesis.
+    """Parses a list of cctypes, where distargs are in parenthesis.
     >>> Input ['normal','categorical(k=8)','beta_uc'].
     >>> Output ['normal','categorical','beta_uc'], [None, {'k':8}, None].
     """
