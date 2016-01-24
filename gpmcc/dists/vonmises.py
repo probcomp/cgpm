@@ -93,7 +93,8 @@ class Vonmises(DistributionGpm):
     def simulate(self):
         an, bn = Vonmises.posterior_hypers(self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
-        assert 0 <= bn <= 2*pi
+        # if not 0 <= bn <= 2*pi:
+        #     import ipdb; ipdb.set_trace()
         mu = np.random.vonmises(bn - pi, an) + pi
         x = np.random.vonmises(mu - pi, self.k) + pi
         assert 0 <= x <= 2*pi
@@ -222,7 +223,7 @@ class Vonmises(DistributionGpm):
         p_cos = k * sum_cos_x + a * cos(b)
         p_sin = k * sum_sin_x + a * sin(b)
         an = (p_cos**2.0 + p_sin**2.0)**.5
-        bn = -atan2(p_cos, p_sin) + pi/2
+        bn = - atan2(p_cos, p_sin) + pi/2
         return an, bn
 
     @staticmethod
