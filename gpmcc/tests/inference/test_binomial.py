@@ -45,8 +45,7 @@ class TestBinomial(unittest.TestCase):
         engine.transition(NUM_ITER)
         state = engine.get_state(0)
         # Simulate from the current state and compute the proportion of ones.
-        xx = gpmcc.utils.sampling.simulate_unobserved(
-            state, query=[0], N=NUM_SIM)
+        xx = state.simulate_unobserved([0], N=NUM_SIM)
         sum_b = np.sum(xx[:,0])
         observed_prob_of_1 = (float(sum_b) / float(NUM_SIM))
         true_prob_of_1 = float(DATA_NUM_1) / float(DATA_NUM_0 + DATA_NUM_1)

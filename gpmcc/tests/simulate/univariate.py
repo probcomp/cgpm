@@ -95,50 +95,50 @@ def discrete_two_sample_test(D, Q):
 
 def test_bernoulli():
     D, model= generate_gpmcc_state('bernoulli')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, samples
 
 def test_beta_uc():
     D, model= generate_gpmcc_state('beta_uc')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, samples
 
 def test_categorical():
     D, model= generate_gpmcc_state('categorical', distargs=indicator_distargs)
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
 def test_exponential():
     D, model= generate_gpmcc_state('exponential')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
 def test_exponential_uc():
     D, model= generate_gpmcc_state('exponential_uc')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
 def test_geometric():
     D, model= generate_gpmcc_state('geometric')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
 def test_lognormal():
     D, model= generate_gpmcc_state('lognormal')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
 def test_normal():
     D, model= generate_gpmcc_state('normal')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
 def test_poisson():
     D, model= generate_gpmcc_state('poisson')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
 def test_vonmises():
     D, model= generate_gpmcc_state('vonmises')
-    samples = su.simulate(model, None, [0, 1], N=n_samples)
+    samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples

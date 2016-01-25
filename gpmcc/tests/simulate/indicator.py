@@ -29,56 +29,99 @@
 """
 This graphical test trains a gpmcc state on a bivariate population [X, Z] where
 X is normally distributed data and Z is a (transformed) latent cluster
-assignment for each row. We then simulate from the joint posterior distribution
-of gpmcc, and compare the simulations to the ingested data at different
-subpopulations of X (which are identified by the Z).
+assignment for each row called the indicator. We then simulate from the
+    - Joint posterior distribution
+    - X|Z or the data conditioned on the indicator.
+    - Z|X or the indicator conditioned on the data.
+We compare the simulations to the ingested data at different subpopulations.
 """
 
-import math
-import numpy as np
-import pylab
 import matplotlib.pyplot as plt
+import numpy as np
+import unittest
 
-import gpmcc.utils.sampling as su
-import gpmcc.utils.sampling as tu
+from scipy.stats import norm
+
 import gpmcc.utils.general as gu
 from gpmcc.engine import Engine
 
-def test_simulate_indicator():
-    # Entropy.
-    np.random.seed(0)
-    # Generate synthetic dataset.
-    n_rows = 250
-    mus = [-1, 5, 9]
-    sigmas = [2, 2, 1.5]
-    data = np.zeros((n_rows, 2))
-    indicators = [0, 1, 2, 3, 4, 5]
-    data[:, 1] = np.random.choice(indicators, size=n_rows,
-        p=[.15, .15, .25, .25, .1, .1])
-    for i in xrange(n_rows):
-        idx = int(data[i,1] / 2)
-        data[i, 0] = np.random.normal(loc=mus[idx], scale=sigmas[idx])
+class SimulateIndicatorTest(unittest.TestCase):
 
-    # Create an engine.
-    state = Engine(data, ['normal', 'categorical'], [None, {'k':6}],
-        num_states=1, initialize=True)
-    state.transition(N=150)
-    model = state.get_state(0)
+    @classmethod
+    def setUpClass(cls):
+        # Entropy.
+        np.random.seed(0)
+        cls.n_samples = 250
+        n_transitions = 10
+        # Generate synthetic dataset.
+        cls.mus = [-1, 5, 9]
+        cls.sigmas = [2, 2, 1.5]
+        cls.data = np.zeros((cls.n_samples, 2))
+        cls.indicators = [0, 1, 2, 3, 4, 5]
+        cls.data[:,1] = np.random.choice(cls.indicators, size=cls.n_samples,
+            p=[.15, .15, .25, .25, .1, .1])
+        for i in xrange(cls.n_samples):
+            idx = int(cls.data[i,1] / 2)
+            cls.data[i,0] = np.random.normal(
+                loc=cls.mus[idx], scale=cls.sigmas[idx])
+        # Create an engine.
+        state = Engine(cls.data, ['normal', 'categorical'], [None, {'k':6}],
+            num_states=1, initialize=True)
+        state.transition(N=n_transitions)
+        cls.model = state.get_state(0)
 
-    # Simulate from the joint distribution of (x,i).
-    samples = su.simulate(model, -1, [0, 1], N=100)
+    def test_joint(self):
+        # Simulate from the joint distribution of (x,i).
+        joint_samples = self.model.simulate(-1, [0,1], N=self.n_samples)
+        _, ax = plt.subplots()
+        ax.set_title('Joint Simulation')
+        for t in self.indicators:
+            # Plot original data.
+            data_subpop = self.data[self.data[:,1] == t]
+            ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
+            # Plot simulated data.
+            joint_samples_subpop = joint_samples[joint_samples[:,1] == t]
+            ax.scatter(joint_samples_subpop[:,1] + .25,
+                joint_samples_subpop[:,0], color=gu.colors[t])
+        ax.set_xlabel('Indicator')
+        ax.set_ylabel('x')
+        ax.grid()
+        self.assertTrue('FOO'.isupper())
 
-    # Scatter the data points by color.
-    fig, ax = plt.subplots()
-    for t in indicators:
-        # Plot original data.
-        data_subpop = data[data[:,1] == t]
-        ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
-        # Plot simulated data.
-        samples_subpop = samples[samples[:,1] == t]
-        ax.scatter(samples_subpop[:,1] + .25, samples_subpop[:,0],
-            color=gu.colors[t])
-    ax.set_xlabel('Indicator')
-    ax.set_ylabel('x')
-    ax.grid()
-    plt.show()
+    def test_conditional_indicator(self):
+        # Simulate from the conditional X|Z
+        _, ax = plt.subplots()
+        ax.set_title('Conditional Simulation Of Data Given Indicator Z')
+        for t in self.indicators:
+            # Plot original data.
+            data_subpop = self.data[self.data[:,1] == t]
+            ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
+            # Plot simulated data.
+            conditional_samples_subpop = self.model.simulate(-1, [0],
+                evidence=[(1,t)], N=self.n_samples)
+            ax.scatter(np.repeat(t, self.n_samples) + .25,
+                conditional_samples_subpop[:,0], color=gu.colors[t])
+        ax.set_xlabel('Indicator')
+        ax.set_ylabel('x')
+        ax.grid()
+        self.assertTrue('FOO'.isupper())
+
+    def test_conditional_real(self):
+        # Simulate from the conditional Z|X
+        fig, axes = plt.subplots(1,3)
+        fig.suptitle('Conditional Simulation Of Indicator Given Data X')
+        for x, ax in zip(self.mus, axes):
+            conditional_samples_subpop = self.model.simulate(-1, [1],
+                evidence=[(0,x)], N=self.n_samples)
+            ax.hist(conditional_samples_subpop, color='g', alpha=.4)
+            ax.set_title('True Indicator TODO')
+            ax.set_xlabel('Simulated Indicator')
+            ax.set_xticks(self.indicators)
+            ax.set_ylabel('Frequency')
+            ax.set_ylim([0, ax.get_ylim()[1]+10])
+            ax.grid()
+        self.assertTrue('FOO'.isupper())
+        plt.close('all')
+
+if __name__ == '__main__':
+    unittest.main()

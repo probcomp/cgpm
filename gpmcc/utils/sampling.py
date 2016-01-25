@@ -294,69 +294,6 @@ def _simple_predictive_probability_unobserved(state, col, x):
     logps = np.array(logps) + log_pK
     return logsumexp(logps)
 
-def simulate(state, rowid, query, evidence=None, N=1):
-    # TODO: accept multipe queries and evidence. Return float if N=1
-    if 0 <= rowid < state.n_rows and float(rowid) == int(rowid):
-        samples = simulate_observed(state, rowid, query, N=N)
-    else:
-        samples = simulate_unobserved(state, query, evidence, N=N)
-    return samples
-
-def simulate_observed(state, rowid, query, N=1):
-    """Simulates a hypothetical member, with the same latents as rowid."""
-    samples = []
-    for _ in xrange(N):
-        row_draw = []
-        for col in query:
-            cluster = create_cluster(state, rowid, col)
-            row_draw.append(cluster.simulate())
-        samples.append(row_draw)
-    return samples
-
-def simulate_unobserved(state, query, evidence=None, N=1):
-    """Simulates a hypothetical member, with no observed latents."""
-    # Default parameter.
-    if evidence is None:
-        evidence = []
-
-    # Obtain all views of the query columns.
-    views = [state.Zv[col] for col in query]
-
-    # Create component models for all the queries.
-    clusters_for = dict()
-    for col in query:
-        clusters_for[col] = create_clusters(state, col)
-
-    cols_in = dict()
-    for v in set(views):
-        cols_in[v] = [col for col in query if state.Zv[col] == v]
-
-    # Obtain the probability of hypothetical row belonging to each cluster.
-    clusterps_for = dict()
-    for v in set(views):
-        # CRP densities.
-        logp_crp = compute_cluster_crp_logps(state, v)
-        # Posterior predictive density of evidence.
-        logp_data = np.zeros(len(logp_crp))
-        for (col, val) in evidence:
-            if state.Zv[col] == v:
-                logp_data += compute_cluster_data_logps(state, col, val)
-        clusterps_for[v] = np.exp(gu.log_normalize(logp_crp + logp_data))
-
-    samples = []
-    for _ in xrange(N):
-        draw = []
-        for v in set(views):
-            # Sample a cluster.
-            k = gu.pflip(clusterps_for[v])
-            for col in cols_in[v]:
-                # Sample data from the cluster.
-                x = clusters_for[col][k].simulate()
-                draw.append(x)
-        samples.append(draw)
-
-    return np.asarray(samples)
-
 def compute_cluster_crp_logps(state, view):
     log_crp_numer = state.views[view].Nk[:]
     log_crp_numer.append(state.views[view].alpha)   # singleton cluster

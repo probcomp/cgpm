@@ -67,7 +67,7 @@ def run_test(args):
         for chain in xrange(n_chains):
             state = engine.get_state(chain)
             print "chain %i of %i" % (chain+1, n_chains)
-            T_i.extend(su.simulate(state, -1, [0,1], N=n_per_chain))
+            T_i.extend(state.simulate(-1, [0,1], N=n_per_chain))
 
         T_i = np.array(T_i)
 
