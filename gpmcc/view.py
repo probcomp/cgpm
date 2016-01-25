@@ -65,7 +65,7 @@ class View(object):
 
         # Generate row partition.
         if Zr is None:
-            Zr, Nk, _ = gu.crp_gen(self.N, alpha)
+            Zr, Nk, _ = gu.simulate_crp(self.N, alpha)
         else:
             Nk = list(np.bincount(Zr))
         self.Zr = np.array(Zr)

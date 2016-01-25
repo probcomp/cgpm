@@ -115,7 +115,7 @@ def line_quad(x,y):
         s += (b-a)*(fa+fb)/2
     return s
 
-def crp_gen(N, alpha):
+def simulate_crp(N, alpha):
     """Generates a random, N-length partition from the CRP with parameter
     alpha.
     """

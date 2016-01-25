@@ -82,7 +82,7 @@ class Dim(object):
         assert self.hypers.keys() == self.hyper_grids.keys()
         # Row partition.
         if Zr is None:
-            Zr, _, _ = gu.crp_gen(len(X), 1)
+            Zr, _, _ = gu.simulate_crp(len(X), 1)
         self.reassign(X, Zr)
         # Auxiliary singleton model.
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)

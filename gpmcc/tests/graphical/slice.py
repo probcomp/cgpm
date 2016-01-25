@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 def main(num_samples, burn, lag, w):
     alpha = 1.0
     N = 25
-    Z, Nk, K = gu.crp_gen(N, alpha)
+    Z, Nk, K = gu.simulate_crp(N, alpha)
 
     # CRP with gamma prior.
     log_pdf_lambda = lambda alpha : gu.logp_crp_unorm(N, K, alpha) - alpha

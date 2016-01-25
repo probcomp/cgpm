@@ -65,7 +65,7 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     -------
     >>> # Sample from posterior of CRP(x) with exponential(1) prior
     >>> x = 1.0
-    >>> log_pdf_lambda = lambda x : gu.lcrp(10, [5,3,2] , x) - x
+    >>> log_pdf_lambda = lambda x : gu.logp_crp(10, [5,3,2] , x) - x
     >>> jump_std = 0.5
     >>> D = (0.0, float('Inf'))
     >>> sample = mh_sample(x log_pdf_lambda, jump_std, D)
