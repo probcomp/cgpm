@@ -351,9 +351,3 @@ _gen_data = {
     'lognormal'         : _gen_lognormal_data_column,
     'vonmises'          : _gen_vonmises_data_column,
 }
-
-_gen_data_cpp = {
-    'continuous' : _gen_normal_data_column,
-    'categorical': _gen_categorical_data_column,
-    'magnitude'  : _gen_lognormal_data_column,
-}

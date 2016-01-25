@@ -32,22 +32,26 @@ import numpy as np
 import gpmcc.utils.general as gu
 
 class View(object):
-    """View. A collection of Dim."""
+    """View, a collection of Dim and their row mixtures."""
 
     def __init__(self, X, dims, alpha=None, Zr=None, n_grid=30):
         """View constructor.
 
-        Arguments:
-        ... X (np.ndarray) : Global dataset NxD. The invariant is that
-        the data from dim.index should be in X[:,dim.index].
-        ... dims (list<dim>) : A list of Dim objects in this View.
-
-        Keyword Arguments:
-        ... alpha (float): CRP concentration parameter. If None, selected
-        from grid uniformly at random.
-        ... Zr (list<int>): Starting partiton of rows to categories.
-        If None, is intialized from CRP(alpha)
-        ... n_grid (int): Number of grid points in hyperparameter grids.
+        Parameters
+        ----------
+        X : np.ndarray
+            Global dataset of dimension N x D. The invariant is that
+            the data for dim.index should be in X[:,dim.index].
+        dims : list<Dim>
+            A list of Dim objects in this View.
+        alpha : float, optional
+            CRP concentration parameter. If None, selected from grid uniformly
+            at random.
+        Zr : list<int>
+            Starting partiton of rows to categories where Zr[i] is the latent
+            clsuter of row i. If None, is sampled from CRP(alpha).
+        n_grid : int
+            Number of grid points in hyperparameter grids.
         """
         # Dataset.
         self.X = X
