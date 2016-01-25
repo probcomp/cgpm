@@ -65,15 +65,12 @@ class Dim(object):
         """
         # Identifier.
         self.index = index
-
         # Number of observations.
         self.N = len(X)
-
         # Model type.
         self.model = cu.cctype_class(dist)
         self.cctype = self.model.name()
         self.distargs = distargs if distargs is not None else {}
-
         # Hyperparams.
         self.hyper_grids = self.model.construct_hyper_grids(
             X[~np.isnan(X)], n_grid)
@@ -83,14 +80,15 @@ class Dim(object):
             for h in self.hyper_grids:
                 self.hypers[h] = np.random.choice(self.hyper_grids[h])
         assert self.hypers.keys() == self.hyper_grids.keys()
-
         # Row partition.
         if Zr is None:
             Zr, _, _ = gu.crp_gen(len(X), 1)
         self.reassign(X, Zr)
-
         # Auxiliary singleton model.
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+
+    # --------------------------------------------------------------------------
+    # Observe
 
     def incorporate(self, x, k):
         """Record an observation x in clusters[k].
@@ -121,6 +119,36 @@ class Dim(object):
         assert k < len(self.clusters)
         del self.clusters[k]
 
+    def reassign(self, X, Zr):
+        """Reassigns data X to new clusters according to partitioning Zr.
+        Destroys and recreates all clusters. Uncollapsed parameters are
+        transitioned but hyperparameters are not transitioned. The partition
+        is only for reassigning, and not stored internally.
+        """
+        assert len(X) == len(Zr)
+        self.clusters = []
+        K = max(Zr) + 1
+
+        # Create clusters.
+        for k in xrange(K):
+            cluster = self.model(distargs=self.distargs, **self.hypers)
+            self.clusters.append(cluster)
+
+        # Populate clusters.
+        for x, k in zip(X, Zr):
+            if not isnan(x):
+                self.clusters[k].incorporate(x)
+
+        # Transition uncollapsed params if necessary.
+        for cluster in self.clusters:
+            cluster.transition_params()
+
+        # XXX BREAKS ALL ABSTRACTION BARRIERS
+        self._Zr_last = Zr
+
+    # --------------------------------------------------------------------------
+    # logpdf
+
     def predictive_logp(self, x, k):
         """Returns the predictive logp of x in clusters[k]. If x has been
         assigned to clusters[k], then use the unincorporate/incorporate
@@ -142,6 +170,17 @@ class Dim(object):
             return self.clusters[k].marginal_logp()
         return sum(cluster.marginal_logp() for cluster in self.clusters)
 
+    # --------------------------------------------------------------------------
+    # Simulate
+
+    def simulate(self, k=None):
+        """If k is not None, returns the marginal log_p of clusters[k].
+        Otherwise returns the sum of marginal log_p over all clusters."""
+        raise ValueError('Simulate on the dim level not implemented.')
+
+    # --------------------------------------------------------------------------
+    # Inferece
+
     def transition_hypers(self):
         """Updates the hyperparameters and the component parameters of each
         cluster."""
@@ -159,29 +198,8 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
 
-    def reassign(self, X, Zr):
-        """Reassigns data X to new clusters according to partitioning Zr.
-        Destroys and recreates all clusters. Uncollapsed parameters are
-        transitioned but hyperparameters are not transitioned. The partition
-        is only for reassigning, and not stored internally.
-        """
-        assert len(X) == len(Zr)
-        self.clusters = []
-        K = max(Zr) + 1
-
-        for k in xrange(K):
-            cluster = self.model(distargs=self.distargs, **self.hypers)
-            self.clusters.append(cluster)
-
-        for x, k in zip(X, Zr):
-            if not isnan(x):
-                self.clusters[k].incorporate(x)
-
-        for cluster in self.clusters:
-            cluster.transition_params()
-
-        # XXX BREAKS ALL ABSTRACTION BARRIERS
-        self._Zr_last = Zr
+    # --------------------------------------------------------------------------
+    # Helpers
 
     def get_suffstats(self):
         return [cluster.get_suffstats() for cluster in self.clusters]
@@ -194,6 +212,9 @@ class Dim(object):
         plotter = pu.plot_dist_continuous if self.model.is_continuous() else \
             pu.plot_dist_discrete
         return plotter(X[~np.isnan(X)], self.clusters, ax=ax, Y=Y, hist=False)
+
+    # --------------------------------------------------------------------------
+    # Internal
 
     def _calc_hyper_proposal_logps(self, target):
         """Computes the marginal likelihood (over all clusters) for each
