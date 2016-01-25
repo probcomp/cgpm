@@ -282,16 +282,16 @@ class State(object):
     def _create_singleton_view(self, dim, current_view_index, proposal_view):
         self.Zv[dim.index] = len(self.Nv)
         dim.reassign(self.X[:,dim.index], proposal_view.Zr)
-        self.views[current_view_index].remove_dim(dim.index)
+        self.views[current_view_index].unincorporate_dim(dim.index)
         self.Nv[current_view_index] -= 1
         self.Nv.append(1)
         self.views.append(proposal_view)
 
     def _move_dim_to_view(self, dim, move_from, move_to):
         self.Zv[dim.index] = move_to
-        self.views[move_from].remove_dim(dim.index)
+        self.views[move_from].unincorporate_dim(dim.index)
         self.Nv[move_from] -= 1
-        self.views[move_to].insert_dim(dim)
+        self.views[move_to].incorporate_dim(dim)
         self.Nv[move_to] += 1
         # If move_from was a singleton, destroy.
         if self.Nv[move_from] == 0:

@@ -176,12 +176,12 @@ class View(object):
                 logp += dim.predictive_logp(x, k)
         return logp
 
-    def insert_dim(self, dim):
+    def incorporate_dim(self, dim):
         self.dims[dim.index] = dim
         if not np.allclose(dim._Zr_last, self.Zr):
             dim.reassign(self.X[:, dim.index], self.Zr)
 
-    def remove_dim(self, dim_index):
+    def unincorporate_dim(self, dim_index):
         del self.dims[dim_index]
 
     def _move_row_to_cluster(self, rowid, move_from, move_to):
