@@ -46,9 +46,9 @@ cctypes = ['normal', 'poisson', 'bernoulli', 'lognormal', 'exponential',
 separation = [.95] * len(cctypes)
 cctypes, distargs = cu.parse_distargs(cctypes)
 
-T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-    cctypes, distargs, separation, return_dims=True)
+T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
+    cctypes, distargs, separation)
 
 S = state.State(T.T, cctypes, distargs, seed=0)
-S.transition(N=31)
+S.transition(N=30)
 S.plot()
