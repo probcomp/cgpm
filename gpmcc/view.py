@@ -96,10 +96,12 @@ class View(object):
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
-    def transition_column_hypers(self):
+    def transition_column_hypers(self, target_cols=None):
         """Calculate column (dim) hyperparameter conditionals over grid and
         transition.
         """
+        if target_cols is None:
+            target_cols = self.dims.keys()
         for dim in self.dims.values():
             dim.transition_hypers()
 
