@@ -69,10 +69,10 @@ def unorm_lcrp_post(alpha, N, K, log_prior_fun):
     """Returns the log of unnormalized P(alpha|N,K).
 
     Arguments:
-    -- alpha: crp alpha parameter. float greater than 0
-    -- N: number of point in partition, Z
-    -- K: number of partitions in Z
-    -- log_prior_fun: function of alpha. log P(alpha)
+    -- alpha: CRP alpha parameter, float greater than 0.
+    -- N: number of point in partition, Z.
+    -- K: number of partitions in Z.
+    -- log_prior_fun: function of alpha, log P(alpha).
     """
     return gammaln(alpha) + float(K) * log(alpha) - gammaln(alpha + float(N))\
         + log_prior_fun(alpha)

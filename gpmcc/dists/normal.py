@@ -118,8 +118,7 @@ class Normal(DistributionGpm):
         return {'m': self.m, 'r': self.r, 's': self.s, 'nu': self.nu}
 
     def get_suffstats(self):
-        return {'N': self.N, 'sum_x': self.sum_x,
-            'sum_x_sq': self.sum_x_sq}
+        return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
