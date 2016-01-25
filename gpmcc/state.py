@@ -253,7 +253,7 @@ class State(object):
         dim = self.dims[col]
         v_a = self.Zv[col]
         singleton = (self.Nv[v_a] == 1)
-        p_crp = self._compute_view_crp_logps(v_a)
+        p_crp = self._compute_view_crp_logps(col)
 
         # XXX Major hack. Save logp under current view assignment.
         va_marginal_logp = self.dims[col].marginal_logp()
@@ -320,13 +320,18 @@ class State(object):
             del self.Nv[move_from]
             del self.views[move_from]
 
-    def _compute_view_crp_logps(self, view):
+    def _compute_view_crp_logps(self, col):
+        """Computes the log probability of col in each view, removing it from
+        its current assignment for a Gibbs sweep."""
         p_crp = list(self.Nv)
-        if self.Nv[view] == 1:
-            p_crp[view] = self.alpha
+        # Adjust for the existing assignment.
+        v_a = self.Zv[col]
+        if self.Nv[v_a] == 1:
+            p_crp[v_a] = self.alpha
         else:
-            p_crp[view] -= 1
-        return np.log(np.asarray(p_crp))
+            p_crp[v_a] -= 1
+        return np.log(p_crp)
+
 
     def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.
