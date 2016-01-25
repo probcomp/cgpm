@@ -55,27 +55,19 @@ def log_normalize(logp):
     """Normalizes a np array of log probabilites."""
     return logp - logsumexp(logp)
 
-def lcrp(N, Nk, alpha):
-    """Returns the log probability under crp of the count vector Nk given
-    concentration parameter alpha. N is the total number of entries.
+def logp_crp(N, Nk, alpha):
+    """Returns the log normalized P(N,K|alpha), where N is the number of
+    customers and K is the number of tables.
     """
-    N = float(N)
-    k = float(len(Nk)) # number of classes
-    l = np.sum(gammaln(Nk)) + k * log(alpha) + gammaln(alpha) - \
-        gammaln(N + alpha)
-    return l
+    return gammaln(alpha) + len(Nk)*log(alpha) - gammaln(N+alpha) \
+        + np.sum(gammaln(Nk))
 
-def unorm_lcrp_post(alpha, N, K, log_prior_fun):
-    """Returns the log of unnormalized P(alpha|N,K).
-
-    Arguments:
-    -- alpha: CRP alpha parameter, float greater than 0.
-    -- N: number of point in partition, Z.
-    -- K: number of partitions in Z.
-    -- log_prior_fun: function of alpha, log P(alpha).
+def logp_crp_unorm(N, K, alpha):
+    """Returns the log unnormalized P(N,K|alpha), where N is the number of
+    customers and K is the number of tables. Use for effeciency to avoid
+    computing terms that are not a function of alpha.
     """
-    return gammaln(alpha) + float(K) * log(alpha) - gammaln(alpha + float(N))\
-        + log_prior_fun(alpha)
+    return gammaln(alpha) + K*log(alpha) - gammaln(N+alpha)
 
 def log_pflip(logp):
     """Categorical draw from a vector logp of log probabilities."""

@@ -40,8 +40,7 @@ def main(num_samples, burn, lag, w):
     Z, Nk, K = gu.crp_gen(N, alpha)
 
     # CRP with gamma prior.
-    log_prior_fun = lambda a: -a
-    log_pdf_lambda = lambda a : gu.unorm_lcrp_post(a, N, K, log_prior_fun)
+    log_pdf_lambda = lambda alpha : gu.logp_crp_unorm(N, K, alpha) - alpha
     proposal_fun = lambda : np.random.gamma(1.0, 1.0)
     D = (0, float('Inf'))
 

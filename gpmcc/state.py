@@ -201,10 +201,8 @@ class State(object):
         print
 
     def transition_alpha(self):
-        logps = np.zeros(self.n_grid)
-        for i, alpha in enumerate(self.alpha_grid):
-            logps[i] = gu.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
-                lambda x: 0)
+        logps = [gu.logp_crp_unorm(self.n_cols, len(self.Nv), alpha) for alpha in
+            self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 

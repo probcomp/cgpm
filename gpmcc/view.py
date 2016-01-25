@@ -109,11 +109,8 @@ class View(object):
 
     def transition_alpha(self):
         """Calculate CRP alpha conditionals over grid and transition."""
-        logps = np.zeros(len(self.alpha_grid))
-        for i in range(len(self.alpha_grid)):
-            alpha = self.alpha_grid[i]
-            logps[i] = gu.unorm_lcrp_post(alpha, self.N, len(self.Nk),
-                lambda x: 0)
+        logps = [gu.logp_crp_unorm(self.N, len(self.Nk), alpha) for alpha in
+            self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
