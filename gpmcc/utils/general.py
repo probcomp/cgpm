@@ -43,8 +43,8 @@ def curve_color(k):
 
 def log_bessel_0(x):
     besa = bessel_0(x)
-    # if bessel_0(a) is inf, then use the eponential approximation to
-    # prevent numericala overflow
+    # If bessel_0(a) is inf, then use the exponential approximation to
+    # prevent numerical overflow.
     if math.isinf(besa):
         I0 = x - .5*log(2*math.pi*x)
     else:
