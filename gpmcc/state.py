@@ -120,16 +120,45 @@ class State(object):
 
         self._check_partitions()
 
-    def transition(self, N=1, kernel_list=None, target_rows=None,
-            target_cols=None, target_views=None, m=1, do_plot=False):
-        """Run inference transitions.
+    # --------------------------------------------------------------------------
+    # Observe
+
+    def incorporate_dim(self, dim):
+        raise ValueError('Cannot incorporate dim yet.')
+
+    def unincorporate_dim(self, dim):
+        raise ValueError('Cannot unincorporate dim yet.')
+
+    def incorporate_row(self, X):
+        raise ValueError('Cannot incorporate row yet.')
+
+    def unincorporate_row(self, X):
+        raise ValueError('Cannot unincorporate row yet.')
+
+    # --------------------------------------------------------------------------
+    # logpdf
+
+    def logpdf(self, args):
+        raise ValueError('logpdf in state not yet implemented.')
+
+    # --------------------------------------------------------------------------
+    # Simulate
+
+    def simulate(self, args):
+        raise ValueError('Simulate in state not yet implemented.')
+
+    # --------------------------------------------------------------------------
+    # Inference
+
+    def transition(self, N=1, target_rows=None, target_cols=None,
+            target_views=None, do_plot=False):
+        """Run all infernece kernels. For targeted inference, see other exposed
+        inference commands.
 
         Parameters
         ----------
         N : int, optional
             Number of transitions.
-        kernel_list : {_all_kernels}, optional.
-            List of kernels to transition through. Default is all.
         target_views, target_rows, target_cols : list<int>, optional
             Views, rows and columns to apply the kernels. Default is all.
         do_plot : boolean, optional
@@ -139,28 +168,8 @@ class State(object):
         --------
         >>> State.transition()
         >>> State.transition(N=100)
-        >>> State.transition(N=100, kernel_list=['column_z','row_z'],
-        ...     cols=[1,2], rows=range(100))
+        >>> State.transition(N=100, cols=[1,2], rows=range(100))
         """
-        kernel_dict = {
-            'column_z' :
-                lambda : self._transition_columns(target_cols=target_cols, m=m),
-            'state_alpha' :
-                lambda : self._transition_state_alpha(),
-            'row_z' :
-                lambda : self._transition_rows(target_views=target_views,
-                    target_rows=target_rows),
-            'column_hypers' :
-                lambda : self._transition_column_hypers(target_cols=target_cols),
-            'view_alphas' :
-                lambda : self._transition_view_alphas(target_views=target_views),
-        }
-
-        if kernel_list is None:
-            kernel_list = _all_kernels
-
-        kernel_fns = [kernel_dict[kernel] for kernel in kernel_list]
-
         if do_plot:
             plt.ion()
             plt.show()
@@ -171,18 +180,62 @@ class State(object):
             self._do_plot(fig, layout)
 
         for i in xrange(N):
+            # Star bar.
             percentage = float(i+1) / N
             progress = ' ' * 30
             fill = int(percentage * len(progress))
             progress = '[' + '=' * fill + progress[fill:] + ']'
             print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
             sys.stdout.flush()
-            for kernel in kernel_fns:
-                kernel()
+            # Start inference.
+            self.transition_columns(target_cols=target_cols)
+            self.transition_alpha()
+            self.transition_rows(target_views=target_views,
+                target_rows=target_rows)
+            self.transition_column_hypers(target_cols=target_cols)
+            self.transition_view_alphas(target_views=target_views)
+            # Plot
             if do_plot:
                 self._do_plot(fig, layout)
                 plt.pause(1e-4)
         print
+
+    def transition_alpha(self):
+        logps = np.zeros(self.n_grid)
+        for i, alpha in enumerate(self.alpha_grid):
+            logps[i] = gu.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
+                lambda x: 0)
+        index = gu.log_pflip(logps)
+        self.alpha = self.alpha_grid[index]
+
+    def transition_view_alphas(self, target_views=None):
+        if target_views is None:
+            target_views = self.views
+        for view in target_views:
+            view.transition_alpha()
+
+    def transition_column_hypers(self, target_cols=None):
+        if target_cols is None:
+            target_cols = range(self.n_cols)
+        for i in target_cols:
+            self.dims[i].transition_hypers()
+
+    def transition_rows(self, target_views=None, target_rows=None):
+        if target_views is None:
+            target_views = self.views
+        for view in target_views:
+            view.transition_rows(target_rows=target_rows)
+
+    def transition_columns(self, target_cols=None, m=1):
+        """Transition column assignment to views."""
+        if target_cols is None:
+            target_cols = range(self.n_cols)
+        np.random.shuffle(target_cols)
+        for col in target_cols:
+            self._transition_column(col, m=m)
+
+    # --------------------------------------------------------------------------
+    # Plotting
 
     def plot(self):
         """Plots sample histogram and learned distribution for each dim."""
@@ -193,42 +246,10 @@ class State(object):
         self._do_plot(fig, layout)
         plt.show()
 
-    def _transition_rows(self, target_views=None, target_rows=None):
-        if target_views is None:
-            target_views = self.views
-        for view in target_views:
-            view.transition_rows(target_rows=target_rows)
+    # --------------------------------------------------------------------------
+    # Internal
 
-    def _transition_view_alphas(self, target_views=None):
-        if target_views is None:
-            target_views = self.views
-        for view in target_views:
-            view.transition_alpha()
-
-    def _transition_state_alpha(self):
-        logps = np.zeros(self.n_grid)
-        for i in range(self.n_grid):
-            alpha = self.alpha_grid[i]
-            logps[i] = gu.unorm_lcrp_post(alpha, self.n_cols, len(self.Nv),
-                lambda x: 0)
-        index = gu.log_pflip(logps)
-        self.alpha = self.alpha_grid[index]
-
-    def _transition_column_hypers(self, target_cols=None):
-        if target_cols is None:
-            target_cols = range(self.n_cols)
-        for i in target_cols:
-            self.dims[i].transition_hypers()
-
-    def _transition_columns(self, target_cols=None, m=3):
-        """Transition column assignment to views."""
-        if target_cols is None:
-            target_cols = range(self.n_cols)
-        np.random.shuffle(target_cols)
-        for col in target_cols:
-            self._transition_column(col, m=m)
-
-    def _transition_column(self, col, m=3):
+    def _transition_column(self, col, m=1):
         """Gibbs with auxiliary parameters. Currently resampled uncollapsed
         parameters as a side-effect."""
         dim = self.dims[col]
@@ -282,14 +303,14 @@ class State(object):
     def _create_singleton_view(self, dim, current_view_index, proposal_view):
         self.Zv[dim.index] = len(self.Nv)
         dim.reassign(self.X[:,dim.index], proposal_view.Zr)
-        self.views[current_view_index].unincorporate_dim(dim.index)
+        self.views[current_view_index].unincorporate_dim(dim)
         self.Nv[current_view_index] -= 1
         self.Nv.append(1)
         self.views.append(proposal_view)
 
     def _move_dim_to_view(self, dim, move_from, move_to):
         self.Zv[dim.index] = move_to
-        self.views[move_from].unincorporate_dim(dim.index)
+        self.views[move_from].unincorporate_dim(dim)
         self.Nv[move_from] -= 1
         self.views[move_to].incorporate_dim(dim)
         self.Nv[move_to] += 1
@@ -352,6 +373,9 @@ class State(object):
                 assert len(dim.clusters) == len(Nk)
                 # for k in xrange(len(dim.clusters)):
                     # assert dim.clusters[k].N == Nk[k]
+
+    # --------------------------------------------------------------------------
+    # Serialize
 
     def get_metadata(self):
         metadata = dict()

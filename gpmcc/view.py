@@ -79,6 +79,27 @@ class View(object):
 
         self._check_partitions()
 
+    # --------------------------------------------------------------------------
+    # Observe
+
+    def incorporate_dim(self, dim):
+        self.dims[dim.index] = dim
+        # XXX HACK
+        if not np.allclose(dim._Zr_last, self.Zr):
+            dim.reassign(self.X[:, dim.index], self.Zr)
+
+    def unincorporate_dim(self, dim):
+        del self.dims[dim.index]
+
+    def incorporate_row(self, X):
+        raise ValueError('Cannot unincorporate row yet.')
+
+    def unincorporate_row(self, X):
+        raise ValueError('Cannot unincorporate row yet.')
+
+    # --------------------------------------------------------------------------
+    # Inference
+
     def transition(self, N):
         """Run all the transitions N times."""
         for _ in xrange(N):
@@ -112,9 +133,30 @@ class View(object):
         if target_rows is None:
             target_rows = range(self.N)
         for rowid in target_rows:
-            self.transition_row(rowid)
+            self._transition_row(rowid)
 
-    def transition_row(self, rowid):
+    # --------------------------------------------------------------------------
+    # Internal
+
+    def _row_predictive_logp(self, rowid, k):
+        """Get the predictive log_p of rowid being in cluster k. If k
+        is existing (less than len(self.Nk)) then the predictive is taken.
+        If k is new (equal to len(self.Nk)) then new parameters
+        are sampled for the predictive."""
+        assert k <= len(self.Nk)
+        logp = 0
+        for dim in self.dims.values():
+            x = self.X[rowid, dim.index]
+            # If rowid already in cluster k, need to unincorporate first.
+            if self.Zr[rowid] == k:
+                dim.unincorporate(x, k)
+                logp += dim.predictive_logp(x, k)
+                dim.incorporate(x, k)
+            else:
+                logp += dim.predictive_logp(x, k)
+        return logp
+
+    def _transition_row(self, rowid):
         """Trasition a single row"""
         # Get current assignment z_a.
         z_a = self.Zr[rowid]
@@ -140,13 +182,13 @@ class View(object):
         for k in xrange(len(self.Nk)):
             # If k == z_a then predictive_logp will remove rowid's
             # suffstats and reuse parameters.
-            lp = self.row_predictive_logp(rowid, k) + p_crp[k]
+            lp = self._row_predictive_logp(rowid, k) + p_crp[k]
             p_cluster.append(lp)
 
         # Propose singleton.
         if not is_singleton:
             # Using len(self.Nk) will resample parameters.
-            lp = self.row_predictive_logp(rowid, len(self.Nk)) + \
+            lp = self._row_predictive_logp(rowid, len(self.Nk)) + \
                 p_crp[-1]
             p_cluster.append(lp)
 
@@ -158,59 +200,27 @@ class View(object):
 
         # self._check_partitions()
 
-    def row_predictive_logp(self, rowid, k):
-        """Get the predictive log_p of rowid being in cluster k. If k
-        is existing (less than len(self.Nk)) then the predictive is taken.
-        If k is new (equal to len(self.Nk)) then new parameters
-        are sampled for the predictive."""
-        assert k <= len(self.Nk)
-        logp = 0
-        for dim in self.dims.values():
-            x = self.X[rowid, dim.index]
-            # If rowid already in cluster k, need to unincorporate first.
-            if self.Zr[rowid] == k:
-                dim.unincorporate(x, k)
-                logp += dim.predictive_logp(x, k)
-                dim.incorporate(x, k)
-            else:
-                logp += dim.predictive_logp(x, k)
-        return logp
-
-    def incorporate_dim(self, dim):
-        self.dims[dim.index] = dim
-        if not np.allclose(dim._Zr_last, self.Zr):
-            dim.reassign(self.X[:, dim.index], self.Zr)
-
-    def unincorporate_dim(self, dim_index):
-        del self.dims[dim_index]
-
     def _move_row_to_cluster(self, rowid, move_from, move_to):
         """Move rowid from cluster move_from to move_to. If move_to
         is len(self.Nk) a new cluster will be created."""
         assert move_from < len(self.Nk) and move_to <= len(self.Nk)
-
         # Do nothing.
         if move_from == move_to:
             return
-
         # Notify dims.
         for dim in self.dims.values():
             dim.unincorporate(self.X[rowid, dim.index], move_from)
             dim.incorporate(self.X[rowid, dim.index], move_to)
-
         # Update partition and move_from counts.
         self.Zr[rowid] = move_to
         self.Nk[move_from] -= 1
-
         # If move_to new cluster, extend Nk.
         if move_to == len(self.Nk):
             self.Nk.append(0)
             # Never create a singleton cluster from another singleton.
             assert self.Nk[move_from] != 0
-
         # Update move_to counts.
         self.Nk[move_to] += 1
-
         # If move_from is now empty, delete and update cluster ids.
         if self.Nk[move_from] == 0:
             assert move_to != len(self.Nk)
