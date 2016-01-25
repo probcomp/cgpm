@@ -185,8 +185,7 @@ class View(object):
         # Propose singleton.
         if not is_singleton:
             # Using len(self.Nk) will resample parameters.
-            lp = self._row_predictive_logp(rowid, len(self.Nk)) + \
-                p_crp[-1]
+            lp = self._row_predictive_logp(rowid, len(self.Nk)) + p_crp[-1]
             p_cluster.append(lp)
 
         # Draw new assignment, z_b
