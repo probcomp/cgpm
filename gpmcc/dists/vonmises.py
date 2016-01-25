@@ -138,46 +138,15 @@ class Vonmises(DistributionGpm):
         return grids
 
     @staticmethod
-    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        x_min = 0
-        x_max = 2*pi
-        Y = np.linspace(x_min, x_max, 200)
-        # Compute weighted pdfs
-        K = len(clusters)
-        pdf = np.zeros((K, 200))
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        if np.fabs(sum(np.exp(W)) -1.0) > 10.0 ** (-10.0):
-            import ipdb; ipdb.set_trace()
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-        # Plot the samples.
-        if hist:
-            nbins = min([len(X)/5, 50])
-            ax.hist(X, nbins, normed=True, color='black', alpha=.5,
-                edgecolor='none')
-        else:
-            y_max = ax.get_ylim()[1]
-            for x in X:
-                ax.vlines(x, 0, y_max/10., linewidth=1)
-        # Title.
-        ax.set_title(clusters[0].name())
-        return ax
-
-    @staticmethod
     def name():
         return 'vonmises'
 
     @staticmethod
     def is_collapsed():
+        return True
+
+    @staticmethod
+    def is_continuous():
         return True
 
     ##################

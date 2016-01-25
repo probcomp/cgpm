@@ -138,13 +138,13 @@ class Lognormal(DistributionGpm):
         return grids
 
     @staticmethod
-    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
-        return Normal.plot_dist(X, clusters, ax=ax, Y=Y, hist=hist)
-
-    @staticmethod
     def name():
         return 'lognormal'
 
     @staticmethod
     def is_collapsed():
+        return True
+
+    @staticmethod
+    def is_continuous():
         return True

@@ -111,39 +111,16 @@ class Geometric(DistributionGpm):
         return grids
 
     @staticmethod
-    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        x_max = max(X)
-        Y = range(int(x_max)+1)
-        X_hist = [np.sum(X==i) / float(len(X)) for i in Y]
-        ax.bar(Y, X_hist, color='gray', edgecolor='none')
-        # Compute weighted pdfs
-        K = len(clusters)
-        pdf = np.zeros((K, len(Y)))
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
-            linewidth=3)
-        ax.set_xlim([0, x_max+1])
-        # Title.
-        ax.set_title(clusters[0].name())
-        return ax
-
-    @staticmethod
     def name():
         return 'geometric'
 
     @staticmethod
     def is_collapsed():
         return True
+
+    @staticmethod
+    def is_continuous():
+        return False
 
     ##################
     # HELPER METHODS #

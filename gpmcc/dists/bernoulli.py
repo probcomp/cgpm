@@ -113,41 +113,15 @@ class Bernoulli(DistributionGpm):
         return grids
 
     @staticmethod
-    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        X_hist = np.histogram(X,bins=2)[0]
-        X_hist = X_hist/float(len(X))
-        # Compute weighted pdfs
-        Y = [0, 1]
-        K = len(clusters)
-        pdf = np.zeros((K, 2))
-        ax.bar(Y, X_hist, color='black', alpha=1, edgecolor='none')
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        if math.fabs(sum(np.exp(W)) -1.) > 10. ** (-10.):
-            import ipdb; ipdb.set_trace()
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor="red",
-            linewidth=3)
-        ax.set_xlim([-.1,1.9])
-        ax.set_ylim([0,1.0])
-        # Title
-        ax.set_title(clusters[0].name())
-        return ax
-
-    @staticmethod
     def name():
         return 'bernoulli'
 
     @staticmethod
     def is_collapsed():
+        return False
+
+    @staticmethod
+    def is_continuous():
         return False
 
     ##################

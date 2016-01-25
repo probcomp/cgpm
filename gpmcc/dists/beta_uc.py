@@ -154,44 +154,16 @@ class BetaUC(DistributionGpm):
         return grids
 
     @staticmethod
-    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        if Y is None:
-            Y = np.linspace(.01, .99, 100)
-        # Compute weighted pdfs.
-        K = len(clusters)
-        pdf = np.zeros((K, len(Y)))
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
-        # Plot the samples.
-        if hist:
-            nbins = min([len(X)/5, 50])
-            ax.hist(X, nbins, normed=True, color='black', alpha=.5,
-                edgecolor='none')
-        else:
-            y_max = ax.get_ylim()[1]
-            for x in X:
-                ax.vlines(x, 0, y_max/10., linewidth=1)
-        # Title.
-        ax.set_title(clusters[0].name())
-        return ax
-
-    @staticmethod
     def name():
         return 'beta_uc'
 
     @staticmethod
     def is_collapsed():
         return False
+
+    @staticmethod
+    def is_continuous():
+        return True
 
     ##################
     # HELPER METHODS #

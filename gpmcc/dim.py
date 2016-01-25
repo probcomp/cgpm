@@ -29,8 +29,9 @@
 import numpy as np
 from math import isnan
 
-import gpmcc.utils.general as gu
 import gpmcc.utils.config as cu
+import gpmcc.utils.general as gu
+import gpmcc.utils.plots as pu
 
 class Dim(object):
     """Holds data, model type, clusters, and shared hyperparameters of
@@ -190,8 +191,9 @@ class Dim(object):
 
     def plot_dist(self, X, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
-        self.model.plot_dist(X[~np.isnan(X)], self.clusters,
-            ax=ax, Y=Y, hist=False)
+        plotter = pu.plot_dist_continuous if self.model.is_continuous() else \
+            pu.plot_dist_discrete
+        return plotter(X[~np.isnan(X)], self.clusters, ax=ax, Y=Y, hist=False)
 
     def _calc_hyper_proposal_logps(self, target):
         """Computes the marginal likelihood (over all clusters) for each

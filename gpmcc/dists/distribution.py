@@ -150,34 +150,16 @@ class DistributionGpm(object):
         raise NotImplementedError
 
     @staticmethod
-    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
-        """Plot the mixture distribution of the DistributionGpm
-        represented by `clusters`. The weight of each cluster is
-        proportional to its number of observations N.
-
-        Parameters
-        ----------
-        X : np.array
-            List of samples from the empirical distribution to plot. Very
-            poorly named for historical reasons.
-        clusters : list<DistributionGpm>
-            List of DistributionGpm objects, all of the same cctype.
-        ax : matplotlib.axes, optional
-            Axis on which to plot distribution. If not specified a new axis
-            will be created.
-        Y : list, optional
-            Values on which to evaluate the density function.
-        hist : bool, optional
-            Show histogram of samples X? Otherwise samples shown as lines.
-        """
-        raise NotImplementedError
-
-    @staticmethod
     def name():
         """Return the name of the distribution as a string."""
         raise NotImplementedError
 
     @staticmethod
     def is_collapsed():
-        """Is the sampler collapsed?."""
+        """Is the sampler collapsed?"""
+        raise NotImplementedError
+
+    @staticmethod
+    def is_continuous():
+        """Is the pdf defined on a continuous set?"""
         raise NotImplementedError

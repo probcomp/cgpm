@@ -114,38 +114,16 @@ class Categorical(DistributionGpm):
         return grids
 
     @staticmethod
-    def plot_dist(X, clusters, ax=None, Y=None, hist=True):
-        # Create a new axis?
-        if ax is None:
-            _, ax = plt.subplots()
-        # Set up x axis.
-        Y = range(int(clusters[0].k))
-        X_hist = [np.sum(X==i) / float(len(X)) for i in Y]
-        ax.bar(Y, X_hist, color='black', alpha=1, edgecolor='none')
-        # Compute weighted pdfs
-        K = len(clusters)
-        pdf = np.zeros((K, int(clusters[0].k)))
-        W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-        for k in xrange(K):
-            pdf[k, :] = np.exp([W[k] + clusters[k].predictive_logp(y)
-                    for y in Y])
-            color, alpha = gu.curve_color(k)
-            ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
-        # Plot the sum of pdfs.
-        ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor="red",
-            linewidth=1)
-        # ax.ylim([0,1.0])
-        # Title
-        ax.set_title(clusters[0].name())
-        return ax
-
-    @staticmethod
     def name():
         return 'categorical'
 
     @staticmethod
     def is_collapsed():
         return True
+
+    @staticmethod
+    def is_continuous():
+        return False
 
     ##################
     # HELPER METHODS #
