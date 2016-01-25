@@ -30,21 +30,21 @@ from gpmcc.utils import config as cu
 from gpmcc import state
 import numpy as np
 
-# This script generates a column of every data type and plots inference
-# in real time.
-
 # Set up the data generation.
 n_rows = 200
-view_weights = np.asarray([0.7, .3])
-cluster_weights = [np.array([.33, .33, .34]), np.array([.2, .8])]
-cctypes = ['beta_uc', 'normal','normal_uc','poisson','categorical(k=3)',
-    'vonmises', 'bernoulli', 'lognormal']
+view_weights = np.asarray([0.55, .45])
+cluster_weights = [np.array([.33, .33, .34]), np.array([.1, .9])]
+cctypes = ['beta_uc','normal','normal_uc','poisson','categorical(k=4)',
+    'vonmises', 'bernoulli','lognormal','normal','normal']
+separation = [.95] * len(cctypes)
+cctypes, distargs = cu.parse_distargs(cctypes)
+T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights, cctypes,
+    distargs, separation)
 
-separation = [.95] * 9
+cctypes = ['normal','normal','normal','categorical(k={})'.format(len(set(T[3]))),
+    'categorical(k=4)','normal','categorical(k=2)','normal','normal','normal']
 cctypes, distargs = cu.parse_distargs(cctypes)
 
-T, Zv, Zc, dims = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-    cctypes, distargs, separation, return_dims=True)
-
-S = state.State(T.T, cctypes, distargs)
-S.transition(N=100, do_plot=False)
+from gpmcc import engine
+runner = engine.Engine(T.T, cctypes, distargs, num_states=8, initialize=1)
+runner.transition(N=1000, multithread=True)
