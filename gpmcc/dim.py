@@ -172,11 +172,18 @@ class Dim(object):
 
     # --------------------------------------------------------------------------
     # Simulate
-
-    def simulate(self, k=None):
+    def simulate(self, k):
         """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
-        raise ValueError('Simulate on the dim level not implemented.')
+        assert k <= len(self.clusters)
+        if k == len(self.clusters):
+            # Good for inference quality, always uses latest hypers.
+            self.aux_model = self.model(distargs=self.distargs,
+                **self.hypers)
+            cluster = self.aux_model
+        else:
+            cluster = self.clusters[k]
+        return cluster.simulate()
 
     # --------------------------------------------------------------------------
     # Inferece
