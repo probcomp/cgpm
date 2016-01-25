@@ -103,7 +103,7 @@ def log_linspace(a, b, n):
     """
     return np.exp(np.linspace(log(a), log(b), n))
 
-def log_nchoosek(n, k):
+def log_nCk(n, k):
     """log(nchoosek(n,k)) with overflow protection."""
     assert n >= 0
     assert k >= 0

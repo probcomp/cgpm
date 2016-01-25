@@ -140,5 +140,5 @@ class Bernoulli(DistributionGpm):
 
     @staticmethod
     def calc_marginal_logp(N, k, alpha, beta):
-        return gu.log_nchoosek(N, k) + betaln(k + alpha, N - k + beta) \
+        return gu.log_nCk(N, k) + betaln(k + alpha, N - k + beta) \
             - betaln(alpha, beta)
