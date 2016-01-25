@@ -39,8 +39,13 @@ import gpmcc.utils.plots as pu
 from gpmcc.view import View
 from gpmcc.dim import Dim
 
-_all_kernels = ['column_z', 'state_alpha', 'row_z', 'column_hypers',
-    'view_alphas']
+_all_kernels = [
+    'column_z',
+    'state_alpha',
+    'row_z',
+    'column_hypers',
+    'view_alphas'
+    ]
 
 class State(object):
     """State. The main crosscat object."""
@@ -116,18 +121,17 @@ class State(object):
         self._check_partitions()
 
     def transition(self, N=1, kernel_list=None, target_rows=None,
-            target_cols=None, m=1, do_plot=False):
+            target_cols=None, target_views=None, m=1, do_plot=False):
         """Run inference transitions.
 
         Parameters
         ----------
         N : int, optional
             Number of transitions.
-        kernel_list : {'column_z', 'state_alpha', 'row_z', 'column_hypers',
-                'view_alphas'}, optional
-            List of kernels to transition through.
-        target_rows, target_cols : list<int>, optional
-            Rows and columns to apply the transitions to.
+        kernel_list : {_all_kernels}, optional.
+            List of kernels to transition through. Default is all.
+        target_views, target_rows, target_cols : list<int>, optional
+            Views, rows and columns to apply the kernels. Default is all.
         do_plot : boolean, optional
             Plot the state of the sampler (real-time).
 
@@ -140,15 +144,16 @@ class State(object):
         """
         kernel_dict = {
             'column_z' :
-                lambda : self._transition_columns(target_cols, m=m),
-            'state_alpha':
+                lambda : self._transition_columns(target_cols=target_cols, m=m),
+            'state_alpha' :
                 lambda : self._transition_state_alpha(),
-            'row_z':
-                lambda : self._transition_rows(target_rows),
+            'row_z' :
+                lambda : self._transition_rows(target_views=target_views,
+                    target_rows=target_rows),
             'column_hypers' :
-                lambda : self._transition_column_hypers(target_rows),
-            'view_alphas'   :
-                lambda : self._transition_view_alphas(),
+                lambda : self._transition_column_hypers(target_cols=target_cols),
+            'view_alphas' :
+                lambda : self._transition_view_alphas(target_views=target_views),
         }
 
         if kernel_list is None:
@@ -188,19 +193,16 @@ class State(object):
         self._do_plot(fig, layout)
         plt.show()
 
-    def _transition_rows(self, target_rows=None):
-        for view in self.views:
+    def _transition_rows(self, target_views=None, target_rows=None):
+        if target_views is None:
+            target_views = self.views
+        for view in target_views:
             view.transition_rows(target_rows=target_rows)
 
-    def _transition_column_hypers(self, target_cols=None):
-        if target_cols is None:
-            target_cols = range(self.n_cols)
-
-        for i in target_cols:
-            self.dims[i].transition_hypers()
-
-    def _transition_view_alphas(self):
-        for view in self.views:
+    def _transition_view_alphas(self, target_views=None):
+        if target_views is None:
+            target_views = self.views
+        for view in target_views:
             view.transition_alpha()
 
     def _transition_state_alpha(self):
@@ -211,6 +213,12 @@ class State(object):
                 lambda x: 0)
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
+
+    def _transition_column_hypers(self, target_cols=None):
+        if target_cols is None:
+            target_cols = range(self.n_cols)
+        for i in target_cols:
+            self.dims[i].transition_hypers()
 
     def _transition_columns(self, target_cols=None, m=3):
         """Transition column assignment to views."""
