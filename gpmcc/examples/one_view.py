@@ -41,8 +41,16 @@ numpy.random.seed(10)
 n_rows = 200
 view_weights = numpy.ones(1)
 cluster_weights = [ numpy.array([.33, .33, .34]) ]
-cctypes = ['normal', 'poisson', 'bernoulli', 'lognormal', 'exponential',
-    'beta_uc', 'geometric', 'vonmises']
+cctypes = [
+    'normal',
+    'poisson',
+    'bernoulli',
+    'lognormal',
+    'exponential',
+    'beta_uc',
+    'geometric',
+    'vonmises']
+
 separation = [.95] * len(cctypes)
 cctypes, distargs = cu.parse_distargs(cctypes)
 
