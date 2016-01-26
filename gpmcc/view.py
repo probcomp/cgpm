@@ -84,7 +84,6 @@ class View(object):
 
     def incorporate_dim(self, dim):
         self.dims[dim.index] = dim
-        # XXX HACK
         dim.reassign(self.X[:, dim.index], self.Zr)
 
     def unincorporate_dim(self, dim):
@@ -95,6 +94,11 @@ class View(object):
 
     def unincorporate_row(self, X):
         raise ValueError('Cannot unincorporate row yet.')
+
+    def set_dataset(self, X):
+        """Update the pointer to the global dataset X. The invariant is that
+        the data for dim.index should be in column X[:,dim.index]."""
+        self.X = X
 
     # --------------------------------------------------------------------------
     # Inference

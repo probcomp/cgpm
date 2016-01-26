@@ -123,8 +123,52 @@ class State(object):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate_dim(self, dim):
-        raise ValueError('Cannot incorporate dim yet.')
+    def incorporate_dim(self, X, cctype, distargs=None, v=None):
+        """Incorporate a new Dim into the StateGPM.
+
+        Parameters
+        ----------
+        X : np.array
+            An array of data with length `n_rows`.
+        cctype : list<str>
+            Data type of the column, see `utils.config` for valid cctypes.
+        distargs : dict, optional.
+            Distargs appropriate for the cctype. For details on
+            distargs see the documentation for each DistributionGpm.
+        v : int, optional
+            Index of the view to assign the data. If Zv unspecified, will be
+            sampled from the CRP. If 0 <= Zv < len(state.Nv) then will insert
+            into an existing if. If Zv = len(state.Nv) a singleton view will be
+            created sampled from the prior.
+        """
+        assert len(X) == self.n_rows
+        self.X = np.column_stack((self.X, X))
+        self.n_rows, self.n_cols = np.shape(self.X)
+
+        col = self.n_cols - 1
+        self.dims.append(Dim(X, cctype, col, n_grid=self.n_grid,
+            distargs=distargs))
+
+        for view in self.views:
+            view.set_dataset(self.X)
+
+        if 0 <= v < len(self.Nv):
+            self.views[v].incorporate_dim(self.dims[-1])
+            self.Zv = np.append(self.Zv, v)
+            self.Nv[v] += 1
+        elif v == len(self.Nv):
+            self.views.append(
+                View(self.X, [self.dims[-1]], n_grid=self.n_grid))
+            self.Zv = np.append(self.Zv, v)
+            self.Nv.append(1)
+        else:
+            self.views[0].incorporate_dim(self.dims[-1])
+            self.Zv = np.append(self.Zv, 0)
+            self.Nv[0] += 1
+            self.transition_columns(target_cols=[col])
+
+        self.transition_column_hypers(target_cols=[col])
+        self._check_partitions()
 
     def unincorporate_dim(self, dim):
         raise ValueError('Cannot unincorporate dim yet.')
