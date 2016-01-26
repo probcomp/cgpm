@@ -35,14 +35,14 @@ from scipy.misc import logsumexp
 
 import gpmcc.utils.general as gu
 
-def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
-    """Uses MH to sample from log_pdf_lambda.
+def mh_sample(x, log_pdf_fun, jump_std, D, num_samples=1, burn=1, lag=1):
+    """Uses MH to sample from log_pdf_fun.
 
     Parameters
     ----------
     x : float
         Seed point.
-    log_pdf_lambda : function(x)
+    log_pdf_fun : function(x)
         Evaluates the log pdf of the target distribution at x.
     jump_std : float
         Standard deviation of jump distance, auto-tunes.
@@ -65,10 +65,10 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     -------
     >>> # Sample from posterior of CRP(x) with exponential(1) prior
     >>> x = 1.0
-    >>> log_pdf_lambda = lambda x : gu.logp_crp(10, [5,3,2] , x) - x
+    >>> log_pdf_fun = lambda x : gu.logp_crp(10, [5,3,2] , x) - x
     >>> jump_std = 0.5
     >>> D = (0.0, float('Inf'))
-    >>> sample = mh_sample(x log_pdf_lambda, jump_std, D)
+    >>> sample = mh_sample(x log_pdf_fun, jump_std, D)
     """
     num_collected = 0
     iters = 0
@@ -94,13 +94,13 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     else:
         jumpfun = lambda x, jstd: x + normal(0.0, jstd)
 
-    logp = log_pdf_lambda(x)
+    logp = log_pdf_fun(x)
     while num_collected < num_samples:
 
         # every now and then propose wild jumps incase there very distant modes
         x_prime = jumpfun(x, jump_std)
         assert  x_prime > D[0] and x_prime < D[1]
-        logp_prime = log_pdf_lambda(x_prime)
+        logp_prime = log_pdf_fun(x_prime)
 
         # if log(random.random()) < logp_prime - logp:
         if log(np.random.random()) < logp_prime - logp:
@@ -132,15 +132,15 @@ def mh_sample(x, log_pdf_lambda, jump_std, D, num_samples=1, burn=1, lag=1):
     else:
         return samples
 
-def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1,
+def slice_sample(proposal_fun, log_pdf_fun, D, num_samples=1, burn=1, lag=1,
         w=1.0):
-    """Slice samples from the disitrbution defined by log_pdf_lambda.
+    """Slice samples from the disitrbution defined by log_pdf_fun.
 
     Parameters
     ----------
     proposal_fun : function()
         Draws the initial point from proposal distribution.
-    log_pdf_lambda : function(x)
+    log_pdf_fun : function(x)
         Evaluates the log pdf of the target distribution at x.
     D : tuple<float, float>
         Support of the target distribution.
@@ -159,14 +159,14 @@ def slice_sample(proposal_fun, log_pdf_lambda, D, num_samples=1, burn=1, lag=1,
 
     Example:
     >>> # Sample from posterior of CRP(x) with exponential(x) prior
-    >>> log_pdf_lambda = lambda x : gu.lcrp(10, [5,3,2] , x) - x
+    >>> log_pdf_fun = lambda x : gu.lcrp(10, [5,3,2] , x) - x
     >>> proposal_fun = lambda : random.gammavariate(1.0,1.0)
     >>> D = (0.0, float('Inf'))
-    >>> sample = slice_sample(proposal_fun, log_pdf_lambda, D)
+    >>> sample = slice_sample(proposal_fun, log_pdf_fun, D)
     """
     samples = []
     x = proposal_fun()
-    f = lambda xp : log_pdf_lambda(xp) # f is a log pdf
+    f = lambda xp : log_pdf_fun(xp) # f is a log pdf
     num_iters = 0
     while len(samples) < num_samples:
         num_iters += 1

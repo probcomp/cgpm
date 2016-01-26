@@ -40,17 +40,17 @@ def main(num_samples, burn, lag, w):
     Z, Nk, K = gu.simulate_crp(N, alpha)
 
     # CRP with gamma prior.
-    log_pdf_lambda = lambda alpha : gu.logp_crp_unorm(N, K, alpha) - alpha
+    log_pdf_fun = lambda alpha : gu.logp_crp_unorm(N, K, alpha) - alpha
     proposal_fun = lambda : np.random.gamma(1.0, 1.0)
     D = (0, float('Inf'))
 
-    samples = su.slice_sample(proposal_fun, log_pdf_lambda, D,
+    samples = su.slice_sample(proposal_fun, log_pdf_fun, D,
         num_samples=num_samples, burn=burn, lag=lag, w=w)
 
     minval = min(samples)
     maxval = max(samples)
     xvals = np.linspace(minval, maxval, 100)
-    yvals = np.array([math.exp(log_pdf_lambda(x)) for x in xvals])
+    yvals = np.array([math.exp(log_pdf_fun(x)) for x in xvals])
     yvals /= trapz(xvals, yvals)
 
     fig, ax = plt.subplots(2,1)

@@ -104,20 +104,20 @@ class BetaUC(DistributionGpm):
     def transition_params(self):
         n_samples = 25
         # Transition strength.
-        log_pdf_lambda_str = lambda strength :\
+        log_pdf_fun_str = lambda strength :\
             BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
                 self.sum_minus_log_x, strength, self.balance) \
             + BetaUC.calc_log_prior(strength, self.balance, self.mu,
                 self.alpha, self.beta)
-        self.strength = su.mh_sample(self.strength, log_pdf_lambda_str,
+        self.strength = su.mh_sample(self.strength, log_pdf_fun_str,
             .5, [.0, float('Inf')], burn=n_samples)
         # Transition balance.
-        log_pdf_lambda_bal = lambda balance : \
+        log_pdf_fun_bal = lambda balance : \
             BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
                 self.sum_minus_log_x, self.strength, balance) \
             + BetaUC.calc_log_prior(self.strength, balance, self.mu,
                 self.alpha, self.beta)
-        self.balance = su.mh_sample(self.balance, log_pdf_lambda_bal,
+        self.balance = su.mh_sample(self.balance, log_pdf_fun_bal,
             .25, [0, 1], burn=n_samples)
 
     def set_hypers(self, hypers):

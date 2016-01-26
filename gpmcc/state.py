@@ -239,8 +239,8 @@ class State(object):
         print
 
     def transition_alpha(self):
-        logps = [gu.logp_crp_unorm(self.n_cols, len(self.Nv), alpha) for alpha in
-            self.alpha_grid]
+        logps = [gu.logp_crp_unorm(self.n_cols, len(self.Nv), alpha) for alpha
+            in self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
