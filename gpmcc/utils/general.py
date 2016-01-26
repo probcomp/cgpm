@@ -202,13 +202,11 @@ def clean_data(X, cctypes):
     """Makes sure that discrete data columns are integer types."""
     is_discrete = {
         'normal'            : False,
-        'normal_uc'         : False,
         'bernoulli'         : False,  # 0. or 1.
         'categorical'       : True,
         'lognormal'         : False,
         'poisson'           : False,
         'exponential'       : False,
-        'exponential_uc'    : False,
         'geometric'         : True,
         'vonmises'          : False,
     }

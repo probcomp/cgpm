@@ -27,7 +27,6 @@
 
 import re
 
-from gpmcc.dists import normal_uc
 from gpmcc.dists import beta_uc
 from gpmcc.dists import normal
 from gpmcc.dists import bernoulli
@@ -35,20 +34,17 @@ from gpmcc.dists import categorical
 from gpmcc.dists import lognormal
 from gpmcc.dists import poisson
 from gpmcc.dists import exponential
-from gpmcc.dists import exponential_uc
 from gpmcc.dists import geometric
 from gpmcc.dists import vonmises
 
 cctype_class_lookup = {
     'normal'            : normal.Normal,
-    'normal_uc'         : normal_uc.NormalUC,
     'beta_uc'           : beta_uc.BetaUC,
     'bernoulli'         : bernoulli.Bernoulli,
     'categorical'       : categorical.Categorical,
     'lognormal'         : lognormal.Lognormal,
     'poisson'           : poisson.Poisson,
     'exponential'       : exponential.Exponential,
-    'exponential_uc'    : exponential_uc.ExponentialUC,
     'geometric'         : geometric.Geometric,
     'vonmises'          : vonmises.Vonmises,
 }

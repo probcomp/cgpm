@@ -34,7 +34,7 @@ import numpy as np
 n_rows = 200
 view_weights = np.asarray([0.55, .45])
 cluster_weights = [np.array([.33, .33, .34]), np.array([.1, .9])]
-cctypes = ['beta_uc','normal','normal_uc','poisson','categorical(k=4)',
+cctypes = ['beta_uc','normal','poisson','categorical(k=4)',
     'vonmises', 'bernoulli','lognormal','normal','normal']
 separation = [.95] * len(cctypes)
 cctypes, distargs = cu.parse_distargs(cctypes)

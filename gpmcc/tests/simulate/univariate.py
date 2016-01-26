@@ -113,11 +113,6 @@ def test_exponential():
     samples = model.simulate(None, [0, 1], N=n_samples)
     return D, model, samples
 
-def test_exponential_uc():
-    D, model= generate_gpmcc_state('exponential_uc')
-    samples = model.simulate(None, [0, 1], N=n_samples)
-    return D, model, samples
-
 def test_geometric():
     D, model= generate_gpmcc_state('geometric')
     samples = model.simulate(None, [0, 1], N=n_samples)
