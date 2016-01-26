@@ -68,7 +68,7 @@ a mixture of one of the available DistributionGpms. Try
 ```
 $ git checkout master
 $ cd gpmcc
-$ python -i example.py
+$ python -i examples/one_view.py
 ```
 
 A plot along these lines should appear
