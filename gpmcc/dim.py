@@ -143,9 +143,6 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.transition_params()
 
-        # XXX BREAKS ALL ABSTRACTION BARRIERS
-        self._Zr_last = Zr
-
     # --------------------------------------------------------------------------
     # logpdf
 

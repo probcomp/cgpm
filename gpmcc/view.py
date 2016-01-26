@@ -85,8 +85,7 @@ class View(object):
     def incorporate_dim(self, dim):
         self.dims[dim.index] = dim
         # XXX HACK
-        if not np.allclose(dim._Zr_last, self.Zr):
-            dim.reassign(self.X[:, dim.index], self.Zr)
+        dim.reassign(self.X[:, dim.index], self.Zr)
 
     def unincorporate_dim(self, dim):
         del self.dims[dim.index]

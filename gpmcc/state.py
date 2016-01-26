@@ -226,12 +226,12 @@ class State(object):
             print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
             sys.stdout.flush()
             # Start inference.
-            self.transition_columns(target_cols=target_cols)
             self.transition_alpha()
+            self.transition_view_alphas(target_views=target_views)
+            self.transition_column_hypers(target_cols=target_cols)
             self.transition_rows(target_views=target_views,
                 target_rows=target_rows)
-            self.transition_column_hypers(target_cols=target_cols)
-            self.transition_view_alphas(target_views=target_views)
+            self.transition_columns(target_cols=target_cols)
             # Plot
             if do_plot:
                 self._do_plot(fig, layout)

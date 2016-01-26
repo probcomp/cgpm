@@ -34,17 +34,35 @@ import numpy as np
 n_rows = 200
 view_weights = np.asarray([0.55, .45])
 cluster_weights = [np.array([.33, .33, .34]), np.array([.1, .9])]
-cctypes = ['beta_uc','normal','poisson','categorical(k=4)',
-    'vonmises', 'bernoulli','lognormal','normal','normal']
+cctypes = [
+    'beta_uc',
+    'normal',
+    'poisson',
+    'categorical(k=4)',
+    'vonmises',
+    'bernoulli',
+    'lognormal',
+    'normal',
+    'normal']
+
 separation = [.95] * len(cctypes)
 cctypes, distargs = cu.parse_distargs(cctypes)
 T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights, cctypes,
     distargs, separation)
 
-cctypes = ['normal','normal','normal','categorical(k={})'.format(len(set(T[3]))),
-    'categorical(k=4)','normal','categorical(k=2)','normal','normal','normal']
+cctypes = [
+    'normal',
+    'normal',
+    'categorical(k=%d)' % (max(T[2])+1),
+    'categorical(k=4)',
+    'normal',
+    'categorical(k=2)',
+    'normal',
+    'normal',
+    'normal']
 cctypes, distargs = cu.parse_distargs(cctypes)
 
 from gpmcc import engine
-runner = engine.Engine(T.T, cctypes, distargs, num_states=8, initialize=1)
+runner = engine.Engine(T.T, cctypes, distargs, num_states=8, initialize=0)
+runner.initialize(multithread=0)
 runner.transition(N=1000, multithread=True)
