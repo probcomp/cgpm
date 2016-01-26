@@ -330,19 +330,20 @@ class State(object):
         if len(self.Nv) <= v_b:
             index = v_b - len(self.Nv)
             assert 0 <= index and index < m
-            self._create_singleton_view(dim, v_a, proposal_views[index])
+            self._move_dim_to_singleton_view(dim, v_a, proposal_views[index])
         else:
             self._move_dim_to_view(dim, v_a, v_b)
 
         self._check_partitions()
 
-    def _create_singleton_view(self, dim, current_view_index, proposal_view):
+    def _move_dim_to_singleton_view(self, dim, move_from, singleton_view):
+        """move_from is an index, singleton_view is a View object."""
         self.Zv[dim.index] = len(self.Nv)
-        dim.reassign(self.X[:,dim.index], proposal_view.Zr)
-        self.views[current_view_index].unincorporate_dim(dim)
-        self.Nv[current_view_index] -= 1
+        singleton_view.incorporate_dim(dim)
         self.Nv.append(1)
-        self.views.append(proposal_view)
+        self.views[move_from].unincorporate_dim(dim)
+        self.Nv[move_from] -= 1
+        self.views.append(singleton_view)
 
     def _move_dim_to_view(self, dim, move_from, move_to):
         self.Zv[dim.index] = move_to
