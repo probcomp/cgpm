@@ -1,8 +1,0 @@
-[x] Standardize codebase.
-[x] Unify the seed (numpy uniformly).
-[x] Implement multiprocessing.
-[x] Use numpy arrays for dataset.
-[x] Unify uncollapsed and collapsed dim.
-[x] Handle missing data.
-[x] Explore high number of cluster in exponential, geometric.
-[ ] Remove this TODO, since I am on Github issue tracker now.
