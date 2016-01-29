@@ -189,19 +189,15 @@ class Dim(object):
     def transition_hypers(self):
         """Updates the hyperparameters and the component parameters of each
         cluster."""
-        # Transition component parameters.
         for cluster in self.clusters:
+            cluster.set_hypers(self.hypers)
             cluster.transition_params()
-        # Transition hyperparameters.
         targets = self.hypers.keys()
         np.random.shuffle(targets)
         for target in targets:
             logps = self._calc_hyper_proposal_logps(target)
             proposal = gu.log_pflip(logps)
             self.hypers[target] = self.hyper_grids[target][proposal]
-        # Update the clusters.
-        for cluster in self.clusters:
-            cluster.set_hypers(self.hypers)
 
     # --------------------------------------------------------------------------
     # Helpers
