@@ -82,9 +82,10 @@ class View(object):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate_dim(self, dim):
+    def incorporate_dim(self, dim, reassign=True):
         self.dims[dim.index] = dim
-        dim.reassign(self.X[:, dim.index], self.Zr)
+        if reassign:
+            dim.reassign(self.X[:, dim.index], self.Zr)
 
     def unincorporate_dim(self, dim):
         del self.dims[dim.index]
