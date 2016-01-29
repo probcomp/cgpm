@@ -118,7 +118,7 @@ class Bernoulli(DistributionGpm):
 
     @staticmethod
     def is_collapsed():
-        return False
+        return True
 
     @staticmethod
     def is_continuous():
