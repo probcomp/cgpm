@@ -233,7 +233,7 @@ class State(object):
     # Inference
 
     def transition(self, N=1, target_rows=None, target_cols=None,
-            target_views=None, do_plot=False):
+            target_views=None, do_plot=False, do_progress=True):
         """Run all infernece kernels. For targeted inference, see other exposed
         inference commands.
 
@@ -245,6 +245,8 @@ class State(object):
             Views, rows and columns to apply the kernels. Default is all.
         do_plot : boolean, optional
             Plot the state of the sampler (real-time).
+        do_progress : boolean, optional
+            Show a progress bar for number of target iterations (real-time).
 
         Examples
         --------
@@ -252,6 +254,13 @@ class State(object):
         >>> State.transition(N=100)
         >>> State.transition(N=100, cols=[1,2], rows=range(100))
         """
+        if do_progress:
+                percentage = 0
+                progress = ' ' * 30
+                fill = int(percentage * len(progress))
+                progress = '[' + '=' * fill + progress[fill:] + ']'
+                print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
+                sys.stdout.flush()
         if do_plot:
             plt.ion()
             plt.show()
@@ -262,21 +271,19 @@ class State(object):
             self._do_plot(fig, layout)
 
         for i in xrange(N):
-            # Star bar.
-            percentage = float(i+1) / N
-            progress = ' ' * 30
-            fill = int(percentage * len(progress))
-            progress = '[' + '=' * fill + progress[fill:] + ']'
-            print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
-            sys.stdout.flush()
-            # Start inference.
             self.transition_alpha()
             self.transition_view_alphas(target_views=target_views)
             self.transition_column_hypers(target_cols=target_cols)
             self.transition_rows(target_views=target_views,
                 target_rows=target_rows)
             self.transition_columns(target_cols=target_cols)
-            # Plot
+            if do_progress:
+                percentage = float(i+1) / N
+                progress = ' ' * 30
+                fill = int(percentage * len(progress))
+                progress = '[' + '=' * fill + progress[fill:] + ']'
+                print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
+                sys.stdout.flush()
             if do_plot:
                 self._do_plot(fig, layout)
                 plt.pause(1e-4)
