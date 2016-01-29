@@ -140,8 +140,9 @@ class Dim(object):
                 self.clusters[k].incorporate(x)
 
         # Transition uncollapsed params if necessary.
-        for cluster in self.clusters:
-            cluster.transition_params()
+        if not self.is_collapsed():
+            for cluster in self.clusters:
+                cluster.transition_params()
 
     # --------------------------------------------------------------------------
     # logpdf
