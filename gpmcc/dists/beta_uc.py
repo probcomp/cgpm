@@ -61,7 +61,7 @@ class BetaUC(DistributionGpm):
         # Parameters.
         self.strength, self.balance = strength, balance
         if strength is None or balance is None:
-            self.strength = np.random.exponential(scale=mu)
+            self.strength = np.random.exponential(scale=1./mu)
             self.balance = np.random.beta(alpha, beta)
             assert self.strength > 0 and 0 < self.balance < 1
 
@@ -148,7 +148,7 @@ class BetaUC(DistributionGpm):
         N = float(len(X))
         Sx = np.sum(X)
         Mx = np.sum(1-X)
-        grids['mu'] = gu.log_linspace(1/N, N, n_grid)
+        grids['mu'] = gu.log_linspace(1./N, N, n_grid)
         grids['alpha'] = gu.log_linspace(Sx/N, Sx, n_grid)
         grids['beta'] = gu.log_linspace(Mx/N, Mx, n_grid)
         return grids
@@ -194,6 +194,6 @@ class BetaUC(DistributionGpm):
     @staticmethod
     def calc_log_prior(strength, balance, mu, alpha, beta):
         assert strength > 0 and balance > 0 and balance < 1
-        log_strength = scipy.stats.expon.logpdf(strength, scale=mu)
+        log_strength = scipy.stats.expon.logpdf(strength, scale=1./mu)
         log_balance = scipy.stats.beta.logpdf(balance, alpha, beta)
         return log_strength + log_balance
