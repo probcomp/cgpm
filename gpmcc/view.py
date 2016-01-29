@@ -166,23 +166,17 @@ class View(object):
         # Get CRP probabilities.
         p_crp = list(self.Nk)
         if is_singleton:
-            # If z_a is singleton do not consider a new singleton.
             p_crp[z_a] = self.alpha
         else:
-            # Decrement current cluster count.
             p_crp[z_a] -= 1
-            # Append to the CRP an alpha for singleton.
             p_crp.append(self.alpha)
 
         # Log-normalize p_crp.
-        p_crp = np.log(np.array(p_crp))
-        p_crp = gu.log_normalize(p_crp)
+        p_crp = gu.log_normalize(np.log(p_crp))
 
         # Calculate probability of rowid in each cluster k \in K.
         p_cluster = []
         for k in xrange(len(self.Nk)):
-            # If k == z_a then predictive_logp will remove rowid's
-            # suffstats and reuse parameters.
             lp = self._row_predictive_logp(rowid, k) + p_crp[k]
             p_cluster.append(lp)
 
