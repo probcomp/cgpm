@@ -26,6 +26,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import copy
 import sys
 import pickle
 from math import log
@@ -313,13 +314,13 @@ class State(object):
         for view in target_views:
             view.transition_rows(target_rows=target_rows)
 
-    def transition_columns(self, target_cols=None, m=1):
+    def transition_columns(self, target_cols=None, m=2):
         """Transition column assignment to views."""
         if target_cols is None:
             target_cols = range(self.n_cols)
         np.random.shuffle(target_cols)
         for col in target_cols:
-            self._transition_column(col, m=m)
+            self._transition_column(col, m)
 
     # --------------------------------------------------------------------------
     # Plotting
@@ -336,91 +337,71 @@ class State(object):
     # --------------------------------------------------------------------------
     # Internal
 
-    def _transition_column(self, col, m=1):
+    def _transition_column(self, col, m):
         """Gibbs with auxiliary parameters. Currently resampled uncollapsed
-        parameters as a side-effect."""
-        dim = self.dims[col]
+        parameters as a side-effect. m should be at least 1."""
         v_a = self.Zv[col]
         singleton = (self.Nv[v_a] == 1)
-        p_crp = self._compute_view_crp_logps(col)
 
-        # XXX Major hack. Save logp under current view assignment.
-        va_marginal_logp = self.dims[col].marginal_logp()
-
-        # Calculate probability under each view's assignment
-        p_view = []
-        proposal_dims = []
-        for v in xrange(len(self.Nv)):
-            proposal_dims.append(dim)
-            proposal_dims[-1].reassign(self.X[:,dim.index],
-                self.views[v].Zr)
-            p_view_v = dim.marginal_logp() + p_crp[v]
-            # XXX Major hack continued,
-            if v == v_a:
-                p_view_v = va_marginal_logp + p_crp[v]
-            p_view.append(p_view_v)
-
-        # If not a singleton, propose m auxiliary parameters (views)
-        if not singleton:
-            # CRP probability of singleton, split m times.
-            p_crp_aux = log(self.alpha/float(m))
-            proposal_views = []
-            for  _ in range(m):
-                proposal_dims.append(dim)
-                proposal_view = View(self.X, [proposal_dims[-1]],
-                    n_grid=self.n_grid)
-                proposal_views.append(proposal_view)
-                p_view_aux = dim.marginal_logp() + p_crp_aux
-                p_view.append(p_view_aux)
-
-        # Draw a view.
-        v_b = gu.log_pflip(p_view)
-        self.dims[dim.index] = proposal_dims[v_b]
-
-        # Register the dim with the new view.
-        if len(self.Nv) <= v_b:
-            index = v_b - len(self.Nv)
-            assert 0 <= index and index < m
-            self._move_dim_to_singleton_view(dim, v_a, proposal_views[index])
-        else:
-            self._move_dim_to_view(dim, v_a, v_b)
-
-        self._check_partitions()
-
-    def _move_dim_to_singleton_view(self, dim, move_from, singleton_view):
-        """move_from is an index, singleton_view is a View object."""
-        self.Zv[dim.index] = len(self.Nv)
-        singleton_view.incorporate_dim(dim)
-        self.Nv.append(1)
-        self.views[move_from].unincorporate_dim(dim)
-        self.Nv[move_from] -= 1
-        self.views.append(singleton_view)
-
-    def _move_dim_to_view(self, dim, move_from, move_to):
-        self.Zv[dim.index] = move_to
-        self.views[move_from].unincorporate_dim(dim)
-        self.Nv[move_from] -= 1
-        self.views[move_to].incorporate_dim(dim)
-        self.Nv[move_to] += 1
-        # If move_from was a singleton, destroy.
-        if self.Nv[move_from] == 0:
-            # Decrement view index of all other views.
-            zminus = np.nonzero(self.Zv>move_from)
-            self.Zv[zminus] -= 1
-            del self.Nv[move_from]
-            del self.views[move_from]
-
-    def _compute_view_crp_logps(self, col):
-        """Computes the log probability of col in each view, removing it from
-        its current assignment for a Gibbs sweep."""
+        # Compute CRP probabilities.
         p_crp = list(self.Nv)
-        # Adjust for the existing assignment.
         v_a = self.Zv[col]
         if self.Nv[v_a] == 1:
-            p_crp[v_a] = self.alpha
+            p_crp[v_a] = self.alpha / float(m)
         else:
             p_crp[v_a] -= 1
-        return np.log(p_crp)
+        p_crp = np.log(p_crp)
+
+        def get_propsal_dim(dim, view):
+            if dim.is_collapsed() or view == v_a:
+                return dim
+            return copy.deepcopy(dim)
+
+        # Calculate probability under existing view assignments.
+        p_view = []
+        proposal_dims = []
+        for v in xrange(len(self.views)):
+            proposal_dims.append(get_propsal_dim(self.dims[col], v))
+            if v != v_a or self.dims[col].is_collapsed():
+                proposal_dims[-1].reassign(self.X[:,col], self.views[v].Zr)
+            p_view.append(proposal_dims[-1].marginal_logp() + p_crp[v])
+
+        # Propose auxiliary views.
+        p_crp_aux = log(self.alpha/float(m))
+        proposal_views = []
+        for _ in xrange(m-1 if singleton else m):
+            proposal_dims.append(get_propsal_dim(self.dims[col], None))
+            proposal_views.append(
+                View(self.X, [proposal_dims[-1]], n_grid=self.n_grid))
+            p_view.append(proposal_dims[-1].marginal_logp() + p_crp_aux)
+
+        # Draw view.
+        v_b = gu.log_pflip(p_view)
+        self.dims[col] = proposal_dims[v_b]
+
+        # Append auxiliary view?
+        if v_b >= len(self.views):
+            self.views.append(proposal_views[v_b-len(self.Nv)])
+            self.Nv.append(0)
+            v_b = len(self.Nv)-1
+
+        # Accounting.
+        self.Zv[col] = v_b
+        if self.dims[col].is_collapsed() or v_b < len(self.Nv) - 1:
+            self.views[v_a].unincorporate_dim(self.dims[col])
+            self.views[v_b].incorporate_dim(
+                self.dims[col], reassign=self.dims[col].is_collapsed())
+        self.Nv[v_a] -= 1
+        self.Nv[v_b] += 1
+
+        # Delete empty view?
+        if self.Nv[v_a] == 0:
+            zminus = np.nonzero(self.Zv>v_a)
+            self.Zv[zminus] -= 1
+            del self.Nv[v_a]
+            del self.views[v_a]
+
+        self._check_partitions()
 
     def _compute_cluster_crp_logps(self, view):
         """Computes the log probability of a hypothetical row for each cluster
