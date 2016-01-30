@@ -139,8 +139,8 @@ class View(object):
         """
         if target_cols is None:
             target_cols = self.dims.keys()
-        for dim in self.dims.values():
-            dim.transition_hypers()
+        for col in target_cols:
+            self.dims[col].transition_hypers()
 
     def transition_rows(self, target_rows=None):
         """Transition the row partitioning. target_rows is an optional list
