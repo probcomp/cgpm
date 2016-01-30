@@ -4,13 +4,13 @@
 FROM ubuntu
 RUN apt-get update -qq
 
-# non-python dependencies for gpmcc
+# Non-python dependencies for gpmcc.
 RUN apt-get install -y -qq python-dev python-pip
 
-# transitive non-python dependencies for matplotlib
+# Transitive non-python dependencies for matplotlib.
 RUN apt-get install -y -qq libjpeg-dev libxft-dev
 
-# SciPy dependency tracking is confusing and slow.  Install at the OS level
+# SciPy dependency tracking is confusing and slow. Install at the OS level
 # instead of with pip to avoid thinking.
 # See also: https://github.com/scikit-learn/scikit-learn/issues/4164
 RUN apt-get install -y -qq python-numpy python-scipy
