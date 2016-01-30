@@ -68,7 +68,7 @@ class View(object):
             Zr, Nk, _ = gu.simulate_crp(self.N, alpha)
         else:
             Nk = list(np.bincount(Zr))
-        self.Zr = np.array(Zr)
+        self.Zr = Zr
         self.Nk = Nk
 
         # Initialize the dimensions.
@@ -233,7 +233,7 @@ class View(object):
         # If move_from is now empty, delete and update cluster ids.
         if self.Nk[move_from] == 0:
             assert move_to != len(self.Nk)
-            self.Zr[np.nonzero(self.Zr > move_from)] -= 1
+            self.Zr = [i-1 if i>move_from else i for i in self.Zr]
             for dim in self.dims.values():
                 dim.destroy_cluster(move_from)
             del self.Nk[move_from]

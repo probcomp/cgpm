@@ -109,7 +109,7 @@ class State(object):
             Zv, Nv, _ = gu.simulate_crp(self.n_cols, self.alpha)
         else:
             Nv = list(np.bincount(Zv))
-        self.Zv = np.array(Zv)
+        self.Zv = Zv
         self.Nv = Nv
 
         # Construct views.
@@ -155,16 +155,16 @@ class State(object):
 
         if 0 <= v < len(self.Nv):
             self.views[v].incorporate_dim(self.dims[-1])
-            self.Zv = np.append(self.Zv, v)
+            self.Zv.append(v)
             self.Nv[v] += 1
         elif v == len(self.Nv):
             self.views.append(
                 View(self.X, [self.dims[-1]], n_grid=self.n_grid))
-            self.Zv = np.append(self.Zv, v)
+            self.Zv.append(v)
             self.Nv.append(1)
         else:
             self.views[0].incorporate_dim(self.dims[-1])
-            self.Zv = np.append(self.Zv, 0)
+            self.Zv.append(0)
             self.Nv[0] += 1
             self.transition_columns(target_cols=[col])
 
@@ -193,11 +193,10 @@ class State(object):
         v = self.Zv[col]
         self.views[v].unincorporate_dim(self.dims[col])
         self.Nv[v] -= 1
-        self.Zv = np.delete(self.Zv, col)
+        del self.Zv[col]
 
         if self.Nv[v] == 0:
-            zminus = np.nonzero(self.Zv>v)
-            self.Zv[zminus] -= 1
+            self.Zv = [i-1 if i>v else i for i in self.Zv]
             del self.Nv[v]
             del self.views[v]
 
@@ -462,8 +461,7 @@ class State(object):
 
         # Delete empty view?
         if self.Nv[v_a] == 0:
-            zminus = np.nonzero(self.Zv>v_a)
-            self.Zv[zminus] -= 1
+            self.Zv = [i-1 if i>v_a else i for i in self.Zv]
             del self.Nv[v_a]
             del self.views[v_a]
 
