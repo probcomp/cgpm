@@ -199,10 +199,10 @@ class State(object):
         if evidence is None:
             evidence = []
 
-        # Obtain all views of the query columns.
+        # Obtain views of query columns.
         query_views = set([self.Zv[col] for col in query])
 
-        # Obtain the probability of hypothetical row belonging to each cluster.
+        # Obtain probability of hypothetical row belonging to each cluster.
         cluster_logps_for = dict()
         for v in query_views:
             # CRP densities.
@@ -211,9 +211,8 @@ class State(object):
             logp_data = np.zeros(len(logp_crp))
             for (col, val) in evidence:
                 if self.Zv[col] == v:
-                    logp_data += self._compute_cluster_data_logps(
-                        self.dims[col], val)
-            cluster_logps_for[v] = np.exp(gu.log_normalize(logp_crp+logp_data))
+                    logp_data += self._compute_cluster_data_logps(col, val)
+            cluster_logps_for[v] = gu.log_normalize(logp_crp+logp_data)
 
         samples = []
         for _ in xrange(N):
@@ -221,7 +220,7 @@ class State(object):
             draw = []
             for v in query_views:
                 # Sample cluster.
-                sampled_k[v] = gu.pflip(cluster_logps_for[v])
+                sampled_k[v] = gu.log_pflip(cluster_logps_for[v])
             for col in query:
                 # Sample data.
                 x = self.dims[col].simulate(sampled_k[v])
@@ -404,16 +403,18 @@ class State(object):
         self._check_partitions()
 
     def _compute_cluster_crp_logps(self, view):
-        """Computes the log probability of a hypothetical row for each cluster
-        in the, view Pr[Z_{i+1}=k|Z_{1..i}, alpha]."""
+        """Returns a list of log probabilities that a new row joins each of the
+        clusters in self.views[view], including a singleton."""
         log_crp_numer = np.log(self.views[view].Nk + [self.views[view].alpha])
         logp_crp_denom = log(self.n_rows + self.views[view].alpha)
         return log_crp_numer - logp_crp_denom
 
-    def _compute_cluster_data_logps(self, dim, x):
-        """Computes the probability of value x in self.dims[col], marginalizing
-        over the latent cluster assignment z."""
-        return [dim.predictive_logp(x,k) for k in xrange(len(dim.clusters)+1)]
+    def _compute_cluster_data_logps(self, col, x):
+        """Returns a list of log probabilities that a new row for self.dims[col]
+        obtains value x for each of the clusters in self.Zr[col], including a
+        singleton."""
+        return [self.dims[col].predictive_logp(x,k) for k in
+            xrange(len(self.dims[col].clusters)+1)]
 
     def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.
