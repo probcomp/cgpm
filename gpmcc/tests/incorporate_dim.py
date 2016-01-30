@@ -52,7 +52,7 @@ class IncorporateDimTest(unittest.TestCase):
             'vonmises']
         separation = [.95] * len(cls.cctypes)
         cls.cctypes, cls.distargs = cu.parse_distargs(cls.cctypes)
-        T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
+        T, _, _ = tu.gen_data_table(n_rows, view_weights, cluster_weights,
             cls.cctypes, cls.distargs, separation)
         cls.T = T.T
         cls.state = state.State(cls.T[:,:2], cls.cctypes[:2], cls.distargs[:2],
@@ -74,10 +74,29 @@ class IncorporateDimTest(unittest.TestCase):
         self.state.incorporate_dim(self.T[:,4], self.cctypes[4],
             self.distargs[4])
 
+        # Unincorporate first dim.
+        previous = len(self.state.Zv)
+        self.state.unincorporate_dim(0)
+        self.assertEqual(len(self.state.Zv), previous-1)
+
+        # Incorporate dim into singleton view, remove it, assert destroyed.
+        self.state.incorporate_dim(self.T[:,5], self.cctypes[4],
+            self.distargs[4], v=len(self.state.Nv))
+        previous = len(self.state.views)
+        self.state.unincorporate_dim(4)
+        self.assertEqual(len(self.state.views), previous-1)
+
         # Incorporate the rest of the dims in the default way.
-        for i in xrange(5, len(self.cctypes)):
+        for i in xrange(6, len(self.cctypes)):
             self.state.incorporate_dim(self.T[:,i], self.cctypes[i],
                 self.distargs[i])
+
+        # Unincorporate all the dims, except the last one.
+        for i in xrange(self.state.n_cols-1, 0, -1):
+            self.state.unincorporate_dim(i)
+
+        # Unincorporating last dim should raise.
+        self.assertRaises(ValueError, self.state.unincorporate_dim, 0)
 
 if __name__ == '__main__':
     unittest.main()
