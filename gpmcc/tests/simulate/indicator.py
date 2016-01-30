@@ -52,7 +52,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         # Entropy.
         np.random.seed(0)
         cls.n_samples = 250
-        n_transitions = 10
+        n_transitions = 150
         # Generate synthetic dataset.
         cls.mus = [-1, 5, 9]
         cls.sigmas = [2, 2, 1.5]
@@ -98,8 +98,8 @@ class SimulateIndicatorTest(unittest.TestCase):
             ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
             # Plot simulated data.
             conditional_samples_subpop = self.model.simulate(-1, [0],
-                evidence=[(1,t)], N=self.n_samples)
-            ax.scatter(np.repeat(t, self.n_samples) + .25,
+                evidence=[(1,t)], N=len(data_subpop))
+            ax.scatter(np.repeat(t, len(data_subpop)) + .25,
                 conditional_samples_subpop[:,0], color=gu.colors[t])
         ax.set_xlabel('Indicator')
         ax.set_ylabel('x')
