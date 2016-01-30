@@ -33,6 +33,7 @@ from math import log
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.misc import logsumexp
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
@@ -183,8 +184,38 @@ class State(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, args):
-        raise ValueError('logpdf in state not yet implemented.')
+    def logpdf(self, rowid, query, evidence=None):
+        # XXX Implement logpdf unobserved.
+        return self.logpdf_unobserved(query, evidence=evidence)
+
+    def logpdf_unobserved(self, query, evidence=None, N=1):
+        """Simulates a hypothetical member, with no observed latents."""
+        # Default parameter.
+        if evidence is None:
+            evidence = []
+
+        # Obtain all views of the query columns.
+        query_views = set([self.Zv[col] for (col, _) in query])
+
+        # Obtain the probability of hypothetical row belonging to each cluster.
+        cluster_logps_for = dict()
+        for v in query_views:
+            # CRP densities.
+            logp_crp = self._compute_cluster_crp_logps(v)
+            # Evidence densities.
+            logp_data = np.zeros(len(logp_crp))
+            for (col, val) in evidence:
+                if self.Zv[col] == v:
+                    logp_data += self._compute_cluster_data_logps(col, val)
+            cluster_logps_for[v] = gu.log_normalize(logp_crp+logp_data)
+
+        logpdf = 0
+        for (col, val) in query:
+            # Query densities.
+            logpdf += logsumexp(self._compute_cluster_data_logps(col, val)
+                + cluster_logps_for[self.Zv[col]])
+
+        return logpdf
 
     # --------------------------------------------------------------------------
     # Simulate
