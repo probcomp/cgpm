@@ -386,11 +386,11 @@ class State(object):
             v_b = len(self.Nv)-1
 
         # Accounting.
-        self.Zv[col] = v_b
-        if self.dims[col].is_collapsed() or v_b < len(self.Nv) - 1:
+        if v_a != v_b:
             self.views[v_a].unincorporate_dim(self.dims[col])
-            self.views[v_b].incorporate_dim(
-                self.dims[col], reassign=self.dims[col].is_collapsed())
+        self.views[v_b].incorporate_dim(self.dims[col],
+            reassign=self.dims[col].is_collapsed())
+        self.Zv[col] = v_b
         self.Nv[v_a] -= 1
         self.Nv[v_b] += 1
 
