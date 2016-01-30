@@ -73,10 +73,9 @@ def log_pflip(logp):
     """Categorical draw from a vector logp of log probabilities."""
     if len(logp) == 1:
         return 0
-    P = log_normalize(logp)
-    NP = np.exp(np.copy(P))
-    assert math.fabs(1.0-sum(NP)) < 10.0**(-10.0)
-    return pflip(NP)
+    p = np.exp(log_normalize(logp))
+    assert math.fabs(1.0-sum(p)) < 10.0**(-10.0)
+    return pflip(p)
 
 def pflip(p):
     """Categorical draw from a vector p of probabilities."""
