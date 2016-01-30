@@ -124,10 +124,10 @@ def simulate_crp(N, alpha):
 
     partition = np.zeros(N, dtype=int)
     Nk = [1]
-    for i in range(1,N):
+    for i in xrange(1,N):
         K = len(Nk)
         ps = np.zeros(K+1)
-        for k in range(K):
+        for k in xrange(K):
             # Get the number of people sitting at table k.
             ps[k] = float(Nk[k])
         ps[K] = alpha

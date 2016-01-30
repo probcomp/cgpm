@@ -106,16 +106,15 @@ class State(object):
 
         # Construct view partition.
         if Zv is None:
-            Zv, Nv, V = gu.simulate_crp(self.n_cols, self.alpha)
+            Zv, Nv, _ = gu.simulate_crp(self.n_cols, self.alpha)
         else:
             Nv = list(np.bincount(Zv))
-            V = len(Nv)
         self.Zv = np.array(Zv)
         self.Nv = Nv
 
         # Construct views.
         self.views = []
-        for v in xrange(V):
+        for v in xrange(len(self.Nv)):
             dims = [self.dims[i] for i in xrange(self.n_cols) if Zv[i] == v]
             Zr = None if Zrcv is None else np.asarray(Zrcv[v])
             self.views.append(View(self.X, dims, Zr=Zr, n_grid=n_grid))
