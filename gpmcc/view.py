@@ -83,11 +83,15 @@ class View(object):
     # Observe
 
     def incorporate_dim(self, dim, reassign=True):
+        """Incorporate the `dim` into this view. If `reassign` is False, the row
+        partition of `dim` must match `self.Zr` already.
+        """
         self.dims[dim.index] = dim
         if reassign:
             dim.reassign(self.X[:, dim.index], self.Zr)
 
     def unincorporate_dim(self, dim):
+        """Remove `dim` from this view (does not modify `dim`)."""
         del self.dims[dim.index]
 
     def incorporate_row(self, X):
@@ -98,7 +102,8 @@ class View(object):
 
     def set_dataset(self, X):
         """Update the pointer to the global dataset X. The invariant is that
-        the data for dim.index should be in column X[:,dim.index]."""
+        the data for dim.index should be in column X[:,dim.index].
+        """
         self.X = X
 
     # --------------------------------------------------------------------------

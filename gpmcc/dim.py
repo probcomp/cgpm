@@ -151,7 +151,6 @@ class Dim(object):
         """Returns the predictive logp of x in clusters[k]. If x has been
         assigned to clusters[k], then use the unincorporate/incorporate
         interface to compute the true predictive logp."""
-        assert k <= len(self.clusters)
         if k == len(self.clusters):
             # Good for inference quality, always uses latest hypers.
             self.aux_model = self.model(distargs=self.distargs,
@@ -173,7 +172,6 @@ class Dim(object):
     def simulate(self, k):
         """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
-        assert k <= len(self.clusters)
         if k == len(self.clusters):
             # Good for inference quality, always uses latest hypers.
             self.aux_model = self.model(distargs=self.distargs,
