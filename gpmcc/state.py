@@ -172,8 +172,37 @@ class State(object):
         self.transition_column_hypers(target_cols=[col])
         self._check_partitions()
 
-    def unincorporate_dim(self, dim):
-        raise ValueError('Cannot unincorporate dim yet.')
+    def unincorporate_dim(self, col):
+        """Unincorporate an existing dim.
+
+        Parameters
+        ----------
+        col : int
+            Index of the dim to unincorporate.
+        """
+        self.X = np.delete(self.X, col, 1)
+        self.n_rows, self.n_cols = np.shape(self.X)
+
+        v = self.Zv[col]
+        self.views[v].unincorporate_dim(self.dims[col])
+        self.Nv[v] -= 1
+        self.Zv = np.delete(self.Zv, col)
+
+        if self.Nv[v] == 0:
+            zminus = np.nonzero(self.Zv>v)
+            self.Zv[zminus] -= 1
+            del self.Nv[v]
+            del self.views[v]
+
+        del self.dims[col]
+        for i, dim in enumerate(self.dims):
+            dim.index = i
+
+        for view in self.views:
+            view.set_dataset(self.X)
+            view.reindex_dims()
+
+        self._check_partitions()
 
     def incorporate_row(self, X):
         raise ValueError('Cannot incorporate row yet.')

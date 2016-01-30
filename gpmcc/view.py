@@ -100,11 +100,21 @@ class View(object):
     def unincorporate_row(self, X):
         raise ValueError('Cannot unincorporate row yet.')
 
+    # --------------------------------------------------------------------------
+    # Accounting
+
     def set_dataset(self, X):
         """Update the pointer to the global dataset X. The invariant is that
         the data for dim.index should be in column X[:,dim.index].
         """
         self.X = X
+
+    def reindex_dims(self):
+        """Update the dict mapping dim indices to dims."""
+        dims = dict()
+        for dim in self.dims.values():
+            dims[dim.index] = dim
+        self.dims = dims
 
     # --------------------------------------------------------------------------
     # Inference
