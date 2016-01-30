@@ -456,8 +456,10 @@ class State(object):
                 # Ensure number of clusters in each dim in views[v]
                 # is the same and as described in the view (K, Nk).
                 assert len(dim.clusters) == len(Nk)
-                # for k in xrange(len(dim.clusters)):
-                    # assert dim.clusters[k].N == Nk[k]
+                for k in xrange(len(dim.clusters)):
+                    rowids = np.where(self.views[v].Zr==k)[0]
+                    num_nans = np.sum(np.isnan(self.X[rowids,dim.index]))
+                    assert dim.clusters[k].N == Nk[k] - num_nans
 
     # --------------------------------------------------------------------------
     # Serialize
