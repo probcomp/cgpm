@@ -27,4 +27,4 @@ RUN pip install dist/gpmcc-*-py2-none-any.whl
 COPY gpmcc/tests /tests
 WORKDIR /tests
 RUN rm -rf /src
-RUN python /tests/inference/test_binomial.py
+RUN python /tests/binomial.py
