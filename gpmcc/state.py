@@ -179,7 +179,15 @@ class State(object):
         ----------
         col : int
             Index of the dim to unincorporate.
+
+        Raises
+        ----------
+        ValueError
+            If the state has only one dim.
         """
+        if self.n_cols == 1:
+            raise ValueError('State has only one dim, cannot unincorporate.')
+
         self.X = np.delete(self.X, col, 1)
         self.n_rows, self.n_cols = np.shape(self.X)
 
