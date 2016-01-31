@@ -62,25 +62,30 @@ class IncorporateRowTest(unittest.TestCase):
     def test_incorporate(self):
         # Incorporate row into cluster 0 for all views.
         previous = np.asarray([v.Nk[0] for v in self.state.views])
-        self.state.incorporate_row(self.T[11,:], k=[0]*len(self.state.views))
+        self.state.incorporate_row(self.T[10,:], k=[0]*len(self.state.views))
         self.assertEqual([v.Nk[0] for v in self.state.views], list(previous+1))
 
         # Incorporate row into a singleton for all views.
         previous = np.asarray([len(v.Nk) for v in self.state.views])
-        self.state.incorporate_row(self.T[12,:], k=previous)
+        self.state.incorporate_row(self.T[11,:], k=previous)
         self.assertEqual([len(v.Nk) for v in self.state.views], list(previous+1))
 
         # Incorporate row without specifying a view.
-        self.state.incorporate_row(self.T[13,:], k=None)
+        self.state.incorporate_row(self.T[12,:], k=None)
 
         # Incorporate row specifying different clusters.
         k = [None] * len(self.state.views)
         k[::2] = [1] * len(k[::2])
         previous = np.asarray([v.Nk[1] for v in self.state.views])
-        self.state.incorporate_row(self.T[14,:], k=k)
+        self.state.incorporate_row(self.T[13,:], k=k)
         for i in xrange(len(self.state.views)):
             if i%2 == 0:
                 self.assertEqual(self.state.views[i].Nk[1], previous[i]+1)
+
+        # Incoporate all rows in the default way.
+        for i in xrange(14,len(self.T)):
+            self.state.incorporate_row(self.T[i,:])
+        self.assertEqual(self.state.n_rows, len(self.T))
 
 if __name__ == '__main__':
     unittest.main()
