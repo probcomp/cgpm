@@ -234,13 +234,37 @@ class State(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence=None):
-        # XXX Implement logpdf unobserved.
-        return self.logpdf_unobserved(query, evidence=evidence)
+    def logpdf(self, rowid, query, evidence=None, N=1):
+        """Compute density of query under the posterior predictive distirbution.
+
+        Parameters
+        ----------
+        rowid : int
+            The rowid of the member of the population to simulate from.
+            If 0 <= rowid < state.n_rows then the latent variables of member
+            rowid will be taken as conditioning variables.
+            Otherwise logpdf for a hypothetical member is computed,
+            marginalizing over latent variables.
+        query : list of tuple<int>
+            A list of pairs (col, val) at which to query the logpdf.
+        evidence : list of tuple<int>, optional
+            A list of pairs (col, val) of observed values in the row to
+            condition on
+        N : int, optional.
+            Number of samples to return.
+        """
+        if not 0 <= rowid < self.n_rows:
+            return self.logpdf_unobserved(query, evidence=evidence, N=N)
+
+        logpdf = 0
+        for (col, val) in query:
+            k = self.views[self.Zv[col]].Zr[rowid]
+            logpdf += self.dims[col].predictive_logp(val, k)
+        return logsumexp(logpdf)
+
 
     def logpdf_unobserved(self, query, evidence=None, N=1):
         """Simulates a hypothetical member, with no observed latents."""
-        # Default parameter.
         if evidence is None:
             evidence = []
 
@@ -271,8 +295,35 @@ class State(object):
     # Simulate
 
     def simulate(self, rowid, query, evidence=None, N=1):
-        # XXX Implement simulate unobserved.
-        return self.simulate_unobserved(query, evidence=evidence, N=N)
+        """Simulate from the posterior predictive distirbution.
+
+        Parameters
+        ----------
+        rowid : int
+            The rowid of the member of the population to simulate from.
+            If 0 <= rowid < state.n_rows then the latent variables of member
+            rowid will be taken as conditioning variables.
+            Otherwise a hypothetical member is simulated, marginalizing over
+            latent variables.
+        query : list<int>
+            A list of col numbers to simulate from.
+        evidence : list of tuple<int>, optional
+            A list of pairs (col, val) of observed values in the row to
+            condition on.
+        N : int, optional.
+            Number of samples to return.
+        """
+        if not 0 <= rowid < self.n_rows:
+            return self.simulate_unobserved(query, evidence=evidence, N=N)
+
+        samples = []
+        for _ in xrange(N):
+            draw = []
+            for col in query:
+                k = self.views[self.Zv[col]].Zr[rowid]
+                x = self.dims[col].simulate(k)
+                draw.append(x)
+        return np.asarray(samples)
 
     def simulate_unobserved(self, query, evidence=None, N=1):
         """Simulates a hypothetical member, with no observed latents."""
