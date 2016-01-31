@@ -96,7 +96,8 @@ class View(object):
         del self.dims[dim.index]
 
     def incorporate_row(self, rowid, k=None):
-        """Incorporate rowid from the global dataset X into the view.
+        """Incorporate rowid from the global dataset X into the view. Use
+        set_dataset to update X if it has new rowids.
 
         Parameters
         ----------

@@ -218,7 +218,7 @@ class State(object):
             insert the row in view i. If k[i] is greater than the number of
             clusters in view[i] an error will be thrown. To specify cluster
             assignments for only some views, use None in all other locations
-            (i.e. k=[None,2,None]).
+            i.e. k=[None,2,None].
         """
         self.X = np.vstack((self.X, X))
         self.n_rows, self.n_cols = np.shape(self.X)
@@ -229,7 +229,7 @@ class State(object):
             view.incorporate_row(self.n_rows-1, k=k[i])
 
     def unincorporate_row(self, X):
-        raise ValueError('Cannot unincorporate row yet.')
+        raise NotImplementedError('Cannot unincorporate row yet.')
 
     # --------------------------------------------------------------------------
     # logpdf
