@@ -137,10 +137,10 @@ class State(object):
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
         v : int, optional
-            Index of the view to assign the data. If Zv unspecified, will be
-            sampled from the CRP. If 0 <= Zv < len(state.Nv) then will insert
-            into an existing if. If Zv = len(state.Nv) a singleton view will be
-            created sampled from the prior.
+            Index of the view to assign the data. If unspecified, will be
+            sampled. If 0 <= v < len(state.Nv) then will insert
+            into an existing view. If v = len(state.Nv) a singleton view will be
+            created with a partition from the prior.
         """
         assert len(X) == self.n_rows
         self.X = np.column_stack((self.X, X))
@@ -172,17 +172,13 @@ class State(object):
         self._check_partitions()
 
     def unincorporate_dim(self, col):
-        """Unincorporate an existing dim.
+        """Unincorporate an existing dim. It is an error to unincorporate when
+        only one dim exists.
 
         Parameters
         ----------
         col : int
             Index of the dim to unincorporate.
-
-        Raises
-        ----------
-        ValueError
-            If the state has only one dim.
         """
         if self.n_cols == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
@@ -210,8 +206,27 @@ class State(object):
 
         self._check_partitions()
 
-    def incorporate_row(self, X):
-        raise ValueError('Cannot incorporate row yet.')
+    def incorporate_row(self, X, k=None):
+        """Incorporate a new row.
+
+        Parameters
+        ----------
+        X : np.array
+            A length self.n_cols array of data.
+        k : list, optional
+            A len(self.views) list of integers, where k[i] is the cluster to
+            insert the row in view i. If k[i] is greater than the number of
+            clusters in view[i] an error will be thrown. To specify cluster
+            assignments for only some views, use None in all other locations
+            (i.e. k=[None,2,None]).
+        """
+        self.X = np.vstack((self.X, X))
+        self.n_rows, self.n_cols = np.shape(self.X)
+        if k is None:
+            k = [None] * len(self.views)
+        for i, view in enumerate(self.views):
+            view.set_dataset(self.X)
+            view.incorporate_row(self.n_rows-1, k=k[i])
 
     def unincorporate_row(self, X):
         raise ValueError('Cannot unincorporate row yet.')
@@ -516,7 +531,7 @@ class State(object):
             # matches the count in Nv.
             assert len(self.views[v].dims) == self.Nv[v]
             Nk = self.views[v].Nk
-            assert sum(Nk) == self.n_rows
+            assert self.views[v].N == sum(Nk) == self.n_rows
             assert max(self.views[v].Zr) == len(Nk)-1
             for dim in self.views[v].dims.values():
                 # Ensure number of clusters in each dim in views[v]

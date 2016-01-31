@@ -41,7 +41,8 @@ class View(object):
         ----------
         X : np.ndarray
             Global dataset of dimension N x D. The invariant is that
-            the data for dim.index should be in X[:,dim.index].
+            the data for dim.index should be in X[:,dim.index] and the data
+            for rowid should X[rowid,:]. All rows in X will be incorporated.
         dims : list<Dim>
             A list of Dim objects in this View.
         alpha : float, optional
@@ -68,7 +69,7 @@ class View(object):
             Zr, Nk, _ = gu.simulate_crp(self.N, alpha)
         else:
             Nk = list(np.bincount(Zr))
-        self.Zr = Zr
+        self.Zr = list(Zr)
         self.Nk = Nk
 
         # Initialize the dimensions.
@@ -83,29 +84,55 @@ class View(object):
     # Observe
 
     def incorporate_dim(self, dim, reassign=True):
-        """Incorporate the `dim` into this view. If `reassign` is False, the row
-        partition of `dim` must match `self.Zr` already.
+        """Incorporate the dim into this view. If reassign is False, the row
+        partition of dim must match self.Zr already.
         """
         self.dims[dim.index] = dim
         if reassign:
             dim.reassign(self.X[:, dim.index], self.Zr)
 
     def unincorporate_dim(self, dim):
-        """Remove `dim` from this view (does not modify `dim`)."""
+        """Remove dim from this view (does not modify dim)."""
         del self.dims[dim.index]
 
-    def incorporate_row(self, X):
-        raise ValueError('Cannot unincorporate row yet.')
+    def incorporate_row(self, rowid, k=None):
+        """Incorporate rowid from the global dataset X into the view.
 
-    def unincorporate_row(self, X):
-        raise ValueError('Cannot unincorporate row yet.')
+        Parameters
+        ----------
+        rowid : int
+            The rowid in dataset X to be incorporated. If rowid is already
+            incorporated an error will be thrown.
+        k : int, optional
+            Index of the cluster to assign the row. If unspecified, will be
+            sampled. If 0 <= k < len(view.Nk) then will insert
+            into an existing cluser. If k = len(state.Nv) a singleton cluster
+            will be created with uncollapsed parameters from the prior.
+        """
+        if rowid < self.N:
+            raise ValueError('Row %d in X already incorporated.' % rowid)
+        transition = True if k is None else False
+        k = 0 if k is None else k
+        self.N += 1
+        self.Zr.append(k)
+        for dim in self.dims.values():
+            dim.incorporate(self.X[rowid, dim.index], k)
+        if k == len(self.Nk):
+            self.Nk.append(0)
+        self.Nk[k] += 1
+        if transition:
+            self.transition_rows(target_rows=[rowid])
+
+    def unincorporate_row(self):
+        raise NotImplementedError('Cannot unincorporate row yet.')
 
     # --------------------------------------------------------------------------
     # Accounting
 
     def set_dataset(self, X):
         """Update the pointer to the global dataset X. The invariant is that
-        the data for dim.index should be in column X[:,dim.index].
+        the data for dim.index should be in column X[:,dim.index] and the data
+        for rowid should X[rowid,:].
         """
         self.X = X
 
@@ -147,7 +174,7 @@ class View(object):
         of rows to transition.
         """
         if target_rows is None:
-            target_rows = range(self.N)
+            target_rows = xrange(self.N)
         for rowid in target_rows:
             self._transition_row(rowid)
 
@@ -163,7 +190,6 @@ class View(object):
         logp = 0
         for dim in self.dims.values():
             x = self.X[rowid, dim.index]
-            # If rowid already in cluster k, need to unincorporate first.
             if self.Zr[rowid] == k:
                 dim.unincorporate(x, k)
                 logp += dim.predictive_logp(x, k)
