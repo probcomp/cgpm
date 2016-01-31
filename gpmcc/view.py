@@ -183,10 +183,10 @@ class View(object):
     # Internal
 
     def _row_predictive_logp(self, rowid, k):
-        """Get the predictive log_p of rowid being in cluster k. If k
-        is existing (less than len(self.Nk)) then the predictive is taken.
-        If k is new (equal to len(self.Nk)) then new parameters
-        are sampled for the predictive."""
+        """Get the predictive log_p of rowid being in cluster k.
+        If k is existing (less than len(self.Nk)) then the predictive is taken.
+        If k is new (equal to len(self.Nk)) then new parameters are sampled for
+        the predictive."""
         assert k <= len(self.Nk)
         logp = 0
         for dim in self.dims.values():
@@ -212,8 +212,6 @@ class View(object):
         else:
             p_crp[z_a] -= 1
             p_crp.append(self.alpha)
-
-        # Log-normalize p_crp.
         p_crp = gu.log_normalize(np.log(p_crp))
 
         # Calculate probability of rowid in each cluster k \in K.
@@ -234,7 +232,7 @@ class View(object):
         # Migrate the row.
         self._move_row_to_cluster(rowid, z_a, z_b)
 
-        # self._check_partitions()
+        self._check_partitions()
 
     def _move_row_to_cluster(self, rowid, move_from, move_to):
         """Move rowid from cluster move_from to move_to. If move_to
