@@ -35,7 +35,7 @@ from scipy.special import i0 as bessel_0
 from scipy.misc import logsumexp
 from scipy.special import gammaln
 
-colors = ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'brown',
+colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
     'black']
 
 def curve_color(k):
