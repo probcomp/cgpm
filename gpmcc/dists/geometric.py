@@ -69,8 +69,8 @@ class Geometric(DistributionGpm):
         return Geometric.calc_predictive_logp(x, self.N, self.sum_x, self.a,
             self.b)
 
-    def marginal_logp(self):
-        return Geometric.calc_marginal_logp(self.N, self.sum_x, self.a,
+    def logpdf_marginal(self):
+        return Geometric.calc_logpdf_marginal(self.N, self.sum_x, self.a,
             self.b)
 
     def singleton_logp(self, x):
@@ -137,7 +137,7 @@ class Geometric(DistributionGpm):
         return  ZM - ZN
 
     @staticmethod
-    def calc_marginal_logp(N, sum_x, a, b):
+    def calc_logpdf_marginal(N, sum_x, a, b):
         an, bn = Geometric.posterior_hypers(N, sum_x, a, b)
         Z0 = Geometric.calc_log_Z(a, b)
         ZN = Geometric.calc_log_Z(an, bn)

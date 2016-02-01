@@ -86,9 +86,9 @@ class Lognormal(DistributionGpm):
             Normal.calc_predictive_logp(log(x), self.N, self.sum_log_x,
                 self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
 
-    def marginal_logp(self):
+    def logpdf_marginal(self):
         return -self.sum_log_x + \
-            Normal.calc_marginal_logp(self.N, self.sum_log_x,
+            Normal.calc_logpdf_marginal(self.N, self.sum_log_x,
                 self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
 
     def singleton_logp(self, x):

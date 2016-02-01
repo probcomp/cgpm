@@ -160,12 +160,12 @@ class Dim(object):
             cluster = self.clusters[k]
         return cluster.logpdf(x) if not isnan(x) else 0
 
-    def marginal_logp(self, k=None):
+    def logpdf_marginal(self, k=None):
         """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
         if k is not None:
-            return self.clusters[k].marginal_logp()
-        return sum(cluster.marginal_logp() for cluster in self.clusters)
+            return self.clusters[k].logpdf_marginal()
+        return sum(cluster.logpdf_marginal() for cluster in self.clusters)
 
     # --------------------------------------------------------------------------
     # Simulate
@@ -227,7 +227,7 @@ class Dim(object):
             logp = 0
             for cluster in self.clusters:
                 cluster.set_hypers(hypers)
-                logp += cluster.marginal_logp()
+                logp += cluster.logpdf_marginal()
                 cluster.set_hypers(self.hypers)
             logps.append(logp)
         return logps

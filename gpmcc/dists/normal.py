@@ -92,8 +92,8 @@ class Normal(DistributionGpm):
         return Normal.calc_predictive_logp(x, 0, 0, 0, self.m, self.r,
             self.s, self.nu)
 
-    def marginal_logp(self):
-        return Normal.calc_marginal_logp(self.N, self.sum_x, self.sum_x_sq,
+    def logpdf_marginal(self):
+        return Normal.calc_logpdf_marginal(self.N, self.sum_x, self.sum_x_sq,
             self.m, self.r, self.s, self.nu)
 
     def simulate(self):
@@ -160,7 +160,7 @@ class Normal(DistributionGpm):
         return -.5 * LOG2PI + ZM - ZN
 
     @staticmethod
-    def calc_marginal_logp(N, sum_x, sum_x_sq, m, r, s, nu):
+    def calc_logpdf_marginal(N, sum_x, sum_x_sq, m, r, s, nu):
         rn, nun, mn, sn = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
             s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)

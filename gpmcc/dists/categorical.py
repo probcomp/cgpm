@@ -77,8 +77,8 @@ class Categorical(DistributionGpm):
         return Categorical.calc_predictive_logp(x, self.N, self.counts,
             self.alpha)
 
-    def marginal_logp(self):
-        return Categorical.calc_marginal_logp(self.N, self.counts,
+    def logpdf_marginal(self):
+        return Categorical.calc_logpdf_marginal(self.N, self.counts,
             self.alpha)
 
     def singleton_logp(self, x):
@@ -145,7 +145,7 @@ class Categorical(DistributionGpm):
         return numer - denom
 
     @staticmethod
-    def calc_marginal_logp(N, counts, alpha):
+    def calc_logpdf_marginal(N, counts, alpha):
         K = len(counts)
         A = K * alpha
         lg = sum(gammaln(counts[k] + alpha) for k in xrange(K))

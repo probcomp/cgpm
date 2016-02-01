@@ -495,7 +495,7 @@ class State(object):
             proposal_dims.append(get_propsal_dim(self.dims[col], v))
             if v != v_a or self.dims[col].is_collapsed():
                 proposal_dims[-1].reassign(self.X[:,col], self.views[v].Zr)
-            p_view.append(proposal_dims[-1].marginal_logp() + p_crp[v])
+            p_view.append(proposal_dims[-1].logpdf_marginal() + p_crp[v])
 
         # Propose auxiliary views.
         p_crp_aux = log(self.alpha/float(m))
@@ -504,7 +504,7 @@ class State(object):
             proposal_dims.append(get_propsal_dim(self.dims[col], None))
             proposal_views.append(
                 View(self.X, [proposal_dims[-1]], n_grid=self.n_grid))
-            p_view.append(proposal_dims[-1].marginal_logp() + p_crp_aux)
+            p_view.append(proposal_dims[-1].logpdf_marginal() + p_crp_aux)
 
         # Draw view.
         v_b = gu.log_pflip(p_view)

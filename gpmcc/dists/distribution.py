@@ -89,7 +89,7 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def marginal_logp(self):
+    def logpdf_marginal(self):
         """Compute an estimate of the probability of all incorporated
         observations X, conditioned on the current GPM state.
 
@@ -100,10 +100,12 @@ class DistributionGpm(object):
             P(X|H) \appx avg{P(X|Qi)P(Qi|H) for i = 1 .. N}
 
         While this probability is necessarily a function of the data only
-        through the sufficient statistics, the probability is
-        **not the probability of the sufficient statistics**.
-        It is the probably of the exchangeable sequence of observations that
-        are summarized by the sufficient statistics.
+        through the sufficient statistics, the probability is **not the
+        probability of the sufficient statistics**. It is the probablility of
+        an exchangeable sequence of observations that are summarized by the
+        sufficient statistics. Implemented as an optimization, and can be
+        recovered by unincorporating all data, and can be recovered by invoking
+        `logpdf` after each incorporate and taking the sum.
         """
         raise NotImplementedError
 

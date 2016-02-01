@@ -81,8 +81,8 @@ class Vonmises(DistributionGpm):
         return Vonmises.calc_predictive_logp(x, self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
 
-    def marginal_logp(self):
-        logp = Vonmises.calc_marginal_logp(self.N, self.sum_sin_x,
+    def logpdf_marginal(self):
+        logp = Vonmises.calc_logpdf_marginal(self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
         return logp
 
@@ -170,7 +170,7 @@ class Vonmises(DistributionGpm):
         return - LOG2PI - gu.log_bessel_0(k) + ZM - ZN
 
     @staticmethod
-    def calc_marginal_logp(N, sum_sin_x, sum_cos_x, a, b, k):
+    def calc_logpdf_marginal(N, sum_sin_x, sum_cos_x, a, b, k):
         assert N >= 0
         assert a > 0
         assert 0 <= b and b <= 2*pi

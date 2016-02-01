@@ -70,8 +70,8 @@ class Poisson(DistributionGpm):
         return Poisson.calc_predictive_logp(x, self.N, self.sum_x,
             self.sum_log_fact_x, self.a, self.b)
 
-    def marginal_logp(self):
-        return Poisson.calc_marginal_logp(self.N, self.sum_x,
+    def logpdf_marginal(self):
+        return Poisson.calc_logpdf_marginal(self.N, self.sum_x,
             self.sum_log_fact_x, self.a, self.b)
 
     def singleton_logp(self, x):
@@ -142,7 +142,7 @@ class Poisson(DistributionGpm):
         return  ZM - ZN - gammaln(x+1)
 
     @staticmethod
-    def calc_marginal_logp(N, sum_x, sum_log_fact_x, a, b):
+    def calc_logpdf_marginal(N, sum_x, sum_log_fact_x, a, b):
         an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
         Z0 = Poisson.calc_log_Z(a, b)
         ZN = Poisson.calc_log_Z(an, bn)

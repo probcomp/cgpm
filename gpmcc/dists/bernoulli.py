@@ -69,8 +69,8 @@ class Bernoulli(DistributionGpm):
         return Bernoulli.calc_predictive_logp(x, self.N, self.k, self.alpha,
             self.beta)
 
-    def marginal_logp(self):
-        return Bernoulli.calc_marginal_logp(self.N, self.k, self.alpha,
+    def logpdf_marginal(self):
+        return Bernoulli.calc_logpdf_marginal(self.N, self.k, self.alpha,
             self.beta)
 
     def singleton_logp(self, x):
@@ -139,6 +139,6 @@ class Bernoulli(DistributionGpm):
             return log(N - k + beta) - log_denom
 
     @staticmethod
-    def calc_marginal_logp(N, k, alpha, beta):
+    def calc_logpdf_marginal(N, k, alpha, beta):
         return gu.log_nCk(N, k) + betaln(k + alpha, N - k + beta) \
             - betaln(alpha, beta)

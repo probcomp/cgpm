@@ -66,8 +66,8 @@ class Exponential(DistributionGpm):
         return Exponential.calc_predictive_logp(x, self.N, self.sum_x,
             self.a, self.b)
 
-    def marginal_logp(self):
-        return Exponential.calc_marginal_logp(self.N, self.sum_x, self.a,
+    def logpdf_marginal(self):
+        return Exponential.calc_logpdf_marginal(self.N, self.sum_x, self.a,
             self.b)
 
     def singleton_logp(self, x):
@@ -136,7 +136,7 @@ class Exponential(DistributionGpm):
         return  ZM - ZN
 
     @staticmethod
-    def calc_marginal_logp(N, sum_x, a, b):
+    def calc_logpdf_marginal(N, sum_x, a, b):
         an, bn = Exponential.posterior_hypers(N, sum_x, a, b)
         Z0 = Exponential.calc_log_Z(a, b)
         ZN = Exponential.calc_log_Z(an, bn)
