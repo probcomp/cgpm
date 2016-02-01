@@ -43,6 +43,7 @@ import unittest
 from scipy.stats import norm
 
 import gpmcc.utils.general as gu
+import gpmcc.utils.test as tu
 from gpmcc.engine import Engine
 
 class SimulateIndicatorTest(unittest.TestCase):
@@ -53,17 +54,21 @@ class SimulateIndicatorTest(unittest.TestCase):
         np.random.seed(0)
         cls.n_samples = 250
         n_transitions = 150
-        # Generate synthetic dataset.
-        cls.mus = [-1, 5, 9]
-        cls.sigmas = [2, 2, 1.5]
+        # Generate synthetic data.
+        view_weights = [1.]
+        cluster_weights = [[.3, .5, .2]]
+        cctypes = ['normal']
+        separation = [.95]
+        T, Zv, Zc = tu.gen_data_table(cls.n_samples, view_weights,
+            cluster_weights, cctypes, [None], separation)
         cls.data = np.zeros((cls.n_samples, 2))
+        cls.data[:,0] = T[0]
         cls.indicators = [0, 1, 2, 3, 4, 5]
-        cls.data[:,1] = np.random.choice(cls.indicators, size=cls.n_samples,
-            p=[.15, .15, .25, .25, .1, .1])
+        counts = {0:0, 1:0, 2:0}
         for i in xrange(cls.n_samples):
-            idx = int(cls.data[i,1] / 2)
-            cls.data[i,0] = np.random.normal(
-                loc=cls.mus[idx], scale=cls.sigmas[idx])
+            k = Zc[0][i]
+            cls.data[i,1] = 2*cls.indicators[k] + counts[k] % 2
+            counts[k] += 1
         # Create an engine.
         state = Engine(cls.data, ['normal', 'categorical'], [None, {'k':6}],
             num_states=1, initialize=True)
@@ -110,6 +115,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         # Simulate from the conditional Z|X
         fig, axes = plt.subplots(1,3)
         fig.suptitle('Conditional Simulation Of Indicator Given Data X')
+
         for x, ax in zip(self.mus, axes):
             conditional_samples_subpop = self.model.simulate(-1, [1],
                 evidence=[(0,x)], N=self.n_samples)
