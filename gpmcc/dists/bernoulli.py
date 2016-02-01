@@ -65,7 +65,7 @@ class Bernoulli(DistributionGpm):
         self.N -= 1
         self.k -= x
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         return Bernoulli.calc_predictive_logp(x, self.N, self.k, self.alpha,
             self.beta)
 

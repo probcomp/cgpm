@@ -74,7 +74,7 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         """Compute the probability of a new observation x, conditioned on
         the sufficient statistics, parameters (if uncollapsed), and
         hyperparameters, ie P(x|T,Q,H).

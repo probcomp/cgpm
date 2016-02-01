@@ -147,7 +147,7 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def predictive_logp(self, x, k):
+    def logpdf(self, x, k):
         """Returns the predictive logp of x in clusters[k]. If x has been
         assigned to clusters[k], then use the unincorporate/incorporate
         interface to compute the true predictive logp."""
@@ -158,7 +158,7 @@ class Dim(object):
             cluster = self.aux_model
         else:
             cluster = self.clusters[k]
-        return cluster.predictive_logp(x) if not isnan(x) else 0
+        return cluster.logpdf(x) if not isnan(x) else 0
 
     def marginal_logp(self, k=None):
         """If k is not None, returns the marginal log_p of clusters[k].

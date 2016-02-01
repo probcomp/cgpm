@@ -84,7 +84,7 @@ class Normal(DistributionGpm):
             self.sum_x -= x
             self.sum_x_sq -= x*x
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         return Normal.calc_predictive_logp(x, self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
 

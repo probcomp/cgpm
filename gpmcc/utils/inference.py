@@ -56,8 +56,8 @@ def mutual_information(state, col1, col2, N=1000):
         x = clusters_col1[c].simulate()
         y = clusters_col2[c].simulate()
         for k in range(K):
-            Px[k] = clusters_col1[k].predictive_logp(x)
-            Py[k] = clusters_col2[k].predictive_logp(y)
+            Px[k] = clusters_col1[k].logpdf(x)
+            Py[k] = clusters_col2[k].logpdf(y)
             Pxy[k] = Px[k] + Py[k] + log_crp[k]
             Px[k] += log_crp[k]
             Py[k] += log_crp[k]

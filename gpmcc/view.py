@@ -193,10 +193,10 @@ class View(object):
             x = self.X[rowid, dim.index]
             if self.Zr[rowid] == k:
                 dim.unincorporate(x, k)
-                logp += dim.predictive_logp(x, k)
+                logp += dim.logpdf(x, k)
                 dim.incorporate(x, k)
             else:
-                logp += dim.predictive_logp(x, k)
+                logp += dim.logpdf(x, k)
         return logp
 
     def _transition_row(self, rowid):

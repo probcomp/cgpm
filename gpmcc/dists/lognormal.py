@@ -79,7 +79,7 @@ class Lognormal(DistributionGpm):
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         if x < 0:
             return float('-inf')
         return -log(x) + \

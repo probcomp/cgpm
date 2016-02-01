@@ -77,7 +77,7 @@ class Vonmises(DistributionGpm):
         self.sum_sin_x -= sin(x)
         self.sum_cos_x -= cos(x)
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         return Vonmises.calc_predictive_logp(x, self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
 

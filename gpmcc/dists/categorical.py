@@ -73,7 +73,7 @@ class Categorical(DistributionGpm):
         self.N -= 1
         self.counts[int(x)] -= 1
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         return Categorical.calc_predictive_logp(x, self.N, self.counts,
             self.alpha)
 

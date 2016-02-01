@@ -83,7 +83,7 @@ class BetaUC(DistributionGpm):
             self.sum_log_x -= log(x)
             self.sum_minus_log_x -= log(1.-x)
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def marginal_logp(self):

@@ -66,7 +66,7 @@ class Poisson(DistributionGpm):
         self.sum_x -= x
         self.sum_log_fact_x -= gammaln(x+1)
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         return Poisson.calc_predictive_logp(x, self.N, self.sum_x,
             self.sum_log_fact_x, self.a, self.b)
 

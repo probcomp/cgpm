@@ -65,7 +65,7 @@ class Geometric(DistributionGpm):
         self.N -= 1.0
         self.sum_x -= x
 
-    def predictive_logp(self, x):
+    def logpdf(self, x):
         return Geometric.calc_predictive_logp(x, self.N, self.sum_x, self.a,
             self.b)
 

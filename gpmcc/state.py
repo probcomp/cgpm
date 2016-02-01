@@ -259,7 +259,7 @@ class State(object):
         logpdf = 0
         for (col, val) in query:
             k = self.views[self.Zv[col]].Zr[rowid]
-            logpdf += self.dims[col].predictive_logp(val, k)
+            logpdf += self.dims[col].logpdf(val, k)
         return logsumexp(logpdf)
 
 
@@ -544,7 +544,7 @@ class State(object):
         """Returns a list of log probabilities that a new row for self.dims[col]
         obtains value x for each of the clusters in self.Zr[col], including a
         singleton."""
-        return [self.dims[col].predictive_logp(x,k) for k in
+        return [self.dims[col].logpdf(x,k) for k in
             xrange(len(self.dims[col].clusters)+1)]
 
     def _do_plot(self, fig, layout):

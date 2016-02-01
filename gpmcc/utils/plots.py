@@ -83,7 +83,7 @@ def plot_dist_continuous(X, clusters, ax=None, Y=None, hist=True):
     pdf = np.zeros((K, len(Y)))
     W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
     for k in xrange(K):
-        pdf[k,:] = np.exp([W[k] + clusters[k].predictive_logp(y)
+        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(y)
                 for y in Y])
         color, alpha = gu.curve_color(k)
         ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
@@ -116,7 +116,7 @@ def plot_dist_discrete(X, clusters, ax=None, Y=None, hist=True):
     pdf = np.zeros((K, len(Y)))
     W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
     for k in xrange(K):
-        pdf[k,:] = np.exp([W[k] + clusters[k].predictive_logp(y)
+        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(y)
                 for y in Y])
         color, alpha = gu.curve_color(k)
         ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
