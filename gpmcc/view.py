@@ -182,7 +182,7 @@ class View(object):
     # --------------------------------------------------------------------------
     # Internal
 
-    def _row_predictive_logp(self, rowid, k):
+    def _logpdf_row(self, rowid, k):
         """Get the predictive log_p of rowid being in cluster k.
         If k is existing (less than len(self.Nk)) then the predictive is taken.
         If k is new (equal to len(self.Nk)) then new parameters are sampled for
@@ -217,13 +217,13 @@ class View(object):
         # Calculate probability of rowid in each cluster k \in K.
         p_cluster = []
         for k in xrange(len(self.Nk)):
-            lp = self._row_predictive_logp(rowid, k) + p_crp[k]
+            lp = self._logpdf_row(rowid, k) + p_crp[k]
             p_cluster.append(lp)
 
         # Propose singleton.
         if not is_singleton:
             # Using len(self.Nk) will resample parameters.
-            lp = self._row_predictive_logp(rowid, len(self.Nk)) + p_crp[-1]
+            lp = self._logpdf_row(rowid, len(self.Nk)) + p_crp[-1]
             p_cluster.append(lp)
 
         # Draw new assignment, z_b
