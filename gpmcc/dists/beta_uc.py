@@ -93,7 +93,7 @@ class BetaUC(DistributionGpm):
             self.mu, self.alpha, self.beta)
         return data_logp + prior_logp
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def simulate(self):

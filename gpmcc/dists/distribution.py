@@ -81,11 +81,12 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         """Compute the probability of a new observation x, conditioned on
         parameters (if uncollapsed), and hyperparameters, ie P(x|Q,H).
         Note that previous observations (suffstats) are ignored in this
-        computation.
+        computation. Implemented as an optimization and can be recovered by
+        unincorporating all data, and invoking `logpdf`.
         """
         raise NotImplementedError
 

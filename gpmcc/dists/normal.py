@@ -88,7 +88,7 @@ class Normal(DistributionGpm):
         return Normal.calc_predictive_logp(x, self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         return Normal.calc_predictive_logp(x, 0, 0, 0, self.m, self.r,
             self.s, self.nu)
 

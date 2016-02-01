@@ -70,7 +70,7 @@ class Exponential(DistributionGpm):
         return Exponential.calc_logpdf_marginal(self.N, self.sum_x, self.a,
             self.b)
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         return Exponential.calc_predictive_logp(x, 0, 0, self.a,
             self.b)
 

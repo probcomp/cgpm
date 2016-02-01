@@ -86,7 +86,7 @@ class Vonmises(DistributionGpm):
             self.sum_cos_x, self.a, self.b, self.k)
         return logp
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         return Vonmises.calc_predictive_logp(x, 0, 0, 0, self.a, self.b,
             self.k)
 

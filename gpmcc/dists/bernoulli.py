@@ -73,7 +73,7 @@ class Bernoulli(DistributionGpm):
         return Bernoulli.calc_logpdf_marginal(self.N, self.k, self.alpha,
             self.beta)
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         return Bernoulli.calc_predictive_logp(x, 0, 0, self.alpha, self.beta)
 
     def simulate(self):

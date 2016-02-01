@@ -91,7 +91,7 @@ class Lognormal(DistributionGpm):
             Normal.calc_logpdf_marginal(self.N, self.sum_log_x,
                 self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         if x < 0:
             return float('-inf')
         return - log(x) + \

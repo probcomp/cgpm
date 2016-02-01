@@ -73,7 +73,7 @@ class Geometric(DistributionGpm):
         return Geometric.calc_logpdf_marginal(self.N, self.sum_x, self.a,
             self.b)
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         return Geometric.calc_predictive_logp(x, 0, 0, self.a, self.b)
 
     def simulate(self):
