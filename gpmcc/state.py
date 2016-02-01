@@ -227,9 +227,17 @@ class State(object):
         for i, view in enumerate(self.views):
             view.set_dataset(self.X)
             view.incorporate_row(self.n_rows-1, k=k[i])
+        self._check_partitions()
 
-    def unincorporate_row(self, X):
-        raise NotImplementedError('Cannot unincorporate row yet.')
+    def unincorporate_row(self, rowid):
+        if self.n_rows == 1:
+            raise ValueError('State has only one row, cannot unincorporate.')
+        self.X = np.delete(self.X, rowid, 0)
+        self.n_rows, self.n_cols = np.shape(self.X)
+        for view in self.views:
+            view.unincorporate_row(rowid)
+            view.set_dataset(self.X)
+        self._check_partitions()
 
     # --------------------------------------------------------------------------
     # logpdf
@@ -582,7 +590,7 @@ class State(object):
             # matches the count in Nv.
             assert len(self.views[v].dims) == self.Nv[v]
             Nk = self.views[v].Nk
-            assert len(self.views[v].X) == sum(Nk) == self.n_rows
+            assert len(self.views[v].Zr) == sum(Nk) == self.n_rows
             assert max(self.views[v].Zr) == len(Nk)-1
             for dim in self.views[v].dims.values():
                 # Ensure number of clusters in each dim in views[v]

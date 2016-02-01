@@ -79,21 +79,31 @@ class IncorporateDimTest(unittest.TestCase):
         self.state.unincorporate_dim(0)
         self.assertEqual(len(self.state.Zv), previous-1)
 
+        # Reincorporate dim without specifying a view.
+        self.state.incorporate_dim(self.T[:,0], self.cctypes[0],
+            self.distargs[0])
+
         # Incorporate dim into singleton view, remove it, assert destroyed.
+        self.state.incorporate_dim(self.T[:,5], self.cctypes[5],
+            self.distargs[5], v=len(self.state.Nv))
+        previous = len(self.state.views)
+        self.state.unincorporate_dim(5)
+        self.assertEqual(len(self.state.views), previous-1)
+
+        # Reincorporate dim into a singleton view.
         self.state.incorporate_dim(self.T[:,5], self.cctypes[4],
             self.distargs[4], v=len(self.state.Nv))
-        previous = len(self.state.views)
-        self.state.unincorporate_dim(4)
-        self.assertEqual(len(self.state.views), previous-1)
 
         # Incorporate the rest of the dims in the default way.
         for i in xrange(6, len(self.cctypes)):
             self.state.incorporate_dim(self.T[:,i], self.cctypes[i],
                 self.distargs[i])
+        self.assertEqual(self.state.n_cols, self.T.shape[1])
 
         # Unincorporate all the dims, except the last one.
         for i in xrange(self.state.n_cols-1, 0, -1):
             self.state.unincorporate_dim(i)
+        self.assertEqual(self.state.n_cols, 1)
 
         # Unincorporating last dim should raise.
         self.assertRaises(ValueError, self.state.unincorporate_dim, 0)

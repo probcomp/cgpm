@@ -77,7 +77,7 @@ class View(object):
             dim.reassign(X[:,dim.index], Zr)
             self.dims[dim.index] = dim
 
-        self._check_partitions()
+        # self._check_partitions()
 
     # --------------------------------------------------------------------------
     # Observe
@@ -109,7 +109,7 @@ class View(object):
             into an existing cluser. If k = len(state.Nv) a singleton cluster
             will be created with uncollapsed parameters from the prior.
         """
-        if rowid < len(self.X):
+        if rowid < len(self.Zr):
             raise ValueError('Row %d in X already incorporated.' % rowid)
         # If k unspecified, transition the new row.
         k = 0 if k is None else k
@@ -124,10 +124,21 @@ class View(object):
         self.Nk[k] += 1
         if transition:
             self.transition_rows(target_rows=[rowid])
+        # self._check_partitions()
 
-    def unincorporate_row(self):
-        raise NotImplementedError('Cannot unincorporate row yet.')
-
+    def unincorporate_row(self, rowid):
+        if rowid > len(self.Zr):
+            raise ValueError('Row %d in X was never incorporated.' % rowid)
+        # Unincorporate from dims.
+        for dim in self.dims.values():
+            dim.unincorporate(self.X[rowid, dim.index], self.Zr[rowid])
+        # Update modeled rowids.
+        self.Nk[self.Zr[rowid]] -= 1
+        # If rowid was a singleton, delete and update cluster ids.
+        if self.Nk[self.Zr[rowid]] == 0:
+            self._destroy_empty_cluster(self.Zr[rowid])
+        del self.Zr[rowid]
+        # self._check_partitions()
     # --------------------------------------------------------------------------
     # Accounting
 
@@ -157,7 +168,7 @@ class View(object):
 
     def transition_alpha(self):
         """Calculate CRP alpha conditionals over grid and transition."""
-        logps = [gu.logp_crp_unorm(len(self.X), len(self.Nk), alpha) for alpha in
+        logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha) for alpha in
             self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
@@ -176,7 +187,7 @@ class View(object):
         of rows to transition.
         """
         if target_rows is None:
-            target_rows = xrange(len(self.X))
+            target_rows = xrange(len(self.Zr))
         for rowid in target_rows:
             self._transition_row(rowid)
 
@@ -259,15 +270,18 @@ class View(object):
         # If move_from is now empty, delete and update cluster ids.
         if self.Nk[move_from] == 0:
             assert move_to != len(self.Nk)
-            self.Zr = [i-1 if i>move_from else i for i in self.Zr]
-            for dim in self.dims.values():
-                dim.destroy_cluster(move_from)
-            del self.Nk[move_from]
+            self._destroy_empty_cluster(move_from)
+
+    def _destroy_empty_cluster(self, k):
+        assert self.Nk[k] == 0
+        self.Zr = [i-1 if i>k else i for i in self.Zr]
+        del self.Nk[k]
+        for dim in self.dims.values():
+            dim.destroy_cluster(k)
 
     def _check_partitions(self):
         # For debugging only.
         assert self.alpha > 0.
         for dim in self.dims.values():
-            assert len(self.X) == dim.N
-        assert sum(self.Nk) == len(self.X)
-        assert len(self.Zr) == len(self.X)
+            assert len(self.Zr) == dim.N
+        assert sum(self.Nk) == len(self.Zr)
