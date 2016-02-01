@@ -30,7 +30,7 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import gammaln
-from scipy.stats import lomax
+from scipy.stats import expon, gamma
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
@@ -75,10 +75,9 @@ class Exponential(DistributionGpm):
             self.b)
 
     def simulate(self):
-        an, bn = Exponential.posterior_hypers(self.N,
-            self.sum_x, self.a, self.b)
-        draw = lomax.rvs(an, loc=1-bn) - (1 - bn)
-        return draw
+        an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a, self.b)
+        mu = gamma.rvs(an, scale=1./bn)
+        return expon.rvs(scale=1./mu)
 
     def transition_params(self):
         return
