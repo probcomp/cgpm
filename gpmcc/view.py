@@ -56,17 +56,16 @@ class View(object):
         """
         # Dataset.
         self.X = X
-        self.N = len(X)
 
         # Generate alpha.
-        self.alpha_grid = gu.log_linspace(1./self.N, self.N, n_grid)
+        self.alpha_grid = gu.log_linspace(1./len(self.X), len(self.X), n_grid)
         if alpha is None:
             alpha = np.random.choice(self.alpha_grid)
         self.alpha = alpha
 
         # Generate row partition.
         if Zr is None:
-            Zr, Nk, _ = gu.simulate_crp(self.N, alpha)
+            Zr, Nk, _ = gu.simulate_crp(len(self.X), alpha)
         else:
             Nk = list(np.bincount(Zr))
         self.Zr = list(Zr)
@@ -110,12 +109,14 @@ class View(object):
             into an existing cluser. If k = len(state.Nv) a singleton cluster
             will be created with uncollapsed parameters from the prior.
         """
-        if rowid < self.N:
+        if rowid < len(self.X):
             raise ValueError('Row %d in X already incorporated.' % rowid)
-        transition = True if k is None else False
+        # If k unspecified, transition the new row.
         k = 0 if k is None else k
-        self.N += 1
+        transition = True if k is None else False
+        # Increment counts.
         self.Zr.append(k)
+        # Incorporate into dims.
         for dim in self.dims.values():
             dim.incorporate(self.X[rowid, dim.index], k)
         if k == len(self.Nk):
@@ -156,7 +157,7 @@ class View(object):
 
     def transition_alpha(self):
         """Calculate CRP alpha conditionals over grid and transition."""
-        logps = [gu.logp_crp_unorm(self.N, len(self.Nk), alpha) for alpha in
+        logps = [gu.logp_crp_unorm(len(self.X), len(self.Nk), alpha) for alpha in
             self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
@@ -175,7 +176,7 @@ class View(object):
         of rows to transition.
         """
         if target_rows is None:
-            target_rows = xrange(self.N)
+            target_rows = xrange(len(self.X))
         for rowid in target_rows:
             self._transition_row(rowid)
 
@@ -267,6 +268,6 @@ class View(object):
         # For debugging only.
         assert self.alpha > 0.
         for dim in self.dims.values():
-            assert self.N == dim.N
-        assert len(self.Zr) == self.N
-        assert sum(self.Nk) == self.N
+            assert len(self.X) == dim.N
+        assert sum(self.Nk) == len(self.X)
+        assert len(self.Zr) == len(self.X)

@@ -582,7 +582,7 @@ class State(object):
             # matches the count in Nv.
             assert len(self.views[v].dims) == self.Nv[v]
             Nk = self.views[v].Nk
-            assert self.views[v].N == sum(Nk) == self.n_rows
+            assert len(self.views[v].X) == sum(Nk) == self.n_rows
             assert max(self.views[v].Zr) == len(Nk)-1
             for dim in self.views[v].dims.values():
                 # Ensure number of clusters in each dim in views[v]
