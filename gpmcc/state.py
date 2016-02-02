@@ -84,7 +84,6 @@ class State(object):
 
         # Dataset.
         self.X = np.asarray(X)
-        self.n_rows, self.n_cols = np.shape(X)
         self.cctypes = cctypes
         self.distargs = distargs
 
@@ -93,20 +92,20 @@ class State(object):
 
         # Construct dimensions.
         self.dims = []
-        for col in xrange(self.n_cols):
+        for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
             self.dims.append(
                 Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
                 hypers=dim_hypers, distargs=distargs[col]))
 
         # Initialize CRP alpha.
-        self.alpha_grid = gu.log_linspace(1./self.n_cols, self.n_cols,
+        self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(),
             self.n_grid)
         self.alpha = np.random.choice(self.alpha_grid)
 
         # Construct view partition.
         if Zv is None:
-            Zv, Nv, _ = gu.simulate_crp(self.n_cols, self.alpha)
+            Zv, Nv, _ = gu.simulate_crp(self.n_cols(), self.alpha)
         else:
             Nv = list(np.bincount(Zv))
         self.Zv = Zv
@@ -115,7 +114,7 @@ class State(object):
         # Construct views.
         self.views = []
         for v in xrange(len(self.Nv)):
-            dims = [self.dims[i] for i in xrange(self.n_cols) if Zv[i] == v]
+            dims = [self.dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrcv is None else np.asarray(Zrcv[v])
             V = View(self.X, dims, Zr=Zr, n_grid=n_grid)
             self.views.append(V)
@@ -143,11 +142,10 @@ class State(object):
             into an existing view. If v = len(state.Nv) a singleton view will be
             created with a partition from the prior.
         """
-        assert len(X) == self.n_rows
+        assert len(X) == self.n_rows()
         self.X = np.column_stack((self.X, X))
-        self.n_rows, self.n_cols = np.shape(self.X)
 
-        col = self.n_cols - 1
+        col = self.n_cols() - 1
         self.dims.append(Dim(X, cctype, col, n_grid=self.n_grid,
             distargs=distargs))
 
@@ -181,11 +179,10 @@ class State(object):
         col : int
             Index of the dim to unincorporate.
         """
-        if self.n_cols == 1:
+        if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
 
         self.X = np.delete(self.X, col, 1)
-        self.n_rows, self.n_cols = np.shape(self.X)
 
         v = self.Zv[col]
         self.views[v].unincorporate_dim(self.dims[col])
@@ -222,23 +219,21 @@ class State(object):
             i.e. k=[None,2,None].
         """
         self.X = np.vstack((self.X, X))
-        self.n_rows, self.n_cols = np.shape(self.X)
 
         if k is None:
             k = [None] * len(self.views)
 
         for i, view in enumerate(self.views):
             view.set_dataset(self.X)
-            view.incorporate_row(self.n_rows-1, k=k[i])
+            view.incorporate_row(self.n_rows()-1, k=k[i])
 
         self._check_partitions()
 
     def unincorporate_row(self, rowid):
-        if self.n_rows == 1:
+        if self.n_rows() == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
 
         self.X = np.delete(self.X, rowid, 0)
-        self.n_rows, self.n_cols = np.shape(self.X)
 
         for view in self.views:
             view.unincorporate_row(rowid)
@@ -269,7 +264,7 @@ class State(object):
         N : int, optional.
             Number of samples to return.
         """
-        if not 0 <= rowid < self.n_rows:
+        if not 0 <= rowid < self.n_rows():
             return self.logpdf_unobserved(query, evidence=evidence, N=N)
 
         logpdf = 0
@@ -329,7 +324,7 @@ class State(object):
         N : int, optional.
             Number of samples to return.
         """
-        if not 0 <= rowid < self.n_rows:
+        if not 0 <= rowid < self.n_rows():
             return self.simulate_unobserved(query, evidence=evidence, N=N)
 
         samples = []
@@ -412,7 +407,7 @@ class State(object):
         if do_plot:
             plt.ion()
             plt.show()
-            layout = pu.get_state_plot_layout(self.n_cols)
+            layout = pu.get_state_plot_layout(self.n_cols())
             fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
                 layout['plot_inches_x']), dpi=75, facecolor='w',
                 edgecolor='k', frameon=False, tight_layout=True)
@@ -438,7 +433,7 @@ class State(object):
         print
 
     def transition_alpha(self):
-        logps = [gu.logp_crp_unorm(self.n_cols, len(self.Nv), alpha) for alpha
+        logps = [gu.logp_crp_unorm(self.n_cols(), len(self.Nv), alpha) for alpha
             in self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
@@ -451,7 +446,7 @@ class State(object):
 
     def transition_column_hypers(self, target_cols=None):
         if target_cols is None:
-            target_cols = range(self.n_cols)
+            target_cols = xrange(self.n_cols())
         for i in target_cols:
             self.dims[i].transition_hypers()
 
@@ -464,17 +459,26 @@ class State(object):
     def transition_columns(self, target_cols=None, m=2):
         """Transition column assignment to views."""
         if target_cols is None:
-            target_cols = range(self.n_cols)
+            target_cols = range(self.n_cols())
         np.random.shuffle(target_cols)
         for col in target_cols:
             self._transition_column(col, m)
+
+    # --------------------------------------------------------------------------
+    # Helpers
+
+    def n_rows(self):
+        return np.shape(self.X)[0]
+
+    def n_cols(self):
+        return np.shape(self.X)[1]
 
     # --------------------------------------------------------------------------
     # Plotting
 
     def plot(self):
         """Plots sample histogram and learned distribution for each dim."""
-        layout = pu.get_state_plot_layout(self.n_cols)
+        layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
             layout['plot_inches_x']), dpi=75, facecolor='w',
             edgecolor='k', frameon=False, tight_layout=True)
@@ -561,7 +565,7 @@ class State(object):
         """Returns a list of log probabilities that a new row joins each of the
         clusters in self.views[view], including a singleton."""
         log_crp_numer = np.log(self.views[view].Nk + [self.views[view].alpha])
-        logp_crp_denom = log(self.n_rows + self.views[view].alpha)
+        logp_crp_denom = log(self.n_rows() + self.views[view].alpha)
         return log_crp_numer - logp_crp_denom
 
     def _compute_cluster_data_logps(self, col, x):
@@ -573,7 +577,7 @@ class State(object):
 
     def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.
-        if self.n_cols > 24:
+        if self.n_cols() > 24:
             return
         fig.clear()
         for dim in self.dims:
@@ -595,10 +599,10 @@ class State(object):
         # For debugging only.
         assert self.alpha > 0.
         # Zv and dims should match n_cols.
-        assert len(self.Zv) == self.n_cols
-        assert len(self.dims) == self.n_cols
+        assert len(self.Zv) == self.n_cols()
+        assert len(self.dims) == self.n_cols()
         # Nv should account for each column.
-        assert sum(self.Nv) == self.n_cols
+        assert sum(self.Nv) == self.n_cols()
         # Nv should have an entry for each view.
         assert len(self.Nv) == max(self.Zv)+1
         for v in xrange(len(self.Nv)):
@@ -606,7 +610,7 @@ class State(object):
             # matches the count in Nv.
             assert len(self.views[v].dims) == self.Nv[v]
             Nk = self.views[v].Nk
-            assert len(self.views[v].Zr) == sum(Nk) == self.n_rows
+            assert len(self.views[v].Zr) == sum(Nk) == self.n_rows()
             assert max(self.views[v].Zr) == len(Nk)-1
             for dim in self.views[v].dims.values():
                 # Ensure number of clusters in each dim in views[v]

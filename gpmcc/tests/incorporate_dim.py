@@ -98,12 +98,12 @@ class IncorporateDimTest(unittest.TestCase):
         for i in xrange(6, len(self.cctypes)):
             self.state.incorporate_dim(self.T[:,i], self.cctypes[i],
                 self.distargs[i])
-        self.assertEqual(self.state.n_cols, self.T.shape[1])
+        self.assertEqual(self.state.n_cols(), self.T.shape[1])
 
         # Unincorporate all the dims, except the last one.
-        for i in xrange(self.state.n_cols-1, 0, -1):
+        for i in xrange(self.state.n_cols()-1, 0, -1):
             self.state.unincorporate_dim(i)
-        self.assertEqual(self.state.n_cols, 1)
+        self.assertEqual(self.state.n_cols(), 1)
 
         # Unincorporating last dim should raise.
         self.assertRaises(ValueError, self.state.unincorporate_dim, 0)

@@ -95,12 +95,12 @@ class IncorporateRowTest(unittest.TestCase):
         # Incoporate all rows in the default way.
         for i in xrange(14, len(self.T)):
             self.state.incorporate_row(self.T[i,:])
-        self.assertEqual(self.state.n_rows, len(self.T))
+        self.assertEqual(self.state.n_rows(), len(self.T))
 
         # Unincorporate all rows except the last one.
         for i in xrange(len(self.T)-1, 0, -1):
             self.state.unincorporate_row(i)
-        self.assertEqual(self.state.n_rows, 1)
+        self.assertEqual(self.state.n_rows(), 1)
 
         # Unincorporating last dim should raise.
         self.assertRaises(ValueError, self.state.unincorporate_row, 0)
