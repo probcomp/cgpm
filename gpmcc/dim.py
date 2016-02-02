@@ -65,8 +65,6 @@ class Dim(object):
         """
         # Identifier.
         self.index = index
-        # Number of observations.
-        self.N = len(X)
         # Model type.
         self.model = cu.cctype_class(dist)
         self.cctype = self.model.name()
@@ -97,7 +95,6 @@ class Dim(object):
         If k > len(self.clusters) an error will be thrown.
         """
         assert k <= len(self.clusters)
-        self.N += 1
         if k == len(self.clusters):
             self.clusters.append(self.aux_model)
             self.aux_model = self.model(distargs=self.distargs,
@@ -110,7 +107,6 @@ class Dim(object):
         was not incorporated into cluster k before calling this method.
         """
         assert k < len(self.clusters)
-        self.N -= 1
         if not isnan(x):
             self.clusters[k].unincorporate(x)
 

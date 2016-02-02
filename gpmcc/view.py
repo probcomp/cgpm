@@ -282,6 +282,4 @@ class View(object):
     def _check_partitions(self):
         # For debugging only.
         assert self.alpha > 0.
-        for dim in self.dims.values():
-            assert len(self.Zr) == dim.N
         assert sum(self.Nk) == len(self.Zr)
