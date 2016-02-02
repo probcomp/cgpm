@@ -65,23 +65,25 @@ class Dim(object):
         """
         # Identifier.
         self.index = index
+
         # Model type.
         self.model = cu.cctype_class(dist)
         self.cctype = self.model.name()
         self.distargs = distargs if distargs is not None else {}
+
         # Hyperparams.
-        self.hyper_grids = self.model.construct_hyper_grids(
-            X[~np.isnan(X)], n_grid)
+        self.transition_hyper_grids(X, n_grid)
         self.hypers = hypers
         if hypers is None:
             self.hypers = dict()
             for h in self.hyper_grids:
                 self.hypers[h] = np.random.choice(self.hyper_grids[h])
-        assert self.hypers.keys() == self.hyper_grids.keys()
+
         # Row partition.
         if Zr is None:
             Zr = gu.simulate_crp(len(X), 1)
         self.reassign(X, Zr)
+
         # Auxiliary singleton model.
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
 
@@ -198,6 +200,11 @@ class Dim(object):
             logps = self._calc_hyper_proposal_logps(target)
             proposal = gu.log_pflip(logps)
             self.hypers[target] = self.hyper_grids[target][proposal]
+
+    def transition_hyper_grids(self, X, n_grid):
+        """Resample the hyperparameter grids using empirical Bayes."""
+        self.hyper_grids = self.model.construct_hyper_grids(
+            X[~np.isnan(X)], n_grid)
 
     # --------------------------------------------------------------------------
     # Helpers
