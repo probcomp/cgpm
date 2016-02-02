@@ -26,21 +26,22 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""
-This graphical test trains a gpmcc state on a bivariate population [X, Z] where
-X is normally distributed data and Z is a (transformed) latent cluster
-assignment for each row called the indicator. We then simulate from the
-    - Joint posterior distribution
-    - X|Z or the data conditioned on the indicator.
-    - Z|X or the indicator conditioned on the data.
-We compare the simulations to the ingested data at different subpopulations.
+"""This graphical test trains a gpmcc state on a bivariate population [X, Z].
+X (called the data) is a cctype from DistributionGpm. Z is a categorical
+variable that is a function of the latent cluster of each row
+(called the indicator).
+
+The three simulations are:
+    - Joint Z,X.
+    - Data conditioned on the indicator Z|X.
+    - Indicator conditioned on the data X|Z.
+
+Simulations are compared to synthetic data at various indicator subpopulations.
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 import unittest
-
-from scipy.stats import norm
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.test as tu
@@ -53,7 +54,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         # Entropy.
         np.random.seed(0)
         cls.n_samples = 250
-        n_transitions = 150
+        n_transitions = 50
         # Generate synthetic data.
         view_weights = [1.]
         cluster_weights = [[.3, .5, .2]]
@@ -91,12 +92,11 @@ class SimulateIndicatorTest(unittest.TestCase):
         ax.set_xlabel('Indicator')
         ax.set_ylabel('x')
         ax.grid()
-        self.assertTrue('FOO'.isupper())
 
     def test_conditional_indicator(self):
         # Simulate from the conditional X|Z
         _, ax = plt.subplots()
-        ax.set_title('Conditional Simulation Of Data Given Indicator Z')
+        ax.set_title('Conditional Simulation Of Data X Given Indicator Z')
         for t in self.indicators:
             # Plot original data.
             data_subpop = self.data[self.data[:,1] == t]
@@ -109,25 +109,25 @@ class SimulateIndicatorTest(unittest.TestCase):
         ax.set_xlabel('Indicator')
         ax.set_ylabel('x')
         ax.grid()
-        self.assertTrue('FOO'.isupper())
 
     def test_conditional_real(self):
         # Simulate from the conditional Z|X
-        fig, axes = plt.subplots(1,3)
-        fig.suptitle('Conditional Simulation Of Indicator Given Data X')
-
-        for x, ax in zip(self.mus, axes):
+        fig, axes = plt.subplots(2,3)
+        fig.suptitle('Conditional Simulation Of Indicator Z Given Data X')
+        # Compute representative data sample for each dindicator.
+        means = [np.mean(self.data[self.data[:,1]==i], axis=0)[0] for
+            i in self.indicators]
+        for mean, indicator, ax in zip(means, self.indicators, axes.ravel('F')):
             conditional_samples_subpop = self.model.simulate(-1, [1],
-                evidence=[(0,x)], N=self.n_samples)
+                evidence=[(0,mean)], N=self.n_samples)
             ax.hist(conditional_samples_subpop, color='g', alpha=.4)
-            ax.set_title('True Indicator TODO')
+            ax.set_title('True Indicator %d' % indicator)
             ax.set_xlabel('Simulated Indicator')
             ax.set_xticks(self.indicators)
             ax.set_ylabel('Frequency')
             ax.set_ylim([0, ax.get_ylim()[1]+10])
             ax.grid()
-        self.assertTrue('FOO'.isupper())
-        plt.close('all')
+        # plt.close('all')
 
 if __name__ == '__main__':
     unittest.main()
