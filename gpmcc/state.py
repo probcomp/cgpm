@@ -300,6 +300,10 @@ class State(object):
 
         return logpdf
 
+    def logpdf_marginal(self):
+        return gu.logp_crp(len(self.Zv), self.Nv, self.alpha) + \
+            sum(v.logpdf_marginal() for v in self.views)
+
     # --------------------------------------------------------------------------
     # Simulate
 

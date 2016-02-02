@@ -215,6 +215,13 @@ class View(object):
                 logp += dim.logpdf(x, k)
         return logp
 
+    def logpdf_marginal(self):
+        return gu.logp_crp(len(self.Zr), self.Nk, self.alpha) + \
+            sum(sum(dim.logpdf_marginal()) for dim in self.dims.values())
+
+    # --------------------------------------------------------------------------
+    # Internal
+
     def _transition_row(self, rowid):
         # Skip unincorporated rows.
         if self.Zr[rowid] == np.nan:
