@@ -58,5 +58,5 @@ T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation)
 
 S = state.State(T.T, cctypes, distargs, seed=0)
-S.transition(N=30)
+S.transition(N=12)
 S.plot()
