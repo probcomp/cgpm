@@ -39,7 +39,7 @@ class Dim(object):
     composition."""
 
     def __init__(self, X, dist, index, distargs=None, Zr=None, n_grid=30,
-            hypers=None, mode='collapsed'):
+            hypers=None):
         """Dimension constructor. Assignment of rows to clusters (Zr) is
         not maintained internally and is the responsibility of the user
         to track.
