@@ -459,6 +459,12 @@ class State(object):
         for i in target_cols:
             self.dims[i].transition_hypers()
 
+    def transition_column_hyper_grids(self, target_cols=None):
+        if target_cols is None:
+            target_cols = xrange(self.n_cols())
+        for i in target_cols:
+            self.dims[i].transition_hyper_grids(self.X[:,i], self.n_grid)
+
     def transition_rows(self, target_views=None, target_rows=None):
         if target_views is None:
             target_views = self.views
