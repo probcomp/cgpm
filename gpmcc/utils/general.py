@@ -83,9 +83,7 @@ def pflip(p):
         return 0
     p = np.asarray(p).astype(float)
     p /= sum(p)
-    if not math.fabs(1.0 - sum(p)) < 10.0**(-10.0):
-        import ipdb;
-        ipdb.set_trace()
+    assert math.fabs(1.0 - sum(p)) < 10.0**(-10.0)
     return np.random.choice(range(len(p)), size=1, p=p)[0]
 
 def log_linspace(a, b, n):
@@ -95,10 +93,7 @@ def log_linspace(a, b, n):
     return np.exp(np.linspace(log(a), log(b), n))
 
 def log_nCk(n, k):
-    """log(nchoosek(n,k)) with overflow protection."""
-    assert n >= 0
-    assert k >= 0
-    assert n >= k
+    """log(choose(n,k)) with overflow protection."""
     if n == 0 or k == 0 or n == k:
         return 0
     return log(n) + gammaln(n) - log(k) - gammaln(k) - log(n-k) - gammaln(n-k)

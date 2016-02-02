@@ -140,5 +140,4 @@ class Bernoulli(DistributionGpm):
 
     @staticmethod
     def calc_logpdf_marginal(N, k, alpha, beta):
-        return gu.log_nCk(N, k) + betaln(k + alpha, N - k + beta) \
-            - betaln(alpha, beta)
+        return betaln(k + alpha, N - k + beta) - betaln(alpha, beta)
