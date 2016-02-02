@@ -163,7 +163,7 @@ class Dim(object):
         Otherwise returns the sum of marginal log_p over all clusters."""
         if k is not None:
             return self.clusters[k].logpdf_marginal()
-        return sum(cluster.logpdf_marginal() for cluster in self.clusters)
+        return [cluster.logpdf_marginal() for cluster in self.clusters]
 
     # --------------------------------------------------------------------------
     # Simulate
