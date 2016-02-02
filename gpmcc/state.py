@@ -238,6 +238,7 @@ class State(object):
         for view in self.views:
             view.unincorporate_row(rowid)
             view.set_dataset(self.X)
+            view.reindex_rows()
         self._check_partitions()
 
     # --------------------------------------------------------------------------

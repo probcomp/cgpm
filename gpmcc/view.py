@@ -139,8 +139,9 @@ class View(object):
         # If rowid was a singleton, delete and update cluster ids.
         if self.Nk[self.Zr[rowid]] == 0:
             self._destroy_empty_cluster(self.Zr[rowid])
-        del self.Zr[rowid]
+        self.Zr[rowid] = np.nan
         # self._check_partitions()
+
     # --------------------------------------------------------------------------
     # Accounting
 
@@ -158,6 +159,11 @@ class View(object):
             dims[dim.index] = dim
         self.dims = dims
 
+    def reindex_rows(self):
+        """Update row partition by dropping nan values."""
+        self.Zr = [z for z in self.Zr if not np.isnan(z)]
+        assert len(self.Zr) == len(self.X)
+
     # --------------------------------------------------------------------------
     # Inference
 
@@ -170,8 +176,8 @@ class View(object):
 
     def transition_alpha(self):
         """Calculate CRP alpha conditionals over grid and transition."""
-        logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha) for alpha in
-            self.alpha_grid]
+        logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha) for
+            alpha in self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
