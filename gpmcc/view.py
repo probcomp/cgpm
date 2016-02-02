@@ -111,33 +111,34 @@ class View(object):
             into an existing cluser. If k = len(state.Nv) a singleton cluster
             will be created with uncollapsed parameters from the prior.
         """
-        # If k unspecified, transition the new row.
+        # If k unspecified, transition the new rowid.
         k = 0 if k is None else k
-        transition = True if k is None else False
+        transition = [rowid] if k is None else []
         # Incorporate into dims.
         for dim in self.dims.values():
             dim.incorporate(self.X[rowid, dim.index], k)
+        # Account.
         if k == len(self.Nk):
             self.Nk.append(0)
         self.Nk[k] += 1
         if rowid == len(self.Zr):
             self.Zr.append(0)
         self.Zr[rowid] = k
-        if transition:
-            self.transition_rows(target_rows=[rowid])
-        # self._check_partitions()
+        self.transition_rows(target_rows=transition)
 
     def unincorporate_row(self, rowid):
         # Unincorporate from dims.
         for dim in self.dims.values():
             dim.unincorporate(self.X[rowid, dim.index], self.Zr[rowid])
-        # Update modeled rowids.
-        self.Nk[self.Zr[rowid]] -= 1
-        # If rowid was a singleton, delete and update cluster ids.
-        if self.Nk[self.Zr[rowid]] == 0:
-            self._destroy_empty_cluster(self.Zr[rowid])
+        # Account.
+        k = self.Zr[rowid]
+        self.Nk[k] -= 1
+        if self.Nk[k] == 0:
+            self.Zr = [i-1 if i>k else i for i in self.Zr]
+            del self.Nk[k]
+            for dim in self.dims.values():
+                dim.destroy_cluster(k)
         self.Zr[rowid] = np.nan
-        # self._check_partitions()
 
     # --------------------------------------------------------------------------
     # Accounting
@@ -256,13 +257,6 @@ class View(object):
             self.incorporate_row(rowid, z_b)
 
         self._check_partitions()
-
-    def _destroy_empty_cluster(self, k):
-        assert self.Nk[k] == 0
-        self.Zr = [i-1 if i>k else i for i in self.Zr]
-        del self.Nk[k]
-        for dim in self.dims.values():
-            dim.destroy_cluster(k)
 
     def _check_partitions(self):
         # For debugging only.
