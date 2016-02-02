@@ -249,7 +249,6 @@ class View(object):
         z_b = gu.log_pflip(p_cluster)
 
         # Migrate the row.
-        # self._move_row_to_cluster(rowid, z_a, z_b)
         if z_a != z_b:
             self.unincorporate_row(rowid)
             self.incorporate_row(rowid, z_b)
