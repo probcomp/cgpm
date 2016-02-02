@@ -57,7 +57,7 @@ class IncorporateRowTest(unittest.TestCase):
         cls.T = T.T
         cls.state = state.State(cls.T[:10,:], cls.cctypes, cls.distargs,
             seed=0)
-        cls.state.transition(N=1)
+        cls.state.transition(N=5)
 
     def test_incorporate(self):
         # Incorporate row into cluster 0 for all views.

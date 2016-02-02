@@ -57,7 +57,7 @@ class IncorporateDimTest(unittest.TestCase):
         cls.T = T.T
         cls.state = state.State(cls.T[:,:2], cls.cctypes[:2], cls.distargs[:2],
             seed=0)
-        cls.state.transition(N=10)
+        cls.state.transition(N=5)
 
     def test_incorporate(self):
         # Incorporate a new dim into view[0].
