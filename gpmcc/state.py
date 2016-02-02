@@ -223,22 +223,28 @@ class State(object):
         """
         self.X = np.vstack((self.X, X))
         self.n_rows, self.n_cols = np.shape(self.X)
+
         if k is None:
             k = [None] * len(self.views)
+
         for i, view in enumerate(self.views):
             view.set_dataset(self.X)
             view.incorporate_row(self.n_rows-1, k=k[i])
+
         self._check_partitions()
 
     def unincorporate_row(self, rowid):
         if self.n_rows == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
+
         self.X = np.delete(self.X, rowid, 0)
         self.n_rows, self.n_cols = np.shape(self.X)
+
         for view in self.views:
             view.unincorporate_row(rowid)
             view.set_dataset(self.X)
             view.reindex_rows()
+
         self._check_partitions()
 
     # --------------------------------------------------------------------------
