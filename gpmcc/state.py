@@ -491,28 +491,36 @@ class State(object):
             p_crp[v_a] -= 1
         p_crp = np.log(p_crp)
 
+        # Reuse collapsed, deepcopy uncollapsed.
         def get_propsal_dim(dim, view):
             if dim.is_collapsed() or view == v_a:
                 return dim
             return copy.deepcopy(dim)
 
-        # Calculate probability under existing view assignments.
+        # Calculate probability under existing views.
         p_view = []
         proposal_dims = []
         for v in xrange(len(self.views)):
-            proposal_dims.append(get_propsal_dim(self.dims[col], v))
-            if v != v_a or self.dims[col].is_collapsed():
-                proposal_dims[-1].reassign(self.X[:,col], self.views[v].Zr)
-            p_view.append(proposal_dims[-1].logpdf_marginal() + p_crp[v])
+            D = get_propsal_dim(self.dims[col], v)
+            if v == v_a:
+                logp = self.views[v].unincorporate_dim(D)
+                self.views[v].incorporate_dim(D, reassign=D.is_collapsed())
+            else:
+                logp = self.views[v].incorporate_dim(D)
+                self.views[v].unincorporate_dim(D)
+            p_view.append(logp + p_crp[v])
+            proposal_dims.append(D)
 
         # Propose auxiliary views.
         p_crp_aux = log(self.alpha/float(m))
         proposal_views = []
         for _ in xrange(m-1 if singleton else m):
-            proposal_dims.append(get_propsal_dim(self.dims[col], None))
-            proposal_views.append(
-                View(self.X, [proposal_dims[-1]], n_grid=self.n_grid))
-            p_view.append(proposal_dims[-1].logpdf_marginal() + p_crp_aux)
+            D = get_propsal_dim(self.dims[col], None)
+            V = View(self.X, [], n_grid=self.n_grid)
+            logp = V.incorporate_dim(D)
+            p_view.append(logp + p_crp_aux)
+            proposal_dims.append(D)
+            proposal_views.append(V)
 
         # Draw view.
         v_b = gu.log_pflip(p_view)
@@ -527,8 +535,8 @@ class State(object):
         # Accounting.
         if v_a != v_b:
             self.views[v_a].unincorporate_dim(self.dims[col])
-        self.views[v_b].incorporate_dim(self.dims[col],
-            reassign=self.dims[col].is_collapsed())
+        self.views[v_b].incorporate_dim(
+            self.dims[col], reassign=self.dims[col].is_collapsed())
         self.Zv[col] = v_b
         self.Nv[v_a] -= 1
         self.Nv[v_b] += 1

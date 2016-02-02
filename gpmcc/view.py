@@ -89,10 +89,12 @@ class View(object):
         self.dims[dim.index] = dim
         if reassign:
             dim.reassign(self.X[:, dim.index], self.Zr)
+        return dim.logpdf_marginal()
 
     def unincorporate_dim(self, dim):
         """Remove dim from this view (does not modify dim)."""
         del self.dims[dim.index]
+        return dim.logpdf_marginal()
 
     def incorporate_row(self, rowid, k=None):
         """Incorporate rowid from the global dataset X into the view. Use
