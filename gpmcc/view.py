@@ -111,26 +111,23 @@ class View(object):
             into an existing cluser. If k = len(state.Nv) a singleton cluster
             will be created with uncollapsed parameters from the prior.
         """
-        if rowid < len(self.Zr):
-            raise ValueError('Row %d in X already incorporated.' % rowid)
         # If k unspecified, transition the new row.
         k = 0 if k is None else k
         transition = True if k is None else False
-        # Increment counts.
-        self.Zr.append(k)
         # Incorporate into dims.
         for dim in self.dims.values():
             dim.incorporate(self.X[rowid, dim.index], k)
         if k == len(self.Nk):
             self.Nk.append(0)
         self.Nk[k] += 1
+        if rowid == len(self.Zr):
+            self.Zr.append(0)
+        self.Zr[rowid] = k
         if transition:
             self.transition_rows(target_rows=[rowid])
         # self._check_partitions()
 
     def unincorporate_row(self, rowid):
-        if rowid > len(self.Zr):
-            raise ValueError('Row %d in X was never incorporated.' % rowid)
         # Unincorporate from dims.
         for dim in self.dims.values():
             dim.unincorporate(self.X[rowid, dim.index], self.Zr[rowid])
@@ -220,7 +217,10 @@ class View(object):
         return logp
 
     def _transition_row(self, rowid):
-        """Trasition a single row"""
+        # Skip unincorporated rows.
+        if self.Zr[rowid] == np.nan:
+            return
+
         # Get current assignment z_a.
         z_a = self.Zr[rowid]
         is_singleton = (self.Nk[z_a] == 1)
@@ -250,35 +250,12 @@ class View(object):
         z_b = gu.log_pflip(p_cluster)
 
         # Migrate the row.
-        self._move_row_to_cluster(rowid, z_a, z_b)
+        # self._move_row_to_cluster(rowid, z_a, z_b)
+        if z_a != z_b:
+            self.unincorporate_row(rowid)
+            self.incorporate_row(rowid, z_b)
 
         self._check_partitions()
-
-    def _move_row_to_cluster(self, rowid, move_from, move_to):
-        """Move rowid from cluster move_from to move_to. If move_to
-        is len(self.Nk) a new cluster will be created."""
-        assert move_from < len(self.Nk) and move_to <= len(self.Nk)
-        # Do nothing.
-        if move_from == move_to:
-            return
-        # Notify dims.
-        for dim in self.dims.values():
-            dim.unincorporate(self.X[rowid, dim.index], move_from)
-            dim.incorporate(self.X[rowid, dim.index], move_to)
-        # Update partition and move_from counts.
-        self.Zr[rowid] = move_to
-        self.Nk[move_from] -= 1
-        # If move_to new cluster, extend Nk.
-        if move_to == len(self.Nk):
-            self.Nk.append(0)
-            # Never create a singleton cluster from another singleton.
-            assert self.Nk[move_from] != 0
-        # Update move_to counts.
-        self.Nk[move_to] += 1
-        # If move_from is now empty, delete and update cluster ids.
-        if self.Nk[move_from] == 0:
-            assert move_to != len(self.Nk)
-            self._destroy_empty_cluster(move_from)
 
     def _destroy_empty_cluster(self, k):
         assert self.Nk[k] == 0
