@@ -117,7 +117,8 @@ class State(object):
         for v in xrange(len(self.Nv)):
             dims = [self.dims[i] for i in xrange(self.n_cols) if Zv[i] == v]
             Zr = None if Zrcv is None else np.asarray(Zrcv[v])
-            self.views.append(View(self.X, dims, Zr=Zr, n_grid=n_grid))
+            V = View(self.X, dims, Zr=Zr, n_grid=n_grid)
+            self.views.append(V)
 
         self._check_partitions()
 
