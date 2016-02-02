@@ -270,7 +270,7 @@ def gen_partition_crp(n_rows, n_cols, n_views, alphas):
     np.random.shuffle(Zv)
     Zc = []
     for v in range(n_views):
-        Zc.append(gu.simulate_crp(n_rows, alphas[v])[0])
+        Zc.append(gu.simulate_crp(n_rows, alphas[v]))
 
     return Zv, Zc
 

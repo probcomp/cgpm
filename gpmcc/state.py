@@ -105,11 +105,9 @@ class State(object):
 
         # Construct view partition.
         if Zv is None:
-            Zv, Nv, _ = gu.simulate_crp(self.n_cols(), self.alpha)
-        else:
-            Nv = list(np.bincount(Zv))
+            Zv = gu.simulate_crp(self.n_cols(), self.alpha)
         self.Zv = Zv
-        self.Nv = Nv
+        self.Nv = list(np.bincount(Zv))
 
         # Construct views.
         self.views = []

@@ -148,7 +148,7 @@ def simulate_crp(N, alpha):
     K = len(Nk)
     if K > 1:
         np.random.shuffle(partition)
-    return np.array(partition), Nk, K
+    return np.array(partition)
 
 def kl_array(support, log_true, log_inferred, is_discrete):
     """

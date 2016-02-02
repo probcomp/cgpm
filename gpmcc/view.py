@@ -65,11 +65,9 @@ class View(object):
 
         # Generate row partition.
         if Zr is None:
-            Zr, Nk, _ = gu.simulate_crp(len(self.X), alpha)
-        else:
-            Nk = list(np.bincount(Zr))
+            Zr = gu.simulate_crp(len(self.X), alpha)
         self.Zr = list(Zr)
-        self.Nk = Nk
+        self.Nk = list(np.bincount(Zr))
 
         # Initialize the dimensions.
         self.dims = dict()
