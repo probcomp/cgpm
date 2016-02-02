@@ -416,6 +416,7 @@ class State(object):
         for i in xrange(N):
             self.transition_alpha()
             self.transition_view_alphas(target_views=target_views)
+            self.transition_column_params(target_cols=target_cols)
             self.transition_column_hypers(target_cols=target_cols)
             self.transition_rows(target_views=target_views,
                 target_rows=target_rows)
@@ -443,6 +444,12 @@ class State(object):
             target_views = self.views
         for view in target_views:
             view.transition_alpha()
+
+    def transition_column_params(self, target_cols=None):
+        if target_cols is None:
+            target_cols = xrange(self.n_cols())
+        for i in target_cols:
+            self.dims[i].transition_params()
 
     def transition_column_hypers(self, target_cols=None):
         if target_cols is None:

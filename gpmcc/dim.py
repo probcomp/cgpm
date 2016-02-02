@@ -110,6 +110,8 @@ class Dim(object):
         if not isnan(x):
             self.clusters[k].unincorporate(x)
 
+    # Bulk operations for effeciency.
+
     def destroy_cluster(self, k):
         """Destroy cluster k, and all its incorporated data (if any)."""
         assert k < len(self.clusters)
@@ -180,12 +182,16 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # Inferece
 
+    def transition_params(self):
+        """Updates the component parameters of each cluster."""
+        if not self.is_collapsed():
+            for cluster in self.clusters:
+                cluster.transition_params()
+
     def transition_hypers(self):
-        """Updates the hyperparameters and the component parameters of each
-        cluster."""
+        """Updates the hyperparameters of each cluster."""
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
-            cluster.transition_params()
         targets = self.hypers.keys()
         np.random.shuffle(targets)
         for target in targets:
