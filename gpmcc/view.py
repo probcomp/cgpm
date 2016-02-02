@@ -196,9 +196,9 @@ class View(object):
             self._transition_row(rowid)
 
     # --------------------------------------------------------------------------
-    # Internal
+    # logpdf
 
-    def _logpdf_row(self, rowid, k):
+    def logpdf(self, rowid, k):
         """Get the predictive log_p of rowid being in cluster k.
         If k is existing (less than len(self.Nk)) then the predictive is taken.
         If k is new (equal to len(self.Nk)) then new parameters are sampled for
@@ -236,13 +236,13 @@ class View(object):
         # Calculate probability of rowid in each cluster k \in K.
         p_cluster = []
         for k in xrange(len(self.Nk)):
-            lp = self._logpdf_row(rowid, k) + p_crp[k]
+            lp = self.logpdf(rowid, k) + p_crp[k]
             p_cluster.append(lp)
 
         # Propose singleton.
         if not is_singleton:
-            # Using len(self.Nk) will resample parameters.
-            lp = self._logpdf_row(rowid, len(self.Nk)) + p_crp[-1]
+            # Using len(self.Nk) will compute singleton.
+            lp = self.logpdf(rowid, len(self.Nk)) + p_crp[-1]
             p_cluster.append(lp)
 
         # Draw new assignment, z_b
