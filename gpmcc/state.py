@@ -466,7 +466,7 @@ class State(object):
             self.dims[i].transition_hyper_grids(self.X[:,i], self.n_grid)
 
     def transition_rows(self, target_views=None, target_rows=None):
-        if len(self.n_rows()) == 1:
+        if self.n_rows() == 1:
             return
         if target_views is None:
             target_views = self.views
@@ -475,7 +475,7 @@ class State(object):
 
     def transition_columns(self, target_cols=None, m=2):
         """Transition column assignment to views."""
-        if len(self._cols()) == 1:
+        if self.n_cols() == 1:
             return
         if target_cols is None:
             target_cols = range(self.n_cols())
