@@ -34,60 +34,121 @@ import numpy as np
 
 from gpmcc.state import State
 
-_transition_kernels = ['column_z','state_alpha', 'row_z', 'column_hypers',
-    'view_alphas']
-
-def _transition((N, kernel_list, target_rows, target_cols, metadata)):
-    chain = State.from_metadata(metadata)
-    chain.transition(N, kernel_list, target_rows, target_cols)
-    return chain.to_metadata()
+# XXX Multiprocessing functions.
 
 def _intialize((X, cctypes, distargs, seed)):
-    chain = State(X, cctypes, distargs, seed=seed)
+    state = State(X, cctypes, distargs, seed=seed)
+    return state.to_metadata()
+
+def _transition((metadata, N, kernels, target_views, target_rows, target_cols)):
+    state = State.from_metadata(metadata)
+    state.transition(N=N, kernels=kernels, target_views=target_views,
+        target_rows=target_rows, target_cols=target_cols)
+    return state.to_metadata()
+
+def _incorporate_dim((metadata, X, cctype, distargs, v)):
+    chain = State.from_metadata(metadata)
+    chain.incorporate_dim(X, cctype, distargs=distargs, v=v)
     return chain.to_metadata()
 
+def _unincorporate_dim((metadata, col)):
+    state = State.from_metadata(metadata)
+    state.unincorporate_dim(col)
+    return state.to_metadata()
+
+def _incorporate_row((metadata, X, k)):
+    state = State.from_metadata(metadata)
+    state.incorporate_row(X, k=k)
+    return state.to_metadata()
+
+def _unincorporate_row((metadata, rowid)):
+    state = State.from_metadata(metadata)
+    state.unincorporate_row(rowid)
+    return state.to_metadata()
+
+def _logpdf((metadata, rowid, query, evidence)):
+    state = State.from_metadata(metadata)
+    return state.logpdf(rowid, query, evidence=evidence)
+
+def _logpdf_marginal((metadata)):
+    state = State.from_metadata(metadata)
+    return state.logpdf_marginal()
+
+def _simulate((metadata, rowid, query, evidence, N)):
+    state = State.from_metadata(metadata)
+    return state.simulate(rowid, query, evidence=evidence, N=N)
+
+# XXX Multiprocessing functions.
+
 class Engine(object):
-    """Multiprocessing engine for a stochastic ensemble of parallel StateGPMs."""
+    """Multiprocessing engine for a stochastic ensemble of parallel States."""
 
     def __init__(self, X, cctypes, distargs, num_states=1, seeds=None,
-            metadatas=None, initialize=False):
-        """If initialize is True, all metadatas will be resampled!"""
+            state_metadatas=None, initialize=False):
+        """If initialize is True all state_metadatas will be resampled!"""
         self.X = X
         self.cctypes = cctypes
         self.distargs = distargs
         self.num_states = num_states
         self.seeds = range(num_states) if seeds is None else seeds
-        self.metadata = metadatas
+        self.metadata = state_metadatas
         if initialize:
             self.initialize()
 
-    def initialize(self, multithread=True):
-        """Reinitializes all the states from the prior. """
-        _, mapper = self._get_mapper(multithread=multithread)
-        args = ((self.X, self.cctypes, self.distargs, seed) for
-                    seed in self.seeds)
+    def initialize(self, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = ((self.X, self.cctypes, self.distargs, seed) for seed in
+            self.seeds)
         self.metadata = mapper(_intialize, args)
 
-    def get_state(self, index):
-        """Return an individual state from the ensemble."""
-        return State.from_metadata(self.metadata[index])
-
-    def transition(self, N=1, kernel_list=None, target_rows=None,
-            target_cols=None, multithread=True):
-        """Run transitions in parallel."""
-        _, mapper = self._get_mapper(multithread=multithread)
-        args = [(N, kernel_list, target_rows, target_cols,
-            self.metadata[i]) for i in xrange(self.num_states)]
+    def transition(self, N=1, kernels=None, target_views=None, target_rows=None,
+            target_cols=None, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i], N, kernels, target_views, target_rows,
+            target_cols) for i in xrange(self.num_states)]
         self.metadata = mapper(_transition, args)
 
-    def logpdf(self, query, constraints=None):
-        """Predictive probability."""
+    def incorporate_dim(self, X, cctype, distargs=None, v=None, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i], X, cctype, distargs, v) for i in
+            xrange(self.num_states)]
+        self.metadata = mapper(_incorporate_dim, args)
 
-    def simulate(self, query, constraints=None):
-        """Predictive sample."""
+    def unincorporate_dim(self, col, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i], col) for i in xrange(self.num_states)]
+        self.metadata = mapper(_unincorporate_dim, args)
 
-    def impute(self, query):
-        """Impute data."""
+    def incorporate_row(self, X, k=None, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i], X, k) for i in xrange(self.num_states)]
+        self.metadata = mapper(_incorporate_row, args)
+
+    def unincorporate_row(self, rowid, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i], rowid) for i in
+            xrange(self.num_states)]
+        self.metadata = mapper(_unincorporate_row, args)
+
+    def logpdf(self, rowid, query, evidence=None, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i], rowid, query, evidence) for i in
+            xrange(self.num_states)]
+        logpdfs = mapper(_logpdf, args)
+        return logpdfs
+
+    def logpdf_marginal(self, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i]) for i in xrange(self.num_states)]
+        logpdf_marginals = mapper(_logpdf_marginal, args)
+        return logpdf_marginals
+
+    def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [(self.metadata[i], rowid, query, evidence, N) for i in
+            xrange(self.num_states)]
+        samples = mapper(_simulate, args)
+        return samples
 
     def dependence_probability(self, col0, col1):
         """Compute dependence probability between `col0, col1` as float."""
@@ -104,16 +165,10 @@ class Engine(object):
             D[i,j] = D[j,i] = d
         return D
 
-    def incorporate_dim(self, X_f, cctype, distargs=None, m=1,
-            col_name=None):
-        """Add a feature (column) to the data."""
-        raise NotImplementedError()
+    def get_state(self, index):
+        return State.from_metadata(self.metadata[index])
 
-    def incorporate_row(self, X_o, update_hypers_grid=False):
-        """Add a (row) to the cc_state."""
-        raise NotImplementedError()
-
-    def _get_mapper(self, multithread=True):
+    def _get_mapper(self, multithread):
         pool, mapper = None, map
         if multithread:
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
@@ -124,17 +179,17 @@ class Engine(object):
         metadata = dict()
         metadata['num_states'] = self.num_states
         metadata['seeds'] = self.seeds
-        metadata['metadatas'] = self.metadata
+        metadata['state_metadatas'] = self.metadata
         return metadata
 
     @classmethod
     def from_metadata(cls, metadata):
-        num_states = metadata['num_states']
-        seeds = metadata['seeds']
-        metadatas = metadata['metadatas']
-        return cls(metadatas[0]['X'], metadatas[0]['cctypes'],
-            metadatas[0]['distargs'], num_states=num_states, seeds=seeds,
-            metadatas=metadatas)
+        return cls(metadata['state_metadatas'][0]['X'],
+            metadata['state_metadatas'][0]['cctypes'],
+            metadata['state_metadatas'][0]['distargs'],
+            num_states=metadata['num_states'],
+            seeds=metadata['seeds'],
+            state_metadatas=metadata['state_metadatas'])
 
     def to_pickle(self, fileptr):
         metadata = self.to_metadata()
