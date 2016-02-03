@@ -393,12 +393,7 @@ class State(object):
         >>> State.transition(N=100, cols=[1,2], rows=range(100))
         """
         if do_progress:
-                percentage = 0
-                progress = ' ' * 30
-                fill = int(percentage * len(progress))
-                progress = '[' + '=' * fill + progress[fill:] + ']'
-                print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
-                sys.stdout.flush()
+            self._do_progress(0)
         if do_plot:
             plt.ion()
             plt.show()
@@ -417,12 +412,7 @@ class State(object):
                 target_rows=target_rows)
             self.transition_columns(target_cols=target_cols)
             if do_progress:
-                percentage = float(i+1) / N
-                progress = ' ' * 30
-                fill = int(percentage * len(progress))
-                progress = '[' + '=' * fill + progress[fill:] + ']'
-                print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
-                sys.stdout.flush()
+                self._do_progress(float(i+1) / N)
             if do_plot:
                 self._do_plot(fig, layout)
                 plt.pause(1e-4)
@@ -605,6 +595,13 @@ class State(object):
                 color='blue', horizontalalignment='right',
                 verticalalignment='top')
         plt.draw()
+
+    def _do_progress(self, percentage):
+        progress = ' ' * 30
+        fill = int(percentage * len(progress))
+        progress = '[' + '=' * fill + progress[fill:] + ']'
+        print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
+        sys.stdout.flush()
 
     def _check_partitions(self):
         # For debugging only.
