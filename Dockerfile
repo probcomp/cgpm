@@ -16,15 +16,17 @@ RUN apt-get install -y -qq libjpeg-dev libxft-dev
 RUN apt-get install -y -qq python-numpy python-scipy
 
 # Build and install gpmcc.
-COPY HACKING README.md setup.py /src/
-COPY gpmcc /src/gpmcc
-WORKDIR /src
+COPY setup.py pythenv.sh check.sh README.md HACKING /gpmcc/
+COPY src /gpmcc/src
+# Notably, do not copy build, .eggs, dist, sdist, etc.
+WORKDIR /gpmcc
 RUN python setup.py bdist_wheel
 RUN pip install dist/gpmcc-*-py2-none-any.whl
 
-# Run a simple smoke test. Delete original build directory to make sure no
-# dependencies leak.
-COPY gpmcc/tests /tests
-WORKDIR /tests
-RUN rm -rf /src
-RUN python /tests/binomial.py
+RUN pip install pytest
+# In case setup.py ever develops test_require that are not already satisfied:
+RUN python setup.py test
+# Run tests:
+COPY tests /gpmcc/tests
+RUN find tests -name __pycache__ -o -name "*.pyc" --exec rm -fr {} \;
+RUN ./check.sh tests
