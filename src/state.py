@@ -28,7 +28,7 @@
 
 import copy
 import sys
-import pickle
+import cPickle as pickle
 from math import log
 
 import numpy as np
@@ -52,8 +52,8 @@ _all_kernels = [
 class State(object):
     """State, the main crosscat object."""
 
-    def __init__(self, X, cctypes, distargs, n_grid=30, Zv=None, Zrcv=None,
-            hypers=None, seed=None):
+    def __init__(self, X, cctypes, distargs, Zv=None, Zrcv=None, alpha=None,
+            view_alphas=None, hypers=None, n_grid=30, seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
         and row partition for each view.
@@ -92,7 +92,7 @@ class State(object):
         # Hyperparameters.
         self.n_grid = n_grid
 
-        # Construct dimensions.
+        # Generate dimensions.
         self.dims = []
         for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
@@ -100,23 +100,26 @@ class State(object):
                 Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
                 hypers=dim_hypers, distargs=distargs[col]))
 
-        # Initialize CRP alpha.
+        # Generate CRP alpha.
         self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(),
             self.n_grid)
-        self.alpha = np.random.choice(self.alpha_grid)
+        if alpha is None:
+            alpha = np.random.choice(self.alpha_grid)
+        self.alpha = alpha
 
-        # Construct view partition.
+        # Generate view partition.
         if Zv is None:
             Zv = gu.simulate_crp(self.n_cols(), self.alpha)
-        self.Zv = Zv
+        self.Zv = list(Zv)
         self.Nv = list(np.bincount(Zv))
 
-        # Construct views.
+        # Generate views.
         self.views = []
         for v in xrange(len(self.Nv)):
             dims = [self.dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrcv is None else np.asarray(Zrcv[v])
-            V = View(self.X, dims, Zr=Zr, n_grid=n_grid)
+            alpha = None if view_alphas is None else view_alphas[v]
+            V = View(self.X, dims, Zr=Zr, alpha=alpha, n_grid=n_grid)
             self.views.append(V)
 
         self._check_partitions()
@@ -165,9 +168,9 @@ class State(object):
             self.views[0].incorporate_dim(self.dims[-1])
             self.Zv.append(0)
             self.Nv[0] += 1
-            self.transition_columns(target_cols=[col])
+            self.transition_columns(cols=[col])
 
-        self.transition_column_hypers(target_cols=[col])
+        self.transition_column_hypers(cols=[col])
         self._check_partitions()
 
     def unincorporate_dim(self, col):
@@ -370,8 +373,8 @@ class State(object):
     # --------------------------------------------------------------------------
     # Inference
 
-    def transition(self, N=1, target_rows=None, target_cols=None,
-            target_views=None, do_plot=False, do_progress=True):
+    def transition(self, N=1, kernels=None, target_rows=None, target_cols=None,
+            target_views=None, do_progress=True):
         """Run all infernece kernels. For targeted inference, see other exposed
         inference commands.
 
@@ -379,10 +382,12 @@ class State(object):
         ----------
         N : int, optional
             Number of transitions.
+        kernels : list<{'alpha', 'view_alphas', 'column_params', 'column_hypers'
+                'rows', 'columns'}>, optional
+            List of inference kernels to run in this inference transition.
+            Default is all.
         target_views, target_rows, target_cols : list<int>, optional
             Views, rows and columns to apply the kernels. Default is all.
-        do_plot : boolean, optional
-            Plot the state of the sampler (real-time).
         do_progress : boolean, optional
             Show a progress bar for number of target iterations (real-time).
 
@@ -390,32 +395,38 @@ class State(object):
         --------
         >>> State.transition()
         >>> State.transition(N=100)
-        >>> State.transition(N=100, cols=[1,2], rows=range(100))
+        >>> State.transition(N=100, kernels=['rows', 'column_hypers'],
+                target_cols=[1,2], target_rows=range(100))
         """
+        # Default order of kernel is important.
+        _kernel_functions = [
+            ('alpha',
+                lambda : self.transition_alpha()),
+            ('view_alphas',
+                lambda : self.transition_view_alphas(views=target_views)),
+            ('column_params',
+                lambda : self.transition_column_params(cols=target_cols)),
+            ('column_hypers',
+                lambda : self.transition_column_hypers(cols=target_cols)),
+            ('rows',
+                lambda : self.transition_rows(
+                    views=target_views, rows=target_rows)),
+            ('columns' ,
+                lambda : self.transition_columns(cols=target_cols))
+        ]
+
+        _kernel_lookup = dict(_kernel_functions)
+        if kernels is None:
+            kernels = [k[0] for k in _kernel_functions]
+
         if do_progress:
             self._do_progress(0)
-        if do_plot:
-            plt.ion()
-            plt.show()
-            layout = pu.get_state_plot_layout(self.n_cols())
-            fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
-                layout['plot_inches_x']), dpi=75, facecolor='w',
-                edgecolor='k', frameon=False, tight_layout=True)
-            self._do_plot(fig, layout)
 
         for i in xrange(N):
-            self.transition_alpha()
-            self.transition_view_alphas(target_views=target_views)
-            self.transition_column_params(target_cols=target_cols)
-            self.transition_column_hypers(target_cols=target_cols)
-            self.transition_rows(target_views=target_views,
-                target_rows=target_rows)
-            self.transition_columns(target_cols=target_cols)
+            for k in kernels:
+                _kernel_lookup[k]()
             if do_progress:
                 self._do_progress(float(i+1) / N)
-            if do_plot:
-                self._do_plot(fig, layout)
-                plt.pause(1e-4)
         print
 
     def transition_alpha(self):
@@ -424,47 +435,47 @@ class State(object):
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
-    def transition_view_alphas(self, target_views=None):
-        if target_views is None:
-            target_views = self.views
-        for view in target_views:
-            view.transition_alpha()
+    def transition_view_alphas(self, views=None):
+        if views is None:
+            views = xrange(len(self.views))
+        for v in views:
+            self.views[v].transition_alpha()
 
-    def transition_column_params(self, target_cols=None):
-        if target_cols is None:
-            target_cols = xrange(self.n_cols())
-        for i in target_cols:
-            self.dims[i].transition_params()
+    def transition_column_params(self, cols=None):
+        if cols is None:
+            cols = xrange(self.n_cols())
+        for c in cols:
+            self.dims[c].transition_params()
 
-    def transition_column_hypers(self, target_cols=None):
-        if target_cols is None:
-            target_cols = xrange(self.n_cols())
-        for i in target_cols:
-            self.dims[i].transition_hypers()
+    def transition_column_hypers(self, cols=None):
+        if cols is None:
+            cols = xrange(self.n_cols())
+        for c in cols:
+            self.dims[c].transition_hypers()
 
-    def transition_column_hyper_grids(self, target_cols=None):
-        if target_cols is None:
-            target_cols = xrange(self.n_cols())
-        for i in target_cols:
-            self.dims[i].transition_hyper_grids(self.X[:,i], self.n_grid)
+    def transition_column_hyper_grids(self, cols=None):
+        if cols is None:
+            cols = xrange(self.n_cols())
+        for c in cols:
+            self.dims[c].transition_hyper_grids(self.X[:,c], self.n_grid)
 
-    def transition_rows(self, target_views=None, target_rows=None):
+    def transition_rows(self, views=None, rows=None):
         if self.n_rows() == 1:
             return
-        if target_views is None:
-            target_views = self.views
-        for view in target_views:
-            view.transition_rows(target_rows=target_rows)
+        if views is None:
+            views = xrange(len(self.views))
+        for v in views:
+            self.views[v].transition_rows(rows=rows)
 
-    def transition_columns(self, target_cols=None, m=2):
+    def transition_columns(self, cols=None, m=2):
         """Transition column assignment to views."""
         if self.n_cols() == 1:
             return
-        if target_cols is None:
-            target_cols = range(self.n_cols())
-        np.random.shuffle(target_cols)
-        for col in target_cols:
-            self._transition_column(col, m)
+        if cols is None:
+            cols = range(self.n_cols())
+        np.random.shuffle(cols)
+        for c in cols:
+            self._transition_column(c, m)
 
     # --------------------------------------------------------------------------
     # Helpers
@@ -632,7 +643,7 @@ class State(object):
     # --------------------------------------------------------------------------
     # Serialize
 
-    def get_metadata(self):
+    def to_metadata(self):
         metadata = dict()
 
         # Dataset.
@@ -642,13 +653,15 @@ class State(object):
         metadata['n_grid'] = self.n_grid
         metadata['seed'] = self.seed
 
-        # View data.
+        # View partition data.
+        metadata['alpha'] = self.alpha
         metadata['Nv'] = self.Nv
         metadata['Zv'] = self.Zv
 
-        # Category data.
+        # View data.
         metadata['Nk'] = []
         metadata['Zrcv'] = []
+        metadata['view_alphas'] = []
 
         # Column data.
         metadata['hypers'] = []
@@ -665,6 +678,7 @@ class State(object):
         for view in self.views:
             metadata['Nk'].append(view.Nk)
             metadata['Zrcv'].append(view.Zr)
+            metadata['view_alphas'].append(view.alpha)
 
         return metadata
 
@@ -674,15 +688,10 @@ class State(object):
 
     @classmethod
     def from_metadata(cls, metadata):
-        X = metadata['X']
-        Zv = metadata['Zv']
-        Zrcv = metadata['Zrcv']
-        n_grid = metadata['n_grid']
-        hypers = metadata['hypers']
-        cctypes = metadata['cctypes']
-        distargs = metadata['distargs']
-        return cls(X, cctypes, distargs, n_grid=n_grid, Zv=Zv, Zrcv=Zrcv,
-            hypers=hypers)
+        return cls(metadata['X'], metadata['cctypes'], metadata['distargs'],
+            Zv=metadata['Zv'], Zrcv=metadata['Zrcv'], alpha=metadata['alpha'],
+            view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
+            n_grid=metadata['n_grid'])
 
     @classmethod
     def from_pickle(cls, fileptr):

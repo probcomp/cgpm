@@ -49,7 +49,7 @@ class View(object):
         alpha : float, optional
             CRP concentration parameter. If None, selected from grid uniformly
             at random.
-        Zr : list<int>
+        Zr : list<int>, optional
             Starting partiton of rows to categories where Zr[i] is the latent
             clsuter of row i. If None, is sampled from CRP(alpha).
         n_grid : int
@@ -120,7 +120,7 @@ class View(object):
         if rowid == len(self.Zr):
             self.Zr.append(0)
         self.Zr[rowid] = k
-        self.transition_rows(target_rows=transition)
+        self.transition_rows(rows=transition)
 
     def unincorporate_row(self, rowid):
         """Remove rowid from the global datset X from this view."""
@@ -174,19 +174,19 @@ class View(object):
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
-    def transition_column_hypers(self, target_cols=None):
+    def transition_column_hypers(self, cols=None):
         """Calculate column (dim) hyperparameter conditionals over grid and
         transition."""
-        if target_cols is None:
-            target_cols = self.dims.keys()
-        for col in target_cols:
-            self.dims[col].transition_hypers()
+        if cols is None:
+            cols = self.dims.keys()
+        for c in cols:
+            self.dims[c].transition_hypers()
 
-    def transition_rows(self, target_rows=None):
+    def transition_rows(self, rows=None):
         """Compute row conditions for each cluster and transition."""
-        if target_rows is None:
-            target_rows = xrange(len(self.Zr))
-        for rowid in target_rows:
+        if rows is None:
+            rows = xrange(len(self.Zr))
+        for rowid in rows:
             self._transition_row(rowid)
 
     # --------------------------------------------------------------------------
