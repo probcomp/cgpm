@@ -62,48 +62,60 @@ class IncorporateRowTest(unittest.TestCase):
     def test_incorporate(self):
         # Incorporate row into cluster 0 for all views.
         previous = np.asarray([v.Nk[0] for v in self.state.views])
-        self.state.incorporate_row(self.T[10,:], k=[0]*len(self.state.views))
+        self.state.incorporate_rows([self.T[10,:]], k=[[0]*len(self.state.views)])
         self.assertEqual([v.Nk[0] for v in self.state.views], list(previous+1))
 
         # Incorporate row into a singleton for all views.
         previous = np.asarray([len(v.Nk) for v in self.state.views])
-        self.state.incorporate_row(self.T[11,:], k=previous)
+        self.state.incorporate_rows([self.T[11,:]], k=[previous])
         self.assertEqual([len(v.Nk) for v in self.state.views], list(previous+1))
 
         # Unincorporate row from the singleton view just created.
         previous = np.asarray([len(v.Nk) for v in self.state.views])
-        self.state.unincorporate_row(11)
+        self.state.unincorporate_rows([11])
         self.assertEqual([len(v.Nk) for v in self.state.views], list(previous-1))
 
         # Undo the last step.
         previous = np.asarray([len(v.Nk) for v in self.state.views])
-        self.state.incorporate_row(self.T[11,:], k=previous)
+        self.state.incorporate_rows([self.T[11,:]], k=[previous])
         self.assertEqual([len(v.Nk) for v in self.state.views], list(previous+1))
 
         # Incorporate row without specifying a view.
-        self.state.incorporate_row(self.T[12,:], k=None)
+        self.state.incorporate_rows([self.T[12,:]], k=None)
 
         # Incorporate row specifying different clusters.
         k = [None] * len(self.state.views)
         k[::2] = [1] * len(k[::2])
         previous = np.asarray([v.Nk[1] for v in self.state.views])
-        self.state.incorporate_row(self.T[13,:], k=k)
+        self.state.incorporate_rows([self.T[13,:]], k=[k])
         for i in xrange(len(self.state.views)):
             if i%2 == 0:
                 self.assertEqual(self.state.views[i].Nk[1], previous[i]+1)
 
-        # Incoporate all rows in the default way.
-        for i in xrange(14, len(self.T)):
-            self.state.incorporate_row(self.T[i,:])
+        # Incorporate two rows with different clusterings.
+        previous = np.asarray([v.Nk[0] for v in self.state.views])
+        k = [0 for _ in xrange(len(self.state.views))]
+        self.state.incorporate_rows(self.T[[14,15],:], k=[k,k])
+        self.assertEqual(self.state.views[i].Nk[0], previous[i]+2)
+
+        # Incoporate remaining rows in the default way.
+        self.state.incorporate_rows(self.T[16:,:])
         self.assertEqual(self.state.n_rows(), len(self.T))
 
-        # Unincorporate all rows except the last one.
-        for i in xrange(len(self.T)-1, 0, -1):
-            self.state.unincorporate_row(i)
+        # Unincorporate all rows except the last one using ascending.
+        self.state.unincorporate_rows(xrange(1, len(self.T)))
+        self.assertEqual(self.state.n_rows(), 1)
+
+        # Reincorporate all rows.
+        self.state.incorporate_rows(self.T[1:,:])
+        self.assertEqual(self.state.n_rows(), len(self.T))
+
+        # Unincorporate all rows except the last one using descending.
+        self.state.unincorporate_rows(xrange(len(self.T)-1, 0, -1))
         self.assertEqual(self.state.n_rows(), 1)
 
         # Unincorporating last dim should raise.
-        self.assertRaises(ValueError, self.state.unincorporate_row, 0)
+        self.assertRaises(ValueError, self.state.unincorporate_rows, [0])
 
 if __name__ == '__main__':
     unittest.main()
