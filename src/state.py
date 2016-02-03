@@ -200,40 +200,46 @@ class State(object):
 
         self._check_partitions()
 
-    def incorporate_row(self, X, k=None):
-        """Incorporate a new row into global dataset X.
+    def incorporate_rows(self, X, k=None):
+        """Incorporate list of new rows into global dataset X.
 
         Parameters
         ----------
         X : np.array
-            A length self.n_cols array of data.
+            A (r x self.n_cols) list of data, where r is the number of
+            new rows to incorporate.
         k : list, optional
-            A len(self.views) list of integers, where k[i] is the cluster to
-            insert the row in view i. If k[i] is greater than the number of
+            A (r x len(self.views)) list of integers, where r is the number of
+            new rows to incorporate, and k[r][i] is the cluster to insert row r
+            in view i. If k[r][i] is greater than the number of
             clusters in view[i] an error will be thrown. To specify cluster
             assignments for only some views, use None in all other locations
-            i.e. k=[None,2,None].
+            i.e. k=[[None,2,None],[[0,None,1]]].
         """
+        rowids = xrange(self.n_rows(), self.n_rows() + len(X))
         self.X = np.vstack((self.X, X))
 
         if k is None:
-            k = [None] * len(self.views)
+            k = [[None] * len(self.views)] * len(rowids)
 
-        for i, view in enumerate(self.views):
+        for v, view in enumerate(self.views):
             view.set_dataset(self.X)
-            view.incorporate_row(self.n_rows()-1, k=k[i])
+            for r, rowid in enumerate(rowids):
+                view.incorporate_row(rowid, k=k[r][v])
 
         self._check_partitions()
 
-    def unincorporate_row(self, rowid):
-        """Unincorporate an existing rowid from dataset X."""
+    def unincorporate_rows(self, rowids):
+        """Unincorporate a list of rowids from dataset X. All r in rowids must
+        be in range(0, State.n_rows())."""
         if self.n_rows() == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
 
-        self.X = np.delete(self.X, rowid, 0)
+        self.X = np.delete(self.X, rowids, 0)
 
         for view in self.views:
-            view.unincorporate_row(rowid)
+            for rowid in rowids:
+                view.unincorporate_row(rowid)
             view.set_dataset(self.X)
             view.reindex_rows()
 

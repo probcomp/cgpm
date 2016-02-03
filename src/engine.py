@@ -56,14 +56,14 @@ def _unincorporate_dim((metadata, col)):
     state.unincorporate_dim(col)
     return state.to_metadata()
 
-def _incorporate_row((metadata, X, k)):
+def _incorporate_rows((metadata, X, k)):
     state = State.from_metadata(metadata)
-    state.incorporate_row(X, k=k)
+    state.incorporate_rows(X, k=k)
     return state.to_metadata()
 
-def _unincorporate_row((metadata, rowid)):
+def _unincorporate_rows((metadata, rowid)):
     state = State.from_metadata(metadata)
-    state.unincorporate_row(rowid)
+    state.unincorporate_rows(rowid)
     return state.to_metadata()
 
 def _logpdf((metadata, rowid, query, evidence)):
@@ -119,16 +119,16 @@ class Engine(object):
         args = [(self.metadata[i], col) for i in xrange(self.num_states)]
         self.metadata = mapper(_unincorporate_dim, args)
 
-    def incorporate_row(self, X, k=None, multithread=1):
+    def incorporate_rows(self, X, k=None, multithread=1):
         _, mapper = self._get_mapper(multithread)
         args = [(self.metadata[i], X, k) for i in xrange(self.num_states)]
-        self.metadata = mapper(_incorporate_row, args)
+        self.metadata = mapper(_incorporate_rows, args)
 
-    def unincorporate_row(self, rowid, multithread=1):
+    def unincorporate_rows(self, rowid, multithread=1):
         _, mapper = self._get_mapper(multithread)
         args = [(self.metadata[i], rowid) for i in
             xrange(self.num_states)]
-        self.metadata = mapper(_unincorporate_row, args)
+        self.metadata = mapper(_unincorporate_rows, args)
 
     def logpdf(self, rowid, query, evidence=None, multithread=1):
         _, mapper = self._get_mapper(multithread)
