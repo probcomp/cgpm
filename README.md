@@ -3,7 +3,7 @@
 Implementation of [crossat](http://probcomp.csail.mit.edu/crosscat/) from
 the lens of generative population models (GPMs). The goal is to express the
 hierarchial generative process that defines crosscat as a composition of
-modules that ascribe to GPM interface.
+modules that follow the GPM interface.
 
 ## Research Goals
 
@@ -23,7 +23,7 @@ Key ideas on the development roadmap are:
 
 - Sequential Monte Carlo (SMC) implementation of the posterior inference
   algorithm described in [Mansinghka, et
-  al.](http://arxiv.org/pdf/1512.01272.pdf) Section 2.4, as oppose to
+  al.](http://arxiv.org/pdf/1512.01272.pdf) Section 2.4, as opposed to
   observe-all then Gibbs forever.
 
 - Interface for the Bayesian Query Language (BQL) and
@@ -51,13 +51,8 @@ Key ideas on the development roadmap are:
 - matplotlib
 
 ## Installing
-Currently there is no `setup.py` script. The best way to run gpmcc is to
-clone the repository and add the source directory to your `PYTHONPATH`, for
-example:
-
 ```
-$ git clone https://bitbucket.org/saadf/gpmcc/
-$ export PYTHONPATH=$PYTHONPATH:/your/path/to/gpmcc
+pip install .
 ```
 
 ## Static Example
@@ -66,16 +61,11 @@ The simplest example is creating a synthetic dataset where each variable is
 a mixture of one of the available DistributionGpms. Try
 
 ```
-$ git checkout master
-$ cd gpmcc
+$ cd src/
 $ python -i examples/one_view.py
 ```
 
-A plot along these lines should appear
-
-<a href="url"><img
-src="http://web.mit.edu/fsaad/www/figures/single_view.png"
-width="800" ></a>
+A plot similar to ![src/examples/one_view.png](src/examples/one_view.png) should appear.
 
 ## Interactive Example (Experimental)
 
@@ -84,16 +74,14 @@ variable. To view an interactive example, try the following
 
 ```
 $ git checkout particle-demo
-$ cd gpmcc/experiments
+$ cd src/experiments
 $ python -i particle_demo.py
 ```
 
 Click on the graph to produce observations and watch, the Gibbs kernel cycle
 through the hypothesis space
 
-<a href="url"><img
-src="http://web.mit.edu/fsaad/www/figures/smc.gif"
-width="400" ></a>
+![src/experiments/smc.gif](src/experiments/smc.gif")
 
 The values printed in the console after each click are estimates of the
 marginal-log-likelihood of observations, based on the single particle
@@ -108,17 +96,23 @@ means the eigth observation is 0.209677, and the estimated marginal
 log-liklelihood is -8.0740236375201153.
 
 ## Tests
-At this moment, running code in the `gpmcc/tests` directory is unlikely to
-be a pleasant experience.
+
+Running check.sh will run the tests that are considered complete and
+stable. There are more tests in the tests/ directory, but those that
+do not start with ```test_``` or do start with ```disabled_``` are not
+considered ready.
+
 See the open [issue](https://github.com/probcomp/gpmcc/issues/8).
 
 ## Acknowledgements
+
 This repository was originally forked off
 [BaxCat](https://github.com/BaxterEaves/BaxCat/). Most of the
 source has been significantly rewritten and redesigned, although original
 copyright headers and license have been maintained where necessary.
 
 ## License
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Baxter S. Eaves Jr.
