@@ -382,6 +382,10 @@ class State(object):
         ----------
         N : int, optional
             Number of transitions.
+        kernels : list<{'alpha', 'view_alphas', 'column_params', 'column_hypers'
+                'rows', 'columns'}>, optional
+            List of inference kernels to run in this inference transition.
+            Default is all.
         target_views, target_rows, target_cols : list<int>, optional
             Views, rows and columns to apply the kernels. Default is all.
         do_progress : boolean, optional
@@ -391,7 +395,8 @@ class State(object):
         --------
         >>> State.transition()
         >>> State.transition(N=100)
-        >>> State.transition(N=100, cols=[1,2], rows=range(100))
+        >>> State.transition(N=100, kernels=['rows', 'column_hypers'],
+                target_cols=[1,2], target_rows=range(100))
         """
         # Default order of kernel is important.
         _kernel_functions = [
