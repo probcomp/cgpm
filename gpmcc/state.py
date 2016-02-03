@@ -373,7 +373,7 @@ class State(object):
     # --------------------------------------------------------------------------
     # Inference
 
-    def transition(self, N=1, target_rows=None, target_cols=None,
+    def transition(self, N=1, kernels=None, target_rows=None, target_cols=None,
             target_views=None, do_plot=False, do_progress=True):
         """Run all infernece kernels. For targeted inference, see other exposed
         inference commands.
@@ -395,6 +395,27 @@ class State(object):
         >>> State.transition(N=100)
         >>> State.transition(N=100, cols=[1,2], rows=range(100))
         """
+        # Default order of kernel is important.
+        _kernel_functions = [
+            ('alpha',
+                lambda : self.transition_alpha()),
+            ('view_alphas',
+                lambda : self.transition_view_alphas(views=target_views)),
+            ('column_params',
+                lambda : self.transition_column_params(cols=target_cols)),
+            ('column_hypers',
+                lambda : self.transition_column_hypers(cols=target_cols)),
+            ('rows',
+                lambda : self.transition_rows(
+                    views=target_views, rows=target_rows)),
+            ('columns' ,
+                lambda : self.transition_columns(cols=target_cols))
+        ]
+
+        _kernel_lookup = dict(_kernel_functions)
+        if kernels is None:
+            kernels = [k[0] for k in _kernel_functions]
+
         if do_progress:
             self._do_progress(0)
         if do_plot:
@@ -407,12 +428,8 @@ class State(object):
             self._do_plot(fig, layout)
 
         for i in xrange(N):
-            self.transition_alpha()
-            self.transition_view_alphas(views=target_views)
-            self.transition_column_params(cols=target_cols)
-            self.transition_column_hypers(cols=target_cols)
-            self.transition_rows(views=target_views, rows=target_rows)
-            self.transition_columns(cols=target_cols)
+            for k in kernels:
+                _kernel_lookup[k]()
             if do_progress:
                 self._do_progress(float(i+1) / N)
             if do_plot:
