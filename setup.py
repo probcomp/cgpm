@@ -23,8 +23,30 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# If some modules are not found, we use others, so no need to warn:
+# pylint: disable=import-error
+try:
+    from setuptools import setup
+    from setuptools.command.build_py import build_py
+    from setuptools.command.sdist import sdist
+    from setuptools.command.test import test
+except ImportError:
+    from distutils.core import setup
+    from distutils.cmd import Command
+    from distutils.command.build_py import build_py
+    from distutils.command.sdist import sdist
+
+    class test(Command):
+        def __init__(self, *args, **kwargs):
+            Command.__init__(self, *args, **kwargs)
+        def initialize_options(self): pass
+        def finalize_options(self): pass
+        def run(self): self.run_tests()
+        def run_tests(self): Command.run_tests(self)
+        def set_undefined_options(self, opt, val):
+            Command.set_undefined_options(self, opt, val)
+
 import os.path
-from setuptools import setup
 
 def readme_contents():
     readme_path = os.path.join(
