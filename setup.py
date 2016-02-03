@@ -54,9 +54,15 @@ setup(
         'gpmcc.dists',
         'gpmcc.utils'
     ],
+    package_dir={
+        'gpmcc': 'src',
+    },
     install_requires=[
         'matplotlib>=1.5.0',
         'numpy',
         'scipy',
+    ],
+    tests_require=[
+        'pytest',
     ],
 )
