@@ -35,7 +35,8 @@ class View(object):
     """View, a collection of Dim and their row mixtures."""
 
     def __init__(self, X, dims, alpha=None, Zr=None, n_grid=30):
-        """View constructor.
+        """View constructor provides a convenience method for bulk incorporate
+        and unincorporate by specifying the data and optional row partition.
 
         Parameters
         ----------
@@ -81,16 +82,15 @@ class View(object):
     # Observe
 
     def incorporate_dim(self, dim, reassign=True):
-        """Incorporate the dim into this view. If reassign is False, the row
-        partition of dim must match self.Zr already.
-        """
+        """Incorporate the dim into this View. If reassign is False, the row
+        partition of dim should match self.Zr already."""
         self.dims[dim.index] = dim
         if reassign:
             dim.reassign(self.X[:, dim.index], self.Zr)
         return sum(dim.logpdf_marginal())
 
     def unincorporate_dim(self, dim):
-        """Remove dim from this view (does not modify dim)."""
+        """Remove dim from this View (does not modify dim)."""
         del self.dims[dim.index]
         return sum(dim.logpdf_marginal())
 
@@ -101,13 +101,11 @@ class View(object):
         Parameters
         ----------
         rowid : int
-            The rowid in dataset X to be incorporated. If rowid is already
-            incorporated an error will be thrown.
+            The rowid in dataset X to be incorporated.
         k : int, optional
             Index of the cluster to assign the row. If unspecified, will be
-            sampled. If 0 <= k < len(view.Nk) then will insert
-            into an existing cluser. If k = len(state.Nv) a singleton cluster
-            will be created with uncollapsed parameters from the prior.
+            sampled. If 0 <= k < len(view.Nk) will insert into an existing
+            cluster. If k = len(state.Nv) a singleton cluster will be created.
         """
         # If k unspecified, transition the new rowid.
         k = 0 if k is None else k
@@ -125,6 +123,7 @@ class View(object):
         self.transition_rows(target_rows=transition)
 
     def unincorporate_row(self, rowid):
+        """Remove rowid from the global datset X from this view."""
         # Unincorporate from dims.
         for dim in self.dims.values():
             dim.unincorporate(self.X[rowid, dim.index], self.Zr[rowid])
@@ -142,21 +141,19 @@ class View(object):
     # Accounting
 
     def set_dataset(self, X):
-        """Update the pointer to the global dataset X. The invariant is that
-        the data for dim.index should be in column X[:,dim.index] and the data
-        for rowid should X[rowid,:].
-        """
+        """Update pointer to global dataset X, see __init__ for contract."""
         self.X = X
 
     def reindex_dims(self):
-        """Update the dict mapping dim indices to dims."""
+        """Update dict(indices->dims). Invoke when global dim indices change."""
         dims = dict()
         for dim in self.dims.values():
             dims[dim.index] = dim
         self.dims = dims
 
     def reindex_rows(self):
-        """Update row partition by dropping nan values."""
+        """Update row partition by deleting nans. Invoke when rowids in
+        unincorporate_row are deleted from the global dataset X."""
         self.Zr = [z for z in self.Zr if not np.isnan(z)]
         assert len(self.Zr) == len(self.X)
 
@@ -179,17 +176,14 @@ class View(object):
 
     def transition_column_hypers(self, target_cols=None):
         """Calculate column (dim) hyperparameter conditionals over grid and
-        transition.
-        """
+        transition."""
         if target_cols is None:
             target_cols = self.dims.keys()
         for col in target_cols:
             self.dims[col].transition_hypers()
 
     def transition_rows(self, target_rows=None):
-        """Transition the row partitioning. target_rows is an optional list
-        of rows to transition.
-        """
+        """Compute row conditions for each cluster and transition."""
         if target_rows is None:
             target_rows = xrange(len(self.Zr))
         for rowid in target_rows:
@@ -199,10 +193,8 @@ class View(object):
     # logpdf
 
     def logpdf(self, rowid, k):
-        """Get the predictive log_p of rowid being in cluster k.
-        If k is existing (less than len(self.Nk)) then the predictive is taken.
-        If k is new (equal to len(self.Nk)) then new parameters are sampled for
-        the predictive."""
+        """Compute logpdf(X[rowid]|cluster k). If k < len(self.Nk), predictive
+        is taken. If k == len(self.Nk), new parameters are sampled."""
         assert k <= len(self.Nk)
         logp = 0
         for dim in self.dims.values():
@@ -216,6 +208,7 @@ class View(object):
         return logp
 
     def logpdf_marginal(self):
+        """Compute the marginal logpdf of data and CRP assignment."""
         return gu.logp_crp(len(self.Zr), self.Nk, self.alpha) + \
             sum(sum(dim.logpdf_marginal()) for dim in self.dims.values())
 

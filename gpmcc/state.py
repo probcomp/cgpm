@@ -50,11 +50,13 @@ _all_kernels = [
     ]
 
 class State(object):
-    """State. The main crosscat object."""
+    """State, the main crosscat object."""
 
     def __init__(self, X, cctypes, distargs, n_grid=30, Zv=None, Zrcv=None,
             hypers=None, seed=None):
-        """State constructor.
+        """Dim constructor provides a convenience method for bulk incorporate
+        and unincorporate by specifying the data, and optinally view partition
+        and row partition for each view.
 
         Parameters
         ----------
@@ -123,22 +125,22 @@ class State(object):
     # Observe
 
     def incorporate_dim(self, X, cctype, distargs=None, v=None):
-        """Incorporate a new Dim into the StateGPM.
+        """Incorporate a new Dim into this State.
 
         Parameters
         ----------
         X : np.array
-            An array of data with length `n_rows`.
+            An array of data with length self.n_rows().
         cctype : list<str>
-            Data type of the column, see `utils.config` for valid cctypes.
+            DistributionGpm name see `gpmcc.utils.config`.
         distargs : dict, optional.
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
         v : int, optional
             Index of the view to assign the data. If unspecified, will be
-            sampled. If 0 <= v < len(state.Nv) then will insert
-            into an existing view. If v = len(state.Nv) a singleton view will be
-            created with a partition from the prior.
+            sampled. If 0 <= v < len(state.Nv) then will insert into an existing
+            View. If v = len(state.Nv) a singleton view will be created with a
+            partition from the prior.
         """
         assert len(X) == self.n_rows()
         self.X = np.column_stack((self.X, X))
@@ -169,14 +171,7 @@ class State(object):
         self._check_partitions()
 
     def unincorporate_dim(self, col):
-        """Unincorporate an existing dim. It is an error to unincorporate when
-        only one dim exists.
-
-        Parameters
-        ----------
-        col : int
-            Index of the dim to unincorporate.
-        """
+        """Unincorporate the existing dim with index col."""
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
 
@@ -203,7 +198,7 @@ class State(object):
         self._check_partitions()
 
     def incorporate_row(self, X, k=None):
-        """Incorporate a new row.
+        """Incorporate a new row into global dataset X.
 
         Parameters
         ----------
@@ -228,6 +223,7 @@ class State(object):
         self._check_partitions()
 
     def unincorporate_row(self, rowid):
+        """Unincorporate an existing rowid from dataset X."""
         if self.n_rows() == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
 
@@ -243,7 +239,7 @@ class State(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence=None, N=1):
+    def logpdf(self, rowid, query, evidence=None):
         """Compute density of query under the posterior predictive distirbution.
 
         Parameters
@@ -259,11 +255,9 @@ class State(object):
         evidence : list of tuple<int>, optional
             A list of pairs (col, val) of observed values in the row to
             condition on
-        N : int, optional.
-            Number of samples to return.
         """
         if not 0 <= rowid < self.n_rows():
-            return self.logpdf_unobserved(query, evidence=evidence, N=N)
+            return self.logpdf_unobserved(query, evidence=evidence)
 
         logpdf = 0
         for (col, val) in query:
@@ -271,8 +265,7 @@ class State(object):
             logpdf += self.dims[col].logpdf(val, k)
         return logsumexp(logpdf)
 
-
-    def logpdf_unobserved(self, query, evidence=None, N=1):
+    def logpdf_unobserved(self, query, evidence=None):
         """Simulates a hypothetical member, with no observed latents."""
         if evidence is None:
             evidence = []
@@ -496,7 +489,7 @@ class State(object):
     # Plotting
 
     def plot(self):
-        """Plots sample histogram and learned distribution for each dim."""
+        """Plots observation histogram and posterior distirbution of dims."""
         layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
             layout['plot_inches_x']), dpi=75, facecolor='w',
@@ -508,8 +501,7 @@ class State(object):
     # Internal
 
     def _transition_column(self, col, m):
-        """Gibbs with auxiliary parameters. Currently resampled uncollapsed
-        parameters as a side-effect. m should be at least 1."""
+        """Gibbs on col assignment to Views, with m auxiliary parameters"""
         v_a = self.Zv[col]
         singleton = (self.Nv[v_a] == 1)
 

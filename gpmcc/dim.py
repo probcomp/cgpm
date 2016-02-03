@@ -34,32 +34,31 @@ import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
 
 class Dim(object):
-    """Holds data, model type, clusters, and shared hyperparameters of
-    component GPMs. Exposes the cluster of each row for model dependent
-    composition."""
+    """Dim, holds suff stats, DistributionGpm type, clusters, and shared
+    hyperparameters and grids."""
 
     def __init__(self, X, dist, index, distargs=None, Zr=None, n_grid=30,
             hypers=None):
-        """Dimension constructor. Assignment of rows to clusters (Zr) is
-        not maintained internally and is the responsibility of the user
-        to track.
-
-        The dataset X is summarized by the sufficient statistics only and
-        is not stored.
+        """Dim constructor provides a convenience method for bulk incorporate
+        and unincorporate by specifying the data and optional row partition.
 
         Parameters
         ----------
         X : np.array
             Array of data. Must be compatible with `dist`. Missing entries
-            must be np.nan.
+            must be np.nan. The dataset X is summarized by the sufficient
+            statistics only and is not stored.
         dist : str
             DistributionGpm name see `gpmcc.utils.config`.
         index : int
             Unique identifier for this dim.
+        distargs : dict, optional.
+            Distargs appropriate for the dist. For details on
+            distargs see the documentation for each DistributionGpm.
         Zr : list<int>, optional
             Partition of data X into clusters, where Zr[i] is the cluster
             index of row X[i]. If None, intialized from CRP(1). The partition
-            is only for initialization and not stored internally.
+            is only for initialization and is not stored.
         n_grid : int, optional
             Number of bins in the hyperparameter grid.
         """
