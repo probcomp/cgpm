@@ -28,7 +28,7 @@
 
 import copy
 import sys
-import pickle
+import cPickle as pickle
 from math import log
 
 import numpy as np
@@ -52,8 +52,8 @@ _all_kernels = [
 class State(object):
     """State, the main crosscat object."""
 
-    def __init__(self, X, cctypes, distargs, n_grid=30, Zv=None, Zrcv=None,
-            hypers=None, seed=None):
+    def __init__(self, X, cctypes, distargs, Zv=None, Zrcv=None, alpha=None,
+            view_alphas=None, hypers=None, n_grid=30, seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
         and row partition for each view.
@@ -92,7 +92,7 @@ class State(object):
         # Hyperparameters.
         self.n_grid = n_grid
 
-        # Construct dimensions.
+        # Generate dimensions.
         self.dims = []
         for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
@@ -100,23 +100,26 @@ class State(object):
                 Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
                 hypers=dim_hypers, distargs=distargs[col]))
 
-        # Initialize CRP alpha.
+        # Generate CRP alpha.
         self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(),
             self.n_grid)
-        self.alpha = np.random.choice(self.alpha_grid)
+        if alpha is None:
+            alpha = np.random.choice(self.alpha_grid)
+        self.alpha = alpha
 
-        # Construct view partition.
+        # Generate view partition.
         if Zv is None:
             Zv = gu.simulate_crp(self.n_cols(), self.alpha)
         self.Zv = Zv
         self.Nv = list(np.bincount(Zv))
 
-        # Construct views.
+        # Generate views.
         self.views = []
         for v in xrange(len(self.Nv)):
             dims = [self.dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrcv is None else np.asarray(Zrcv[v])
-            V = View(self.X, dims, Zr=Zr, n_grid=n_grid)
+            alpha = None if view_alphas is None else view_alphas[v]
+            V = View(self.X, dims, Zr=Zr, alpha=alpha, n_grid=n_grid)
             self.views.append(V)
 
         self._check_partitions()
@@ -632,7 +635,7 @@ class State(object):
     # --------------------------------------------------------------------------
     # Serialize
 
-    def get_metadata(self):
+    def to_metadata(self):
         metadata = dict()
 
         # Dataset.
@@ -642,13 +645,15 @@ class State(object):
         metadata['n_grid'] = self.n_grid
         metadata['seed'] = self.seed
 
-        # View data.
+        # View partition data.
+        metadata['alpha'] = self.alpha
         metadata['Nv'] = self.Nv
         metadata['Zv'] = self.Zv
 
-        # Category data.
+        # View data.
         metadata['Nk'] = []
         metadata['Zrcv'] = []
+        metadata['view_alphas'] = []
 
         # Column data.
         metadata['hypers'] = []
@@ -665,6 +670,7 @@ class State(object):
         for view in self.views:
             metadata['Nk'].append(view.Nk)
             metadata['Zrcv'].append(view.Zr)
+            metadata['view_alphas'].append(view.alpha)
 
         return metadata
 
@@ -674,15 +680,10 @@ class State(object):
 
     @classmethod
     def from_metadata(cls, metadata):
-        X = metadata['X']
-        Zv = metadata['Zv']
-        Zrcv = metadata['Zrcv']
-        n_grid = metadata['n_grid']
-        hypers = metadata['hypers']
-        cctypes = metadata['cctypes']
-        distargs = metadata['distargs']
-        return cls(X, cctypes, distargs, n_grid=n_grid, Zv=Zv, Zrcv=Zrcv,
-            hypers=hypers)
+        return cls(metadata['X'], metadata['cctypes'], metadata['distargs'],
+            Zv=metadata['Zv'], Zrcv=metadata['Zrcv'], alpha=metadata['alpha'],
+            view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
+            n_grid=metadata['n_grid'])
 
     @classmethod
     def from_pickle(cls, fileptr):

@@ -49,7 +49,7 @@ class View(object):
         alpha : float, optional
             CRP concentration parameter. If None, selected from grid uniformly
             at random.
-        Zr : list<int>
+        Zr : list<int>, optional
             Starting partiton of rows to categories where Zr[i] is the latent
             clsuter of row i. If None, is sampled from CRP(alpha).
         n_grid : int
