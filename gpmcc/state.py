@@ -168,9 +168,9 @@ class State(object):
             self.views[0].incorporate_dim(self.dims[-1])
             self.Zv.append(0)
             self.Nv[0] += 1
-            self.transition_columns(target_cols=[col])
+            self.transition_columns(cols=[col])
 
-        self.transition_column_hypers(target_cols=[col])
+        self.transition_column_hypers(cols=[col])
         self._check_partitions()
 
     def unincorporate_dim(self, col):
@@ -408,12 +408,11 @@ class State(object):
 
         for i in xrange(N):
             self.transition_alpha()
-            self.transition_view_alphas(target_views=target_views)
-            self.transition_column_params(target_cols=target_cols)
-            self.transition_column_hypers(target_cols=target_cols)
-            self.transition_rows(target_views=target_views,
-                target_rows=target_rows)
-            self.transition_columns(target_cols=target_cols)
+            self.transition_view_alphas(views=target_views)
+            self.transition_column_params(cols=target_cols)
+            self.transition_column_hypers(cols=target_cols)
+            self.transition_rows(views=target_views, rows=target_rows)
+            self.transition_columns(cols=target_cols)
             if do_progress:
                 self._do_progress(float(i+1) / N)
             if do_plot:
@@ -427,47 +426,47 @@ class State(object):
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
-    def transition_view_alphas(self, target_views=None):
-        if target_views is None:
-            target_views = self.views
-        for view in target_views:
-            view.transition_alpha()
+    def transition_view_alphas(self, views=None):
+        if views is None:
+            views = xrange(len(self.views))
+        for v in views:
+            self.views[v].transition_alpha()
 
-    def transition_column_params(self, target_cols=None):
-        if target_cols is None:
-            target_cols = xrange(self.n_cols())
-        for i in target_cols:
-            self.dims[i].transition_params()
+    def transition_column_params(self, cols=None):
+        if cols is None:
+            cols = xrange(self.n_cols())
+        for c in cols:
+            self.dims[c].transition_params()
 
-    def transition_column_hypers(self, target_cols=None):
-        if target_cols is None:
-            target_cols = xrange(self.n_cols())
-        for i in target_cols:
-            self.dims[i].transition_hypers()
+    def transition_column_hypers(self, cols=None):
+        if cols is None:
+            cols = xrange(self.n_cols())
+        for c in cols:
+            self.dims[c].transition_hypers()
 
-    def transition_column_hyper_grids(self, target_cols=None):
-        if target_cols is None:
-            target_cols = xrange(self.n_cols())
-        for i in target_cols:
-            self.dims[i].transition_hyper_grids(self.X[:,i], self.n_grid)
+    def transition_column_hyper_grids(self, cols=None):
+        if cols is None:
+            cols = xrange(self.n_cols())
+        for c in cols:
+            self.dims[c].transition_hyper_grids(self.X[:,c], self.n_grid)
 
-    def transition_rows(self, target_views=None, target_rows=None):
+    def transition_rows(self, views=None, rows=None):
         if self.n_rows() == 1:
             return
-        if target_views is None:
-            target_views = self.views
-        for view in target_views:
-            view.transition_rows(target_rows=target_rows)
+        if views is None:
+            views = xrange(len(self.views))
+        for v in views:
+            self.views[v].transition_rows(rows=rows)
 
-    def transition_columns(self, target_cols=None, m=2):
+    def transition_columns(self, cols=None, m=2):
         """Transition column assignment to views."""
         if self.n_cols() == 1:
             return
-        if target_cols is None:
-            target_cols = range(self.n_cols())
-        np.random.shuffle(target_cols)
-        for col in target_cols:
-            self._transition_column(col, m)
+        if cols is None:
+            cols = range(self.n_cols())
+        np.random.shuffle(cols)
+        for c in cols:
+            self._transition_column(c, m)
 
     # --------------------------------------------------------------------------
     # Helpers

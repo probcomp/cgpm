@@ -40,11 +40,11 @@ _transition_kernels = ['column_z','state_alpha', 'row_z', 'column_hypers',
 def _transition((N, kernel_list, target_rows, target_cols, metadata)):
     chain = State.from_metadata(metadata)
     chain.transition(N, kernel_list, target_rows, target_cols)
-    return chain.get_metadata()
+    return chain.to_metadata()
 
 def _intialize((X, cctypes, distargs, seed)):
     chain = State(X, cctypes, distargs, seed=seed)
-    return chain.get_metadata()
+    return chain.to_metadata()
 
 class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel StateGPMs."""
@@ -120,7 +120,7 @@ class Engine(object):
             mapper = pool.map
         return pool, mapper
 
-    def get_metadata(self):
+    def to_metadata(self):
         metadata = dict()
         metadata['num_states'] = self.num_states
         metadata['seeds'] = self.seeds
@@ -137,7 +137,7 @@ class Engine(object):
             metadatas=metadatas)
 
     def to_pickle(self, fileptr):
-        metadata = self.get_metadata()
+        metadata = self.to_metadata()
         pickle.dump(metadata, fileptr)
 
     @classmethod
