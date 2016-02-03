@@ -33,5 +33,5 @@ RUN pip install pytest
 RUN python setup.py test
 # Run tests:
 COPY tests /gpmcc/tests
-RUN find tests -name __pycache__ -o -name "*.pyc" --exec rm -fr {} \;
+RUN find tests -name __pycache__ -o -name "*.pyc" -exec rm -fr {} \;
 RUN ./check.sh tests
