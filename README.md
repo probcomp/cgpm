@@ -81,7 +81,7 @@ $ python -i particle_demo.py
 Click on the graph to produce observations and watch, the Gibbs kernel cycle
 through the hypothesis space
 
-![src/experiments/smc.gif](src/experiments/smc.gif")
+![src/experiments/smc.gif](src/experiments/smc.gif)
 
 The values printed in the console after each click are estimates of the
 marginal-log-likelihood of observations, based on the single particle
