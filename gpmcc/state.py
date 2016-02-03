@@ -110,7 +110,7 @@ class State(object):
         # Generate view partition.
         if Zv is None:
             Zv = gu.simulate_crp(self.n_cols(), self.alpha)
-        self.Zv = Zv
+        self.Zv = list(Zv)
         self.Nv = list(np.bincount(Zv))
 
         # Generate views.
