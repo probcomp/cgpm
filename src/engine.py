@@ -151,18 +151,17 @@ class Engine(object):
         return samples
 
     def dependence_probability(self, col0, col1):
-        """Compute dependence probability between `col0, col1` as float."""
+        """Compute dependence probability between col0 and col1 as float."""
         Zvs = [metadata['Zv'] for metadata in self.metadata]
         counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
         return sum(counts) / float(self.num_states)
 
     def dependence_probability_pairwise(self):
-        """Compute dependence probability between all pairs as pd.DataFrame."""
+        """Compute dependence probability between all pairs as matrix."""
         _, n_cols = self.metadata[0]['X'].shape
         D = np.eye(n_cols)
         for i,j in itertools.combinations(range(n_cols), 2):
-            d = self.dependence_probability(i, j)
-            D[i,j] = D[j,i] = d
+            D[i,j] = D[j,i] = self.dependence_probability(i,j)
         return D
 
     def row_similarity(self,row0, row1):
