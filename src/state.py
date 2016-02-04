@@ -86,8 +86,6 @@ class State(object):
 
         # Dataset.
         self.X = np.asarray(X)
-        self.cctypes = cctypes
-        self.distargs = distargs
 
         # Hyperparameters.
         self.n_grid = n_grid
