@@ -55,9 +55,7 @@ class Engine(object):
     def __init__(self, X, cctypes, distargs=None, num_states=1, seeds=None,
             state_metadatas=None, initialize=False):
         """If initialize is True all state_metadatas will be resampled!"""
-        self.X = X
-        self.cctypes = cctypes
-        self.distargs = distargs
+        self._X , self._cctypes, self._distargs = X, cctypes, distargs
         self.num_states = num_states
         self.seeds = range(num_states) if seeds is None else seeds
         self.metadata = state_metadatas
@@ -66,9 +64,10 @@ class Engine(object):
 
     def initialize(self, multithread=1):
         _, mapper = self._get_mapper(multithread)
-        args = ((self.X, self.cctypes, self.distargs, seed) for seed in
+        args = ((self._X, self._cctypes, self._distargs, seed) for seed in
             self.seeds)
         self.metadata = mapper(_intialize, args)
+        del (self._X, self._cctypes, self._distargs)
 
     def transition(self, N=1, kernels=None, target_views=None, target_rows=None,
             target_cols=None, do_progress=True, multithread=1):
