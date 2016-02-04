@@ -26,29 +26,33 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from gpmcc.utils import config as cu
 from gpmcc.utils import test as tu
 from gpmcc import engine
-from gpmcc.state import State
-import numpy as np
+import numpy
 
-# This script generates a column of every data type and plots inference
-# in real time.
+numpy.random.seed(10)
 
-# Set up the data generation.
+# Set up the data generation
 n_rows = 200
-view_weights = np.asarray([0.7, .3])
-cluster_weights = [np.array([.33, .33, .34]), np.array([.2, .8])]
-cctypes = ['beta_uc', 'normal','poisson','categorical',
-    'vonmises', 'bernoulli', 'lognormal']
+view_weights = numpy.ones(1)
+cluster_weights = [[.25, .25, .5]]
+cctypes = [
+    'normal',
+    'poisson',
+    'bernoulli',
+    'categorical(k=4)',
+    'lognormal',
+    'exponential',
+    'beta_uc',
+    'geometric',
+    'vonmises']
 
-separation = [.7] * 9
-distargs = [None, None, None, None, {'k':5}, None, None, None]
+separation = [.95] * len(cctypes)
+cctypes, distargs = cu.parse_distargs(cctypes)
 
 T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation)
 
-runner = engine.Engine(T.T, cctypes, distargs, num_states=6, initialize=True)
-runner.transition(N=2, multithread=True)
-
-# state = State(T, cctypes, distargs)
-# state.transition(N=10, do_plot=True)
+S = engine.Engine(T.T, cctypes, distargs, num_states=64, initialize=True)
+S.transition(N=30)
