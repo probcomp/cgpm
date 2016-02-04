@@ -54,5 +54,5 @@ cctypes, distargs = cu.parse_distargs(cctypes)
 T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation)
 
-S = engine.Engine(T.T, cctypes, distargs, num_states=4, initialize=0)
+S = engine.Engine(T.T, cctypes, distargs, num_states=4, initialize=1)
 S.transition(N=30)
