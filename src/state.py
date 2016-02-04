@@ -52,7 +52,7 @@ _all_kernels = [
 class State(object):
     """State, the main crosscat object."""
 
-    def __init__(self, X, cctypes, distargs, Zv=None, Zrcv=None, alpha=None,
+    def __init__(self, X, cctypes, distargs=None, Zv=None, Zrcv=None, alpha=None,
             view_alphas=None, hypers=None, n_grid=30, seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
@@ -65,7 +65,7 @@ class State(object):
             the number of observations.
         cctypes : list<str>
             Data type of each colum, see `utils.config` for valid cctypes.
-        distargs : list
+        distargs : list, optional
             Distargs appropriate for each cctype in cctypes. For details on
             distargs see the documentation for each DistributionGpm.
         n_grid : int, optional
@@ -89,6 +89,10 @@ class State(object):
 
         # Hyperparameters.
         self.n_grid = n_grid
+
+        # Distargs.
+        if distargs is None:
+            distargs = [None] * len(cctypes)
 
         # Generate dimensions.
         self.dims = []
