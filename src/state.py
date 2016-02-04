@@ -340,6 +340,7 @@ class State(object):
                 k = self.views[self.Zv[col]].Zr[rowid]
                 x = self.dims[col].simulate(k)
                 draw.append(x)
+            samples.append(draw)
         return np.asarray(samples)
 
     def simulate_unobserved(self, query, evidence=None, N=1):
