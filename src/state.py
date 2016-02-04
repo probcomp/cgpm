@@ -695,7 +695,7 @@ class State(object):
         return cls(metadata['X'], metadata['cctypes'], metadata['distargs'],
             Zv=metadata['Zv'], Zrcv=metadata['Zrcv'], alpha=metadata['alpha'],
             view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
-            n_grid=metadata['n_grid'])
+            n_grid=metadata['n_grid'], seed=metadata['seed'])
 
     @classmethod
     def from_pickle(cls, fileptr):
