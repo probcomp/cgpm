@@ -37,7 +37,7 @@ from gpmcc.state import State
 # XXX Multiprocessing functions.
 
 def _intialize((X, cctypes, distargs, seed)):
-    state = State(X, cctypes, distargs, seed=seed)
+    state = State(X, cctypes, distargs=distargs, seed=seed)
     return state.to_metadata()
 
 def _transition((metadata, N, kernels, target_views, target_rows, target_cols)):
@@ -83,7 +83,7 @@ def _simulate((metadata, rowid, query, evidence, N)):
 class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel States."""
 
-    def __init__(self, X, cctypes, distargs, num_states=1, seeds=None,
+    def __init__(self, X, cctypes, distargs=None, num_states=1, seeds=None,
             state_metadatas=None, initialize=False):
         """If initialize is True all state_metadatas will be resampled!"""
         self.X = X
