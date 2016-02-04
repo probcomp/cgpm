@@ -26,25 +26,22 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
 from gpmcc.utils import config as cu
 from gpmcc.utils import test as tu
 from gpmcc import state
 import numpy
 
-# This script generates acolumn of every data type and plots inference
-# in real time
-
 numpy.random.seed(10)
 
-# set up the data generation
+# Set up the data generation
 n_rows = 200
 view_weights = numpy.ones(1)
-cluster_weights = [ numpy.array([.33, .33, .34]) ]
+cluster_weights = [[.25, .25, .5]]
 cctypes = [
     'normal',
     'poisson',
     'bernoulli',
+    'categorical(k=4)',
     'lognormal',
     'exponential',
     'beta_uc',
@@ -58,5 +55,5 @@ T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
     cctypes, distargs, separation)
 
 S = state.State(T.T, cctypes, distargs, seed=0)
-S.transition(N=12)
+S.transition(N=30)
 S.plot()
