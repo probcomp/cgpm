@@ -165,6 +165,21 @@ class Engine(object):
             D[i,j] = D[j,i] = d
         return D
 
+    def row_similarity(self,row0, row1):
+        """Compute similiarty between row0 and row1 as float."""
+        prob = 0
+        for Zrv in [metadata['Zrcv'] for metadata in self.metadata]:
+            prob += sum([Zr[row0]==Zr[row1] for Zr in Zrv]) / float(len(Zrv))
+        return prob / self.num_states
+
+    def row_similarity_pairwise(self):
+        """Compute dependence probability between all pairs as matrix."""
+        n_rows, _ = self.metadata[0]['X'].shape
+        S = np.eye(n_rows)
+        for i,j in itertools.combinations(range(n_rows), 2):
+            S[i,j] = S[j,i] = self.row_similarity(i,j)
+        return S
+
     def get_state(self, index):
         return State.from_metadata(self.metadata[index])
 
