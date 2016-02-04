@@ -493,14 +493,14 @@ class State(object):
     # --------------------------------------------------------------------------
     # Plotting
 
-    def plot(self):
+    def plot(self, block=True):
         """Plots observation histogram and posterior distirbution of dims."""
         layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
             layout['plot_inches_x']), dpi=75, facecolor='w',
             edgecolor='k', frameon=False, tight_layout=True)
         self._do_plot(fig, layout)
-        plt.show()
+        plt.show(block=block)
 
     # --------------------------------------------------------------------------
     # Internal
