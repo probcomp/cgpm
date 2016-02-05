@@ -267,6 +267,11 @@ class State(object):
         evidence : list of tuple<int>, optional
             A list of pairs (col, val) of observed values in the row to
             condition on
+
+        Returns
+        -------
+        logpdf : float
+            The logpdf(query|rowid, evidence).
         """
         if not 0 <= rowid < self.n_rows():
             return self.logpdf_unobserved(query, evidence=evidence)
@@ -330,6 +335,11 @@ class State(object):
             condition on.
         N : int, optional.
             Number of samples to return.
+
+        Returns
+        -------
+        samples : np.array
+            A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
         """
         if not 0 <= rowid < self.n_rows():
             return self.simulate_unobserved(query, evidence=evidence, N=N)
