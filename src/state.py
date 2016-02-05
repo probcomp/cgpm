@@ -28,6 +28,7 @@
 
 import copy
 import sys
+import time
 import cPickle as pickle
 from math import log
 
@@ -382,8 +383,8 @@ class State(object):
     # --------------------------------------------------------------------------
     # Inference
 
-    def transition(self, N=1, kernels=None, target_rows=None, target_cols=None,
-            target_views=None, do_progress=True):
+    def transition(self, N=1, S=None, kernels=None, target_rows=None,
+            target_cols=None, target_views=None, do_progress=True):
         """Run all infernece kernels. For targeted inference, see other exposed
         inference commands.
 
@@ -398,7 +399,8 @@ class State(object):
         target_views, target_rows, target_cols : list<int>, optional
             Views, rows and columns to apply the kernels. Default is all.
         do_progress : boolean, optional
-            Show a progress bar for number of target iterations (real-time).
+            Show a progress bar for number of target iterations or elapsed time.
+            If transition by time, may exceed 100%.
 
         Examples
         --------
@@ -428,14 +430,31 @@ class State(object):
         if kernels is None:
             kernels = [k[0] for k in _kernel_functions]
 
+        # Transition by time.
+        if S:
+            start = time.time()
+            if do_progress:
+                self._do_progress(0)
+            while True:
+                for k in kernels:
+                    _kernel_lookup[k]()
+                    elapsed = time.time() - start
+                    if elapsed >= S:
+                        if do_progress:
+                            self._do_progress(elapsed/S)
+                        print
+                        return
+                if do_progress:
+                    self._do_progress(elapsed/S)
+
+        # Transition by iterations.
         if do_progress:
             self._do_progress(0)
-
         for i in xrange(N):
             for k in kernels:
                 _kernel_lookup[k]()
             if do_progress:
-                self._do_progress(float(i+1) / N)
+                self._do_progress(float(i+1)/N)
         print
 
     def transition_alpha(self):
