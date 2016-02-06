@@ -122,33 +122,37 @@ class Engine(object):
         samples = mapper(_evaluate, args)
         return samples
 
-    def dependence_probability(self, col0, col1):
+    def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
-        Zvs = [metadata['Zv'] for metadata in self.metadata]
+        if states is None:
+            states = xrange(self.num_states)
+        Zvs = [self.metadata[s]['Zv'] for s in states]
         counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
-        return sum(counts) / float(self.num_states)
+        return sum(counts) / float(len(states))
 
-    def dependence_probability_pairwise(self):
+    def dependence_probability_pairwise(self, states=None):
         """Compute dependence probability between all pairs as matrix."""
         _, n_cols = self.metadata[0]['X'].shape
         D = np.eye(n_cols)
         for i,j in itertools.combinations(range(n_cols), 2):
-            D[i,j] = D[j,i] = self.dependence_probability(i,j)
+            D[i,j] = D[j,i] = self.dependence_probability(i,j, states=states)
         return D
 
-    def row_similarity(self,row0, row1):
+    def row_similarity(self,row0, row1, states=None):
         """Compute similiarty between row0 and row1 as float."""
+        if states is None:
+            states = xrange(self.num_states)
         prob = 0
-        for Zrv in [metadata['Zrcv'] for metadata in self.metadata]:
+        for Zrv in [self.metadata[s]['Zrcv'] for s in states]:
             prob += sum([Zr[row0]==Zr[row1] for Zr in Zrv]) / float(len(Zrv))
-        return prob / self.num_states
+        return prob / len(states)
 
-    def row_similarity_pairwise(self):
+    def row_similarity_pairwise(self, states=None):
         """Compute dependence probability between all pairs as matrix."""
         n_rows, _ = self.metadata[0]['X'].shape
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
-            S[i,j] = S[j,i] = self.row_similarity(i,j)
+            S[i,j] = S[j,i] = self.row_similarity(i,j, states=states)
         return S
 
     def get_state(self, index):
