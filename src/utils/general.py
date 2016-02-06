@@ -74,7 +74,7 @@ def log_pflip(logp):
     if len(logp) == 1:
         return 0
     p = np.exp(log_normalize(logp))
-    assert math.fabs(1.0-sum(p)) < 10.0**(-10.0)
+    assert math.fabs(1.0-sum(p)) < 10.0**(-8.0)
     return pflip(p)
 
 def pflip(p):
@@ -83,7 +83,7 @@ def pflip(p):
         return 0
     p = np.asarray(p).astype(float)
     p /= sum(p)
-    assert math.fabs(1.0 - sum(p)) < 10.0**(-10.0)
+    assert math.fabs(1.0-sum(p)) < 10.0**(-8.0)
     return np.random.choice(range(len(p)), size=1, p=p)[0]
 
 def log_linspace(a, b, n):
