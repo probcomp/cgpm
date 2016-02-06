@@ -13,7 +13,7 @@ RUN apt-get install -y -qq libjpeg-dev libxft-dev
 # SciPy dependency tracking is confusing and slow. Install at the OS level
 # instead of with pip to avoid thinking.
 # See also: https://github.com/scikit-learn/scikit-learn/issues/4164
-RUN apt-get install -y -qq python-numpy python-scipy
+RUN apt-get install -y -qq python-numpy python-scipy python-pandas
 
 
 ### Build and install gpmcc.

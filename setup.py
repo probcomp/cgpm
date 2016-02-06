@@ -82,6 +82,7 @@ setup(
     install_requires=[
         'matplotlib>=1.5.0',
         'numpy',
+        'pandas',
         'scipy',
     ],
     tests_require=[
