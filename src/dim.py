@@ -37,7 +37,7 @@ class Dim(object):
     """Dim, holds suff stats, DistributionGpm type, clusters, and shared
     hyperparameters and grids."""
 
-    def __init__(self, X, dist, index, distargs=None, Zr=None, n_grid=30,
+    def __init__(self, X, cctype, index, distargs=None, Zr=None, n_grid=30,
             hypers=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
@@ -45,15 +45,15 @@ class Dim(object):
         Parameters
         ----------
         X : np.array
-            Array of data. Must be compatible with `dist`. Missing entries
+            Array of data. Must be compatible with `cctype`. Missing entries
             must be np.nan. The dataset X is summarized by the sufficient
             statistics only and is not stored.
-        dist : str
+        cctype : str
             DistributionGpm name see `gpmcc.utils.config`.
         index : int
             Unique identifier for this dim.
         distargs : dict, optional.
-            Distargs appropriate for the dist. For details on
+            Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
         Zr : list<int>, optional
             Partition of data X into clusters, where Zr[i] is the cluster
@@ -66,7 +66,7 @@ class Dim(object):
         self.index = index
 
         # Model type.
-        self.model = cu.cctype_class(dist)
+        self.model = cu.cctype_class(cctype)
         self.cctype = self.model.name()
         self.distargs = distargs if distargs is not None else {}
 
