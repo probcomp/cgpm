@@ -524,6 +524,12 @@ class State(object):
     def n_cols(self):
         return np.shape(self.X)[1]
 
+    def cctypes(self):
+        return [self.dims[i].cctype for i in xrange(self.n_cols())]
+
+    def distargs(self):
+        return [self.dims[i].distargs for i in xrange(self.n_cols())]
+
     # --------------------------------------------------------------------------
     # Plotting
 
