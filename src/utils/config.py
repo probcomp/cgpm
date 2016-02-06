@@ -26,6 +26,7 @@
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import re
+from datetime import datetime
 
 from gpmcc.dists import beta_uc
 from gpmcc.dists import normal
@@ -48,6 +49,9 @@ cctype_class_lookup = {
     'geometric'         : geometric.Geometric,
     'vonmises'          : vonmises.Vonmises,
 }
+
+def timestamp():
+    return datetime.now().strftime('%Y%m%d-%H%M%S')
 
 def colors():
     """Returns a list of colors."""
