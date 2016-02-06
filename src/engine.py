@@ -54,7 +54,7 @@ class Engine(object):
 
     def __init__(self, X, cctypes, distargs=None, num_states=1, seeds=None,
             state_metadatas=None, initialize=False):
-        """If initialize is True all state_metadatas will be resampled!"""
+        """Do not explicitly use state_metadatas, use Engine.from_metadata."""
         self._X , self._cctypes, self._distargs = X, cctypes, distargs
         self.num_states = num_states
         self.seeds = range(num_states) if seeds is None else seeds
