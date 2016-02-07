@@ -252,6 +252,16 @@ class State(object):
     # --------------------------------------------------------------------------
     # logpdf
 
+    def logpdf_bulk(self, rowids, queries, evidences=None):
+        """Evaluate multiple queries at once, used by Engine."""
+        assert len(rowids) == len(queries) == len(evidences)
+        if evidences is None:
+            evidences = [[] for _ in xrange(len(rowids))]
+        logpdfs = []
+        for rowid, query, evidence in zip(rowids, queries, evidences):
+            logpdfs.append(self.logpdf(rowid, query, evidence))
+        return logpdfs
+
     def logpdf(self, rowid, query, evidence=None):
         """Compute density of query under the posterior predictive distirbution.
 
@@ -317,6 +327,18 @@ class State(object):
 
     # --------------------------------------------------------------------------
     # Simulate
+
+    def simulate_bulk(self, rowids, queries, evidences=None, N=None):
+        """Evaluate multiple queries at once, used by Engine."""
+        assert len(rowids) == len(queries) == len(evidences) == len(N)
+        if evidences is None:
+            evidences = [[] for _ in xrange(len(rowids))]
+        if N is None:
+            N = [1 for _ in xrange(len(rowids))]
+        samples = []
+        for rowid, query, evidence, n in zip(rowids, queries, evidences, N):
+            samples.append(self.simulate(rowid, query, evidence, n))
+        return samples
 
     def simulate(self, rowid, query, evidence=None, N=1):
         """Simulate from the posterior predictive distirbution.
