@@ -40,14 +40,18 @@ In particular, truncating the Normal requires computing the logcdf to normalize
 the probability, which is a Student T derived in Murphy but not Teh.
 """
 
+import unittest
+import itertools as it
+
 import numpy as np
 from numpy import log, pi, sqrt
 from scipy.special import gammaln
-from scipy.stats import norm, t
+from scipy.stats import t
 
 from gpmcc.dists.normal import Normal
 
-# Posterior hypers.
+# Prepare some functions for use in the test.
+
 def teh_posterior(m, r, s, nu, x):
     """Eq 10 Teh."""
     N = len(x)
@@ -65,49 +69,76 @@ def murphy_posterior(a, b, k, mu, x):
     bn = b + .5*np.sum((x-xbar)**2) + k*n*(xbar-mu)**2 / (2*(k+n))
     return an, bn, kn, mun
 
-# Teh variables.
-m = 1.
-r = 2.
-s = 2.
-nu = 4.
+def murphy_posterior_predictive(an1, an, bn1, bn, kn1, kn):
+    """Eq 99 Murphy."""
+    return gammaln(an1) - gammaln(an) + an*log(bn) - \
+        (an1)*log(bn1) + 1/2.*(log(kn) - log(kn1)) - 1/2.*log(2*pi)
 
-# Murphy variables.
-a = nu/2.
-b = s/2.
-k = r
-mu = m
+# Test suite.
 
-# Test equality of posterior hypers.
-x = norm.rvs(loc=10, scale=3, size=100)
-mn, rn, sn, nun = teh_posterior(m, r, s, nu, x)
-an, bn, kn, mun = murphy_posterior(a, b, k, mu, x)
+class TestTehMurphyNigNormal(unittest.TestCase):
 
-print np.allclose(an, nun/2)
-print np.allclose(bn, sn/2)
-print np.allclose(kn, rn)
-print np.allclose(mun, mn)
+    def test_agreement(self):
+        # Hyperparmaeters in Teh notation.
+        all_m = map(float, (1., 7., .43, 1.2))
+        all_r = map(float, (2., 18., 3., 11.))
+        all_s = map(float, (2., 6., 15., 55.))
+        all_nu = map(float, (4., .6, 14., 8.))
 
-# Test posterior predictive agree with each other, and Student T.
-xtest_all = np.linspace(1.1, 80.8, 14.1)
+        # Dataset
+        rng = np.random.RandomState(0)
+        x1 = rng.normal(10, 3, size=100)
+        x2 = rng.normal(-3, 7, size=100)
 
-for xtest in xtest_all:
-    # Murphy exact, Eq 99.
-    an1, bn1, kn1, mun1 = murphy_posterior(a, b, k, mu, np.append(x, xtest))
-    logprob_murphy = gammaln(an1) - gammaln(an) + an*log(bn) - (an1)*log(bn1) \
-        + 1/2.*(log(kn) - log(kn1)) - mu/2.*log(2*pi)
+        for (m, r, s, nu), x in \
+                it.product(zip(all_m, all_r, all_s, all_nu), [x1,x2]):
+            # Murphy hypers in terms of Teh.
+            a = nu/2.
+            b = s/2.
+            k = r
+            mu = m
 
-    # Student T Murphy, Eq 100.
-    scalesq = bn*(kn+1)/(an*kn)
-    logprob_t_murphy = t.logpdf(xtest, 2*an, loc=mun, scale=sqrt(scalesq))
+            # Test equality of posterior hypers.
+            mn, rn, sn, nun = teh_posterior(m, r, s, nu, x)
+            an, bn, kn, mun = murphy_posterior(a, b, k, mu, x)
+            self.assertAlmostEqual(an, nun/2, places=5)
+            self.assertAlmostEqual(bn, sn/2, places=5)
+            self.assertAlmostEqual(kn, rn, places=5)
+            self.assertAlmostEqual(mun, mn, places=5)
 
-    # Teh exact using Murphy Eq 99.
-    mn1, rn1, sn1, nun1 = teh_posterior(m, r, s, nu, np.append(x, xtest))
-    logprob_teh = gammaln(nun1/2.) - gammaln(nun/2.) + nun/2.*log(sn/2.) \
-        - (nun1/2.)*log(sn1/2.) + 1/2.*(log(rn) - log(rn1)) - m/2.*log(2*pi)
+            # Test posterior predictive agree with each other, and Student T.
+            for xtest in np.linspace(1.1, 80.8, 14.1):
+                # Murphy exact, Eq 99.
+                an1, bn1, kn1, mun1 = murphy_posterior(
+                    a, b, k, mu, np.append(x, xtest))
+                logprob_murphy = murphy_posterior_predictive(
+                    an1, an, bn1, bn, kn1, kn)
 
-    # Student T Teh using Murphy Eq 100.
-    scalesq = sn/2.*(rn+1)/(nun/2.*rn)
-    logprob_t_teh = t.logpdf(xtest, 2*nun/2., loc=mn, scale=sqrt(scalesq))
+                # Student T Murphy, Eq 100.
+                scalesq = bn*(kn+1)/(an*kn)
+                logprob_t_murphy = t.logpdf(
+                    xtest, 2*an, loc=mun, scale=sqrt(scalesq))
 
-    values = [logprob_murphy, logprob_teh, logprob_t_murphy, logprob_t_teh]
-    print np.allclose(values[0], values)
+                # Teh exact using Murphy Eq 99.
+                mn1, rn1, sn1, nun1 = teh_posterior(
+                    m, r, s, nu, np.append(x, xtest))
+                logprob_teh = murphy_posterior_predictive(
+                    nun1/2., nun/2, sn1/2., sn/2, rn1, rn)
+
+                # Posterior predictive from Normal DistributionGpm.
+                logprob_nignormal = Normal.calc_predictive_logp(
+                    xtest, len(x), sum(x), np.sum(x**2), m, r, s, nu)
+
+                # Student T Teh using Murphy Eq 100.
+                scalesq = sn/2.*(rn+1)/(nun/2.*rn)
+                logprob_t_teh = t.logpdf(
+                    xtest, 2*nun/2., loc=mn, scale=sqrt(scalesq))
+
+                # Aggregate all values and test their equality.
+                values = [logprob_murphy, logprob_teh, logprob_t_murphy,
+                    logprob_t_teh, logprob_nignormal]
+                for v in values:
+                    self.assertAlmostEqual(v, values[0], places=2)
+
+if __name__ == '__main__':
+    unittest.main()
