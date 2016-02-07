@@ -183,7 +183,7 @@ class Normal(DistributionGpm):
                 - (nu / 2.) * log(s) + gammaln(nu/2.0)
 
     @staticmethod
-    def posterior_cdf(x, N, sum_x, sum_x_sq, m, r, s, nu):
+    def posterior_logcdf(x, N, sum_x, sum_x_sq, m, r, s, nu):
         mn, rn, sn, nun = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
             s, nu)
         scalesq = sn/2.*(rn+1)/(nun/2.*rn)
