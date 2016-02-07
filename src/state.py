@@ -66,15 +66,16 @@ class State(object):
             the number of observations.
         cctypes : list<str>
             Data type of each colum, see `utils.config` for valid cctypes.
-        distargs : list, optional
+        distargs : list<dict>, optional
             Distargs appropriate for each cctype in cctypes. For details on
-            distargs see the documentation for each DistributionGpm.
+            distargs see the documentation for each DistributionGpm. Empty
+            distargs can be None or {}.
         n_grid : int, optional
             Number of bins for hyperparameter grids.
         Zv : list<int>, optional
             Assignmet of columns to views. If not specified a random
             partition is sampled.
-        Zrcv : list, optional
+        Zrcv : list(list<int>), optional
             Assignment of rows to clusters in each view, where Zrcv[k] is
             the Zr for View k. If not specified a random partition is
             sampled. If specified, then Zv must also be specified.
@@ -137,7 +138,7 @@ class State(object):
         ----------
         X : np.array
             An array of data with length self.n_rows().
-        cctype : list<str>
+        cctype : str
             DistributionGpm name see `gpmcc.utils.config`.
         distargs : dict, optional.
             Distargs appropriate for the cctype. For details on
@@ -211,7 +212,7 @@ class State(object):
         X : np.array
             A (r x self.n_cols) list of data, where r is the number of
             new rows to incorporate.
-        k : list, optional
+        k : list(list<int>), optional
             A (r x len(self.views)) list of integers, where r is the number of
             new rows to incorporate, and k[r][i] is the cluster to insert row r
             in view i. If k[r][i] is greater than the number of
@@ -262,9 +263,9 @@ class State(object):
             rowid will be taken as conditioning variables.
             Otherwise logpdf for a hypothetical member is computed,
             marginalizing over latent variables.
-        query : list of tuple<int>
+        query : list(tuple<int>)
             A list of pairs (col, val) at which to query the logpdf.
-        evidence : list of tuple<int>, optional
+        evidence : list(tuple<int>), optional
             A list of pairs (col, val) of observed values in the row to
             condition on
 
@@ -330,7 +331,7 @@ class State(object):
             latent variables.
         query : list<int>
             A list of col numbers to simulate from.
-        evidence : list of tuple<int>, optional
+        evidence : list(tuple<int>), optional
             A list of pairs (col, val) of observed values in the row to
             condition on.
         N : int, optional.
