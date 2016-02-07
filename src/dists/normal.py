@@ -31,8 +31,8 @@ import warnings
 from math import log
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import gammaln
+from scipy.stats import t
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
@@ -181,6 +181,13 @@ class Normal(DistributionGpm):
     def calc_log_Z(r, s, nu):
         return ((nu + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(r) \
                 - (nu / 2.) * log(s) + gammaln(nu/2.0)
+
+    @staticmethod
+    def posterior_cdf(x, N, sum_x, sum_x_sq, m, r, s, nu):
+        mn, rn, sn, nun = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
+            s, nu)
+        scalesq = sn/2.*(rn+1)/(nun/2.*rn)
+        return t.logcdf(x, 2*nun/2., loc=mn, scale=np.sqrt(scalesq))
 
     @staticmethod
     def sample_parameters(m, r, s, nu):
