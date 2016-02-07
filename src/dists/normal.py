@@ -50,10 +50,11 @@ class Normal(DistributionGpm):
     x ~ Normal(mu, rho)
 
     http://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
-    Note that Teh uses Normal-InverseGamma to mean Normal-Gamma for prior.
+    Note that Teh uses Normal-InverseGamma to the **variance** has an inverse
+    gamma distribution.
     """
 
-    def __init__(self, N=0, sum_x=0, sum_x_sq=0, m=0, r=1, s=1, nu=1,
+    def __init__(self, N=0, sum_x=0, sum_x_sq=0, m=0., r=1., s=1., nu=1.,
             distargs=None):
         assert s > 0.
         assert r > 0.
@@ -63,10 +64,10 @@ class Normal(DistributionGpm):
         self.sum_x = sum_x
         self.sum_x_sq = sum_x_sq
         # Hyper parameters.
-        self.m = m
-        self.r = r
-        self.s = s
-        self.nu = nu
+        self.m = float(m)
+        self.r = float(r)
+        self.s = float(s)
+        self.nu = float(nu)
 
     def incorporate(self, x):
         self.N += 1.0
@@ -97,7 +98,7 @@ class Normal(DistributionGpm):
             self.m, self.r, self.s, self.nu)
 
     def simulate(self):
-        rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_x,
+        mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
         return np.random.normal(loc=mu, scale=rho**-.5)
@@ -151,9 +152,9 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        rn, nun, mn, sn = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
+        mn, rn, sn, nun = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
             s, nu)
-        rm, num, mm, sm = Normal.posterior_hypers(N+1, sum_x+x,
+        mm, rm, sm, num = Normal.posterior_hypers(N+1, sum_x+x,
             sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
@@ -161,8 +162,8 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def calc_logpdf_marginal(N, sum_x, sum_x_sq, m, r, s, nu):
-        rn, nun, mn, sn = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
-            s, nu)
+        mn, rn, sn, nun = Normal.posterior_hypers(
+            N, sum_x, sum_x_sq, m, r, s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         return -(N/2.) * LOG2PI + ZN - Z0
@@ -173,10 +174,8 @@ class Normal(DistributionGpm):
         nun = nu + float(N)
         mn = (r*m + sum_x)/rn
         sn = s + sum_x_sq + r*m*m - rn*mn*mn
-        if sn == 0:
-            warnings.warn('Posterior_update_parameters: sn truncated.')
-            sn = s
-        return rn, nun, mn, sn
+        if sn == 0: sn = s
+        return mn, rn, sn, nun
 
     @staticmethod
     def calc_log_Z(r, s, nu):
