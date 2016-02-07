@@ -102,7 +102,7 @@ class Lognormal(DistributionGpm):
         # XXX This implementation is not verified but will be covered in
         # future univariate simulate tests, see Github issue #14.
         # Simulate normal parameters
-        rn, nun, mn, sn = Normal.posterior_hypers(self.N, self.sum_log_x,
+        mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_log_x,
             self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
         x = np.random.normal(loc=mu, scale=rho**-.5)
