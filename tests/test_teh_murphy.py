@@ -79,7 +79,7 @@ mu = m
 
 # Test equality of posterior hypers.
 x = norm.rvs(loc=10, scale=3, size=100)
-rn, nun, mn, sn = teh_posterior(m, r, s, nu, x)
+mn, rn, sn, nun = teh_posterior(m, r, s, nu, x)
 an, bn, kn, mun = murphy_posterior(a, b, k, mu, x)
 
 print np.allclose(an, nun/2)
@@ -101,7 +101,7 @@ for xtest in xtest_all:
     logprob_t_murphy = t.logpdf(xtest, 2*an, loc=mun, scale=sqrt(scalesq))
 
     # Teh exact using Murphy Eq 99.
-    rn1, nun1, mn1, sn1 = teh_posterior(m, r, s, nu, np.append(x, xtest))
+    mn1, rn1, sn1, nun1 = teh_posterior(m, r, s, nu, np.append(x, xtest))
     logprob_teh = gammaln(nun1/2.) - gammaln(nun/2.) + nun/2.*log(sn/2.) \
         - (nun1/2.)*log(sn1/2.) + 1/2.*(log(rn) - log(rn1)) - m/2.*log(2*pi)
 
