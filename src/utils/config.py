@@ -30,6 +30,7 @@ from datetime import datetime
 
 from gpmcc.dists import beta_uc
 from gpmcc.dists import normal
+from gpmcc.dists import normal_trunc
 from gpmcc.dists import bernoulli
 from gpmcc.dists import categorical
 from gpmcc.dists import lognormal
@@ -40,6 +41,7 @@ from gpmcc.dists import vonmises
 
 cctype_class_lookup = {
     'normal'            : normal.Normal,
+    'normal_trunc'      : normal_trunc.NormalTrunc,
     'beta_uc'           : beta_uc.BetaUC,
     'bernoulli'         : bernoulli.Bernoulli,
     'categorical'       : categorical.Categorical,

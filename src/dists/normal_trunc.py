@@ -26,125 +26,81 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import math
-from math import log, sqrt, pi
+from math import log
 
 import numpy as np
-from scipy.stats import norm, invgamma, uniform
+from scipy.stats import norm, gamma
 
-import gpmcc.utils.general as gu
-from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.utils import sampling as su
+from gpmcc.dists.normal import Normal
 
-class NormalTrunc(DistributionGpm):
-    """Truncated Normal distribution on range [l, h] with normal prior on mean
-    and inverse gamma prior on variance. Uncollapsed.
+LOG2 = log(2.0)
+LOGPI = log(np.pi)
+LOG2PI = log(2*np.pi)
 
-    sigma2 ~ InverseGamma(a, b)
-    mu ~ Normal(m, V*sigma2)
-    x ~ NormalTrunc(mu, sigma2; l, h)
-
-    http://fbe.unimelb.edu.au/__data/assets/pdf_file/0006/805866/856.pdf
+class NormalTrunc(Normal):
+    """Normal distribution with normal prior on mean and gamma prior on
+    precision. Uncollapsed.
+    rho ~ Gamma(nu/2, s/2)
+    mu ~ Normal(m, rho)
+    X ~ Normal(mu, r*rho)
+    http://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
+    Note that Teh uses Normal-InverseGamma to mean Normal-Gamma for prior.
     """
 
-    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, sigma2=None, m=0.,
-            V=1., a=1., b=1., distargs=None):
-        assert V > 0.
-        assert a > 0.
-        assert b > 0.
-        # Sufficient statistics.
-        self.N = N
-        self.sum_x = sum_x
-        self.sum_x_sq = sum_x_sq
-        # Hyper parameters.
-        self.m = float(m)
-        self.V = float(V)
-        self.a = float(a)
-        self.b = float(b)
-        # Distargs.
-        self.l, self.h = distargs['l'], distargs['h']
-        # Data for Gibbs.
-        self.data = []
-        # Parameters.
-        self.mu, self.sigma2 = mu, sigma2
-        if mu is None or sigma2 is None:
-            sigma2 = invgamma.rvs(a, scale=b)
-            mu = norm.rvs(loc=m, scale=sqrt(sigma2*V))
+    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, rho=None, m=0,
+            r=1, s=1, nu=1, distargs=None):
+        # Invoke parent.
+        super(NormalTrunc, self).__init__(N=N, sum_x=sum_x, sum_x_sq=sum_x_sq,
+            m=m, r=r, s=s, nu=nu, distargs=distargs)
+        # Uncollapsed mean and precision parameters.
+        self.mu, self.rho = mu, rho
+        if mu is None or rho is None:
+            self.mu, self.rho = Normal.sample_parameters(self.m, self.r, self.s,
+                self.nu)
+            # self.transition_params()
 
-    def incorporate(self, x):
-        assert self.l<x<self.h
-        self.data.append(x)
-        self.N += 1.0
-        self.sum_x += x
-        self.sum_x_sq += x*x
+    def predictive_logp(self, x):
+        return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho)
 
-    def unincorporate(self, x):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        self.data.remove(x)
-        self.N -= 1.0
-        if self.N == 0:
-            self.sum_x = 0.0
-            self.sum_x_sq = 0.0
-        else:
-            self.sum_x -= x
-            self.sum_x_sq -= x*x
+    def marginal_logp(self):
+        data_logp = NormalTrunc.calc_log_likelihood(self.N, self.sum_x,
+            self.sum_x_sq, self.rho, self.mu)
+        prior_logp = NormalTrunc.calc_log_prior(self.mu, self.rho, self.m,
+            self.r, self.s, self.nu)
+        return data_logp + prior_logp
 
-    def logpdf(self, x):
-        return NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma2,
-            self.l, self.h)
-
-    def logpdf_singleton(self, x):
-        return NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma2,
-            self.l, self.h)
-
-    def logpdf_marginal(self):
-        logp_data = NormalTrunc.calc_log_likelihood(self.N, self.sum_x,
-            self.sum_x_sq, self.mu, self.sigma2, self.l, self.h)
-        logp_prior = NormalTrunc.calc_log_prior(self.mu, self.sigma2, self.m,
-            self.V, self.a, self.b)
-        return logp_prior + logp_data
+    def singleton_logp(self, x):
+        return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho)
 
     def simulate(self):
-        u = uniform.rvs()
-        sigma = sqrt(self.sigma2)
-        term1 = norm.cdf((self.l-self.mu)/sigma)
-        term2 = norm.cdf((self.h-self.mu)/sigma)
-        return self.mu + sigma*norm.ppf(term1+u*(term2-term1))
+        return np.random.normal(self.mu, 1./self.rho**.5)
 
     def transition_params(self):
         n_samples = 25
-        for _ in xrange(n_samples):
-            ybar, ydev = NormalTrunc.compute_auxiliary_data(
-                self.data, self.mu, self.sigma2, self.l, self.h)
-            self.mu = norm.rvs(loc=ybar, scale=sqrt(self.sigma2/self.N))
-            self.sigma2 = invgamma.rvs(self.N/2., scale=-.5*ydev)
+        # Transition mu.
+        log_pdf_fun_mu = lambda mu :\
+            NormalTrunc.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
+                self.rho, mu) \
+            + NormalTrunc.calc_log_prior(mu, self.rho, self.m, self.r, self.s,
+                self.nu)
 
-    def set_hypers(self, hypers):
-        assert hypers['V'] > 0.
-        assert hypers['a'] > 0.
-        assert hypers['b'] > 0.
-        self.m = hypers['m']
-        self.V = hypers['V']
-        self.a = hypers['a']
-        self.b = hypers['b']
+        self.mu = su.mh_sample(self.mu, log_pdf_fun_mu,
+            .5, [-float('inf'), float('inf')], burn=n_samples)
 
-    def get_hypers(self):
-        return {'m': self.m, 'V': self.V, 'a': self.a, 'b': self.b}
+        # Transition balance.
+        log_pdf_fun_rho = lambda rho :\
+            NormalTrunc.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
+                rho, self.mu) \
+            + NormalTrunc.calc_log_prior(self.mu, rho, self.m, self.r, self.s,
+                self.nu)
 
-    def get_suffstats(self):
-        return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
+        self.rho = su.mh_sample(self.rho, log_pdf_fun_rho,
+            .25, [0, 1], burn=n_samples)
 
-    @staticmethod
-    def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        N = len(X) + 1.
-        ssqdev = np.var(X) * len(X) + 1.
-        # Data dependent heuristics.
-        grids['m'] = np.linspace(min(X)-5, max(X)+5, n_grid)
-        grids['V'] = gu.log_linspace(1. / N, N, n_grid)
-        grids['a'] = gu.log_linspace(1., N, n_grid) # df >= 1
-        grids['b'] = gu.log_linspace(ssqdev / 100., ssqdev, n_grid)
-        return grids
+        # mn, rn, sn, nun = NormalTrunc.posterior_hypers(self.N, self.sum_x,
+        #     self.sum_x_sq, self. m, self.r, self.s, self.nu)
+        # self.mu, self.rho = NormalTrunc.sample_parameters(mn, rn, sn, nun)
 
     @staticmethod
     def name():
@@ -154,47 +110,27 @@ class NormalTrunc(DistributionGpm):
     def is_collapsed():
         return False
 
-    @staticmethod
-    def is_continuous():
-        return True
-
     ##################
     # HELPER METHODS #
     ##################
 
     @staticmethod
-    def calc_predictive_logp(x, mu, sigma2, l, h):
-        if not l < x < h:
-            return -float('inf')
-        log_data = norm.logpdf(x, loc=mu, scale=sqrt(sigma2))
-        log_normalizer = norm.logcdf(h, loc=mu, scale=sqrt(sigma2))\
-            - norm.logcdf(l, loc=mu, scale=sqrt(sigma2))
-        return log_data - log_normalizer
+    def calc_log_normalizer(mu, rho, l, h):
+        return (norm.logcdf(h, loc=mu, scale=rho**-.5) -
+            norm.logcdf(l, loc=mu, scale=1./rho**.5))
 
     @staticmethod
-    def calc_log_likelihood(N, sum_x, sum_x_sq, mu, sigma2, l, h):
-        log_data = -(N/2.)*log(2*pi) - (N/2.)*log(sigma2) - \
-            1./(2*sigma2)*(sum_x_sq - 2*mu*sum_x + N*mu*mu)
-        log_normalizer = norm.logcdf(h, loc=mu, scale=sqrt(sigma2))\
-            - norm.logcdf(l, loc=mu, scale=sqrt(sigma2))
-        return log_data - N * log_normalizer
+    def calc_predictive_logp(x, mu, rho):
+        return norm.logpdf(x, loc=mu, scale=1./rho**.5)
 
     @staticmethod
-    def calc_log_prior(mu, sigma2, m, V, a, b):
-        log_sigma2 = invgamma.logpdf(sigma2, a, scale=b)
-        log_mu = norm.logpdf(mu, loc=m, scale=np.sqrt(sigma2*V))
-        return log_sigma2 + log_mu
+    def calc_log_likelihood(N, sum_x, sum_x_sq, rho, mu):
+        return -(N / 2.) * LOG2PI + (N / 2.) * log(rho) - \
+            .5 * (rho * (N * mu * mu - 2 * mu * sum_x + sum_x_sq))
 
     @staticmethod
-    def compute_auxiliary_data(data, mu, sigma2, l, h):
-        sum_y, sum_y_sq = 0., 0.
-        sigma = sqrt(sigma2)
-        low = norm.cdf((h-mu)/sigma) - norm.cdf((l-mu)/sigma)
-        for x in data:
-            top = norm.cdf((x-mu)/sigma) - norm.cdf((l-mu)/sigma)
-            y =  mu + sigma* norm.ppf(top/low)
-            sum_y += y
-            sum_y_sq += y*y
-        ybar = sum_y/len(data)
-        ydev = sum_y_sq -2*mu*sum_y + len(data)*mu*mu
-        return ybar, ydev
+    def calc_log_prior(mu, rho, m, r, s, nu):
+        """Distribution of parameters (mu rho) ~ NG(m, r, s, nu)"""
+        log_rho = gamma.logpdf(rho, nu/2., scale=2./s)
+        log_mu = norm.logpdf(mu, loc=m, scale=1./(r*rho)**.5)
+        return log_mu + log_rho
