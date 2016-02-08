@@ -407,7 +407,8 @@ class State(object):
                 sampled_k[v] = gu.log_pflip(cluster_logps_for[v])
             for col in query:
                 # Sample data.
-                x = self.dims[col].simulate(sampled_k[v])
+                k = sampled_k[self.Zv[col]]
+                x = self.dims[col].simulate(k)
                 draw.append(x)
             samples.append(draw)
 
