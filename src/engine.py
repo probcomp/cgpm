@@ -108,6 +108,13 @@ class Engine(object):
         logpdfs = mapper(_evaluate, args)
         return logpdfs
 
+    def logpdf_bulk(self, rowids, queries, evidences=None, multithread=1):
+        _, mapper = self._get_mapper(multithread)
+        args = [('logpdf_bulk', self.metadata[i], (rowids, queries, evidences))
+            for i in xrange(self.num_states)]
+        logpdfs = mapper(_evaluate, args)
+        return logpdfs
+
     def logpdf_marginal(self, multithread=1):
         _, mapper = self._get_mapper(multithread)
         args = [('logpdf_marginal', self.metadata[i], ()) for i in
@@ -119,6 +126,15 @@ class Engine(object):
         _, mapper = self._get_mapper(multithread)
         args = [('simulate', self.metadata[i], (rowid, query, evidence, N)) for
             i in xrange(self.num_states)]
+        samples = mapper(_evaluate, args)
+        return np.asarray(samples)
+
+    def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
+            multithread=1):
+        """Returns list of simualate_bulk, one for each state."""
+        _, mapper = self._get_mapper(multithread)
+        args = [('simulate_bulk', self.metadata[i],
+            (rowids, queries, evidences, Ns)) for i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
         return samples
 
