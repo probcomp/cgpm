@@ -112,10 +112,12 @@ def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
 
 def _gen_beta_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
+
     K = np.max(Z)+1
     alphas = np.linspace(.5 -.5*separation*.85, .5 + .5*separation*.85, K)
     Tc = np.zeros(n_rows)
-    for r in range(n_rows):
+
+    for r in xrange(n_rows):
         cluster = Z[r]
         alpha = alphas[cluster]
         beta = (1.0-alpha)*20.0*(norm.pdf(alpha,.5,.25))
@@ -129,7 +131,7 @@ def _gen_normal_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     Tc = np.zeros(n_rows)
-    for r in range(n_rows):
+    for r in xrange(n_rows):
         cluster = Z[r]
         mu = cluster*(5.0*separation)
         sigma = 1.0
@@ -143,12 +145,12 @@ def _gen_vonmises_data_column(Z, separation=.9, distargs=None):
     num_clusters =  max(Z)+1
     sep = (2*math.pi/num_clusters)
 
-    mus = [c*sep for c in range(num_clusters)]
+    mus = [c*sep for c in xrange(num_clusters)]
     std = sep/(5.0*separation**.75)
     k = 1/(std*std)
 
     Tc = np.zeros(n_rows)
-    for r in range(n_rows):
+    for r in xrange(n_rows):
         cluster = Z[r]
         mu = mus[cluster]
         Tc[r] = np.random.vonmises(mu, k) + math.pi
@@ -159,7 +161,7 @@ def _gen_poisson_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
     Tc = np.zeros(n_rows)
 
-    for r in range(n_rows):
+    for r in xrange(n_rows):
         cluster = Z[r]
         lam = (cluster)*(4.0*separation)+1
         Tc[r] = np.random.poisson(lam)
@@ -170,7 +172,7 @@ def _gen_exponential_data_column(Z, separation=.9, distargs=None):
     n_rows = len(Z)
     Tc = np.zeros(n_rows)
 
-    for r in range(n_rows):
+    for r in xrange(n_rows):
         cluster = Z[r]
         mu = (cluster)*(4.0*separation)+1
         Tc[r] = np.random.exponential(mu)
@@ -184,7 +186,7 @@ def _gen_geometric_data_column(Z, separation=.9, distargs=None):
 
     ps = np.linspace(.5 -.5*separation*.85, .5 + .5*separation*.85, K)
     Tc = np.zeros(n_rows)
-    for r in range(n_rows):
+    for r in xrange(n_rows):
         cluster = Z[r]
         Tc[r] = geom.rvs(ps[cluster], loc=-1)
 
@@ -197,7 +199,7 @@ def _gen_lognormal_data_column(Z, separation=.9, distargs=None):
         separation = .9
 
     Tc = np.zeros(n_rows)
-    for r in range(n_rows):
+    for r in xrange(n_rows):
         cluster = Z[r]
         mu = cluster*(.9*separation**2)
         Tc[r] = np.random.lognormal(mean=mu,
@@ -211,6 +213,7 @@ def _gen_bernoulli_data_column(Z, separation=.9, distargs=None):
     Tc = np.zeros(n_rows)
     K = max(Z)+1
     thetas = np.linspace(0.0,separation,K)
+
     for r in range(n_rows):
         cluster = Z[r]
         theta = thetas[cluster]
@@ -222,15 +225,18 @@ def _gen_bernoulli_data_column(Z, separation=.9, distargs=None):
     return Tc
 
 def _gen_categorical_data_column(Z, separation=.9, distargs=None):
-    n_rows = len(Z)
     k = distargs['k']
+    n_rows = len(Z)
+
     if separation > .95:
         separation = .95
+
     Tc = np.zeros(n_rows, dtype=int)
     C = max(Z)+1
     theta_arrays = [np.random.dirichlet(np.ones(k)*(1.0-separation), 1)
         for _ in range(C)]
-    for r in range(n_rows):
+
+    for r in xrange(n_rows):
         cluster = Z[r]
         thetas = theta_arrays[cluster][0]
         x = int(gu.pflip(thetas))
@@ -278,7 +284,7 @@ def column_average_ari(Zv, Zc, cc_state_object):
     from sklearn.metrics import adjusted_rand_score
     ari = 0
     n_cols = len(Zv)
-    for col in range(n_cols):
+    for col in xrange(n_cols):
         view_t = Zv[col]
         Zc_true = Zc[view_t]
 
@@ -291,7 +297,7 @@ def column_average_ari(Zv, Zc, cc_state_object):
 def gen_sine_wave(N, noise=.5):
     x_range = [-3.0*math.pi/2.0, 3.0*math.pi/2.0]
     X = np.zeros( (N,2) )
-    for i in range(N):
+    for i in xrange(N):
         x = np.random.uniform(x_range[0], x_range[1])
         y = math.cos(x)+np.random.random()*(-np.random.uniform(-noise, noise))
         X[i,0] = x
@@ -302,7 +308,7 @@ def gen_sine_wave(N, noise=.5):
 
 def gen_x(N, rho=.95):
     X = np.zeros( (N,2) )
-    for i in range(N):
+    for i in xrange(N):
         if np.random.random() < .5:
             sigma = np.array([[1,rho],[rho,1]])
         else:
@@ -315,7 +321,7 @@ def gen_x(N, rho=.95):
 
 def gen_ring(N, width=.2):
     X = np.zeros((N,2))
-    for i in range(N):
+    for i in xrange(N):
         angle = np.random.uniform(0.0, 2.0*math.pi)
         distance = np.random.uniform(1.0-width, 1.0)
         X[i,0] = math.cos(angle)*distance
