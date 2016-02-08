@@ -418,7 +418,8 @@ class State(object):
     # Inference
 
     def transition(self, N=1, S=None, kernels=None, target_rows=None,
-            target_cols=None, target_views=None, do_progress=True):
+            target_cols=None, target_views=None, do_plot=False,
+            do_progress=True):
         """Run all infernece kernels. For targeted inference, see other exposed
         inference commands.
 
@@ -432,6 +433,9 @@ class State(object):
             Default is all.
         target_views, target_rows, target_cols : list<int>, optional
             Views, rows and columns to apply the kernels. Default is all.
+        do_plot : boolean, optional
+            Plot the state of the sampler (real-time), 24 columns max. Only
+            available when transition by iterations.
         do_progress : boolean, optional
             Show a progress bar for number of target iterations or elapsed time.
             If transition by time, may exceed 100%.
@@ -484,11 +488,22 @@ class State(object):
         # Transition by iterations.
         if do_progress:
             self._do_progress(0)
+        if do_plot:
+            plt.ion()
+            plt.show()
+            layout = pu.get_state_plot_layout(self.n_cols())
+            fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
+                layout['plot_inches_x']), dpi=75, facecolor='w',
+                edgecolor='k', frameon=False, tight_layout=True)
+            self._do_plot(fig, layout)
         for i in xrange(N):
             for k in kernels:
                 _kernel_lookup[k]()
             if do_progress:
                 self._do_progress(float(i+1)/N)
+            if do_plot:
+                self._do_plot(fig, layout)
+                plt.pause(1e-4)
         print
 
     def transition_alpha(self):
