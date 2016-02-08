@@ -51,3 +51,9 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+
+# gpmcc artifacts
+*.engine*
+
+# numpy binaries
+*.npy
