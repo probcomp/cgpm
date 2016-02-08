@@ -110,7 +110,7 @@ def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
         dims.append(dim_c)
     return dims
 
-def _gen_beta_data_column(Z, separation=.9, distargs=None):
+def _gen_beta_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     K = np.max(Z)+1
@@ -127,7 +127,7 @@ def _gen_beta_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_normal_data_column(Z, separation=.9, distargs=None):
+def _gen_normal_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     Tc = np.zeros(n_rows)
@@ -139,7 +139,7 @@ def _gen_normal_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_vonmises_data_column(Z, separation=.9, distargs=None):
+def _gen_vonmises_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     num_clusters =  max(Z)+1
@@ -157,7 +157,7 @@ def _gen_vonmises_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_poisson_data_column(Z, separation=.9, distargs=None):
+def _gen_poisson_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
     Tc = np.zeros(n_rows)
 
@@ -168,7 +168,7 @@ def _gen_poisson_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_exponential_data_column(Z, separation=.9, distargs=None):
+def _gen_exponential_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
     Tc = np.zeros(n_rows)
 
@@ -179,7 +179,7 @@ def _gen_exponential_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_geometric_data_column(Z, separation=.9, distargs=None):
+def _gen_geometric_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
     Tc = np.zeros(n_rows)
     K = np.max(Z)+1
@@ -192,7 +192,7 @@ def _gen_geometric_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_lognormal_data_column(Z, separation=.9, distargs=None):
+def _gen_lognormal_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     if separation > .9:
@@ -207,7 +207,7 @@ def _gen_lognormal_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_bernoulli_data_column(Z, separation=.9, distargs=None):
+def _gen_bernoulli_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     Tc = np.zeros(n_rows)
@@ -224,7 +224,7 @@ def _gen_bernoulli_data_column(Z, separation=.9, distargs=None):
 
     return Tc
 
-def _gen_categorical_data_column(Z, separation=.9, distargs=None):
+def _gen_categorical_data(Z, separation=.9, distargs=None):
     k = distargs['k']
     n_rows = len(Z)
 
@@ -345,13 +345,13 @@ def gen_four_dots(N=200, stddev=.25):
     return T
 
 _gen_data = {
-    'beta_uc'           : _gen_beta_data_column,
-    'normal'            : _gen_normal_data_column,
-    'bernoulli'         : _gen_bernoulli_data_column,
-    'categorical'       : _gen_categorical_data_column,
-    'poisson'           : _gen_poisson_data_column,
-    'exponential'       : _gen_exponential_data_column,
-    'geometric'         : _gen_geometric_data_column,
-    'lognormal'         : _gen_lognormal_data_column,
-    'vonmises'          : _gen_vonmises_data_column,
+    'beta_uc'           : _gen_beta_data,
+    'normal'            : _gen_normal_data,
+    'bernoulli'         : _gen_bernoulli_data,
+    'categorical'       : _gen_categorical_data,
+    'poisson'           : _gen_poisson_data,
+    'exponential'       : _gen_exponential_data,
+    'geometric'         : _gen_geometric_data,
+    'lognormal'         : _gen_lognormal_data,
+    'vonmises'          : _gen_vonmises_data,
 }
