@@ -136,3 +136,11 @@ def plot_clustermap(D, xticklabels=None, yticklabels=None):
     plt.setp(zmat.ax_heatmap.get_yticklabels(), rotation=0)
     plt.setp(zmat.ax_heatmap.get_xticklabels(), rotation=90)
     return zmat
+
+def plot_samples(X, ax=None):
+    if ax is None:
+        _, ax = plt.subplots()
+        ax.set_ylim([0, 10])
+    for x in X:
+        ax.vlines(x, 0, 1., linewidth=1)
+    return ax
