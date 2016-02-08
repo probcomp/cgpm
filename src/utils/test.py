@@ -139,6 +139,35 @@ def _gen_normal_data(Z, separation=.9, distargs=None):
 
     return Tc
 
+def _gen_normal_trunc_data(Z, separation=.9, distargs=None):
+    l, h = distargs['l'], distargs['h']
+    max_draws = 100
+    n_rows = len(Z)
+
+    K = max(Z) + 1
+    mean = l+h/2.
+
+    bins = np.linspace(l, h, K+1)
+    bin_centers = [.5*(bins[i-1]+bins[i]) for i in xrange(1, len(bins))]
+    distances = [mean - bc for bc in bin_centers]
+    mus = [bc+(1-separation)*d for bc, d in zip(bin_centers, distances)]
+
+    Tc = np.zeros(n_rows)
+    for r in xrange(n_rows):
+        cluster = Z[r]
+        sigma = 1
+        i = 0
+        while True:
+            i += 1
+            x = np.random.normal(loc=mus[cluster], scale=sigma)
+            if l<=x<=h:
+                break
+            if i > max_draws:
+                raise ValueError('Could not generate normal_trunc data.')
+        Tc[r] = x
+
+    return Tc
+
 def _gen_vonmises_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
