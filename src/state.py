@@ -252,16 +252,6 @@ class State(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf_bulk(self, rowids, queries, evidences=None):
-        """Evaluate multiple queries at once, used by Engine."""
-        assert len(rowids) == len(queries) == len(evidences)
-        if evidences is None:
-            evidences = [[] for _ in xrange(len(rowids))]
-        logpdfs = []
-        for rowid, query, evidence in zip(rowids, queries, evidences):
-            logpdfs.append(self.logpdf(rowid, query, evidence))
-        return logpdfs
-
     def logpdf(self, rowid, query, evidence=None):
         """Compute density of query under the posterior predictive distirbution.
 
@@ -321,24 +311,22 @@ class State(object):
 
         return logpdf
 
+    def logpdf_bulk(self, rowids, queries, evidences=None):
+        """Evaluate multiple queries at once, used by Engine."""
+        assert len(rowids) == len(queries) == len(evidences)
+        if evidences is None:
+            evidences = [[] for _ in xrange(len(rowids))]
+        logpdfs = []
+        for rowid, query, evidence in zip(rowids, queries, evidences):
+            logpdfs.append(self.logpdf(rowid, query, evidence))
+        return logpdfs
+
     def logpdf_marginal(self):
         return gu.logp_crp(len(self.Zv), self.Nv, self.alpha) + \
             sum(v.logpdf_marginal() for v in self.views)
 
     # --------------------------------------------------------------------------
     # Simulate
-
-    def simulate_bulk(self, rowids, queries, evidences=None, N=None):
-        """Evaluate multiple queries at once, used by Engine."""
-        assert len(rowids) == len(queries) == len(evidences) == len(N)
-        if evidences is None:
-            evidences = [[] for _ in xrange(len(rowids))]
-        if N is None:
-            N = [1 for _ in xrange(len(rowids))]
-        samples = []
-        for rowid, query, evidence, n in zip(rowids, queries, evidences, N):
-            samples.append(self.simulate(rowid, query, evidence, n))
-        return samples
 
     def simulate(self, rowid, query, evidence=None, N=1):
         """Simulate from the posterior predictive distirbution.
@@ -413,6 +401,18 @@ class State(object):
             samples.append(draw)
 
         return np.asarray(samples)
+
+    def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
+        """Evaluate multiple queries at once, used by Engine."""
+        assert len(rowids) == len(queries) == len(evidences) == len(Ns)
+        if evidences is None:
+            evidences = [[] for _ in xrange(len(rowids))]
+        if Ns is None:
+            Ns = [1 for _ in xrange(len(rowids))]
+        samples = []
+        for rowid, query, evidence, n in zip(rowids, queries, evidences, Ns):
+            samples.append(self.simulate(rowid, query, evidence, n))
+        return samples
 
     # --------------------------------------------------------------------------
     # Inference
