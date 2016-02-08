@@ -374,13 +374,14 @@ def gen_four_dots(N=200, stddev=.25):
     return T
 
 _gen_data = {
-    'beta_uc'           : _gen_beta_data,
-    'normal'            : _gen_normal_data,
     'bernoulli'         : _gen_bernoulli_data,
+    'beta_uc'           : _gen_beta_data,
     'categorical'       : _gen_categorical_data,
-    'poisson'           : _gen_poisson_data,
     'exponential'       : _gen_exponential_data,
     'geometric'         : _gen_geometric_data,
     'lognormal'         : _gen_lognormal_data,
+    'normal'            : _gen_normal_data,
+    'normal_trunc'      : _gen_normal_trunc_data,
+    'poisson'           : _gen_poisson_data,
     'vonmises'          : _gen_vonmises_data,
 }
