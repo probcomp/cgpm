@@ -31,6 +31,7 @@ from math import log
 import numpy as np
 from scipy.stats import norm, gamma
 
+from gpmcc.utils import general as gu
 from gpmcc.utils import sampling as su
 from gpmcc.dists.normal import Normal
 
@@ -53,6 +54,9 @@ class NormalTrunc(Normal):
         # Invoke parent.
         super(NormalTrunc, self).__init__(N=N, sum_x=sum_x, sum_x_sq=sum_x_sq,
             m=m, r=r, s=s, nu=nu, distargs=distargs)
+        # Distargs
+        self.l = distargs['l']
+        self.h = distargs['h']
         # Uncollapsed mean and precision parameters.
         self.mu, self.rho = mu, rho
         if mu is None or rho is None:
@@ -61,14 +65,17 @@ class NormalTrunc(Normal):
             # self.transition_params()
 
     def predictive_logp(self, x):
-        return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho)
+        return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho) - \
+            - NormalTrunc.calc_log_normalizer(self.mu, self.rho, self.l, self.h)
 
     def marginal_logp(self):
         data_logp = NormalTrunc.calc_log_likelihood(self.N, self.sum_x,
             self.sum_x_sq, self.rho, self.mu)
         prior_logp = NormalTrunc.calc_log_prior(self.mu, self.rho, self.m,
             self.r, self.s, self.nu)
-        return data_logp + prior_logp
+        normalizer_logp = NormalTrunc.calc_log_normalizer(self.mu, self.rho,
+            self.l, self.h)
+        return data_logp + prior_logp - self.N * normalizer_logp
 
     def singleton_logp(self, x):
         return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho)
@@ -83,24 +90,39 @@ class NormalTrunc(Normal):
             NormalTrunc.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
                 self.rho, mu) \
             + NormalTrunc.calc_log_prior(mu, self.rho, self.m, self.r, self.s,
-                self.nu)
+                self.nu) \
+            - NormalTrunc.calc_log_normalizer(mu, self.rho, self.l, self.h)
 
         self.mu = su.mh_sample(self.mu, log_pdf_fun_mu,
-            .5, [-float('inf'), float('inf')], burn=n_samples)
+            5, [-float('inf'), float('inf')], burn=n_samples)
 
         # Transition balance.
         log_pdf_fun_rho = lambda rho :\
             NormalTrunc.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
                 rho, self.mu) \
-            + NormalTrunc.calc_log_prior(self.mu, rho, self.m, self.r, self.s,
-                self.nu)
+            - NormalTrunc.calc_log_prior(self.mu, rho, self.m, self.r, self.s,
+                self.nu) \
+            - NormalTrunc.calc_log_normalizer(self.mu, rho, self.l, self.h)
 
         self.rho = su.mh_sample(self.rho, log_pdf_fun_rho,
-            .25, [0, 1], burn=n_samples)
+            5, [0, float('inf')], burn=n_samples)
 
         # mn, rn, sn, nun = NormalTrunc.posterior_hypers(self.N, self.sum_x,
         #     self.sum_x_sq, self. m, self.r, self.s, self.nu)
         # self.mu, self.rho = NormalTrunc.sample_parameters(mn, rn, sn, nun)
+
+    @staticmethod
+    def construct_hyper_grids(X, n_grid=30):
+        grids = dict()
+        # Plus 1 for single observation case.
+        N = len(X) + 1.
+        ssqdev = np.var(X) + 1.
+        # Data dependent heuristics.
+        grids['m'] = np.linspace(min(X)-5, max(X) + 5, n_grid)
+        grids['r'] = gu.log_linspace(1. / N, N, n_grid)
+        grids['s'] = gu.log_linspace(ssqdev / 100., ssqdev, n_grid)
+        grids['nu'] = gu.log_linspace(1., N, n_grid) # df >= 1
+        return grids
 
     @staticmethod
     def name():
@@ -117,7 +139,7 @@ class NormalTrunc(Normal):
     @staticmethod
     def calc_log_normalizer(mu, rho, l, h):
         return (norm.logcdf(h, loc=mu, scale=rho**-.5) -
-            norm.logcdf(l, loc=mu, scale=1./rho**.5))
+            norm.logcdf(l, loc=mu, scale=rho**-.5))
 
     @staticmethod
     def calc_predictive_logp(x, mu, rho):
