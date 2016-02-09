@@ -26,6 +26,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
@@ -33,17 +34,56 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
 from gpmcc.engine import Engine
 
-print 'Loading dataset ...'
-df = pd.read_csv('swallows.csv')
-df.replace('NA', np.nan, inplace=True)
-df.replace('NaN', np.nan, inplace=True)
-schema = [('treatment', 'bernoulli'), ('heading', 'normal_trunc')]
+# Load the data.
+filenames = [
+    '20160209-080359-swallows.engine',
+    '20160209-081620-swallows.engine',
+    '20160209-083211-swallows.engine',
+    '20160209-083710-swallows.engine']
 
-print 'Parsing schema ...'
-T, cctypes, distargs, valmap, columns = du.parse_schema(schema, df)
+engines = []
+names = []
+for f in filenames:
+    with open(f,'r') as infile:
+        engines.append(Engine.from_pickle(infile))
+        names.append(engines[-1].get_state(0).cctypes()[1])
+T = engines[0].get_state(0).X
 
-X = np.random.normal(size=1000)
-X = X[X>0]
+# Histogram the data.
+N = 100
+width = (2*np.pi) / N
 
-engine = Engine(X.reshape(-1,1), ['normal'], num_states=48, initialize=1)
-engine.transition(N=1000)
+fig = plt.figure()
+fig.add_subplot(211, projection='polar')
+fig.add_subplot(212, projection='polar')
+
+fig.axes[0].set_yticklabels([])
+fig.axes[0].hist(
+    T[T[:,0]==0][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
+    color='r', bins=100, normed=1)
+
+fig.axes[1].set_yticklabels([])
+fig.axes[1].hist(
+    T[T[:,0]==1][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
+    color='g',bins=100, normed=1)
+
+# Boxplot the marginals.
+marginals = [e.logpdf_marginal() for e in engines]
+fig, ax = plt.subplots()
+ax.boxplot(marginals, labels=names)
+
+# Violinplot the marginals.
+colors = ['r','b','g','y']
+fig, ax = plt.subplots()
+ax.set_xticks([1,2,3,4])
+ax.set_xticklabels(names)
+ax.set_xlim([0,5])
+vp = ax.violinplot(marginals)
+for pc, c in zip(vp['bodies'], colors):
+    pc.set_facecolor(c)
+vp['cbars'].set_color('k')
+vp['cmins'].set_color('k')
+vp['cmaxes'].set_color('k')
+vp['cbars'].set_alpha(.3)
+vp['cmins'].set_alpha(.3)
+vp['cmaxes'].set_alpha(.3)
