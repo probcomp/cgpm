@@ -70,10 +70,11 @@ class Engine(object):
         del (self._X, self._cctypes, self._distargs)
 
     def transition(self, N=1, S=None, kernels=None, target_views=None,
-            target_rows=None, target_cols=None, do_progress=True, multithread=1):
+            target_rows=None, target_cols=None, do_plot=False, do_progress=True,
+            multithread=1):
         _, mapper = self._get_mapper(multithread)
         args = [('transition', self.metadata[i], (N, S, kernels, target_views,
-            target_rows, target_cols, do_progress)) for i in
+            target_rows, target_cols, do_plot, do_progress)) for i in
             xrange(self.num_states)]
         self.metadata = mapper(_modify, args)
 
