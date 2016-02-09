@@ -313,9 +313,9 @@ class State(object):
 
     def logpdf_bulk(self, rowids, queries, evidences=None):
         """Evaluate multiple queries at once, used by Engine."""
-        assert len(rowids) == len(queries) == len(evidences)
         if evidences is None:
             evidences = [[] for _ in xrange(len(rowids))]
+        assert len(rowids) == len(queries) == len(evidences)
         logpdfs = []
         for rowid, query, evidence in zip(rowids, queries, evidences):
             logpdfs.append(self.logpdf(rowid, query, evidence))
