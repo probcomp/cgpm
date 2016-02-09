@@ -27,19 +27,15 @@
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
-
-import gpmcc.utils.config as cu
-import gpmcc.utils.data as du
 from gpmcc.engine import Engine
 
 # Load the data.
 filenames = [
-    '20160209-080359-swallows.engine',
-    '20160209-081620-swallows.engine',
-    '20160209-083211-swallows.engine',
-    '20160209-083710-swallows.engine']
+    'resources/20160209-080359-swallows.engine',
+    'resources/20160209-081620-swallows.engine',
+    'resources/20160209-083211-swallows.engine',
+    'resources/20160209-083710-swallows.engine']
 
 engines = []
 names = []
@@ -69,12 +65,20 @@ fig.axes[1].hist(
 
 # Boxplot the marginals.
 marginals = [e.logpdf_marginal() for e in engines]
-fig, ax = plt.subplots()
+# XXX Adjust the beta pdf for scaling by 360.
+scale = 360
+marginals[names.index('beta_uc')] = [
+    m - len(T)*np.log(scale) for m in marginals[names.index('beta_uc')]]
+
+lowest_marginals = [np.argmin(l) for l in marginals]
+states_marginals = [e.get_state(i) for e,i in zip(engines,lowest_marginals)]
+
+_, ax = plt.subplots()
 ax.boxplot(marginals, labels=names)
 
 # Violinplot the marginals.
 colors = ['r','b','g','y']
-fig, ax = plt.subplots()
+_, ax = plt.subplots()
 ax.set_xticks([1,2,3,4])
 ax.set_xticklabels(names)
 ax.set_xlim([0,5])
@@ -87,3 +91,47 @@ vp['cmaxes'].set_color('k')
 vp['cbars'].set_alpha(.3)
 vp['cmins'].set_alpha(.3)
 vp['cmaxes'].set_alpha(.3)
+
+# Obtain the cluster counts from each engine.
+cluster_counts = [
+    [len(set(e.metadata[i]['Zrcv'][0])) for i in xrange(e.num_states)]
+    for e in engines]
+lowest_counts = [np.argmin(l) for l in cluster_counts]
+states_counts = [e.get_state(i) for e,i in zip(engines, lowest_counts)]
+
+# XXX Make the normal_trunc look like normal with 2 clusters, and make the arg
+# that we have better model by reassigning weight to the interval.
+# states_counts[-1].transition(kernels=['rows'],N=111)
+
+def logmeanexp(array):
+    from scipy.misc import logsumexp
+    return logsumexp(array) - np.log(len(array))
+
+# Compute predictive densities.
+grid = 100
+rowids = [(-1,)] * grid
+evidences = [[] for _ in xrange(len(rowids))]
+
+# Compute normal predictive.
+e = engines[names.index('normal')]
+queries = [[(1,i)] for i in np.linspace(0.01, 359.8, grid)]
+L = np.asarray(e.logpdf_bulk(rowids, queries, evidences=evidences))
+logpdfs_normal = [logmeanexp(L[:,i]) for i in xrange(grid)]
+
+# Compute normaltrunc predictive.
+e = engines[names.index('normal_trunc')]
+queries = [[(1,i)] for i in np.linspace(0.01, 359.8, grid)]
+L = np.asarray(e.logpdf_bulk(rowids, queries, evidences=evidences))
+logpdfs_trunc = [logmeanexp(L[:,i]) for i in xrange(grid)]
+
+# Compute vonmises predictive.
+e = engines[names.index('vonmises')]
+queries = [[(1,i)] for i in np.linspace(0.01, 2*np.pi-0.01, grid)]
+L = np.asarray(e.logpdf_bulk(rowids, queries, evidences=evidences))
+logpdfs_vonmises = [logmeanexp(L[:,i]) for i in xrange(grid)]
+
+# Compute beta_uc predictive.
+e = engines[names.index('beta_uc')]
+queries = [[(1,i)] for i in np.linspace(0.01, 0.99, grid)]
+L = np.asarray(e.logpdf_bulk(rowids, queries, evidences=evidences))
+logpdfs_beta = [logmeanexp(L[:,i]-np.log(scale)) for i in xrange(grid)]
