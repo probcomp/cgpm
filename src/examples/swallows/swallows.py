@@ -33,34 +33,36 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
 from gpmcc.engine import Engine
 
-switch = 3
+switch = 0
 dist = ['normal','normal_trunc','vonmises','beta_uc'][switch]
 
 print 'Learning distribution %s' % dist
 
-print 'Loading dataset ...'
-df = pd.read_csv('swallows.csv')
-df.replace('NA', np.nan, inplace=True)
-df.replace('NaN', np.nan, inplace=True)
-schema = [('treatment', 'bernoulli'), ('heading', dist)]
+for i in xrange(5):
+    print 'Loading dataset %d ...' % i
+    df = pd.read_csv('splits/%d-test-swallows.csv' % i)
+    df.replace('NA', np.nan, inplace=True)
+    df.replace('NaN', np.nan, inplace=True)
+    schema = [('treatment', 'bernoulli'), ('heading', dist)]
 
-print 'Parsing schema ...'
-T, cctypes, distargs, valmap, columns = du.parse_schema(schema, df)
+    print 'Parsing schema ...'
+    T, cctypes, distargs, valmap, columns = du.parse_schema(schema, df)
 
-# Convert to radians.
-T = T.astype(float)
-T[:,1] = T[:,1]*np.pi/180
+    # Convert to radians.
+    T = T.astype(float)
+    T[:,1] = T[:,1]*np.pi/180
 
-if dist == 'normal_trunc':
-    distargs[1] = {'l':0, 'h':2*np.pi}
-elif dist == 'beta_uc':
-    T[:,1] = T[:,1] / (2*np.pi) + 1e-3
+    if dist == 'normal_trunc':
+        distargs[1] = {'l':0, 'h':2*np.pi}
+    elif dist == 'beta_uc':
+        T[:,1] = T[:,1] / (2*np.pi) + 1e-3
 
-print 'Initializing engine ...'
-engine = Engine(T, cctypes, distargs=distargs, num_states=28, initialize=1)
+    print 'Initializing engine ...'
+    engine = Engine(T, cctypes, distargs=distargs, num_states=28, initialize=1)
 
-print 'Analyzing for 1000 iterations ...'
-engine.transition(N=1, multithread=1)
+    print 'Analyzing for 500 iterations ...'
+    engine.transition(N=500, multithread=1)
 
-print 'Pickling ...'
-engine.to_pickle(file('%s-swallows.engine' % cu.timestamp(), 'w'))
+    print 'Pickling ...'
+    engine.to_pickle(file('resources/%s-%s-%d-swallows.engine' % (
+        cu.timestamp(), dist, i), 'w'))
