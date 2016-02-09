@@ -33,22 +33,34 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
 from gpmcc.engine import Engine
 
+switch = 3
+dist = ['normal','normal_trunc','vonmises','beta_uc'][switch]
+
+print 'Learning distribution %s' % dist
+
 print 'Loading dataset ...'
 df = pd.read_csv('swallows.csv')
 df.replace('NA', np.nan, inplace=True)
 df.replace('NaN', np.nan, inplace=True)
-schema = [('treatment', 'bernoulli'), ('heading', 'normal_trunc')]
+schema = [('treatment', 'bernoulli'), ('heading', dist)]
 
 print 'Parsing schema ...'
 T, cctypes, distargs, valmap, columns = du.parse_schema(schema, df)
 
-distargs[1] = {'l':0, 'h':360}
+# Convert to radians.
+T = T.astype(float)
+T[:,1] = T[:,1]*np.pi/180
+
+if dist == 'normal_trunc':
+    distargs[1] = {'l':0, 'h':2*np.pi}
+elif dist == 'beta_uc':
+    T[:,1] = T[:,1] / (2*np.pi) + 1e-3
 
 print 'Initializing engine ...'
-engine = Engine(T, cctypes, distargs=distargs, num_states=24, initialize=1)
+engine = Engine(T, cctypes, distargs=distargs, num_states=28, initialize=1)
 
 print 'Analyzing for 1000 iterations ...'
-engine.transition(N=1000, multithread=1)
+engine.transition(N=1, multithread=1)
 
 print 'Pickling ...'
 engine.to_pickle(file('%s-swallows.engine' % cu.timestamp(), 'w'))
