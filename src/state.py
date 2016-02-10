@@ -404,11 +404,11 @@ class State(object):
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
-        assert len(rowids) == len(queries) == len(evidences) == len(Ns)
         if evidences is None:
             evidences = [[] for _ in xrange(len(rowids))]
         if Ns is None:
             Ns = [1 for _ in xrange(len(rowids))]
+        assert len(rowids) == len(queries) == len(evidences) == len(Ns)
         samples = []
         for rowid, query, evidence, n in zip(rowids, queries, evidences, Ns):
             samples.append(self.simulate(rowid, query, evidence, n))
