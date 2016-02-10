@@ -767,7 +767,7 @@ class State(object):
         return metadata
 
     def to_pickle(self, fileptr):
-        metadata = self.get_metadata()
+        metadata = self.to_metadata()
         pickle.dump(metadata, fileptr)
 
     @classmethod
