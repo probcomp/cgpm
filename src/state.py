@@ -731,7 +731,7 @@ class State(object):
         metadata = dict()
 
         # Dataset.
-        metadata['X'] = self.X
+        metadata['X'] = self.X.tolist()
 
         # Misc data.
         metadata['n_grid'] = self.n_grid
@@ -772,7 +772,8 @@ class State(object):
 
     @classmethod
     def from_metadata(cls, metadata):
-        return cls(metadata['X'], metadata['cctypes'], metadata['distargs'],
+        X = np.asarray(metadata['X'])
+        return cls(X, metadata['cctypes'], metadata['distargs'],
             Zv=metadata['Zv'], Zrcv=metadata['Zrcv'], alpha=metadata['alpha'],
             view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
             n_grid=metadata['n_grid'], seed=metadata['seed'])
