@@ -97,7 +97,7 @@ def parse_schema(schema, dataframe):
         if stattype in ['bernoulli', 'categorical']:
             mapping = dict()
             k = 0
-            for val in X.unique():
+            for val in sorted(X.unique()):
                 if not pd.isnull(val):
                     mapping[val] = k
                     k += 1
