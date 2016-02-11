@@ -27,6 +27,7 @@
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
+import itertools
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,11 +40,30 @@ def logmeanexp(array):
     from scipy.misc import logsumexp
     return logsumexp(array) - np.log(len(array))
 
+def compute_mutual_information(a, b):
+    assert len(a) == len(b)
+    N = float(len(a))
+    # Joint distribution.
+    pab = np.zeros((2,2))
+    pab[1,1] = np.sum(np.logical_and(a==1, b==1)) / N
+    pab[0,0] = np.sum(np.logical_and(a==0, b==0)) / N
+    pab[0,1] = np.sum(np.logical_and(a==0, b==1)) / N
+    pab[1,0] = np.sum(np.logical_and(a==1, b==0)) / N
+    # Marginal distribution.
+    pa = [np.sum(a==0)/N, np.sum(a==1)/N]
+    pb = [np.sum(b==0)/N, np.sum(b==1)/N]
+
+    mi = 0
+    for i,j in itertools.product([0,1], [0,1]):
+        if pab[i,j] == 0: continue
+        mi += pab[i,j] * (np.log2(pab[i,j]) - np.log2(pa[i]*pb[j]))
+    return mi
+
 # Load the overall dataset.
 df = pd.read_csv('swallows.csv')
 df.replace('control', 0, inplace=1)
 df.replace('shifted', 1, inplace=1)
-T = np.asarray(df)
+D = np.asarray(df)
 
 # Histogram the data.
 width = (2*np.pi) / 100
@@ -53,12 +73,12 @@ fig.add_subplot(111, projection='polar')
 
 fig.axes[0].set_yticklabels([])
 fig.axes[0].hist(
-    T[T[:,0]==0][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
+    D[D[:,0]==0][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
     color='r', bins=100, normed=1, label='Local Field')
 
 fig.axes[0].set_yticklabels([])
 fig.axes[0].hist(
-    T[T[:,0]==1][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
+    D[D[:,0]==1][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
     color='g',bins=100, normed=1, label='Shifted Field')
 
 fig.axes[0].legend(framealpha=0).draggable()
@@ -127,7 +147,7 @@ if False:
         marginals[names.index('beta_uc')] - len(train_sets[0])*np.log(2*np.pi)
 
     # Find states with highest marginals.
-    lowest_marginals = np.argmax(marginals, axis=2)
+    highest_marginals = np.argmax(marginals, axis=2)
 
     # Pool all the marginals into array.
     all_marginals = np.vstack([marginals[:,i,:].T for i in xrange(num_dists)])
@@ -235,14 +255,39 @@ ax.grid()
 # Compute mutual information with labels and predictions as a function of
 # classification threshold.
 predictions = np.swapaxes(all_samples,0,1).reshape((4,60)).T
-thresholds = np.linspace(0,1,10)
-for t in thresholds:
+thresholds = np.linspace(0,1,1000)
+curves = np.zeros((num_dists, len(thresholds)))
+for i, t in enumerate(thresholds):
     pred_t = predictions < t
+    for d in xrange(num_dists):
+        curves[d][i] = compute_mutual_information(
+            true_samples.ravel(), pred_t[:,d])
 
+# Plot samples from the posterior.
+s_norm = engines[0][0].get_state(2)
+ax_normal = s_norm.dims[1].plot_dist(s_norm.X[:,1], Y=np.linspace(0,7,100))
+ax_normal.set_xlim([-1, 7])
 
-def compute_mutual_information(a, b):
-    assert len(a) == len(b)
-    true_positive = np.sum(a==b==1)
-    true_negative = np.sum(a==b==0)
-    false_positive = np.sum(np.logical_and(a==0, b==1))
-    false_negative = np.sum(np.logical_and(a==1, b==0))
+s_trunc = engines[1][0].get_state(7)
+ax_trunc = s_trunc.dims[1].plot_dist(s_trunc.X[:,1])
+ax_trunc.set_xlim([-1, 7])
+
+s_vonmises = engines[3][0].get_state(20)
+ax_vonmises = s_vonmises.dims[1].plot_dist(s_vonmises.X[:,1])
+ax_vonmises.set_xlim([-1, 7])
+
+s_beta = engines[2][0].get_state(20)
+s_beta.transition(kernels=['column_params'])
+s_beta.transition(kernels=['column_params','column_hypers'], N=100)
+s_beta.transition(kernels=['column_params','column_hypers'], N=100)
+s_beta.transition(kernels=['column_params'], N=10)
+s_beta.transition(kernels=['column_params'], N=5)
+s_beta.transition(kernels=['column_params'], N=5)
+s_beta.transition(kernels=['column_params'], N=5)
+
+ax_beta = s_beta.dims[1].plot_dist(s_beta.X[:,1])
+ax_beta.set_xlim([-1/(2*np.pi), 7/(2*np.pi)])
+ax_beta.set_xticks([-1./6,0,1./6,2./6,3./6,4./6,5./6,6./6,7./6])
+ax_beta.set_xticklabels(range(-1,8))
+yticklabels = ['{:1.2f}'.format(yt) for yt in ax_beta.get_yticks()/(2*np.pi)]
+ax_beta.set_yticklabels(yticklabels)
