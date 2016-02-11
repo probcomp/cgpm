@@ -55,8 +55,8 @@ class IncorporateRowTest(unittest.TestCase):
         T, _, _ = tu.gen_data_table(n_rows, view_weights, cluster_weights,
             cls.cctypes, cls.distargs, separation)
         cls.T = T.T
-        cls.state = state.State(cls.T[:10,:], cls.cctypes, cls.distargs,
-            seed=0)
+        cls.state = state.State(cls.T[:10,:], cls.cctypes,
+            distargs=cls.distargs, seed=0)
         cls.state.transition(N=5)
 
     def test_incorporate(self):
