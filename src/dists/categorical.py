@@ -103,7 +103,7 @@ class Categorical(DistributionGpm):
     def get_suffstats(self):
         return {
             'N' : self.N,
-            'counts' : self.counts
+            'counts' : list(self.counts)
         }
 
     @staticmethod
