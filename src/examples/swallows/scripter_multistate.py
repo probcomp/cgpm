@@ -59,29 +59,14 @@ def compute_mutual_information(a, b):
         mi += pab[i,j] * (np.log2(pab[i,j]) - np.log2(pa[i]*pb[j]))
     return mi
 
+
+# ------- LOADING -------- #
+
 # Load the overall dataset.
 df = pd.read_csv('swallows.csv')
 df.replace('control', 0, inplace=1)
 df.replace('shifted', 1, inplace=1)
 D = np.asarray(df)
-
-# Histogram the data.
-width = (2*np.pi) / 100
-
-fig = plt.figure()
-fig.add_subplot(111, projection='polar')
-
-fig.axes[0].set_yticklabels([])
-fig.axes[0].hist(
-    D[D[:,0]==0][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
-    color='r', bins=100, normed=1, label='Local Field')
-
-fig.axes[0].set_yticklabels([])
-fig.axes[0].hist(
-    D[D[:,0]==1][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
-    color='g',bins=100, normed=1, label='Shifted Field')
-
-fig.axes[0].legend(framealpha=0).draggable()
 
 # Load the train and test sets.
 print 'Loading test/train splits ...'
@@ -134,8 +119,21 @@ for f in filenames:
         (_, _, dist, num, _) = f.split('-')
         engines[names.index(dist)][int(num)] = engine
 
+# Transition the beta to plot.
+s_beta = engines[2][0].get_state(20)
+s_beta.transition(kernels=['column_params'])
+s_beta.transition(kernels=['column_params','column_hypers'], N=100)
+s_beta.transition(kernels=['column_params','column_hypers'], N=100)
+s_beta.transition(kernels=['column_params'], N=10)
+s_beta.transition(kernels=['column_params'], N=5)
+s_beta.transition(kernels=['column_params'], N=5)
+s_beta.transition(kernels=['column_params'], N=5)
+
 # Number of states per engine.
 num_states = engines[0][0].num_states
+
+
+# ------- COMPUTING -------- #
 
 # Compute the marginals.
 if False:
@@ -154,13 +152,6 @@ if False:
     np.save('all_marginals', all_marginals)
 else:
     all_marginals = np.load('all_marginals.npy')
-
-# Boxplot.
-_, ax = plt.subplots()
-ax.boxplot(all_marginals, labels=names)
-ax.set_ylabel('Marginal Likelihood (Estimates)')
-ax.set_ylim([-1000, 0])
-ax.grid()
 
 # Compute the number of clusters in all the states.
 cluster_counts = []
@@ -229,11 +220,13 @@ else:
     all_logpdfs = np.load('all_logpdfs.npy')
     all_samples = np.load('all_samples.npy')
 
-# Convert engine output to np.
-all_samples = np.asarray(all_samples)
+# Compute the predictive likelihood.
 all_logpdfs = np.asarray(all_logpdfs)
+predictive = logsumexp(all_logpdfs[:,:,:,:], axis=2)-np.log(num_states)
+predictive = np.swapaxes(predictive,0,1).reshape((4,60)).T
 
 # Find the true labels of treatment.
+all_samples = np.asarray(all_samples)
 for T in test_sets:
     true_samples.append([])
     for row in T.iterrows():
@@ -242,15 +235,6 @@ for T in test_sets:
         true_samples[-1].append(treatment)
 
 true_samples = np.asarray(true_samples).T
-
-# Obtain boxplot of predictive likelihoods.
-predictive = logsumexp(all_logpdfs[:,:,:,:], axis=2)-np.log(num_states)
-predictive = np.swapaxes(predictive,0,1).reshape((4,60)).T
-
-_, ax = plt.subplots()
-ax.boxplot(predictive, labels=names)
-ax.set_ylabel('Predictive Likelihood (Estimates)')
-ax.grid()
 
 # Compute mutual information with labels and predictions as a function of
 # classification threshold.
@@ -263,31 +247,66 @@ for i, t in enumerate(thresholds):
         curves[d][i] = compute_mutual_information(
             true_samples.ravel(), pred_t[:,d])
 
-# Plot samples from the posterior.
+# ------- PLOTTING -------- #
+
+# Histogram the data.
+width = (2*np.pi) / 100
+
+fig = plt.figure()
+fig.add_subplot(121, projection='polar')
+
+fig.axes[0].set_yticklabels([])
+fig.axes[0].hist(
+    D[D[:,0]==0][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
+    color='r', bins=100, normed=1, label='Local Field')
+fig.axes[0].legend(framealpha=0).draggable()
+
+fig.add_subplot(122, projection='polar')
+fig.axes[1].set_yticklabels([])
+fig.axes[1].hist(
+    D[D[:,0]==1][:,1]*np.pi/180., width=width, bottom=1, alpha=.4,
+    color='g',bins=100, normed=1, label='Shifted Field')
+fig.axes[1].legend(framealpha=0).draggable()
+
+# Plot samples from the posterior over distributions.
+fig, axes = plt.subplots(nrows=2, ncols=2)
+
 s_norm = engines[0][0].get_state(2)
-ax_normal = s_norm.dims[1].plot_dist(s_norm.X[:,1], Y=np.linspace(0,7,100))
+ax_normal = s_norm.dims[1].plot_dist(s_norm.X[:,1], Y=np.linspace(-1,7,100),
+    ax=axes[0][0])
 ax_normal.set_xlim([-1, 7])
+ax_normal.set_xticklabels([])
+ax_normal.set_ylim([0, 0.35])
 
 s_trunc = engines[1][0].get_state(7)
-ax_trunc = s_trunc.dims[1].plot_dist(s_trunc.X[:,1])
+ax_trunc = s_trunc.dims[1].plot_dist(s_trunc.X[:,1], ax=axes[0][1])
 ax_trunc.set_xlim([-1, 7])
+ax_trunc.set_xticklabels([])
+ax_trunc.set_ylim([0, 0.35])
+ax_trunc.set_yticklabels([])
 
 s_vonmises = engines[3][0].get_state(20)
-ax_vonmises = s_vonmises.dims[1].plot_dist(s_vonmises.X[:,1])
+ax_vonmises = s_vonmises.dims[1].plot_dist(s_vonmises.X[:,1], ax=axes[1][0])
 ax_vonmises.set_xlim([-1, 7])
+ax_vonmises.set_ylim([0, 0.35])
 
-s_beta = engines[2][0].get_state(20)
-s_beta.transition(kernels=['column_params'])
-s_beta.transition(kernels=['column_params','column_hypers'], N=100)
-s_beta.transition(kernels=['column_params','column_hypers'], N=100)
-s_beta.transition(kernels=['column_params'], N=10)
-s_beta.transition(kernels=['column_params'], N=5)
-s_beta.transition(kernels=['column_params'], N=5)
-s_beta.transition(kernels=['column_params'], N=5)
-
-ax_beta = s_beta.dims[1].plot_dist(s_beta.X[:,1])
+ax_beta = s_beta.dims[1].plot_dist(s_beta.X[:,1], ax=axes[1][1])
 ax_beta.set_xlim([-1/(2*np.pi), 7/(2*np.pi)])
 ax_beta.set_xticks([-1./6,0,1./6,2./6,3./6,4./6,5./6,6./6,7./6])
 ax_beta.set_xticklabels(range(-1,8))
-yticklabels = ['{:1.2f}'.format(yt) for yt in ax_beta.get_yticks()/(2*np.pi)]
-ax_beta.set_yticklabels(yticklabels)
+ax_beta.set_ylim(0, 2*np.pi*0.35)
+ax_beta.set_yticklabels([])
+# yticklabels = ['{:1.2f}'.format(yt) for yt in ax_beta.get_yticks()/(2*np.pi)]
+# ax_beta.set_yticklabels(yticklabels)
+
+# Boxplot the predictives.
+fig, ax = plt.subplots(nrows=2, ncols=1)
+
+ax[0].boxplot(all_marginals, labels=names)
+ax[0].set_ylabel('Marginal Likelihood (Estimates)')
+ax[0].set_ylim([-1000, 0])
+ax[0].grid()
+
+ax[1].boxplot(predictive, labels=names)
+ax[1].set_ylabel('Predictive Likelihood (Estimates)')
+ax[1].grid()
