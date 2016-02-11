@@ -31,6 +31,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.misc import logsumexp
 
 from gpmcc.engine import Engine
 
@@ -221,3 +222,27 @@ for T in test_sets:
         true_samples[-1].append(treatment)
 
 true_samples = np.asarray(true_samples).T
+
+# Obtain boxplot of predictive likelihoods.
+predictive = logsumexp(all_logpdfs[:,:,:,:], axis=2)-np.log(num_states)
+predictive = np.swapaxes(predictive,0,1).reshape((4,60)).T
+
+_, ax = plt.subplots()
+ax.boxplot(predictive, labels=names)
+ax.set_ylabel('Predictive Likelihood (Estimates)')
+ax.grid()
+
+# Compute mutual information with labels and predictions as a function of
+# classification threshold.
+predictions = np.swapaxes(all_samples,0,1).reshape((4,60)).T
+thresholds = np.linspace(0,1,10)
+for t in thresholds:
+    pred_t = predictions < t
+
+
+def compute_mutual_information(a, b):
+    assert len(a) == len(b)
+    true_positive = np.sum(a==b==1)
+    true_negative = np.sum(a==b==0)
+    false_positive = np.sum(np.logical_and(a==0, b==1))
+    false_negative = np.sum(np.logical_and(a==1, b==0))
