@@ -269,35 +269,57 @@ fig.axes[1].hist(
 fig.axes[1].legend(framealpha=0).draggable()
 
 # Plot samples from the posterior over distributions.
-fig, axes = plt.subplots(nrows=2, ncols=2)
+sample_engines = {
+    'normal': [engines[0][0].get_state(2), engines[0][1].get_state(13)],
+    'trunc': [engines[1][0].get_state(7), engines[1][1].get_state(3)],
+    'vonmises': [engines[3][0].get_state(20), engines[3][1].get_state(26)],
+    'beta' : [s_beta, engines[2][1].get_state(8)]
+}
+for i in xrange(2):
+    fig, axes = plt.subplots(nrows=2, ncols=2)
 
-s_norm = engines[0][0].get_state(2)
-ax_normal = s_norm.dims[1].plot_dist(s_norm.X[:,1], Y=np.linspace(-1,7,100),
-    ax=axes[0][0])
-ax_normal.set_xlim([-1, 7])
-ax_normal.set_xticklabels([])
-ax_normal.set_ylim([0, 0.35])
+    # s_norm = engines[0][0].get_state(2)
+    s_normal = sample_engines['normal'][i]
+    ax_normal = s_normal.dims[1].plot_dist(s_normal.X[:,1],
+        Y=np.linspace(-1,7,100), ax=axes[0][0])
+    ax_normal.set_xlim([-1, 7])
+    ax_normal.set_xticklabels([])
+    ax_normal.set_ylim([0, 0.35])
+    ax_normal.set_ylabel('Density')
+    ax_normal.grid()
 
-s_trunc = engines[1][0].get_state(7)
-ax_trunc = s_trunc.dims[1].plot_dist(s_trunc.X[:,1], ax=axes[0][1])
-ax_trunc.set_xlim([-1, 7])
-ax_trunc.set_xticklabels([])
-ax_trunc.set_ylim([0, 0.35])
-ax_trunc.set_yticklabels([])
+    # s_trunc = engines[1][0].get_state(7)
+    s_trunc = sample_engines['trunc'][i]
+    ax_trunc = s_trunc.dims[1].plot_dist(s_trunc.X[:,1], ax=axes[0][1])
+    ax_trunc.set_xlim([-1, 7])
+    ax_trunc.set_xticklabels([])
+    ax_trunc.set_ylim([0, 0.35])
+    ax_trunc.set_yticklabels([])
+    ax_trunc.grid()
 
-s_vonmises = engines[3][0].get_state(20)
-ax_vonmises = s_vonmises.dims[1].plot_dist(s_vonmises.X[:,1], ax=axes[1][0])
-ax_vonmises.set_xlim([-1, 7])
-ax_vonmises.set_ylim([0, 0.35])
+    # s_vonmises = engines[3][0].get_state(20)
+    s_vonmises = sample_engines['vonmises'][i]
+    ax_vonmises = s_vonmises.dims[1].plot_dist(s_vonmises.X[:,1], ax=axes[1][0])
+    ax_vonmises.set_xlim([-1, 7])
+    ax_vonmises.set_ylim([0, 0.35])
+    ax_vonmises.grid()
 
-ax_beta = s_beta.dims[1].plot_dist(s_beta.X[:,1], ax=axes[1][1])
-ax_beta.set_xlim([-1/(2*np.pi), 7/(2*np.pi)])
-ax_beta.set_xticks([-1./6,0,1./6,2./6,3./6,4./6,5./6,6./6,7./6])
-ax_beta.set_xticklabels(range(-1,8))
-ax_beta.set_ylim(0, 2*np.pi*0.35)
-ax_beta.set_yticklabels([])
+    s_beta = sample_engines['beta'][i]
+    ax_beta = s_beta.dims[1].plot_dist(s_beta.X[:,1], ax=axes[1][1])
+    ax_beta.set_xlim([-1/(2*np.pi), 7/(2*np.pi)])
+    ax_beta.set_xticks([-1./6,0,1./6,2./6,3./6,4./6,5./6,6./6,7./6])
+    ax_beta.set_xticklabels(range(-1,8))
+    ax_beta.set_ylim(0, 2*np.pi*0.35)
+    ax_beta.set_yticklabels([])
+    ax_beta.grid()
+
 # yticklabels = ['{:1.2f}'.format(yt) for yt in ax_beta.get_yticks()/(2*np.pi)]
 # ax_beta.set_yticklabels(yticklabels)
+
+# NORMAL 0 1 13
+# TRUNC  1 1 3
+# VONMISES 3 1 26
+# BETA 2 1 8
 
 # Boxplot the predictives.
 fig, ax = plt.subplots(nrows=2, ncols=1)
@@ -310,3 +332,30 @@ ax[0].grid()
 ax[1].boxplot(predictive, labels=names)
 ax[1].set_ylabel('Predictive Likelihood (Estimates)')
 ax[1].grid()
+
+# Plot mutual information as a function of threshold.
+fig, axes = plt.subplots(nrows=2, ncols=2)
+axes[0][0].plot(thresholds, curves[0])
+axes[0][0].set_title('normal')
+axes[0][0].set_xticklabels([])
+axes[0][0].set_ylabel('MI (Bits)')
+
+axes[0][1].plot(thresholds, curves[1], color='g')
+axes[0][1].set_title('normal_trunc')
+axes[0][1].set_yticklabels([])
+axes[0][1].set_xticklabels([])
+
+axes[1][0].plot(thresholds, curves[2], color='r')
+axes[1][0].set_title('vonmises')
+axes[1][0].set_xlabel('Classification Threshold')
+axes[1][0].set_ylabel('MI (Bits)')
+
+axes[1][1].plot(thresholds, curves[3], color='b')
+axes[1][1].set_title('beta')
+axes[1][1].set_yticklabels([])
+axes[1][1].set_xlabel('Classification Threshold')
+
+for a in axes.ravel():
+    a.set_ylim([0, 0.08])
+    a.grid()
+    a.set_yticks([0, .02, .04, .06, .08])
