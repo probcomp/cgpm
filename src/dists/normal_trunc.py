@@ -64,11 +64,21 @@ class NormalTrunc(Normal):
                 self.nu)
             # self.transition_params()
 
-    def predictive_logp(self, x):
+    def incorporate(self, x):
+        assert self.l<=x<=self.h
+        Normal.incorporate(self, x)
+
+    def unincorporate(self, x):
+        assert self.l<=x<=self.h
+        Normal.unincorporate(self, x)
+
+    def logpdf(self, x):
+        if not self.l<=x<=self.h:
+            return float('-inf')
         return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho) - \
             - NormalTrunc.calc_log_normalizer(self.mu, self.rho, self.l, self.h)
 
-    def marginal_logp(self):
+    def logpdf_marginal(self):
         data_logp = NormalTrunc.calc_log_likelihood(self.N, self.sum_x,
             self.sum_x_sq, self.rho, self.mu)
         prior_logp = NormalTrunc.calc_log_prior(self.mu, self.rho, self.m,
@@ -77,7 +87,7 @@ class NormalTrunc(Normal):
             self.l, self.h)
         return data_logp + prior_logp - self.N * normalizer_logp
 
-    def singleton_logp(self, x):
+    def logpdf_singleton(self, x):
         return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho)
 
     def simulate(self):
