@@ -57,3 +57,11 @@ docs/_build/
 
 # numpy binaries
 *.npy
+
+# latex artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
