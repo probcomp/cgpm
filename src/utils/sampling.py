@@ -70,6 +70,8 @@ def mh_sample(x, log_pdf_fun, jump_std, D, num_samples=1, burn=1, lag=1):
     >>> D = (0.0, float('Inf'))
     >>> sample = mh_sample(x log_pdf_fun, jump_std, D)
     """
+    assert D[0] <= x <= D[1]
+
     num_collected = 0
     iters = 0
     samples = []
