@@ -65,3 +65,4 @@ docs/_build/
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+*_minted-*
