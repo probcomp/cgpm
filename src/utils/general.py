@@ -98,17 +98,6 @@ def log_nCk(n, k):
         return 0
     return log(n) + gammaln(n) - log(k) - gammaln(k) - log(n-k) - gammaln(n-k)
 
-def line_quad(x,y):
-    """Quadrature over x, where y = f(x). Uses triangle rule."""
-    s = 0
-    for i in range(1,len(x)):
-        a = x[i-1]
-        b = x[i]
-        fa = y[i-1]
-        fb = y[i]
-        s += (b-a)*(fa+fb)/2
-    return s
-
 def simulate_crp(N, alpha):
     """Generates a random, N-length partition from the CRP with parameter
     alpha.
