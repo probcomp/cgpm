@@ -26,7 +26,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from math import log
+from math import fabs, log
 
 import numpy as np
 from numpy.random import normal
@@ -69,12 +69,8 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
     >>> D = (0.0, float('Inf'))
     >>> sample = mh_sample(x logpdf_target, jump_std, D)
     """
-    assert D[0] < x < D[1]
+    assert D[0] <= x <= D[1]
 
-    # Rejection on the proposal.
-    MAX_TRIALS = 1000
-
-    # Sample statistics.
     num_collected = 0
     iters = 0
     samples = []
@@ -87,27 +83,44 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
     iters = 1.0
     aiters = 1.0
 
-    # https://darrenjw.wordpress.com/2012/06/04/metropolis-hastings-mcmc-when-the-proposal-and-target-have-differing-support/
-    def log_correction(x, x_prime):
-        if D[0] == float('-inf') and D[1] == float('inf'):
-            return 0
-        return norm.logcdf((D[1]-x)/jump_std-(D[0]-x)/jump_std) \
-            - norm.logcdf((D[1]-x_prime)/jump_std-(D[0]-x_prime)/jump_std)
+    # XXX DISABLED.
+    log_correction = lambda x, x_prime, jstd: 0
+
+    # Is proposal symmetric? The folded normal is, but taking % 1?
+    if D[0] == 0 and D[1] == 1:
+        def jumpfun(x, jstd):
+            x_prime = fabs(normal(x, jstd))
+            if x_prime > 1.0:
+                x_prime = x_prime % 1
+            return x_prime
+    elif 0 <= D[0] and D[1] == float('inf'):
+        jumpfun = lambda x, jstd: fabs(x + normal(0.0, jstd))
+    else:
+        def jumpfun(x, jstd):
+            MAX_TRIALS = 1000
+            for _ in xrange(MAX_TRIALS):
+                x_prime = normal(x, jstd)
+                if D[0] < x_prime < D[1]:
+                    return x_prime
+            raise RuntimeError('MH failed to rejection sample the proposal.')
+        # XXX DISABLED.
+        def log_correction(x, x_prime, jstd):
+            if D[0] == float('inf') and D[1] == float('inf'):
+                return 0
+            return norm.logcdf((D[1]-x)/jump_std-(D[0]-x)/jump_std) \
+                - norm.logcdf((D[1]-x_prime)/jump_std-(D[0]-x_prime)/jump_std)
 
     logp = logpdf_target(x)
     while num_collected < num_samples:
 
-        for _ in xrange(MAX_TRIALS):
-            x_prime = norm.rvs(loc=x, scale=jump_std)
-            if D[0] < x_prime < D[1]:
-                break
-        else:
-            raise RuntimeError('MH failed to rejection sample the proposal.')
+        x_prime = jumpfun(x, jump_std)
+        assert D[0] < x_prime < D[1]
         logp_prime = logpdf_target(x_prime)
 
-        logA = logp_prime - logp + log_correction(x, x_prime)
-        logU = log(np.random.random())
-        if logU < logA:
+        # XXX DISABLED Correct MH sampler requires the log correction!
+        # logp_corr = log_correction(x, x_prime, jump_std)
+
+        if log(np.random.random()) < logp_prime - logp:
             x = x_prime
             logp = logp_prime
             accepted += 1.0
@@ -117,7 +130,7 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
             num_collected += 1
             samples.append(x)
 
-        # Keep acceptance rate around .3 +/- .1.
+        # Keep the acceptance rate around .3 +/- .1.
         if iters % checkevery == 0:
             if acceptance_rate >= .4:
                 jump_std *= 1.1
