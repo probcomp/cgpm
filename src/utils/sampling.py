@@ -26,23 +26,22 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import copy
-from math import fabs, log
+from math import log
 
 import numpy as np
 from numpy.random import normal
-from scipy.misc import logsumexp
+from scipy.stats import norm
 
 import gpmcc.utils.general as gu
 
-def mh_sample(x, log_pdf_fun, jump_std, D, num_samples=1, burn=1, lag=1):
-    """Uses MH to sample from log_pdf_fun.
+def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
+    """Uses MH to sample from logpdf_target.
 
     Parameters
     ----------
     x : float
         Seed point.
-    log_pdf_fun : function(x)
+    logpdf_target : function(x)
         Evaluates the log pdf of the target distribution at x.
     jump_std : float
         Standard deviation of jump distance, auto-tunes.
@@ -65,13 +64,17 @@ def mh_sample(x, log_pdf_fun, jump_std, D, num_samples=1, burn=1, lag=1):
     -------
     >>> # Sample from posterior of CRP(x) with exponential(1) prior
     >>> x = 1.0
-    >>> log_pdf_fun = lambda x : gu.logp_crp(10, [5,3,2] , x) - x
+    >>> logpdf_target = lambda x : gu.logp_crp(10, [5,3,2] , x) - x
     >>> jump_std = 0.5
     >>> D = (0.0, float('Inf'))
-    >>> sample = mh_sample(x log_pdf_fun, jump_std, D)
+    >>> sample = mh_sample(x logpdf_target, jump_std, D)
     """
-    assert D[0] <= x <= D[1]
+    assert D[0] < x < D[1]
 
+    # Rejection on the proposal.
+    MAX_TRIALS = 1000
+
+    # Sample statistics.
     num_collected = 0
     iters = 0
     samples = []
@@ -84,38 +87,37 @@ def mh_sample(x, log_pdf_fun, jump_std, D, num_samples=1, burn=1, lag=1):
     iters = 1.0
     aiters = 1.0
 
-    if D[0] >= 0.0 and D[1] == float('Inf'):
-        jumpfun = lambda x, jstd: fabs(x + normal(0.0, jstd))
-    elif D[0] == 0 and D[1] == 1:
-        def jumpfun(x, jstd):
-            x = fabs(x + normal(0.0, jstd))
-            if x > 1.0:
-                x = x%1
-            assert x > 0 and x < 1
-            return x
-    else:
-        jumpfun = lambda x, jstd: x + normal(0.0, jstd)
+    # https://darrenjw.wordpress.com/2012/06/04/metropolis-hastings-mcmc-when-the-proposal-and-target-have-differing-support/
+    def log_correction(x, x_prime):
+        if D[0] == float('-inf') and D[1] == float('inf'):
+            return 0
+        return norm.logcdf((D[1]-x)/jump_std-(D[0]-x)/jump_std) \
+            - norm.logcdf((D[1]-x_prime)/jump_std-(D[0]-x_prime)/jump_std)
 
-    logp = log_pdf_fun(x)
+    logp = logpdf_target(x)
     while num_collected < num_samples:
 
-        # every now and then propose wild jumps incase there very distant modes
-        x_prime = jumpfun(x, jump_std)
-        assert  x_prime > D[0] and x_prime < D[1]
-        logp_prime = log_pdf_fun(x_prime)
+        for _ in xrange(MAX_TRIALS):
+            x_prime = norm.rvs(loc=x, scale=jump_std)
+            if D[0] < x_prime < D[1]:
+                break
+        else:
+            raise RuntimeError('MH failed to rejection sample the proposal.')
+        logp_prime = logpdf_target(x_prime)
 
-        # if log(random.random()) < logp_prime - logp:
-        if log(np.random.random()) < logp_prime - logp:
+        logA = logp_prime - logp + log_correction(x, x_prime)
+        logU = log(np.random.random())
+        if logU < logA:
             x = x_prime
             logp = logp_prime
             accepted += 1.0
             acceptance_rate = accepted/aiters
 
-        if iters > burn and iters%lag == 0:
+        if iters > burn and iters % lag == 0:
             num_collected += 1
             samples.append(x)
 
-        # keep the acceptance rate around .3 +/- .1
+        # Keep acceptance rate around .3 +/- .1.
         if iters % checkevery == 0:
             if acceptance_rate >= .4:
                 jump_std *= 1.1
