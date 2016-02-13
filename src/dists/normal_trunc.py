@@ -39,100 +39,107 @@ LOG2 = log(2.0)
 LOGPI = log(np.pi)
 LOG2PI = log(2*np.pi)
 
-class NormalTrunc(Normal):
+class NormalTrunc(object):
     """Normal distribution with normal prior on mean and gamma prior on
     precision. Uncollapsed.
-    rho ~ Gamma(nu/2, s/2)
-    mu ~ Normal(m, rho)
-    X ~ Normal(mu, r*rho)
-    http://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
-    Note that Teh uses Normal-InverseGamma to mean Normal-Gamma for prior.
+    sigma ~ Gamma(shape=1, scale=.5)
+    mu ~ Uniform(low, high)
+    X ~ Normal(mu, sigma)
     """
 
-    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, rho=None, m=0,
-            r=1, s=1, nu=1, distargs=None):
-        # Invoke parent.
-        super(NormalTrunc, self).__init__(N=N, sum_x=sum_x, sum_x_sq=sum_x_sq,
-            m=m, r=r, s=s, nu=nu, distargs=distargs)
+    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, sigma=None,
+            distargs=None):
         # Distargs
         self.l = distargs['l']
         self.h = distargs['h']
+        # Sufficient statistics.
+        self.N = N
+        self.sum_x = sum_x
+        self.sum_x_sq = sum_x_sq
         # Uncollapsed mean and precision parameters.
-        self.mu, self.rho = mu, rho
-        if mu is None or rho is None:
-            self.mu, self.rho = Normal.sample_parameters(self.m, self.r, self.s,
-                self.nu)
-            # self.transition_params()
+        self.mu, self.sigma = mu, sigma
+        if mu is None or sigma is None:
+            self.mu, self.sigma = NormalTrunc.sample_parameters(self.l, self.h)
 
     def incorporate(self, x):
         assert self.l<=x<=self.h
-        Normal.incorporate(self, x)
+        self.N += 1.0
+        self.sum_x += x
+        self.sum_x_sq += x*x
 
     def unincorporate(self, x):
         assert self.l<=x<=self.h
-        Normal.unincorporate(self, x)
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
+        self.N -= 1.0
+        if self.N == 0:
+            self.sum_x = 0.0
+            self.sum_x_sq = 0.0
+        else:
+            self.sum_x -= x
+            self.sum_x_sq -= x*x
 
     def logpdf(self, x):
         if not self.l<=x<=self.h:
             return float('-inf')
-        return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho) - \
-            - NormalTrunc.calc_log_normalizer(self.mu, self.rho, self.l, self.h)
+        logpdf_unorm = NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma)
+        logcdf_norm = NormalTrunc.calc_log_normalizer(
+            self.mu, self.sigma, self.l, self.h)
+        return logpdf_unorm - logcdf_norm
 
     def logpdf_marginal(self):
         data_logp = NormalTrunc.calc_log_likelihood(self.N, self.sum_x,
-            self.sum_x_sq, self.rho, self.mu)
-        prior_logp = NormalTrunc.calc_log_prior(self.mu, self.rho, self.m,
-            self.r, self.s, self.nu)
-        normalizer_logp = NormalTrunc.calc_log_normalizer(self.mu, self.rho,
+            self.sum_x_sq, self.sigma, self.mu)
+        prior_logp = NormalTrunc.calc_log_prior(self.mu, self.sigma,
+            self.l, self.sigma)
+        normalizer_logp = NormalTrunc.calc_log_normalizer(self.mu, self.sigma,
             self.l, self.h)
         return data_logp + prior_logp - self.N * normalizer_logp
 
     def logpdf_singleton(self, x):
-        return NormalTrunc.calc_predictive_logp(x, self.mu, self.rho)
+        return NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma)
 
     def simulate(self):
-        return np.random.normal(self.mu, 1./self.rho**.5)
+        max_iters = 1000
+        for _ in xrange(max_iters):
+            x = norm.rvs(loc=self.mu, scale=self.sigma)
+            if self.l <= x <= self.h:
+                return x
+        else:
+            raise RuntimeError('NormalTrunc failed to rejection sample.')
 
     def transition_params(self):
-        n_samples = 25
+        n_samples = 30
+
         # Transition mu.
-        log_pdf_fun_mu = lambda mu :\
-            NormalTrunc.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
-                self.rho, mu) \
-            + NormalTrunc.calc_log_prior(mu, self.rho, self.m, self.r, self.s,
-                self.nu) \
-            - NormalTrunc.calc_log_normalizer(mu, self.rho, self.l, self.h)
+        fn_logpdf_mu = lambda mu :\
+          NormalTrunc.calc_log_likelihood(
+                self.N, self.sum_x, self.sum_x_sq, self.sigma, mu) \
 
-        self.mu = su.mh_sample(self.mu, log_pdf_fun_mu,
-            5, [-float('inf'), float('inf')], burn=n_samples)
+        self.mu = su.mh_sample(
+            self.mu, fn_logpdf_mu, 1, [self.l, self.h],
+            burn=n_samples)
 
-        # Transition balance.
-        log_pdf_fun_rho = lambda rho :\
-            NormalTrunc.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
-                rho, self.mu) \
-            - NormalTrunc.calc_log_prior(self.mu, rho, self.m, self.r, self.s,
-                self.nu) \
-            - NormalTrunc.calc_log_normalizer(self.mu, rho, self.l, self.h)
+        # Transition sigma.
+        fn_logpdf_sigma = lambda sigma :\
+          NormalTrunc.calc_log_likelihood(self.N, self.sum_x, self.sum_x_sq,
+            sigma, self.mu) \
 
-        self.rho = su.mh_sample(self.rho, log_pdf_fun_rho,
-            5, [0, float('inf')], burn=n_samples)
+        self.sigma = su.mh_sample(
+            self.sigma, fn_logpdf_sigma, 1, [0, float('inf')], burn=n_samples)
 
-        # mn, rn, sn, nun = NormalTrunc.posterior_hypers(self.N, self.sum_x,
-        #     self.sum_x_sq, self. m, self.r, self.s, self.nu)
-        # self.mu, self.rho = NormalTrunc.sample_parameters(mn, rn, sn, nun)
+    def set_hypers(self, hypers):
+        return
+
+    def get_hypers(self):
+        return {}
+
+    def get_suffstats(self):
+        return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        # Plus 1 for single observation case.
-        N = len(X) + 1.
-        ssqdev = np.var(X) + 1.
-        # Data dependent heuristics.
-        grids['m'] = np.linspace(min(X)-5, max(X) + 5, n_grid)
-        grids['r'] = gu.log_linspace(1. / N, N, n_grid)
-        grids['s'] = gu.log_linspace(ssqdev / 100., ssqdev, n_grid)
-        grids['nu'] = gu.log_linspace(1., N, n_grid) # df >= 1
-        return grids
+        return dict()
 
     @staticmethod
     def name():
@@ -142,27 +149,36 @@ class NormalTrunc(Normal):
     def is_collapsed():
         return False
 
+    @staticmethod
+    def is_continuous():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################
 
     @staticmethod
-    def calc_log_normalizer(mu, rho, l, h):
-        return (norm.logcdf(h, loc=mu, scale=rho**-.5) -
-            norm.logcdf(l, loc=mu, scale=rho**-.5))
+    def calc_log_normalizer(mu, sigma, l, h):
+        return np.log(norm.cdf(h, loc=mu, scale=sigma)
+            - norm.cdf(l, loc=mu, scale=sigma))
 
     @staticmethod
-    def calc_predictive_logp(x, mu, rho):
-        return norm.logpdf(x, loc=mu, scale=1./rho**.5)
+    def calc_predictive_logp(x, mu, sigma):
+        return norm.logpdf(x, loc=mu, scale=sigma)
 
     @staticmethod
-    def calc_log_likelihood(N, sum_x, sum_x_sq, rho, mu):
-        return -(N / 2.) * LOG2PI + (N / 2.) * log(rho) - \
-            .5 * (rho * (N * mu * mu - 2 * mu * sum_x + sum_x_sq))
+    def calc_log_likelihood(N, sum_x, sum_x_sq, sigma, mu):
+        return -(N/2.)*LOG2PI - N*log(sigma) \
+            - 1/(2*sigma*sigma) * (N*mu**2 - 2*mu*sum_x + sum_x_sq)
 
     @staticmethod
-    def calc_log_prior(mu, rho, m, r, s, nu):
-        """Distribution of parameters (mu rho) ~ NG(m, r, s, nu)"""
-        log_rho = gamma.logpdf(rho, nu/2., scale=2./s)
-        log_mu = norm.logpdf(mu, loc=m, scale=1./(r*rho)**.5)
-        return log_mu + log_rho
+    def calc_log_prior(mu, sigma, l, h):
+        log_sigma = gamma.logpdf(sigma, 1, scale=.5)
+        log_mu = -np.log(h-l)
+        return log_mu + log_sigma
+
+    @staticmethod
+    def sample_parameters(l, h):
+        sigma = np.random.gamma(1, scale=.5)
+        mu = np.random.uniform(low=l, high=h)
+        return mu, sigma
