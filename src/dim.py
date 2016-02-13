@@ -34,8 +34,9 @@ import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
 
 class Dim(object):
-    """Dim, holds suff stats, DistributionGpm type, clusters, and shared
-    hyperparameters and grids."""
+    """Dim holds sufficient statistics, DistributionGpm type, clusters, and
+    shared hyperparameters and grids. Technically not GPM, but easily becomes
+    one by placing creating a View with a single Dim."""
 
     def __init__(self, X, cctype, index, distargs=None, Zr=None, n_grid=30,
             hypers=None):
