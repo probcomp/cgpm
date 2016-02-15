@@ -293,7 +293,7 @@ class State(object):
         #   = \sum_z p(x1|z)p(x2|z)p(z|x3,x4)       conditional independence
         # Now consider p(z|x3,x4)
         #   \propto p(z)p(x3|z)p(x4|z)              Bayes rule
-        # [term]             [array]
+        # [term]           [array]
         # p(z)             logp_crp
         # p(x3|z)p(x4|z)   logp_evidence
         # p(z|x3,x4)       logp_cluster
