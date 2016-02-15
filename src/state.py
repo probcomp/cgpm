@@ -285,29 +285,41 @@ class State(object):
 
     def logpdf_unobserved(self, query, evidence=None):
         """Simulates a hypothetical member, with no observed latents."""
+
+        # Algorithm. Partition all columns in query and evidence by views.
+        # P(x1,x2|x3,x4) where (x1...x4) in the same view.
+        #   = \sum_z p(x1,x2|z,x3,x4)p(z|x3,x4)     marginalization
+        #   = \sum_z p(x1,x2|z)p(z|x3,x4)           conditional independence
+        #   = \sum_z p(x1|z)p(x2|z)p(z|x3,x4)       conditional independence
+        # Now consider p(z|x3,x4)
+        #   \propto p(z)p(x3|z)p(x4|z)              Bayes rule
+        # [term]             [array]
+        # p(z)             logp_crp
+        # p(x3|z)p(x4|z)   logp_evidence
+        # p(z|x3,x4)       logp_cluster
+        # p(x1|z)p(x2|z)   logp_query
+
         if evidence is None:
             evidence = []
 
-        # Obtain all views of the query columns.
+        logpdf = 0
         query_views = set([self.Zv[col] for (col, _) in query])
 
-        # Obtain the probability of hypothetical row belonging to each cluster.
-        cluster_logps_for = dict()
         for v in query_views:
-            # CRP densities.
-            logp_crp = self._compute_cluster_crp_logps(v)
             # Evidence densities.
-            logp_data = np.zeros(len(logp_crp))
+            logp_crp = self._compute_cluster_crp_logps(v)
+            logp_evidence = np.zeros(len(logp_crp))
             for (col, val) in evidence:
                 if self.Zv[col] == v:
-                    logp_data += self._compute_cluster_data_logps(col, val)
-            cluster_logps_for[v] = gu.log_normalize(logp_crp+logp_data)
-
-        logpdf = 0
-        for (col, val) in query:
+                    logp_evidence += self._compute_cluster_data_logps(col, val)
+            logp_cluster = gu.log_normalize(logp_crp+logp_evidence)
             # Query densities.
-            logpdf += logsumexp(self._compute_cluster_data_logps(col, val)
-                + cluster_logps_for[self.Zv[col]])
+            logp_query = np.zeros(len(logp_crp))
+            for (col, val) in query:
+                if self.Zv[col] == v:
+                    logp_query += self._compute_cluster_data_logps(col, val)
+            # Accumulate.
+            logpdf += logsumexp(logp_query+logp_cluster)
 
         return logpdf
 
