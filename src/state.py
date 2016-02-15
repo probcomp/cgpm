@@ -274,8 +274,8 @@ class State(object):
         logpdf : float
             The logpdf(query|rowid, evidence).
         """
-        if not 0 <= rowid < self.n_rows():
-            return self.logpdf_unobserved(query, evidence=evidence)
+        if self.is_hypothetical(rowid):
+            return self.logpdf_hypothetical(query, evidence=evidence)
 
         logpdf = 0
         for (col, val) in query:
@@ -283,7 +283,7 @@ class State(object):
             logpdf += self.dims[col].logpdf(val, k)
         return logsumexp(logpdf)
 
-    def logpdf_unobserved(self, query, evidence=None):
+    def logpdf_hypothetical(self, query, evidence=None):
         """Simulates a hypothetical member, with no observed latents."""
 
         # Algorithm. Partition all columns in query and evidence by views.
@@ -364,8 +364,8 @@ class State(object):
         samples : np.array
             A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
         """
-        if not 0 <= rowid < self.n_rows():
-            return self.simulate_unobserved(query, evidence=evidence, N=N)
+        if self.is_hypothetical(rowid):
+            return self.simulate_hypothetical(query, evidence=evidence, N=N)
 
         samples = []
         for _ in xrange(N):
@@ -377,7 +377,7 @@ class State(object):
             samples.append(draw)
         return np.asarray(samples)
 
-    def simulate_unobserved(self, query, evidence=None, N=1):
+    def simulate_hypothetical(self, query, evidence=None, N=1):
         """Simulates a hypothetical member, with no observed latents."""
         # Default parameter.
         if evidence is None:
@@ -681,6 +681,9 @@ class State(object):
         singleton."""
         return [self.dims[col].logpdf(x,k) for k in
             xrange(len(self.dims[col].clusters)+1)]
+
+    def is_hypothetical(self, rowid):
+        return not 0 <= rowid < self.n_rows()
 
     def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.
