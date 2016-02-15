@@ -274,9 +274,13 @@ class State(object):
         logpdf : float
             The logpdf(query|rowid, evidence).
         """
+        self._validate_query_evidence(rowid, query, evidence=evidence)
+
         if self.is_hypothetical(rowid):
             return self.logpdf_hypothetical(query, evidence=evidence)
 
+        # XXX Ignores evidence. Should the row cluster be renegotiated based on
+        # new evidence?
         logpdf = 0
         for (col, val) in query:
             k = self.views[self.Zv[col]].Zr[rowid]
@@ -364,9 +368,13 @@ class State(object):
         samples : np.array
             A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
         """
+        self._validate_query_evidence(rowid, query, evidence=evidence)
+
         if self.is_hypothetical(rowid):
             return self.simulate_hypothetical(query, evidence=evidence, N=N)
 
+        # XXX Ignores evidence. Should the row cluster be renegotiated based on
+        # new evidence?
         samples = []
         for _ in xrange(N):
             draw = []
@@ -681,6 +689,25 @@ class State(object):
         singleton."""
         return [self.dims[col].logpdf(x,k) for k in
             xrange(len(self.dims[col].clusters)+1)]
+
+    def _validate_query_evidence(self, rowid, query, evidence=None):
+        if evidence is None:
+            evidence = []
+        qcols = [q[0] for q in query] if isinstance(query[0], list) else query
+        ecols = [e[0] for e in evidence]
+        # Disallow overlap between query and evidence.
+        if len(set.intersection(set(qcols), set(ecols))) > 0:
+            raise ValueError('Query and evidence columns must be disjoint.')
+        # Skip rest.
+        if self.is_hypothetical(rowid):
+            return
+        # Disallow evidence overriding non-nan cells.
+        if any(not np.isnan(self.X[rowid,ec]) for ec in ecols):
+            raise ValueError('Cannot evidence a non-nan observed cell.')
+        # XXX DISABLED
+        # Disallow query of observed cell. It is already observed so Dirac.
+        # if any(not np.isnan(self.X[rowid,ec]) for ec in ecols):
+        #     raise ValueError('Cannot query a non-nan observed cell.')
 
     def is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
