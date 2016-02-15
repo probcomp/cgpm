@@ -149,7 +149,7 @@ class Engine(object):
 
     def dependence_probability_pairwise(self, states=None):
         """Compute dependence probability between all pairs as matrix."""
-        _, n_cols = self.metadata[0]['X'].shape
+        n_cols = len(self.metadata[0]['X'][0])
         D = np.eye(n_cols)
         for i,j in itertools.combinations(range(n_cols), 2):
             D[i,j] = D[j,i] = self.dependence_probability(i,j, states=states)
@@ -166,7 +166,7 @@ class Engine(object):
 
     def row_similarity_pairwise(self, states=None):
         """Compute dependence probability between all pairs as matrix."""
-        n_rows, _ = self.metadata[0]['X'].shape
+        n_rows = len(self.metadata[0]['X'])
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
             S[i,j] = S[j,i] = self.row_similarity(i,j, states=states)
