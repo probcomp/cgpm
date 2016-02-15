@@ -54,7 +54,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         # Entropy.
         np.random.seed(0)
         cls.n_samples = 250
-        n_transitions = 50
+        n_transitions = 200
         # Generate synthetic data.
         view_weights = [1.]
         cluster_weights = [[.3, .5, .2]]
