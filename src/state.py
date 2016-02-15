@@ -392,11 +392,11 @@ class State(object):
             # CRP densities.
             logp_crp = self._compute_cluster_crp_logps(v)
             # Evidence densities.
-            logp_data = np.zeros(len(logp_crp))
+            logp_evidence = np.zeros(len(logp_crp))
             for (col, val) in evidence:
                 if self.Zv[col] == v:
-                    logp_data += self._compute_cluster_data_logps(col, val)
-            cluster_logps_for[v] = gu.log_normalize(logp_crp+logp_data)
+                    logp_evidence += self._compute_cluster_data_logps(col, val)
+            cluster_logps_for[v] = gu.log_normalize(logp_crp+logp_evidence)
 
         samples = []
         for _ in xrange(N):
