@@ -40,8 +40,12 @@ import gpmcc.utils.plots as pu
 # seed=5, start=3, w=.5
 # seed=5, start=5, w=1
 
+# seed = 5
+# x_start = 3
+# w = .5
+
 seed = 5
-x_start = 3
+x_start = 5
 w = .5
 
 # seed = 5
