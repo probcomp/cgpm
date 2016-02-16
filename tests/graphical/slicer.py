@@ -40,14 +40,21 @@ import gpmcc.utils.plots as pu
 # seed=5, start=3, w=.5
 # seed=5, start=5, w=1
 
-np.random.seed(5)
+seed = 5
+x_start = 3
+w = .5
+
+# seed = 5
+# x_start = 5
+# w = 1
+
+np.random.seed(seed)
 
 logpdf_target = lambda x : np.log(.5*norm.pdf(x,1,1) + .5*norm.pdf(x,5,.75))
-x_start = 3
 D = (0, float('inf'))
 
 metadata = su.slice_sample(x_start, logpdf_target, D,
-    num_samples=20, burn=1, lag=1, w=.5)
+    num_samples=20, burn=1, lag=1, w=w)
 
 xvals = np.linspace(0.1, 10, 100)
 yvals = np.array([math.exp(logpdf_target(x)) for x in xvals])
