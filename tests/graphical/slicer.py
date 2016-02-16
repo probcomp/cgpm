@@ -44,17 +44,25 @@ import gpmcc.utils.plots as pu
 # x_start = 3
 # w = .5
 
+# EXPERIMENT 1
 seed = 5
 x_start = 5
 w = .5
 
-# seed = 5
-# x_start = 5
-# w = 1
+# EXPERIMENT 2
+# seed = 0
+# x_start = 4.5
+# w = .5
 
 np.random.seed(seed)
 
+# EXPERIMENT 1
 logpdf_target = lambda x : np.log(.5*norm.pdf(x,1,1) + .5*norm.pdf(x,5,.75))
+
+# EXPERIMENT 2
+# logpdf_target = lambda x : np.log(.25*norm.pdf(x,1,.7) + .5*norm.pdf(x,5,.75)
+    # +.25*norm.pdf(x,3,.3))
+
 D = (0, float('inf'))
 
 metadata = su.slice_sample(x_start, logpdf_target, D,
@@ -71,8 +79,8 @@ ax.plot(xvals, yvals/trapz(yvals, xvals), lw=3, alpha=.8, c='red',
     label='Target Density')
 
 # Set the limits.
-ax.set_xlim([0, 7])
-ax.set_ylim([0, ax.get_ylim()[1]])
+ax.set_xlim([-0.5, 7])
+ax.set_ylim([-0.01, ax.get_ylim()[1]])
 
 ax.legend(loc='upper left', framealpha=0)
 
