@@ -149,15 +149,15 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
     else:
         return samples
 
-def slice_sample(proposal_fun, log_pdf_fun, D, num_samples=1, burn=1, lag=1,
+def slice_sample(x_start, logpdf_target, D, num_samples=1, burn=1, lag=1,
         w=1.0):
-    """Slice samples from the disitrbution defined by log_pdf_fun.
+    """Slice samples from the disitrbution defined by logpdf_target.
 
     Parameters
     ----------
-    proposal_fun : function()
-        Draws the initial point from proposal distribution.
-    log_pdf_fun : function(x)
+    x_start : float
+        Initial point from proposal distribution.
+    logpdf_target : function(x)
         Evaluates the log pdf of the target distribution at x.
     D : tuple<float, float>
         Support of the target distribution.
@@ -176,38 +176,57 @@ def slice_sample(proposal_fun, log_pdf_fun, D, num_samples=1, burn=1, lag=1,
 
     Example:
     >>> # Sample from posterior of CRP(x) with exponential(x) prior
-    >>> log_pdf_fun = lambda x : gu.lcrp(10, [5,3,2] , x) - x
-    >>> proposal_fun = lambda : random.gammavariate(1.0,1.0)
+    >>> logpdf_target = lambda x : gu.lcrp(10, [5,3,2] , x) - x
+    >>> x_start = random.gammavariate(1.0,1.0)
     >>> D = (0.0, float('Inf'))
-    >>> sample = slice_sample(proposal_fun, log_pdf_fun, D)
+    >>> sample = slice_sample(x_start, logpdf_target, D)
     """
-    samples = []
-    x = proposal_fun()
-    f = lambda xp : log_pdf_fun(xp) # f is a log pdf
+    x = x_start
     num_iters = 0
-    while len(samples) < num_samples:
+
+    metadata = dict()
+    metadata['u'] = []
+    metadata['r'] = []
+    metadata['a_out'] = []
+    metadata['b_out'] = []
+    metadata['x_proposal'] = []
+    metadata['samples'] = []
+
+    while len(metadata['samples']) < num_samples:
         num_iters += 1
-        u = log(np.random.random()) + f(x)
-        a, b = _find_slice_interval(f, x, u, D, w=w)
+        u = log(np.random.random()) + logpdf_target(x)
+        a, b, r, a_out, b_out = _find_slice_interval(
+            logpdf_target, x, u, D, w=w)
+
+        x_proposal = []
+        a_in = []
+        b_in = []
 
         while True:
             x_prime = np.random.uniform(a, b)
-            if f(x_prime) > u:
+            x_proposal.append(x)
+            if logpdf_target(x_prime) > u:
                 x = x_prime
                 break
             else:
                 if x_prime > x:
                     b = x_prime
                 else:
-                    a = x_prime;
+                    a = x_prime
 
         if num_iters >= burn and num_iters%lag == 0:
-            samples.append(x)
+            metadata['u'].append(u)
+            metadata['r'].append(r)
+            metadata['a_out'].append(a_out)
+            metadata['b_out'].append(b_out)
+            metadata['x_proposal'].append(x_proposal)
+            metadata['samples'].append(x)
 
-    if num_samples == 1:
-        return samples[0]
-    else:
-        return samples
+    return metadata
+    # if num_samples == 1:
+    #     return samples
+    # else:
+    #     return samples
 
 def _find_slice_interval(f, x, u, D, w=1.0):
     """Given a point u between 0 and f(x), returns an approximated interval
@@ -217,24 +236,34 @@ def _find_slice_interval(f, x, u, D, w=1.0):
     a = x - r*w
     b = x + (1-r)*w
 
+    a_out = [a]
+    b_out = [b]
+
     if a < D[0]:
         a = D[0]
+        a_out[-1]= a
     else:
         while f(a) > u:
             a -= w
+            a_out.append(a)
             if a < D[0]:
                 a = D[0]
+                a_out[-1] = a
                 break
 
     if b > D[1]:
         b = D[1]
+        b_out[-1] = b
     else:
         while f(b) > u:
             b += w
+            b_out.append(b)
             if b > D[1]:
                 b = D[1]
+                b_out[-1] = b
                 break
-    return a, b
+
+    return a, b, r, a_out, b_out
 
 def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
     """Samples from target pdf using rejection sampling.
