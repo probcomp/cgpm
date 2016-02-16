@@ -49,24 +49,26 @@ D = (0, float('inf'))
 metadata = su.slice_sample(x_start, logpdf_target, D,
     num_samples=20, burn=1, lag=1, w=.5)
 
-samples = metadata['samples']
-
-minval = 0.1
-maxval = 10
-xvals = np.linspace(minval, maxval, 100)
+xvals = np.linspace(0.1, 10, 100)
 yvals = np.array([math.exp(logpdf_target(x)) for x in xvals])
 
 fig, ax = plt.subplots()
 ax.grid()
 
+# The target.
+ax.plot(xvals, yvals/trapz(yvals, xvals), lw=3, alpha=.8, c='red',
+    label='Target Density')
+
+# Set the limits.
+ax.set_xlim([0, 7])
+ax.set_ylim([0, ax.get_ylim()[1]])
+
+ax.legend(loc='upper left', framealpha=0)
+
+# Interactive!
 plt.ion()
 plt.show()
 ptime = .5
-
-# pu.plot_samples(samples, h=.025, ax=ax)
-ax.plot(xvals, yvals/trapz(yvals, xvals), c='red', lw=3, alpha=.8)
-ax.set_xlim([0, 7])
-ax.set_ylim([0, ax.get_ylim()[1]])
 
 last_x = x_start
 for i in xrange(len(metadata['samples'])):
@@ -77,34 +79,37 @@ for i in xrange(len(metadata['samples'])):
     x_proposal = metadata['x_proposal'][i]
     sample = metadata['samples'][i]
 
+    # Convert u \in (0,f(x)) to direct space.
+    u = np.exp(u)
+
     # Accumulate artists to delete.
     to_delete = []
-    # Plot the uniform proposal (0, f(x))
+    # Plot the uniform proposal U(0,f(x))
     plt.pause(ptime)
     to_delete.append(
         ax.vlines(last_x, 0, np.exp(logpdf_target(last_x))/trapz(yvals, xvals),
-        color='green'))
+        color='g', linewidth=1.5))
     # Plot the auxiliary variable u.
     plt.pause(ptime)
     to_delete.append(
-        ax.scatter(last_x, np.exp(u), marker='o', color='b'))
-    # Plot growing a.
+        ax.scatter(last_x, u, color='r', marker='*', s=100))
+    # Plot growing a to the left.
     for a in a_out:
-        plt.pause(ptime)
-        to_delete.append(ax.hlines(np.exp(u), a, last_x))
-        to_delete.append(ax.vlines(a, np.exp(u), np.exp(u)+.01))
-    # Plot growing b.
+        plt.pause(ptime/2.)
+        to_delete.append(ax.hlines(u, a, last_x))
+        to_delete.append(ax.vlines(a, u, u+.01))
+    # Plot growing b to the right.
     for b in b_out:
-        plt.pause(ptime)
-        to_delete.append(ax.hlines(np.exp(u), last_x, b))
-        to_delete.append(ax.vlines(b, np.exp(u), np.exp(u)+.01))
+        plt.pause(ptime/2.)
+        to_delete.append(ax.hlines(u, last_x, b))
+        to_delete.append(ax.vlines(b, u, u+.01))
     # # Plot the shrinking.
     # for xp in x_proposal[:-1]:
     #     plt.pause(ptime)
-    #     ax.scatter(xp, np.exp(u), marker='o', color='r')
+    #     ax.scatter(xp, u, marker='o', color='r')
     # Plot the final sample.
     plt.pause(ptime)
-    ax.scatter(sample, np.exp(u), marker='o', color='r')
+    ax.scatter(sample, u, color='r', marker='o')
     # Plot a hline at the final sample.
     plt.pause(ptime)
     ax.vlines(sample, 0, 0.025, linewidth=2)
