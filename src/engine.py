@@ -160,7 +160,7 @@ class Engine(object):
         if states is None:
             states = xrange(self.num_states)
         prob = 0
-        for Zrv in [self.metadata[s]['Zrcv'] for s in states]:
+        for Zrv in [self.metadata[s]['Zrv'] for s in states]:
             prob += sum([Zr[row0]==Zr[row1] for Zr in Zrv]) / float(len(Zrv))
         return prob / len(states)
 

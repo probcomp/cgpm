@@ -53,7 +53,7 @@ _all_kernels = [
 class State(object):
     """State, the main crosscat object."""
 
-    def __init__(self, X, cctypes, distargs=None, Zv=None, Zrcv=None, alpha=None,
+    def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
             view_alphas=None, hypers=None, n_grid=30, seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
@@ -75,10 +75,11 @@ class State(object):
         Zv : list<int>, optional
             Assignmet of columns to views. If not specified a random
             partition is sampled.
-        Zrcv : list(list<int>), optional
-            Assignment of rows to clusters in each view, where Zrcv[k] is
+        Zrv : list(list<int>), optional
+            Assignment of rows to clusters in each view, where Zrv[k] is
             the Zr for View k. If not specified a random partition is
             sampled. If specified, then Zv must also be specified.
+
         seed : int
             Seed the random number generator.
         """
@@ -121,7 +122,7 @@ class State(object):
         self.views = []
         for v in xrange(len(self.Nv)):
             dims = [self.dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
-            Zr = None if Zrcv is None else np.asarray(Zrcv[v])
+            Zr = None if Zrv is None else np.asarray(Zrv[v])
             alpha = None if view_alphas is None else view_alphas[v]
             V = View(self.X, dims, Zr=Zr, alpha=alpha, n_grid=n_grid)
             self.views.append(V)
@@ -786,7 +787,7 @@ class State(object):
 
         # View data.
         metadata['Nk'] = []
-        metadata['Zrcv'] = []
+        metadata['Zrv'] = []
         metadata['view_alphas'] = []
 
         # Column data.
@@ -803,7 +804,7 @@ class State(object):
 
         for view in self.views:
             metadata['Nk'].append(view.Nk)
-            metadata['Zrcv'].append(view.Zr)
+            metadata['Zrv'].append(view.Zr)
             metadata['view_alphas'].append(view.alpha)
 
         return metadata
@@ -816,7 +817,7 @@ class State(object):
     def from_metadata(cls, metadata):
         X = np.asarray(metadata['X'])
         return cls(X, metadata['cctypes'], metadata['distargs'],
-            Zv=metadata['Zv'], Zrcv=metadata['Zrcv'], alpha=metadata['alpha'],
+            Zv=metadata['Zv'], Zrv=metadata['Zrv'], alpha=metadata['alpha'],
             view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
             n_grid=metadata['n_grid'], seed=metadata['seed'])
 
