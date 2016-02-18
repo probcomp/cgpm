@@ -105,6 +105,11 @@ class State(object):
         if distargs is None:
             distargs = [None] * len(cctypes)
 
+        # Constraints.
+        gu.validate_dependency_input(len(cctypes), Cd=Cd, Ci=Ci)
+        self.Cd = Cd
+        self.Ci = Ci
+
         # Generate dimensions.
         self.dims = []
         for col in xrange(self.n_cols()):
@@ -774,6 +779,12 @@ class State(object):
                         if z == k]
                     num_nans = np.sum(np.isnan(self.X[rowids,dim.index]))
                     assert dim.clusters[k].N == Nk[k] - num_nans
+        # Dependency constraints.
+        for block in self.Cd:
+            assert all(self.Zv[block[0]] == self.Zv[b] for b in block)
+        # Independency constraints.
+        for a, b in self.Ci:
+            assert not self.Zv[a] == self.Zv[b]
 
     # --------------------------------------------------------------------------
     # Serialize
