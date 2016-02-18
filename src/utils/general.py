@@ -134,25 +134,29 @@ def simulate_crp(N, alpha):
         np.random.shuffle(partition)
     return np.array(partition)
 
-def kl_array(support, log_true, log_inferred, is_discrete):
-    """
-    Inputs:
-    -- support: np array of support intervals.
-    -- log_true: log pdf at support for the "true" distribution.
-    -- log_inferred: log pdf at support for the distribution to test against the
-    "true" distribution.
-    -- is_discrete: is this a discrete variable True/False.
-
-    Returns:
-    - KL divergence.
-    """
-    # KL divergence formula, recall X and Y are log
-    F = (log_true - log_inferred) * np.exp(log_true)
-    if is_discrete:
-        kld = np.sum(F)
-    else:
-        # trapezoidal quadrature
-        intervals = np.diff(support)
-        fs = F[:-1] + (np.diff(F) / 2.0)
-        kld = np.sum(intervals*fs)
-    return kld
+def validate_dependency_constraints(N, Cd=None, Ci=None):
+    """Validates Cd and Ci constraints on N columns."""
+    if Ci is None:
+        Ci = []
+    if Cd is None:
+        Cd = []
+    counts = np.zeros(N)
+    for block in Cd:
+        if len(block) == 1:
+            raise ValueError('Single column in dependency constraint.')
+        for col in block:
+            if N <= col:
+                raise ValueError('Dependence column out of range.')
+            counts[col] += 1
+            if counts[col] > 1:
+                raise ValueError('Multiple column dependencies.')
+        for pair in Ci:
+            if pair[0] in block and pair[1] in block:
+                raise ValueError('Contradictory column independence.')
+    for pair in Ci:
+        if len(pair) != 2:
+            raise ValueError('Independencies require two columns.')
+        if N <= pair[0] or N <= pair[1]:
+            raise ValueError('Independence column of out range.')
+        if pair[0] == pair[1]:
+            raise ValueError('Independency specified for same column.')

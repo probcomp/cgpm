@@ -54,7 +54,8 @@ class State(object):
     """State, the main crosscat object."""
 
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
-            view_alphas=None, hypers=None, n_grid=30, seed=None):
+            view_alphas=None, hypers=None, Cd=None, Ci=None, n_grid=30,
+            seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
         and row partition for each view.
@@ -69,7 +70,7 @@ class State(object):
         distargs : list<dict>, optional
             Distargs appropriate for each cctype in cctypes. For details on
             distargs see the documentation for each DistributionGpm. Empty
-            distargs can be None or {}.
+            distargs can be None or dict().
         n_grid : int, optional
             Number of bins for hyperparameter grids.
         Zv : list<int>, optional
@@ -79,7 +80,14 @@ class State(object):
             Assignment of rows to clusters in each view, where Zrv[k] is
             the Zr for View k. If not specified a random partition is
             sampled. If specified, then Zv must also be specified.
-
+        Cd : list(list<int>), optional
+            List of marginal dependence constraints. Each element in the list
+            is a list of columns which are to be in the same view. Each column
+            can only be in one such list i.e. [[1,2,5],[1,5]] is not allowed.
+        Ci : list(tuple<int>), optional
+            List of marginal independence constraints. Each element in the list
+            is a 2-tuple of columns that must be independent, i.e.
+            [(1,2),(1,3)].
         seed : int
             Seed the random number generator.
         """
