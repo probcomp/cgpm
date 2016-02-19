@@ -129,11 +129,11 @@ class State(object):
 
         # Generate view partition.
         if Zv is None:
-            if len(Cd) + len(Ci) == 0:
+            if len(self.Cd) + len(self.Ci) == 0:
                 Zv = gu.simulate_crp(self.n_cols(), self.alpha)
             else:
                 Zv = gu.simulate_crp_constrained(
-                    self.n_cols(), self.alpha, Cd, Ci)
+                    self.n_cols(), self.alpha, self.Cd, self.Ci)
         self.Zv = list(Zv)
         self.Nv = list(np.bincount(Zv))
 
