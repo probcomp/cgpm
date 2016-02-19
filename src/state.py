@@ -128,7 +128,12 @@ class State(object):
 
         # Generate view partition.
         if Zv is None:
-            Zv = gu.simulate_crp(self.n_cols(), self.alpha)
+            for i in xrange(1000):
+                Zv = gu.simulate_crp(self.n_cols(), self.alpha)
+                if vu.validate_dependency_constraints(Zv, self.Cd, self.Ci):
+                    break
+            else:
+                raise RuntimeError('Failed to initialize with constraints.')
         self.Zv = list(Zv)
         self.Nv = list(np.bincount(Zv))
 
