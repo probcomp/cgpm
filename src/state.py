@@ -38,6 +38,7 @@ from scipy.misc import logsumexp
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
+import gpmcc.utils.validation as vu
 
 from gpmcc.view import View
 from gpmcc.dim import Dim
@@ -106,7 +107,7 @@ class State(object):
             distargs = [None] * len(cctypes)
 
         # Constraints.
-        gu.validate_dependency_input(len(cctypes), Cd=Cd, Ci=Ci)
+        vu.validate_dependency_input(len(cctypes), Cd=Cd, Ci=Ci)
         self.Cd = Cd
         self.Ci = Ci
 
@@ -288,7 +289,9 @@ class State(object):
         logpdf : float
             The logpdf(query|rowid, evidence).
         """
-        self._validate_query_evidence(rowid, query, evidence=evidence)
+        vu.validate_query_evidence(
+            self.X, rowid, self._is_hypothetical(rowid), query,
+            evidence=evidence)
 
         if self._is_hypothetical(rowid):
             return self.logpdf_hypothetical(query, evidence=evidence)
@@ -382,7 +385,9 @@ class State(object):
         samples : np.array
             A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
         """
-        self._validate_query_evidence(rowid, query, evidence=evidence)
+        vu.validate_query_evidence(
+            self.X, rowid, self._is_hypothetical(rowid), query,
+            evidence=evidence)
 
         if self._is_hypothetical(rowid):
             return self.simulate_hypothetical(query, evidence=evidence, N=N)
@@ -704,25 +709,6 @@ class State(object):
         return [self.dims[col].logpdf(x,k) for k in
             xrange(len(self.dims[col].clusters)+1)]
 
-    def _validate_query_evidence(self, rowid, query, evidence=None):
-        if evidence is None:
-            evidence = []
-        qcols = [q[0] for q in query] if isinstance(query[0], list) else query
-        ecols = [e[0] for e in evidence]
-        # Disallow overlap between query and evidence.
-        if len(set.intersection(set(qcols), set(ecols))) > 0:
-            raise ValueError('Query and evidence columns must be disjoint.')
-        # Skip rest.
-        if self._is_hypothetical(rowid):
-            return
-        # Disallow evidence overriding non-nan cells.
-        if any(not np.isnan(self.X[rowid,ec]) for ec in ecols):
-            raise ValueError('Cannot evidence a non-nan observed cell.')
-        # XXX DISABLED
-        # Disallow query of observed cell. It is already observed so Dirac.
-        # if any(not np.isnan(self.X[rowid,ec]) for ec in ecols):
-        #     raise ValueError('Cannot query a non-nan observed cell.')
-
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
 
@@ -779,12 +765,8 @@ class State(object):
                         if z == k]
                     num_nans = np.sum(np.isnan(self.X[rowids,dim.index]))
                     assert dim.clusters[k].N == Nk[k] - num_nans
-        # Dependency constraints.
-        for block in self.Cd:
-            assert all(self.Zv[block[0]] == self.Zv[b] for b in block)
-        # Independency constraints.
-        for a, b in self.Ci:
-            assert not self.Zv[a] == self.Zv[b]
+        # Dependence and independence constraints.
+        assert vu.validate_dependency_constraints(self.Zv, self.Cd, self.Ci)
 
     # --------------------------------------------------------------------------
     # Serialize
