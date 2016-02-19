@@ -107,8 +107,7 @@ def simulate_crp(N, alpha):
     """Generates a random, N-length partition from the CRP with parameter
     alpha.
     """
-    assert N > 0
-    assert alpha > 0.0
+    assert N > 0 and alpha > 0.
     alpha = float(alpha)
 
     partition = np.zeros(N, dtype=int)
@@ -117,7 +116,6 @@ def simulate_crp(N, alpha):
         K = len(Nk)
         ps = np.zeros(K+1)
         for k in xrange(K):
-            # Get the number of people sitting at table k.
             ps[k] = float(Nk[k])
         ps[K] = alpha
         ps /= (float(i) - 1 + alpha)
@@ -144,49 +142,51 @@ def simulate_crp_constrained(N, alpha, Cd, Ci):
     where each entry is a list of friends. Ci is a list of tuples, where each
     tuple is a pair of enemies."""
     vu.validate_crp_constrained_input(N, Cd, Ci)
+    assert N > 0 and alpha > 0.
+
     # Initial partition.
-    Zv = -1 * np.ones(N, dtype=int)
+    Z = -1 * np.ones(N, dtype=int)
 
-    # Neighbors dictionary from Cd.
-    neighbors = {col:block for block in Cd for col in block}
+    # Friends dictionary from Cd.
+    friends = {col:block for block in Cd for col in block}
 
-    # Minimum number of views is largest connected component in Ci.
+    # Minimum number of tables is largest connected component in Ci.
     G = nx.Graph(data=Ci)
     components = list(sorted(nx.connected_components(G), key=len, reverse=True))
 
-    # Independent columns in largest component all in seperate views.
+    # Enemy customers in largest component all in seperate tables.
     if components:
-        for i, col in enumerate(components[0]):
-            assert Zv[col] == -1
-            # Create a view with col and all its friends.
-            friends = neighbors.get(col, [col])
-            for f in friends:
-                assert Zv[f] == -1
-                Zv[f] = i
+        for i, cust in enumerate(components[0]):
+            assert Z[cust] == -1
+            # Create a table with cust and all its friends.
+            for f in friends.get(cust, [cust]):
+                assert Z[f] == -1
+                Z[f] = i
 
-    # Assign remaining columns.
-    for col in xrange(N):
-        if Zv[col] > -1:
-            continue
-        # Find valid views for this column and all its friends.
-        friends = neighbors.get(col, [col])
-        assert all(Zv[f] == -1 for f in friends)
-        prob_view = [0] * (max(Zv)+1)
-        for v in xrange(max(Zv)+1):
-            # All columns in valid_views[v].
-            v_cols = [i for i,z in enumerate(Zv) if z==v]
-            assert len(v_cols) > 0
-            prob_view[v] = len(v_cols)
-            # Are there are contradictions between v_cols and friends?
-            for v_col in v_cols:
-                if any((f, v_col) in Ci or (v_col, f) in Ci for f in friends):
-                    prob_view[v] = 0
-                    break
+    # Assign remaining customers.
+    for cust in xrange(N):
+        if Z[cust] > -1: continue
+        # Find valid tables for cust and all his friends.
+        assert all(Z[f] == -1 for f in friends.get(cust, [cust]))
+        prob_table = [0] * (max(Z)+1)
+        for t in xrange(max(Z)+1):
+            # All customers in table t.
+            t_custs = [i for i,z in enumerate(Z) if z==t]
+            assert len(t_custs) > 0
+            prob_table[t] = len(t_custs)
+            # Does f \in cust_friends have an enemy in table t?
+            for tc in t_custs:
+                for f in friends.get(cust, [cust]):
+                    if (f, tc) in Ci or (tc, f) in Ci:
+                        prob_table[t] = 0
+                        break
         # Choose from valid_view using CRP.
-        prob_view.append(alpha)
-        assignment = pflip(prob_view)
-        for f in friends:
-            Zv[f] = assignment
+        prob_table.append(alpha)
+        assignment = pflip(prob_table)
+        for f in friends.get(cust, [cust]):
+            Z[f] = assignment
 
-    assert all(0 <= v < N for v in Zv)
-    return Zv
+    # At most t tables.
+    assert all(0 <= t < N for t in Z)
+    vu.validate_crp_constrained_partition(Z, Cd, Ci)
+    return Z
