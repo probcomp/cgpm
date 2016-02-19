@@ -27,11 +27,7 @@
 
 import numpy as np
 
-def validate_dependency_constraints(Zv, Cd=None, Ci=None):
-    if Cd is None:
-        Cd = []
-    if Ci is None:
-        Ci = []
+def validate_dependency_constraints(Zv, Cd, Ci):
     valid = True
     for block in Cd:
         valid = valid and all(Zv[block[0]] == Zv[b] for b in block)
@@ -39,12 +35,8 @@ def validate_dependency_constraints(Zv, Cd=None, Ci=None):
         valid = valid and all(not Zv[a] == Zv[b])
     return valid
 
-def validate_dependency_input(N, Cd=None, Ci=None):
+def validate_dependency_input(N, Cd, Ci):
     """Validates Cd and Ci constraints on N columns."""
-    if Ci is None:
-        Ci = []
-    if Cd is None:
-        Cd = []
     counts = [0]*N
     for block in Cd:
         # Every constraint must be more than column.

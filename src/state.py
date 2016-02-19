@@ -107,9 +107,13 @@ class State(object):
             distargs = [None] * len(cctypes)
 
         # Constraints.
-        vu.validate_dependency_input(len(cctypes), Cd=Cd, Ci=Ci)
+        if Cd is None:
+            Cd = []
+        if Ci is None:
+            Ci = []
         self.Cd = Cd
         self.Ci = Ci
+        vu.validate_dependency_input(len(cctypes), Cd, Ci)
 
         # Generate dimensions.
         self.dims = []
