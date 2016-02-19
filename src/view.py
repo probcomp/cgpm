@@ -73,7 +73,7 @@ class View(object):
         # Initialize the dimensions.
         self.dims = dict()
         for dim in dims:
-            dim.reassign(X[:,dim.index], Zr)
+            dim.bulk_incorporate(X[:,dim.index], Zr)
             self.dims[dim.index] = dim
 
         # self._check_partitions()
@@ -86,7 +86,7 @@ class View(object):
         partition of dim should match self.Zr already."""
         self.dims[dim.index] = dim
         if reassign:
-            dim.reassign(self.X[:, dim.index], self.Zr)
+            dim.bulk_incorporate(self.X[:, dim.index], self.Zr)
         return sum(dim.logpdf_marginal())
 
     def unincorporate_dim(self, dim):
@@ -134,7 +134,7 @@ class View(object):
             self.Zr = [i-1 if i>k else i for i in self.Zr]
             del self.Nk[k]
             for dim in self.dims.values():
-                dim.destroy_cluster(k)
+                dim.bulk_unincorporate(k)
         self.Zr[rowid] = np.nan
 
     # --------------------------------------------------------------------------
