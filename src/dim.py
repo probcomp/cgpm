@@ -82,7 +82,7 @@ class Dim(object):
         # Row partition.
         if Zr is None:
             Zr = gu.simulate_crp(len(X), 1)
-        self.reassign(X, Zr)
+        self.bulk_incorporate(X, Zr)
 
         # Auxiliary singleton model.
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
@@ -114,12 +114,12 @@ class Dim(object):
 
     # Bulk operations for effeciency.
 
-    def destroy_cluster(self, k):
+    def bulk_unincorporate(self, k):
         """Destroy cluster k, and all its incorporated data (if any)."""
         assert k < len(self.clusters)
         del self.clusters[k]
 
-    def reassign(self, X, Zr):
+    def bulk_incorporate(self, X, Zr):
         """Reassigns data X to new clusters according to partitioning Zr.
         Destroys and recreates all clusters. Uncollapsed parameters are
         transitioned but hyperparameters are not transitioned. The partition
