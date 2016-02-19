@@ -28,6 +28,7 @@
 
 import math
 import csv
+import warnings
 from math import log
 
 import numpy as np
@@ -74,7 +75,8 @@ def log_pflip(logp):
     if len(logp) == 1:
         return 0
     p = np.exp(log_normalize(logp))
-    assert math.fabs(1.0-sum(p)) < 10.0**(-8.0)
+    if not math.fabs(1.0-sum(p)) < 10.0**(-8.0):
+        warnings.warn('log_pflip probability vector sums to {}.'.format(sum(p)))
     return pflip(p)
 
 def pflip(p):
@@ -83,7 +85,8 @@ def pflip(p):
         return 0
     p = np.asarray(p).astype(float)
     p /= sum(p)
-    assert math.fabs(1.0-sum(p)) < 10.0**(-8.0)
+    if not math.fabs(1.0-sum(p)) < 10.0**(-8.0):
+        warnings.warn('pflip probability vector sums to {}.'.format(sum(p)))
     return np.random.choice(range(len(p)), size=1, p=p)[0]
 
 def log_linspace(a, b, n):
