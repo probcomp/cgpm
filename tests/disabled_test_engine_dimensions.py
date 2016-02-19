@@ -71,7 +71,11 @@ class EngineDimensionsTest(unittest.TestCase):
         cctypes, distargs = cu.parse_distargs(cctypes)
         T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
             cctypes, distargs, separation)
-        cls.engine = engine.Engine(T.T, cctypes, distargs, num_states=6,
+        T = T.T
+        # Make some nan cells for evidence.
+        T[5,2]=T[5,3]=T[5,0]=T[5,1]=np.nan
+        T[8,4]=np.nan
+        cls.engine = engine.Engine(T, cctypes, distargs, num_states=6,
             initialize=1)
         cls.engine.transition(N=2)
 
@@ -91,7 +95,7 @@ class EngineDimensionsTest(unittest.TestCase):
         for rowid in [-1, 5]:
             for N in [1, 8]:
                 query1, evidence1 = [0], [(2,0), (3,6)]
-                query2, evidence2 = [1,2,5], [(3,3), (4,.8)]
+                query2, evidence2 = [1,2,5], [(0,3), (3,.8)]
                 for Q, E in [(query1, evidence1), (query2, evidence2)]:
                     # samples should be a list of samples, one for each state.
                     samples = self.engine.simulate(rowid, Q, evidence=E, N=N)
@@ -104,7 +108,7 @@ class EngineDimensionsTest(unittest.TestCase):
                             self.assertEqual(len(s), len(Q))
 
     def test_logpdf_bulk(self):
-        rowid1, query1, evidence1 = 1, [(0,0), (5,3)], [(2,1), (3,.5)]
+        rowid1, query1, evidence1 = 5, [(0,0), (5,3)], [(2,1), (3,.5)]
         rowid2, query2, evidence2 = -1, [(1,0), (4,.8)], [(5,.5)]
         # Bulk.
         rowids = [rowid1, rowid2]
@@ -121,8 +125,8 @@ class EngineDimensionsTest(unittest.TestCase):
                     self.assertTrue(isinstance(l, float))
 
     def test_simulate_bulk(self):
-        rowid1, query1, evidence1, N1, = 1, [0,2,4,5], [(2,1)], 7
-        rowid2, query2, evidence2, N2 = 5, [1,3], [(4,.8)], 3
+        rowid1, query1, evidence1, N1, = -1, [0,2,4,5], [(3,1)], 7
+        rowid2, query2, evidence2, N2 = 5, [1,3], [(2,.8)], 3
         rowid3, query3, evidence3, N3 = 8, [0], [(4,.8)], 3
         # Bulk.
         rowids = [rowid1, rowid2, rowid3]
