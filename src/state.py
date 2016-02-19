@@ -107,12 +107,10 @@ class State(object):
             distargs = [None] * len(cctypes)
 
         # Constraints.
-        if Cd is None:
-            Cd = []
-        if Ci is None:
-            Ci = []
-        self.Cd = Cd
-        self.Ci = Ci
+        self.Cd = [] if Cd is None else Cd
+        self.Ci = [] if Ci is None else Ci
+        if len(self.Cd) > 0:
+            raise ValueError('Dependency constraints not yet implemented.')
 
         # Generate dimensions.
         self.dims = []
