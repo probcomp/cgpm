@@ -36,12 +36,12 @@ class TestValidateDepConstraints(unittest.TestCase):
     def test_duplicate_dependence(self):
         Cd = [[0,2,3], [4,5,0]]
         with self.assertRaises(ValueError):
-            vu.validate_dependency_input(6, Cd)
+            vu.validate_dependency_input(6, Cd ,[])
 
     def test_single_column_dependence(self):
         Cd = [[0], [4,5,2]]
         with self.assertRaises(ValueError):
-            vu.validate_dependency_input(6, Cd)
+            vu.validate_dependency_input(6, Cd, [])
 
     def test_contradictory_independece(self):
         Cd = [[0,1,3], [2,4]]
