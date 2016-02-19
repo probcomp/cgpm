@@ -113,7 +113,6 @@ class State(object):
             Ci = []
         self.Cd = Cd
         self.Ci = Ci
-        vu.validate_dependency_input(len(cctypes), Cd, Ci)
 
         # Generate dimensions.
         self.dims = []
@@ -132,12 +131,11 @@ class State(object):
 
         # Generate view partition.
         if Zv is None:
-            for i in xrange(1000):
+            if len(Cd) + len(Ci) == 0:
                 Zv = gu.simulate_crp(self.n_cols(), self.alpha)
-                if vu.validate_dependency_constraints(Zv, self.Cd, self.Ci):
-                    break
             else:
-                raise RuntimeError('Failed to initialize with constraints.')
+                Zv = gu.simulate_crp_constrained(
+                    self.n_cols(), self.alpha, Cd, Ci)
         self.Zv = list(Zv)
         self.Nv = list(np.bincount(Zv))
 
@@ -779,8 +777,8 @@ class State(object):
                         if z == k]
                     num_nans = np.sum(np.isnan(self.X[rowids,dim.index]))
                     assert dim.clusters[k].N == Nk[k] - num_nans
-        # Dependence and independence constraints.
-        assert vu.validate_dependency_constraints(self.Zv, self.Cd, self.Ci)
+        # Dependence constraints.
+        assert vu.validate_crp_constrained_partition(self.Zv, self.Cd, self.Ci)
 
     # --------------------------------------------------------------------------
     # Serialize
