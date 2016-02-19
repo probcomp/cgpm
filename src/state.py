@@ -673,10 +673,10 @@ class State(object):
             proposal_dims.append(D)
             proposal_views.append(V)
 
-        # Zero out independence constraints.
+        # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
         for a in avoid:
-            p_view[a] = float('-inf')
+            p_view[self.Zv[a]] = float('-inf')
 
         # Draw view.
         v_b = gu.log_pflip(p_view)
