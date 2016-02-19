@@ -133,30 +133,3 @@ def simulate_crp(N, alpha):
     if K > 1:
         np.random.shuffle(partition)
     return np.array(partition)
-
-def validate_dependency_constraints(N, Cd=None, Ci=None):
-    """Validates Cd and Ci constraints on N columns."""
-    if Ci is None:
-        Ci = []
-    if Cd is None:
-        Cd = []
-    counts = np.zeros(N)
-    for block in Cd:
-        if len(block) == 1:
-            raise ValueError('Single column in dependency constraint.')
-        for col in block:
-            if N <= col:
-                raise ValueError('Dependence column out of range.')
-            counts[col] += 1
-            if counts[col] > 1:
-                raise ValueError('Multiple column dependencies.')
-        for pair in Ci:
-            if pair[0] in block and pair[1] in block:
-                raise ValueError('Contradictory column independence.')
-    for pair in Ci:
-        if len(pair) != 2:
-            raise ValueError('Independencies require two columns.')
-        if N <= pair[0] or N <= pair[1]:
-            raise ValueError('Independence column of out range.')
-        if pair[0] == pair[1]:
-            raise ValueError('Independency specified for same column.')
