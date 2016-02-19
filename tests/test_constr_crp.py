@@ -25,34 +25,34 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""Checks the validate_dependency_input functions catches bad cases."""
+"""Checks the validate_crp_constrained_input functions catches bad cases."""
 
 import unittest
 
 from gpmcc.utils import validation as vu
 
-class TestValidateDepConstraints(unittest.TestCase):
+class TestValidateCrpConsrainedInput(unittest.TestCase):
 
     def test_duplicate_dependence(self):
         Cd = [[0,2,3], [4,5,0]]
         with self.assertRaises(ValueError):
-            vu.validate_dependency_input(6, Cd ,[])
+            vu.validate_crp_constrained_input(6, Cd ,[])
 
     def test_single_column_dependence(self):
         Cd = [[0], [4,5,2]]
         with self.assertRaises(ValueError):
-            vu.validate_dependency_input(6, Cd, [])
+            vu.validate_crp_constrained_input(6, Cd, [])
 
     def test_contradictory_independece(self):
         Cd = [[0,1,3], [2,4]]
         Ci = [(0,1)]
         with self.assertRaises(ValueError):
-            vu.validate_dependency_input(5, Cd, Ci)
+            vu.validate_crp_constrained_input(5, Cd, Ci)
 
     def test_valid_constraints(self):
         Cd = [[0,3], [2,4], [5,6]]
         Ci = [(0,2), (5,2)]
-        vu.validate_dependency_input(7, Cd, Ci)
+        vu.validate_crp_constrained_input(7, Cd, Ci)
 
 if __name__ == '__main__':
     unittest.main()
