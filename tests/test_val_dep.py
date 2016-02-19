@@ -2,7 +2,6 @@
 
 # The MIT License (MIT)
 
-# Copyright (c) 2014 Baxter S. Eaves Jr,
 # Copyright (c) 2015-2016 MIT Probabilistic Computing Project
 
 # Lead Developer: Feras Saad <fsaad@mit.edu>
