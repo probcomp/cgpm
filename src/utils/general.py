@@ -27,14 +27,16 @@
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import math
-import csv
 import warnings
 from math import log
 
+import networkx as nx
 import numpy as np
 from scipy.special import i0 as bessel_0
 from scipy.misc import logsumexp
 from scipy.special import gammaln
+
+from gpmcc.utils import validation as vu
 
 colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
     'black']
@@ -136,3 +138,55 @@ def simulate_crp(N, alpha):
     if K > 1:
         np.random.shuffle(partition)
     return np.array(partition)
+
+def simulate_crp_constrained(N, alpha, Cd, Ci):
+    """Simulates a CRP with N customers and concentration alpha. Cd is a list,
+    where each entry is a list of friends. Ci is a list of tuples, where each
+    tuple is a pair of enemies."""
+    vu.validate_crp_constrained_input(N, Cd, Ci)
+    # Initial partition.
+    Zv = -1 * np.ones(N, dtype=int)
+
+    # Neighbors dictionary from Cd.
+    neighbors = {col:block for block in Cd for col in block}
+
+    # Minimum number of views is largest connected component in Ci.
+    G = nx.Graph(data=Ci)
+    components = list(sorted(nx.connected_components(G), key=len, reverse=True))
+
+    # Independent columns in largest component all in seperate views.
+    if components:
+        for i, col in enumerate(components[0]):
+            assert Zv[col] == -1
+            # Create a view with col and all its friends.
+            friends = neighbors.get(col, [col])
+            for f in friends:
+                assert Zv[f] == -1
+                Zv[f] = i
+
+    # Assign remaining columns.
+    for col in xrange(N):
+        if Zv[col] > -1:
+            continue
+        # Find valid views for this column and all its friends.
+        friends = neighbors.get(col, [col])
+        assert all(Zv[f] == -1 for f in friends)
+        prob_view = [0] * (max(Zv)+1)
+        for v in xrange(max(Zv)+1):
+            # All columns in valid_views[v].
+            v_cols = [i for i,z in enumerate(Zv) if z==v]
+            assert len(v_cols) > 0
+            prob_view[v] = len(v_cols)
+            # Are there are contradictions between v_cols and friends?
+            for v_col in v_cols:
+                if any((f, v_col) in Ci or (v_col, f) in Ci for f in friends):
+                    prob_view[v] = 0
+                    break
+        # Choose from valid_view using CRP.
+        prob_view.append(alpha)
+        assignment = pflip(prob_view)
+        for f in friends:
+            Zv[f] = assignment
+
+    assert all(0 <= v < N for v in Zv)
+    return Zv
