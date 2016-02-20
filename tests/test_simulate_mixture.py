@@ -42,6 +42,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import unittest
 
+from scipy.stats import ks_2samp
+
 import gpmcc.utils.general as gu
 import gpmcc.utils.test as tu
 from gpmcc.engine import Engine
@@ -75,7 +77,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         state.transition(N=n_transitions)
         cls.model = state.get_state(0)
 
-    def test_joint(self):
+    def __ci_test_joint(self):
         # Simulate from the joint distribution of (x,i).
         joint_samples = self.model.simulate(-1, [0,1], N=self.n_samples)
         _, ax = plt.subplots()
@@ -88,11 +90,14 @@ class SimulateIndicatorTest(unittest.TestCase):
             joint_samples_subpop = joint_samples[joint_samples[:,1] == t]
             ax.scatter(joint_samples_subpop[:,1] + .25,
                 joint_samples_subpop[:,0], color=gu.colors[t])
+            # KS test.
+            pvalue = ks_2samp(data_subpop[:,0], joint_samples_subpop[:,0])[1]
+            self.assertTrue(pvalue>0.05)
         ax.set_xlabel('Indicator')
         ax.set_ylabel('x')
         ax.grid()
 
-    def test_conditional_indicator(self):
+    def __ci_test_conditional_indicator(self):
         # Simulate from the conditional X|Z
         _, ax = plt.subplots()
         ax.set_title('Conditional Simulation Of Data X Given Indicator Z')
@@ -105,11 +110,14 @@ class SimulateIndicatorTest(unittest.TestCase):
                 evidence=[(1,t)], N=len(data_subpop))
             ax.scatter(np.repeat(t, len(data_subpop)) + .25,
                 conditional_samples_subpop[:,0], color=gu.colors[t])
+            # KS test.
+            pvalue = ks_2samp(data_subpop[:,0], conditional_samples_subpop[:,0])[1]
+            self.assertTrue(pvalue>0.1)
         ax.set_xlabel('Indicator')
         ax.set_ylabel('x')
         ax.grid()
 
-    def test_conditional_real(self):
+    def __ci_test_conditional_real(self):
         # Simulate from the conditional Z|X
         fig, axes = plt.subplots(2,3)
         fig.suptitle('Conditional Simulation Of Indicator Z Given Data X')
@@ -126,7 +134,7 @@ class SimulateIndicatorTest(unittest.TestCase):
             ax.set_ylabel('Frequency')
             ax.set_ylim([0, ax.get_ylim()[1]+10])
             ax.grid()
-        # plt.close('all')
+        plt.close('all')
 
 if __name__ == '__main__':
     unittest.main()
