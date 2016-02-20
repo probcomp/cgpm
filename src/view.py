@@ -27,6 +27,7 @@
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from math import log
+from scipy.misc import logsumexp
 
 import numpy as np
 import gpmcc.utils.general as gu
@@ -192,25 +193,96 @@ class View(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, k):
-        """Compute logpdf(X[rowid]|cluster k). If k < len(self.Nk), predictive
-        is taken. If k == len(self.Nk), new parameters are sampled."""
-        assert k <= len(self.Nk)
-        logp = 0
-        for dim in self.dims.values():
-            x = self.X[rowid, dim.index]
-            if self.Zr[rowid] == k:
-                dim.unincorporate(x, k)
-                logp += dim.logpdf(x, k)
-                dim.incorporate(x, k)
-            else:
-                logp += dim.logpdf(x, k)
-        return logp
+    def logpdf(self, rowid, query, evidence):
+        if self._is_hypothetical(rowid):
+            return self._logpdf_hypothetical(query, evidence)
+        else:
+            return self._logpdf_observed(rowid, query, evidence)
+
+    def _logpdf_observed(self, rowid, query, evidence):
+        # XXX Ignores evidence. Should the row cluster be renegotiated based on
+        # new evidence?
+        logpdf = 0
+        for (col, val) in query:
+            k = self.Zr[rowid]
+            logpdf += self.dims[col].logpdf(val, k)
+        return logpdf
+
+    def _logpdf_hypothetical(self, query, evidence):
+        # Algorithm. Partition all columns in query and evidence by views.
+        # P(x1,x2|x3,x4) where (x1...x4) in the same view.
+        #   = \sum_z p(x1,x2|z,x3,x4)p(z|x3,x4)     marginalization
+        #   = \sum_z p(x1,x2|z)p(z|x3,x4)           conditional independence
+        #   = \sum_z p(x1|z)p(x2|z)p(z|x3,x4)       conditional independence
+        # Now consider p(z|x3,x4)
+        #   \propto p(z)p(x3|z)p(x4|z)              Bayes rule
+        # [term]           [array]
+        # p(z)             logp_crp
+        # p(x3|z)p(x4|z)   logp_evidence
+        # p(z|x3,x4)       logp_cluster
+        # p(x1|z)p(x2|z)   logp_query
+
+        logp_crp = self._compute_cluster_crp_logps()
+        logp_evidence = np.zeros(len(logp_crp))
+        for (col, val) in evidence:
+            logp_evidence += self._compute_cluster_data_logps(col, val)
+        logp_cluster = gu.log_normalize(logp_crp+logp_evidence)
+
+        # Query densities.
+        logp_query = np.zeros(len(logp_crp))
+        for (col, val) in query:
+            logp_query += self._compute_cluster_data_logps(col, val)
+
+        return logsumexp(logp_query+logp_cluster)
 
     def logpdf_marginal(self):
         """Compute the marginal logpdf of data and CRP assignment."""
         return gu.logp_crp(len(self.Zr), self.Nk, self.alpha) + \
             sum(sum(dim.logpdf_marginal()) for dim in self.dims.values())
+
+    # --------------------------------------------------------------------------
+    # simulate
+
+    def simulate(self, rowid, query, evidence, N=1):
+        if self._is_hypothetical(rowid):
+            return self._simulate_hypothetical(query, evidence, N)
+        else:
+            return self._simulate_observed(rowid, query, evidence, N)
+
+    def _simulate_observed(self, rowid, query, evidence, N):
+        # XXX Ignores evidence. Should the row cluster be renegotiated based on
+        # new evidence?
+        samples = []
+        for _ in xrange(N):
+            draw = []
+            for col in query:
+                k = self.Zr[rowid]
+                x = self.dims[col].simulate(k)
+                draw.append(x)
+            samples.append(draw)
+        return np.asarray(samples)
+
+    def _simulate_hypothetical(self, query, evidence, N):
+        # CRP densities.
+        logp_crp = self._compute_cluster_crp_logps()
+
+        # Evidence densities.
+        logp_evidence = np.zeros(len(logp_crp))
+        for (col, val) in evidence:
+            logp_evidence += self._compute_cluster_data_logps(col, val)
+
+        cluster_logps = gu.log_normalize(logp_crp+logp_evidence)
+
+        samples = []
+        for _ in xrange(N):
+            draw = []
+            k = gu.log_pflip(cluster_logps)
+            for col in query:
+                x = self.dims[col].simulate(k)
+                draw.append(x)
+            samples.append(draw)
+
+        return np.asarray(samples)
 
     # --------------------------------------------------------------------------
     # Internal
@@ -236,13 +308,13 @@ class View(object):
         # Calculate probability of rowid in each cluster k \in K.
         p_cluster = []
         for k in xrange(len(self.Nk)):
-            lp = self.logpdf(rowid, k) + p_crp[k]
+            lp = self._logpdf_row(rowid, k) + p_crp[k]
             p_cluster.append(lp)
 
         # Propose singleton.
         if not is_singleton:
             # Using len(self.Nk) will compute singleton.
-            lp = self.logpdf(rowid, len(self.Nk)) + p_crp[-1]
+            lp = self._logpdf_row(rowid, len(self.Nk)) + p_crp[-1]
             p_cluster.append(lp)
 
         # Draw new assignment, z_b
@@ -254,6 +326,39 @@ class View(object):
             self.incorporate_row(rowid, z_b)
 
         self._check_partitions()
+
+    def _logpdf_row(self, rowid, k):
+        """Internal use only for Gibbs. Compute logpdf(X[rowid]|cluster k).
+        If k < len(self.Nk), predictive is taken. If k == len(self.Nk), new
+        parameters are sampled."""
+        assert k <= len(self.Nk)
+        logp = 0
+        for dim in self.dims.values():
+            x = self.X[rowid, dim.index]
+            if self.Zr[rowid] == k:
+                dim.unincorporate(x, k)
+                logp += dim.logpdf(x, k)
+                dim.incorporate(x, k)
+            else:
+                logp += dim.logpdf(x, k)
+        return logp
+
+    def _compute_cluster_crp_logps(self):
+        """Returns a list of log probabilities that a new row joins each of the
+        clusters in self.views[view], including a singleton."""
+        log_crp_numer = np.log(self.Nk + [self.alpha])
+        logp_crp_denom = log(len(self.Zr) + self.alpha)
+        return log_crp_numer - logp_crp_denom
+
+    def _compute_cluster_data_logps(self, col, x):
+        """Returns a list of log probabilities that a new row for self.dims[col]
+        obtains value x for each of the clusters in self.Zr[col], including a
+        singleton."""
+        return [self.dims[col].logpdf(x,k) for k in
+            xrange(len(self.dims[col].clusters)+1)]
+
+    def _is_hypothetical(self, rowid):
+        return not 0 <= rowid < len(self.Zr)
 
     def _check_partitions(self):
         # For debugging only.
