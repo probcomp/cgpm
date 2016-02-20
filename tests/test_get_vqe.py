@@ -51,30 +51,30 @@ class TestGetViewQueryEvidence(unittest.TestCase):
 
         # View 0 has 2 queries.
         self.assertTrue(len(queries[0]), 2)
-        self.assertTrue((0,0) in queries[0])
-        self.assertTrue((1,1) in queries[0])
+        self.assertIn((0,0), queries[0])
+        self.assertIn((1,1), queries[0])
         # View 1 has 2 queries.
         self.assertTrue(len(queries[1]), 2)
-        self.assertTrue((4,2) in queries[1])
-        self.assertTrue((5,7) in queries[1])
+        self.assertIn((4,2), queries[1])
+        self.assertIn((5,7), queries[1])
         # View 2 has 1 queries.
         self.assertTrue(len(queries[2]), 1)
-        self.assertTrue((7,0) in queries[2])
+        self.assertIn((7,0), queries[2])
         # View 3 has 1 queries.
         self.assertTrue(len(queries[3]), 1)
-        self.assertTrue((9,1) in queries[3])
+        self.assertIn((9,1), queries[3])
 
         # Views 1,2,3 have evidence.
         self.assertEqual(len(evidences), 3)
         # View 1 has 2 evidence.
         self.assertTrue(len(evidences[1]), 2)
-        self.assertTrue((3,1) in evidences[1])
+        self.assertIn((3,1), evidences[1])
         # View 2 has 1 evidence.
         self.assertTrue(len(evidences[2]), 1)
-        self.assertTrue((6,-1) in evidences[2])
+        self.assertIn((6,-1), evidences[2])
         # View 3 has 1 evidence.
         self.assertTrue(len(evidences[3]), 1)
-        self.assertTrue((9,1) in evidences[3])
+        self.assertIn((9,1), evidences[3])
 
 if __name__ == '__main__':
     unittest.main()
