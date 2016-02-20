@@ -294,58 +294,18 @@ class State(object):
         logpdf : float
             The logpdf(query|rowid, evidence).
         """
+        if evidence is None:
+            evidence = []
+
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
 
-        if self._is_hypothetical(rowid):
-            return self.logpdf_hypothetical(query, evidence=evidence)
-
-        # XXX Ignores evidence. Should the row cluster be renegotiated based on
-        # new evidence?
         logpdf = 0
-        for (col, val) in query:
-            k = self.views[self.Zv[col]].Zr[rowid]
-            logpdf += self.dims[col].logpdf(val, k)
-        return logsumexp(logpdf)
-
-    def logpdf_hypothetical(self, query, evidence=None):
-        """Simulates a hypothetical member, with no observed latents."""
-
-        # Algorithm. Partition all columns in query and evidence by views.
-        # P(x1,x2|x3,x4) where (x1...x4) in the same view.
-        #   = \sum_z p(x1,x2|z,x3,x4)p(z|x3,x4)     marginalization
-        #   = \sum_z p(x1,x2|z)p(z|x3,x4)           conditional independence
-        #   = \sum_z p(x1|z)p(x2|z)p(z|x3,x4)       conditional independence
-        # Now consider p(z|x3,x4)
-        #   \propto p(z)p(x3|z)p(x4|z)              Bayes rule
-        # [term]           [array]
-        # p(z)             logp_crp
-        # p(x3|z)p(x4|z)   logp_evidence
-        # p(z|x3,x4)       logp_cluster
-        # p(x1|z)p(x2|z)   logp_query
-
-        if evidence is None:
-            evidence = []
-
-        logpdf = 0
-        query_views = set([self.Zv[col] for (col, _) in query])
-
-        for v in query_views:
-            # Evidence densities.
-            logp_crp = self._compute_cluster_crp_logps(v)
-            logp_evidence = np.zeros(len(logp_crp))
-            for (col, val) in evidence:
-                if self.Zv[col] == v:
-                    logp_evidence += self._compute_cluster_data_logps(col, val)
-            logp_cluster = gu.log_normalize(logp_crp+logp_evidence)
-            # Query densities.
-            logp_query = np.zeros(len(logp_crp))
-            for (col, val) in query:
-                if self.Zv[col] == v:
-                    logp_query += self._compute_cluster_data_logps(col, val)
-            # Accumulate.
-            logpdf += logsumexp(logp_query+logp_cluster)
+        queries, evidences = self._get_view_qe(query, evidence)
+        for v in queries:
+            logpdf += self.views[v].logpdf(
+                rowid, queries[v], evidences.get(v,[]))
 
         return logpdf
 
@@ -390,61 +350,23 @@ class State(object):
         samples : np.array
             A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
         """
+        if evidence is None:
+            evidence = []
+
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
 
-        if self._is_hypothetical(rowid):
-            return self.simulate_hypothetical(query, evidence=evidence, N=N)
+        samples = np.zeros((N, len(query)))
+        queries, evidences = self._get_view_qe(query, evidence)
+        for v in queries:
+            v_query = queries[v]
+            v_evidence = evidences.get(v, [])
+            draws = self.views[v].simulate(rowid, v_query, v_evidence, N=N)
+            for i, c in enumerate(v_query):
+                samples[:,query.index(c)] = draws[:,i]
 
-        # XXX Ignores evidence. Should the row cluster be renegotiated based on
-        # new evidence?
-        samples = []
-        for _ in xrange(N):
-            draw = []
-            for col in query:
-                k = self.views[self.Zv[col]].Zr[rowid]
-                x = self.dims[col].simulate(k)
-                draw.append(x)
-            samples.append(draw)
-        return np.asarray(samples)
-
-    def simulate_hypothetical(self, query, evidence=None, N=1):
-        """Simulates a hypothetical member, with no observed latents."""
-        # Default parameter.
-        if evidence is None:
-            evidence = []
-
-        # Obtain views of query columns.
-        query_views = set([self.Zv[col] for col in query])
-
-        # Obtain probability of hypothetical row belonging to each cluster.
-        cluster_logps_for = dict()
-        for v in query_views:
-            # CRP densities.
-            logp_crp = self._compute_cluster_crp_logps(v)
-            # Evidence densities.
-            logp_evidence = np.zeros(len(logp_crp))
-            for (col, val) in evidence:
-                if self.Zv[col] == v:
-                    logp_evidence += self._compute_cluster_data_logps(col, val)
-            cluster_logps_for[v] = gu.log_normalize(logp_crp+logp_evidence)
-
-        samples = []
-        for _ in xrange(N):
-            sampled_k = dict()
-            draw = []
-            for v in query_views:
-                # Sample cluster.
-                sampled_k[v] = gu.log_pflip(cluster_logps_for[v])
-            for col in query:
-                # Sample data.
-                k = sampled_k[self.Zv[col]]
-                x = self.dims[col].simulate(k)
-                draw.append(x)
-            samples.append(draw)
-
-        return np.asarray(samples)
+        return samples
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
@@ -705,22 +627,25 @@ class State(object):
 
         self._check_partitions()
 
-    def _compute_cluster_crp_logps(self, view):
-        """Returns a list of log probabilities that a new row joins each of the
-        clusters in self.views[view], including a singleton."""
-        log_crp_numer = np.log(self.views[view].Nk + [self.views[view].alpha])
-        logp_crp_denom = log(self.n_rows() + self.views[view].alpha)
-        return log_crp_numer - logp_crp_denom
-
-    def _compute_cluster_data_logps(self, col, x):
-        """Returns a list of log probabilities that a new row for self.dims[col]
-        obtains value x for each of the clusters in self.Zr[col], including a
-        singleton."""
-        return [self.dims[col].logpdf(x,k) for k in
-            xrange(len(self.dims[col].clusters)+1)]
-
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
+
+    def _get_view_qe(self, query, evidence):
+        """queries[v], evidences[v] are the queries, evidences for view v."""
+        queries, evidences = {}, {}
+        for q in query:
+            col = q if isinstance(q, int) else q[0]
+            if self.Zv[col] in queries:
+                queries[self.Zv[col]].append(q)
+            else:
+                queries[self.Zv[col]] = [q]
+        for e in evidence:
+            col = e[0]
+            if self.Zv[col] in evidences:
+                evidences[self.Zv[col]].append(e)
+            else:
+                evidences[self.Zv[col]] = [e]
+        return queries, evidences
 
     def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.
