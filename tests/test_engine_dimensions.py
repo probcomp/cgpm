@@ -78,7 +78,7 @@ class EngineDimensionsTest(unittest.TestCase):
             initialize=1)
         cls.engine.transition(N=2)
 
-    def __ci_test_logpdf(self):
+    def test_logpdf__ci_(self):
         for rowid in [-1, 5]:
             query1, evidence1 = [(0,1)], [(2,1), (3,.5)]
             query2, evidence2 = [(2,0), (5,3)], [(0,4), (1,5)]
@@ -90,7 +90,7 @@ class EngineDimensionsTest(unittest.TestCase):
                     # Each element in logpdfs should be a single float.
                     self.assertTrue(isinstance(state_logpdfs, float))
 
-    def __ci_test_simulate(self):
+    def test_simulate__ci_(self):
         for rowid in [-1, 5]:
             for N in [1, 8]:
                 query1, evidence1 = [0], [(2,0), (3,6)]
@@ -106,7 +106,7 @@ class EngineDimensionsTest(unittest.TestCase):
                             # Each raw sample should be len(Q) dimensional.
                             self.assertEqual(len(s), len(Q))
 
-    def __ci_test_logpdf_bulk(self):
+    def test_logpdf_bulk__ci_(self):
         rowid1, query1, evidence1 = 5, [(0,0), (5,3)], [(2,1), (3,.5)]
         rowid2, query2, evidence2 = -1, [(1,0), (4,.8)], [(5,.5)]
         # Bulk.
@@ -123,7 +123,7 @@ class EngineDimensionsTest(unittest.TestCase):
             for l in state_logpdfs:
                     self.assertTrue(isinstance(l, float))
 
-    def __ci_test_simulate_bulk(self):
+    def test_simulate_bulk__ci_(self):
         rowid1, query1, evidence1, N1, = -1, [0,2,4,5], [(3,1)], 7
         rowid2, query2, evidence2, N2 = 5, [1,3], [(2,.8)], 3
         rowid3, query3, evidence3, N3 = 8, [0], [(4,.8)], 3

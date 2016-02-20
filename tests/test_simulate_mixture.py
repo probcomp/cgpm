@@ -77,7 +77,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         state.transition(N=n_transitions)
         cls.model = state.get_state(0)
 
-    def __ci_test_joint(self):
+    def test_joint__ci_(self):
         # Simulate from the joint distribution of (x,i).
         joint_samples = self.model.simulate(-1, [0,1], N=self.n_samples)
         _, ax = plt.subplots()
@@ -97,7 +97,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         ax.set_ylabel('x')
         ax.grid()
 
-    def __ci_test_conditional_indicator(self):
+    def test_conditional_indicator__ci_(self):
         # Simulate from the conditional X|Z
         _, ax = plt.subplots()
         ax.set_title('Conditional Simulation Of Data X Given Indicator Z')
@@ -117,7 +117,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         ax.set_ylabel('x')
         ax.grid()
 
-    def __ci_test_conditional_real(self):
+    def test_conditional_real__ci_(self):
         # Simulate from the conditional Z|X
         fig, axes = plt.subplots(2,3)
         fig.suptitle('Conditional Simulation Of Indicator Z Given Data X')
