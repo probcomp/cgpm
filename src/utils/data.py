@@ -117,3 +117,39 @@ def parse_schema(schema, dataframe):
     assert len(cctypes) == len(distargs) == len(columns)
     assert len(columns)  == T.shape[1]
     return T, cctypes, distargs, valmap, columns
+
+def dummy_code(x, discretes):
+    """Dummy code a vector of covariates x for ie regression.
+
+    Parameters
+    ----------
+    x : list
+        List of data; categorical values must be integer starting at 0.
+        must start from zero.
+    discretes : dict{int:int}
+        discretes[i] is the number of discrete categories in covariate x[i].
+
+    Returns
+    -------
+    xd : list
+        Dummy coded version of x.
+
+    Example
+    -------
+    >>> dummy_code([12.1, 3], {1:5})
+    [12.1, 0, 0, 0, 1]
+    # Note only 4 dummy codes since all 0s indicates cateogry 4.
+    """
+    if len(discretes) == 0:
+        return x
+    xp = []
+    for i, val in enumerate(x):
+        add = [val]
+        if i in discretes:
+            assert float(val) == int(val)
+            assert 0 <= val < discretes[i]
+            add = [0]*(discretes[i]-1)
+            if val < discretes[i]-1:
+                add[int(val)] = 1
+        xp.extend(add)
+    return xp
