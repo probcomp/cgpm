@@ -122,6 +122,10 @@ class Geometric(DistributionGpm):
     def is_continuous():
         return False
 
+    @staticmethod
+    def is_numeric():
+        return True
+
     ##################
     # HELPER METHODS #
     ##################

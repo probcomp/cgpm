@@ -166,3 +166,8 @@ class DistributionGpm(object):
     def is_continuous():
         """Is the pdf defined on a continuous set?"""
         raise NotImplementedError
+
+    @staticmethod
+    def is_numeric():
+        """Is the support of the pdf a numeric of symbolic set?"""
+        raise NotImplementedError

@@ -148,3 +148,6 @@ class Lognormal(DistributionGpm):
     @staticmethod
     def is_continuous():
         return True
+    @staticmethod
+    def is_numeric():
+        return True

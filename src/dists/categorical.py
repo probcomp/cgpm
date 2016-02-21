@@ -125,6 +125,10 @@ class Categorical(DistributionGpm):
     def is_continuous():
         return False
 
+    @staticmethod
+    def is_numeric():
+        return False
+
     ##################
     # HELPER METHODS #
     ##################
