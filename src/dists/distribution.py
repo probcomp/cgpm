@@ -124,7 +124,7 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def transition_params(self, x):
+    def transition_params(self):
         """Resample the parameters Q conditioned on all observations X
         from an approximate posterior P(Q|X,H)."""
         raise NotImplementedError
