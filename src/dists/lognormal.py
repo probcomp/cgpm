@@ -63,14 +63,14 @@ class Lognormal(DistributionGpm):
         self.s = s
         self.nu = nu
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         if x <= 0:
             raise ValueError('Lognormal requires positive observations.')
         self.N += 1.0
         self.sum_log_x += log(x)
         self.sum_log_x_sq += log(x) * log(x)
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         if x <= 0:
@@ -79,7 +79,7 @@ class Lognormal(DistributionGpm):
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         if x < 0:
             return float('-inf')
         return -log(x) + \
@@ -90,13 +90,6 @@ class Lognormal(DistributionGpm):
         return -self.sum_log_x + \
             Normal.calc_logpdf_marginal(self.N, self.sum_log_x,
                 self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
-
-    def logpdf_singleton(self, x):
-        if x < 0:
-            return float('-inf')
-        return - log(x) + \
-            Normal.calc_predictive_logp(log(x), 0, 0, 0, self.m, self.r,
-                self.s, self.nu)
 
     def simulate(self):
         # XXX This implementation is not verified but will be covered in

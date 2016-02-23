@@ -61,13 +61,13 @@ class NormalTrunc(object):
         if mu is None or sigma is None:
             self.mu, self.sigma = NormalTrunc.sample_parameters(self.l, self.h)
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         assert self.l<=x<=self.h
         self.N += 1.0
         self.sum_x += x
         self.sum_x_sq += x*x
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         assert self.l<=x<=self.h
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
@@ -79,7 +79,7 @@ class NormalTrunc(object):
             self.sum_x -= x
             self.sum_x_sq -= x*x
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         if not self.l<=x<=self.h:
             return float('-inf')
         logpdf_unorm = NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma)
@@ -96,10 +96,7 @@ class NormalTrunc(object):
             self.l, self.h)
         return data_logp + prior_logp - self.N * normalizer_logp
 
-    def logpdf_singleton(self, x):
-        return NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma)
-
-    def simulate(self):
+    def simulate(self, y=None):
         max_iters = 1000
         for _ in xrange(max_iters):
             x = norm.rvs(loc=self.mu, scale=self.sigma)

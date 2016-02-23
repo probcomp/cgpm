@@ -53,19 +53,19 @@ class Bernoulli(DistributionGpm):
         self.alpha = alpha
         self.beta = beta
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         assert x == 1.0 or x == 0.0
         self.N += 1
         self.k += x
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         assert x == 1. or x == 0.
         self.N -= 1
         self.k -= x
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Bernoulli.calc_predictive_logp(x, self.N, self.k, self.alpha,
             self.beta)
 
@@ -73,10 +73,7 @@ class Bernoulli(DistributionGpm):
         return Bernoulli.calc_logpdf_marginal(self.N, self.k, self.alpha,
             self.beta)
 
-    def logpdf_singleton(self, x):
-        return Bernoulli.calc_predictive_logp(x, 0, 0, self.alpha, self.beta)
-
-    def simulate(self):
+    def simulate(self, y=None):
         if np.random.random() < self.alpha / (self.alpha + self.beta):
             return 1.
         else:

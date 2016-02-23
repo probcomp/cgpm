@@ -59,13 +59,13 @@ class Categorical(DistributionGpm):
         # Hyperparameter.
         self.alpha = alpha
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         if not Categorical.validate(x, self.k):
             raise ValueError('Invalid categorical observation %s.' % str(x))
         self.N += 1
         self.counts[int(x)] += 1
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         if not Categorical.validate(x, self.k):
@@ -73,7 +73,7 @@ class Categorical(DistributionGpm):
         self.N -= 1
         self.counts[int(x)] -= 1
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Categorical.calc_predictive_logp(x, self.N, self.counts,
             self.alpha)
 
@@ -81,11 +81,7 @@ class Categorical(DistributionGpm):
         return Categorical.calc_logpdf_marginal(self.N, self.counts,
             self.alpha)
 
-    def logpdf_singleton(self, x):
-        return Categorical.calc_predictive_logp(x, 0, [0]*self.k,
-            self.alpha)
-
-    def simulate(self):
+    def simulate(self, y=None):
         return gu.pflip(self.counts + self.alpha)
 
     def transition_params(self):
