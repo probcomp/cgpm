@@ -27,12 +27,16 @@
 
 class DistributionGpm(object):
     """Interface for generative population models representing a
-    probability distribution over a single dimension.
+    probability distribution over a single dimension, possibly conditioned
+    on other dimensions.
 
-    A typical ComponentGpm will have:
+    A typical DistributionGpm will have:
     - Sufficient statistics T, for the observed data X.
     - Parameters Q, for the likelihood p(X|Q).
     - Hyperparameters H, for the prior p(Q|H).
+
+    Additionally, some DistributionGpms will require per query
+    - Conditioning variables Y, for the distribution p(X|Q,H,Y=y).
 
     This interface is uniform for both collapsed and uncollapsed models.
     A collapsed model will typically have no parameters Q.
@@ -42,7 +46,7 @@ class DistributionGpm(object):
     recovered in the limit n \to \infty.
     """
 
-    def __init__(self, suffstats, params, hypers):
+    def __init__(self, suffstats, params, hypers, distargs):
         """Initialize the Gpm.
 
         This constructor signature is abstract. `suffstats`, `params`, and
@@ -60,39 +64,32 @@ class DistributionGpm(object):
             Initial values of params.
         hypers : **kwargs
             Initial values of hyperparams.
+        distargs : dict
+            Any other arguments.
         """
         raise NotImplementedError
 
-    def incorporate(self, x):
-        """Record a single observation x. Increments suffstats."""
+    def incorporate(self, x, y=None):
+        """Record a single observation x|y. Increments suffstats."""
         raise NotImplementedError
 
-    def unincorporate(self, x):
-        """Remove a single observation x. Decrements any suffstats.
+    def unincorporate(self, x, y=None):
+        """Remove a single observation x|y. Decrements any suffstats.
         An error will be thrown if `self.N` drops below zero or other
         distribution-specific invariants are violated.
         """
         raise NotImplementedError
 
-    def logpdf(self, x):
-        """Compute the probability of a new observation x, conditioned on
+    def logpdf(self, x, y=None):
+        """Compute the probability of a new observation x|y, conditioned on
         the sufficient statistics, parameters (if uncollapsed), and
         hyperparameters, ie P(x|T,Q,H).
         """
         raise NotImplementedError
 
-    def logpdf_singleton(self, x):
-        """Compute the probability of a new observation x, conditioned on
-        parameters (if uncollapsed), and hyperparameters, ie P(x|Q,H).
-        Note that previous observations (suffstats) are ignored in this
-        computation. Implemented as an optimization and can be recovered by
-        unincorporating all data, and invoking `logpdf`.
-        """
-        raise NotImplementedError
-
     def logpdf_marginal(self):
         """Compute an estimate of the probability of all incorporated
-        observations X, conditioned on the current GPM state.
+        observations X|Y, conditioned on the current GPM state.
 
         A collapsed model can compute P(X|H) exactly by integrating over Q.
 
@@ -110,8 +107,8 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def simulate(self):
-        """Simulate from the distribution p(x|T,Q,H).  The sample returned
+    def simulate(self, y=None):
+        """Simulate from the distribution p(x|T,Q,H,Y=y). The sample returned
         by this method must necessarily be from the same distribution that
         `predictive_logp` evaluates.
 
@@ -165,6 +162,11 @@ class DistributionGpm(object):
     @staticmethod
     def is_continuous():
         """Is the pdf defined on a continuous set?"""
+        raise NotImplementedError
+
+    @staticmethod
+    def is_conditional():
+        """Does the sampler require conditioning variables Y=y?"""
         raise NotImplementedError
 
     @staticmethod

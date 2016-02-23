@@ -69,12 +69,12 @@ class Normal(DistributionGpm):
         self.s = float(s)
         self.nu = float(nu)
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         self.N += 1.0
         self.sum_x += x
         self.sum_x_sq += x*x
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
@@ -85,19 +85,15 @@ class Normal(DistributionGpm):
             self.sum_x -= x
             self.sum_x_sq -= x*x
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Normal.calc_predictive_logp(x, self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
-
-    def logpdf_singleton(self, x):
-        return Normal.calc_predictive_logp(x, 0, 0, 0, self.m, self.r,
-            self.s, self.nu)
 
     def logpdf_marginal(self):
         return Normal.calc_logpdf_marginal(self.N, self.sum_x, self.sum_x_sq,
             self.m, self.r, self.s, self.nu)
 
-    def simulate(self):
+    def simulate(self, y=None):
         mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun)

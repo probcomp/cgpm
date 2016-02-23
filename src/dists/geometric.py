@@ -55,17 +55,17 @@ class Geometric(DistributionGpm):
         self.a = a
         self.b = b
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         self.N += 1.0
         self.sum_x += x
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
         self.sum_x -= x
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Geometric.calc_predictive_logp(x, self.N, self.sum_x, self.a,
             self.b)
 
@@ -73,10 +73,7 @@ class Geometric(DistributionGpm):
         return Geometric.calc_logpdf_marginal(self.N, self.sum_x, self.a,
             self.b)
 
-    def logpdf_singleton(self, x):
-        return Geometric.calc_predictive_logp(x, 0, 0, self.a, self.b)
-
-    def simulate(self):
+    def simulate(self, y=None):
         an, bn = Geometric.posterior_hypers(self.N, self.sum_x, self.a,
             self.b)
         pn = beta.rvs(an, bn)
