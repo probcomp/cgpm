@@ -108,18 +108,11 @@ class Vonmises(DistributionGpm):
         self.k = hypers['k']
 
     def get_hypers(self):
-        return {
-            'a' : self.a,
-            'b' : self.b,
-            'k' : self.k
-        }
+        return {'a' : self.a, 'b' : self.b, 'k' : self.k}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_sin_x' : self.sum_sin_x,
-            'sum_cos_x' : self.sum_cos_x
-        }
+        return {'N': self.N, 'sum_sin_x' : self.sum_sin_x,
+            'sum_cos_x' : self.sum_cos_x}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):

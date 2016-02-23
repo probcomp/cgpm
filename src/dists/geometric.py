@@ -89,16 +89,13 @@ class Geometric(DistributionGpm):
         self.a = hypers['a']
 
     def get_hypers(self):
-        return {
-            'a': self.a,
-            'b': self.b,
-        }
+        return {'a': self.a, 'b': self.b}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_x': self.sum_x,
-        }
+        return {'N': self.N, 'sum_x': self.sum_x}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):

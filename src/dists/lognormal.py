@@ -114,7 +114,10 @@ class Lognormal(DistributionGpm):
         self.nu = hypers['nu']
 
     def get_hypers(self):
-        return { 'm': self.m, 'r': self.r, 's': self.s, 'nu': self.nu }
+        return {'m': self.m, 'r': self.r, 's': self.s, 'nu': self.nu}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
         return {'N': self.N, 'sum_log_x': self.sum_log_x,

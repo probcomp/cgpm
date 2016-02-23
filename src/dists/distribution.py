@@ -134,6 +134,10 @@ class DistributionGpm(object):
         """Return a dictionary of hyperparameters."""
         raise NotImplementedError
 
+    def get_params(self):
+        """Return a dictionary of parameters."""
+        raise NotImplementedError
+
     def get_suffstats(self):
         """Return a dictionary of sufficient statistics."""
         raise NotImplementedError

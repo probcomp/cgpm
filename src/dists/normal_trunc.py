@@ -131,6 +131,9 @@ class NormalTrunc(object):
     def get_hypers(self):
         return {}
 
+    def get_params(self):
+        return {'mu': self.mu, 'sigma': self.sigma}
+
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
 

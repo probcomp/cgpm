@@ -89,16 +89,13 @@ class Bernoulli(DistributionGpm):
         self.beta = hypers['beta']
 
     def get_hypers(self):
-        return {
-            'alpha': self.alpha,
-            'beta': self.beta
-        }
+        return {'alpha': self.alpha, 'beta': self.beta}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
-        return {
-            'N' : self.N,
-            'k' : self.k
-        }
+        return {'N' : self.N, 'k' : self.k}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
