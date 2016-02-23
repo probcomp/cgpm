@@ -727,16 +727,14 @@ class State(object):
         metadata['view_alphas'] = []
 
         # Column data.
-        metadata['hypers'] = []
         metadata['cctypes'] = []
+        metadata['hypers'] = []
         metadata['distargs'] = []
-        metadata['suffstats'] = []
 
         for dim in self.dims:
-            metadata['hypers'].append(dim.hypers)
             metadata['cctypes'].append(dim.cctype)
+            metadata['hypers'].append(dim.hypers)
             metadata['distargs'].append(dim.distargs)
-            metadata['suffstats'].append(dim.get_suffstats())
 
         for view in self.views:
             metadata['Nk'].append(view.Nk)

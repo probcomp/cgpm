@@ -207,9 +207,6 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # Helpers
 
-    def get_suffstats(self):
-        return [cluster.get_suffstats() for cluster in self.clusters]
-
     def is_collapsed(self):
         return self.model.is_collapsed()
 
