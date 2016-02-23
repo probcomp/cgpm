@@ -31,15 +31,16 @@ from math import log
 import numpy as np
 from scipy.stats import norm, gamma
 
+from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.dists.normal import Normal
 from gpmcc.utils import general as gu
 from gpmcc.utils import sampling as su
-from gpmcc.dists.normal import Normal
 
 LOG2 = log(2.0)
 LOGPI = log(np.pi)
 LOG2PI = log(2*np.pi)
 
-class NormalTrunc(object):
+class NormalTrunc(DistributionGpm):
     """Normal distribution with normal prior on mean and gamma prior on
     precision. Uncollapsed.
     sigma ~ Gamma(shape=1, scale=.5)
