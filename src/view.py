@@ -74,8 +74,7 @@ class View(object):
         # Initialize the dimensions.
         self.dims = dict()
         for dim in dims:
-            dim.bulk_incorporate(X[:,dim.index], Zr)
-            self.dims[dim.index] = dim
+            self.incorporate_dim(dim)
 
         # self._check_partitions()
 
