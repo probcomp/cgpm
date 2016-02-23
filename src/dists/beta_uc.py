@@ -126,18 +126,15 @@ class BetaUC(DistributionGpm):
         self.beta = hypers['beta']
 
     def get_hypers(self):
-        return {
-            'mu': self.mu,
-            'alpha': self.alpha,
-            'beta': self.beta
-        }
+        return {'mu': self.mu, 'alpha': self.alpha, 'beta':
+            self.beta}
+
+    def get_params(self):
+        return {'balance': self.balance, 'strength': self.strength}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_log_x': self.sum_log_x,
-            'sum_minus_log_x': self.sum_minus_log_x
-        }
+        return {'N': self.N, 'sum_log_x': self.sum_log_x,
+            'sum_minus_log_x': self.sum_minus_log_x}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):

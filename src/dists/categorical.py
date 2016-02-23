@@ -92,15 +92,13 @@ class Categorical(DistributionGpm):
         self.alpha = hypers['alpha']
 
     def get_hypers(self):
-        return {
-            'alpha': self.alpha,
-        }
+        return {'alpha': self.alpha}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
-        return {
-            'N' : self.N,
-            'counts' : list(self.counts)
-        }
+        return {'N' : self.N, 'counts' : list(self.counts)}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):

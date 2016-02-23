@@ -114,6 +114,9 @@ class Normal(DistributionGpm):
     def get_hypers(self):
         return {'m': self.m, 'r': self.r, 's': self.s, 'nu': self.nu}
 
+    def get_params(self):
+        return {}
+
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
 
