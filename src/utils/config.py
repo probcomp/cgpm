@@ -28,28 +28,20 @@
 import re
 from datetime import datetime
 
-from gpmcc.dists import beta_uc
-from gpmcc.dists import normal
-from gpmcc.dists import normal_trunc
-from gpmcc.dists import bernoulli
-from gpmcc.dists import categorical
-from gpmcc.dists import lognormal
-from gpmcc.dists import poisson
-from gpmcc.dists import exponential
-from gpmcc.dists import geometric
-from gpmcc.dists import vonmises
+import importlib
 
 cctype_class_lookup = {
-    'normal'            : normal.Normal,
-    'normal_trunc'      : normal_trunc.NormalTrunc,
-    'beta_uc'           : beta_uc.BetaUC,
-    'bernoulli'         : bernoulli.Bernoulli,
-    'categorical'       : categorical.Categorical,
-    'lognormal'         : lognormal.Lognormal,
-    'poisson'           : poisson.Poisson,
-    'exponential'       : exponential.Exponential,
-    'geometric'         : geometric.Geometric,
-    'vonmises'          : vonmises.Vonmises,
+    'normal'            : ('gpmcc.dists.normal', 'Normal'),
+    'normal_trunc'      : ('gpmcc.dists.normal_trunc', 'NormalTrunc'),
+    'beta_uc'           : ('gpmcc.dists.beta_uc', 'BetaUC'),
+    'bernoulli'         : ('gpmcc.dists.bernoulli', 'Bernoulli'),
+    'categorical'       : ('gpmcc.dists.categorical', 'Categorical'),
+    'lognormal'         : ('gpmcc.dists.lognormal', 'Lognormal'),
+    'linreg'            : ('gpmcc.dists.linreg', 'LinearRegression'),
+    'poisson'           : ('gpmcc.dists.poisson', 'Poisson'),
+    'exponential'       : ('gpmcc.dists.exponential', 'Exponential'),
+    'geometric'         : ('gpmcc.dists.geometric', 'Geometric'),
+    'vonmises'          : ('gpmcc.dists.vonmises', 'Vonmises'),
 }
 
 def timestamp():
@@ -60,9 +52,11 @@ def colors():
     return ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'brown',
         'black', 'pink']
 
-def cctype_class(dist):
+def cctype_class(cctype):
     """Return a class object for initializing a named DistributionGpm."""
-    return cctype_class_lookup[dist]
+    modulename, classname = cctype_class_lookup[cctype]
+    mod = importlib.import_module(modulename)
+    return getattr(mod, classname)
 
 def valid_cctype(dist):
     """Returns True if dist is a valid DistributionGpm."""
