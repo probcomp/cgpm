@@ -107,12 +107,12 @@ class State(object):
             raise ValueError('Dependency constraints not yet implemented.')
 
         # Generate dimensions.
-        self.dims = []
+        dims = []
         for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
             D = Dim(cctypes[col], col, hypers=dim_hypers, distargs=distargs[col])
             D.transition_hyper_grids(self.X[:,col])
-            self.dims.append(D)
+            dims.append(D)
 
         # Generate CRP alpha.
         self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(), 30)
@@ -133,10 +133,10 @@ class State(object):
         # Generate views.
         self.views = []
         for v in xrange(len(self.Nv)):
-            dims = [self.dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
+            view_dims = [dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrv is None else np.asarray(Zrv[v])
             alpha = None if view_alphas is None else view_alphas[v]
-            V = View(self.X, dims, Zr=Zr, alpha=alpha)
+            V = View(self.X, view_dims, Zr=Zr, alpha=alpha)
             self.views.append(V)
 
         self._check_partitions()
@@ -168,22 +168,20 @@ class State(object):
         col = self.n_cols() - 1
         D = Dim(cctype, col, distargs=distargs)
         D.transition_hyper_grids(self.X[:,col])
-        self.dims.append(D)
 
         for view in self.views:
             view.set_dataset(self.X)
 
         if 0 <= v < len(self.Nv):
-            self.views[v].incorporate_dim(self.dims[-1])
+            self.views[v].incorporate_dim(D)
             self.Zv.append(v)
             self.Nv[v] += 1
         elif v == len(self.Nv):
-            self.views.append(
-                View(self.X, [self.dims[-1]]))
+            self.views.append(View(self.X, [D]))
             self.Zv.append(v)
             self.Nv.append(1)
         else:
-            self.views[0].incorporate_dim(self.dims[-1])
+            self.views[0].incorporate_dim(D)
             self.Zv.append(0)
             self.Nv[0] += 1
             self.transition_columns(cols=[col])
@@ -196,10 +194,12 @@ class State(object):
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
 
-        self.X = np.delete(self.X, col, 1)
+        D_all = self.dims()
+        D_del = D_all[col]
+        del D_all[col]
 
         v = self.Zv[col]
-        self.views[v].unincorporate_dim(self.dims[col])
+        self.views[v].unincorporate_dim(D_del)
         self.Nv[v] -= 1
         del self.Zv[col]
 
@@ -208,10 +208,10 @@ class State(object):
             del self.Nv[v]
             del self.views[v]
 
-        del self.dims[col]
-        for i, dim in enumerate(self.dims):
+        for i, dim in enumerate(D_all):
             dim.index = i
 
+        self.X = np.delete(self.X, col, 1)
         for view in self.views:
             view.set_dataset(self.X)
             view.reindex_dims()
@@ -482,19 +482,19 @@ class State(object):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims[c].transition_params()
+            self.dims(c).transition_params()
 
     def transition_column_hypers(self, cols=None):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims[c].transition_hypers()
+            self.dims(c).transition_hypers()
 
     def transition_column_hyper_grids(self, cols=None):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims[c].transition_hyper_grids(self.X[:,c])
+            self.dims(c).transition_hyper_grids(self.X[:,c])
 
     def transition_rows(self, views=None, rows=None):
         if self.n_rows() == 1:
@@ -524,10 +524,10 @@ class State(object):
         return np.shape(self.X)[1]
 
     def cctypes(self):
-        return [self.dims[i].cctype for i in xrange(self.n_cols())]
+        return [d.cctype for d in self.dims()]
 
     def distargs(self):
-        return [self.dims[i].distargs for i in xrange(self.n_cols())]
+        return [d.distargs for d in self.dims()]
 
     # --------------------------------------------------------------------------
     # Plotting
@@ -543,6 +543,11 @@ class State(object):
 
     # --------------------------------------------------------------------------
     # Internal
+
+    def dims(self, col=None):
+        if col is not None:
+            return self.views[self.Zv[col]].dims[col]
+        return [self.views[self.Zv[c]].dims[c] for c in xrange(self.n_cols())]
 
     def _transition_column(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
@@ -568,7 +573,7 @@ class State(object):
         p_view = []
         proposal_dims = []
         for v in xrange(len(self.views)):
-            D = get_propsal_dim(self.dims[col], v)
+            D = get_propsal_dim(self.dims(col), v)
             if v == v_a:
                 logp = self.views[v].unincorporate_dim(D)
                 self.views[v].incorporate_dim(D, reassign=D.is_collapsed())
@@ -582,7 +587,7 @@ class State(object):
         p_crp_aux = log(self.alpha/float(m))
         proposal_views = []
         for _ in xrange(m-1 if singleton else m):
-            D = get_propsal_dim(self.dims[col], None)
+            D = get_propsal_dim(self.dims(col), None)
             V = View(self.X, [])
             logp = V.incorporate_dim(D)
             p_view.append(logp + p_crp_aux)
@@ -596,7 +601,7 @@ class State(object):
 
         # Draw view.
         v_b = gu.log_pflip(p_view)
-        self.dims[col] = proposal_dims[v_b]
+        D = proposal_dims[v_b]
 
         # Append auxiliary view?
         if v_b >= len(self.views):
@@ -606,9 +611,8 @@ class State(object):
 
         # Accounting.
         if v_a != v_b:
-            self.views[v_a].unincorporate_dim(self.dims[col])
-        self.views[v_b].incorporate_dim(
-            self.dims[col], reassign=self.dims[col].is_collapsed())
+            self.views[v_a].unincorporate_dim(D)
+        self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
         self.Zv[col] = v_b
         self.Nv[v_a] -= 1
         self.Nv[v_b] += 1
@@ -646,7 +650,7 @@ class State(object):
         if self.n_cols() > 24:
             return
         fig.clear()
-        for dim in self.dims:
+        for dim in self.dims():
             index = dim.index
             ax = fig.add_subplot(layout['plots_x'], layout['plots_y'],
                 index+1)
@@ -673,7 +677,7 @@ class State(object):
         assert self.alpha > 0.
         # Zv and dims should match n_cols.
         assert len(self.Zv) == self.n_cols()
-        assert len(self.dims) == self.n_cols()
+        assert len(self.dims()) == self.n_cols()
         # Nv should account for each column.
         assert sum(self.Nv) == self.n_cols()
         # Nv should have an entry for each view.
@@ -724,7 +728,7 @@ class State(object):
         metadata['hypers'] = []
         metadata['distargs'] = []
 
-        for dim in self.dims:
+        for dim in self.dims():
             metadata['cctypes'].append(dim.cctype)
             metadata['hypers'].append(dim.hypers)
             metadata['distargs'].append(dim.distargs)
