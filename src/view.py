@@ -35,7 +35,7 @@ import gpmcc.utils.general as gu
 class View(object):
     """View, a collection of Dim and their row mixtures."""
 
-    def __init__(self, X, dims, alpha=None, Zr=None, n_grid=30):
+    def __init__(self, X, dims, alpha=None, Zr=None):
         """View constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -53,14 +53,12 @@ class View(object):
         Zr : list<int>, optional
             Starting partiton of rows to categories where Zr[i] is the latent
             clsuter of row i. If None, is sampled from CRP(alpha).
-        n_grid : int
-            Number of grid points in hyperparameter grids.
         """
         # Dataset.
         self.X = X
 
         # Generate alpha.
-        self.alpha_grid = gu.log_linspace(1./len(self.X), len(self.X), n_grid)
+        self.alpha_grid = gu.log_linspace(1./len(self.X), len(self.X), 30)
         if alpha is None:
             alpha = np.random.choice(self.alpha_grid)
         self.alpha = alpha
