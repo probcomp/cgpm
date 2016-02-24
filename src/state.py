@@ -55,8 +55,7 @@ class State(object):
     """State, the main crosscat object."""
 
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
-            view_alphas=None, hypers=None, Cd=None, Ci=None, n_grid=30,
-            seed=None):
+            view_alphas=None, hypers=None, Cd=None, Ci=None, seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
         and row partition for each view.
@@ -72,8 +71,6 @@ class State(object):
             Distargs appropriate for each cctype in cctypes. For details on
             distargs see the documentation for each DistributionGpm. Empty
             distargs can be None or dict().
-        n_grid : int, optional
-            Number of bins for hyperparameter grids.
         Zv : list<int>, optional
             Assignmet of columns to views. If not specified a random
             partition is sampled.
@@ -99,9 +96,6 @@ class State(object):
         # Dataset.
         self.X = np.asarray(X)
 
-        # Hyperparameters.
-        self.n_grid = n_grid
-
         # Distargs.
         if distargs is None:
             distargs = [None] * len(cctypes)
@@ -117,12 +111,11 @@ class State(object):
         for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
             D = Dim(cctypes[col], col, hypers=dim_hypers, distargs=distargs[col])
-            D.transition_hyper_grids(self.X[:,col], n_grid=30)
+            D.transition_hyper_grids(self.X[:,col])
             self.dims.append(D)
 
         # Generate CRP alpha.
-        self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(),
-            self.n_grid)
+        self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(), 30)
         if alpha is None:
             alpha = np.random.choice(self.alpha_grid)
         self.alpha = alpha
@@ -143,7 +136,7 @@ class State(object):
             dims = [self.dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrv is None else np.asarray(Zrv[v])
             alpha = None if view_alphas is None else view_alphas[v]
-            V = View(self.X, dims, Zr=Zr, alpha=alpha, n_grid=n_grid)
+            V = View(self.X, dims, Zr=Zr, alpha=alpha)
             self.views.append(V)
 
         self._check_partitions()
@@ -174,7 +167,7 @@ class State(object):
 
         col = self.n_cols() - 1
         D = Dim(cctype, col, distargs=distargs)
-        D.transition_hyper_grids(self.X[:,col], n_grid=self.n_grid)
+        D.transition_hyper_grids(self.X[:,col])
         self.dims.append(D)
 
         for view in self.views:
@@ -186,7 +179,7 @@ class State(object):
             self.Nv[v] += 1
         elif v == len(self.Nv):
             self.views.append(
-                View(self.X, [self.dims[-1]], n_grid=self.n_grid))
+                View(self.X, [self.dims[-1]]))
             self.Zv.append(v)
             self.Nv.append(1)
         else:
@@ -501,7 +494,7 @@ class State(object):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims[c].transition_hyper_grids(self.X[:,c], self.n_grid)
+            self.dims[c].transition_hyper_grids(self.X[:,c])
 
     def transition_rows(self, views=None, rows=None):
         if self.n_rows() == 1:
@@ -590,7 +583,7 @@ class State(object):
         proposal_views = []
         for _ in xrange(m-1 if singleton else m):
             D = get_propsal_dim(self.dims[col], None)
-            V = View(self.X, [], n_grid=self.n_grid)
+            V = View(self.X, [])
             logp = V.incorporate_dim(D)
             p_view.append(logp + p_crp_aux)
             proposal_dims.append(D)
@@ -714,7 +707,6 @@ class State(object):
         metadata['X'] = self.X.tolist()
 
         # Misc data.
-        metadata['n_grid'] = self.n_grid
         metadata['seed'] = self.seed
 
         # View partition data.
@@ -754,7 +746,7 @@ class State(object):
         return cls(X, metadata['cctypes'], metadata['distargs'],
             Zv=metadata['Zv'], Zrv=metadata['Zrv'], alpha=metadata['alpha'],
             view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
-            n_grid=metadata['n_grid'], seed=metadata['seed'])
+            seed=metadata['seed'])
 
     @classmethod
     def from_pickle(cls, fileptr):
