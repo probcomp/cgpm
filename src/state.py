@@ -116,9 +116,9 @@ class State(object):
         self.dims = []
         for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
-            self.dims.append(
-                Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
-                hypers=dim_hypers, distargs=distargs[col]))
+            D = Dim(cctypes[col], col, hypers=dim_hypers, distargs=distargs[col])
+            D.transition_hyper_grids(self.X[:,col], n_grid=30)
+            self.dims.append(D)
 
         # Generate CRP alpha.
         self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(),
@@ -173,8 +173,9 @@ class State(object):
         self.X = np.column_stack((self.X, X))
 
         col = self.n_cols() - 1
-        self.dims.append(Dim(X, cctype, col, n_grid=self.n_grid,
-            distargs=distargs))
+        D = Dim(cctype, col, distargs=distargs)
+        D.transition_hyper_grids(self.X[:,col], n_grid=self.n_grid)
+        self.dims.append(D)
 
         for view in self.views:
             view.set_dataset(self.X)
