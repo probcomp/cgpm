@@ -63,7 +63,11 @@ class Dim(object):
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
+        self.hyper_grids = {}
         self.hypers = hypers if hypers is not None else {}
+
+        # Clusters.
+        self.clusters = []
 
         # Auxiliary singleton model.
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
