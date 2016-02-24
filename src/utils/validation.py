@@ -64,6 +64,7 @@ def validate_crp_constrained_input(N, Cd, Ci):
         # Dummy case.
         if pair[0] == pair[1]:
             raise ValueError('Independency specified for same customer.')
+    return True
 
 def validate_query_evidence(X, rowid, hypothetical, query, evidence=None):
     if evidence is None:
