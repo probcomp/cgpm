@@ -51,8 +51,6 @@ class Dim(object):
         distargs : dict, optional.
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
-        n_grid : int, optional
-            Number of bins in the hyperparameter grid.
         """
         # Identifier.
         self.index = index
