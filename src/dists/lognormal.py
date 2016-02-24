@@ -49,7 +49,7 @@ class Lognormal(DistributionGpm):
     """
 
     def __init__(self, N=0, sum_log_x=0, sum_log_x_sq=0, m=1, r=1, s=1,
-            nu=0, distargs=None):
+            nu=1, distargs=None):
         assert r > 0.
         assert s > 0.
         assert nu > 0.
