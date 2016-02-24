@@ -38,17 +38,12 @@ class Dim(object):
     shared hyperparameters and grids. Technically not GPM, but easily becomes
     one by placing creating a View with a single Dim."""
 
-    def __init__(self, X, cctype, index, distargs=None, Zr=None, n_grid=30,
-            hypers=None):
+    def __init__(self, cctype, index, distargs=None, hypers=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
         Parameters
         ----------
-        X : np.array
-            Array of data. Must be compatible with `cctype`. Missing entries
-            must be np.nan. The dataset X is summarized by the sufficient
-            statistics only and is not stored.
         cctype : str
             DistributionGpm name see `gpmcc.utils.config`.
         index : int
@@ -56,10 +51,6 @@ class Dim(object):
         distargs : dict, optional.
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
-        Zr : list<int>, optional
-            Partition of data X into clusters, where Zr[i] is the cluster
-            index of row X[i]. If None, intialized from CRP(1). The partition
-            is only for initialization and is not stored.
         n_grid : int, optional
             Number of bins in the hyperparameter grid.
         """
@@ -72,17 +63,7 @@ class Dim(object):
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
-        self.transition_hyper_grids(X, n_grid)
-        self.hypers = hypers
-        if hypers is None:
-            self.hypers = dict()
-            for h in self.hyper_grids:
-                self.hypers[h] = np.random.choice(self.hyper_grids[h])
-
-        # Row partition.
-        if Zr is None:
-            Zr = gu.simulate_crp(len(X), 1)
-        self.bulk_incorporate(X, Zr)
+        self.hypers = hypers if hypers is not None else {}
 
         # Auxiliary singleton model.
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
@@ -199,10 +180,13 @@ class Dim(object):
             proposal = gu.log_pflip(logps)
             self.hypers[target] = self.hyper_grids[target][proposal]
 
-    def transition_hyper_grids(self, X, n_grid):
+    def transition_hyper_grids(self, X, n_grid=30):
         """Resample the hyperparameter grids using empirical Bayes."""
         self.hyper_grids = self.model.construct_hyper_grids(
-            X[~np.isnan(X)], n_grid)
+            X[~np.isnan(X)], n_grid=n_grid)
+        for h in self.hyper_grids:
+            self.hypers[h] = np.random.choice(self.hyper_grids[h])
+        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
 
     # --------------------------------------------------------------------------
     # Helpers
