@@ -117,6 +117,10 @@ class Geometric(DistributionGpm):
         return False
 
     @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
     def is_numeric():
         return True
 
