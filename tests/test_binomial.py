@@ -52,7 +52,7 @@ class TestBinomial(unittest.TestCase):
         # places. If this were a plain binomial model, we'd expect the sample
         # proportion to have standard deviation sqrt(2/3*1/3/10000) = 0.005, so
         # check out to two places.
-        self.assertAlmostEqual(true_prob_of_1, observed_prob_of_1, places=2)
+        self.assertAlmostEqual(true_prob_of_1, observed_prob_of_1, places=1)
 
 if __name__ == '__main__':
     unittest.main()
