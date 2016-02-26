@@ -30,7 +30,6 @@ import math
 import warnings
 from math import log
 
-import networkx as nx
 import numpy as np
 from scipy.special import i0 as bessel_0
 from scipy.misc import logsumexp
@@ -176,3 +175,8 @@ def simulate_crp_constrained(N, alpha, Cd, Ci):
     assert all(0 <= t < N for t in Z)
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci)
     return Z
+
+def build_rowid_blocks(Zvr):
+    A = np.asarray(Zvr).T
+    U = map(tuple, A)
+    return {u:np.where(np.all(A==u, axis=1))[0] for u in U}
