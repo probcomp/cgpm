@@ -91,7 +91,7 @@ class Lognormal(DistributionGpm):
             Normal.calc_logpdf_marginal(self.N, self.sum_log_x,
                 self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
 
-    def simulate(self):
+    def simulate(self, y=None):
         # XXX This implementation is not verified but will be covered in
         # future univariate simulate tests, see Github issue #14.
         # Simulate normal parameters
