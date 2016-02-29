@@ -68,7 +68,7 @@ docs/_build/
 *_minted-*
 
 # specific directories
-src/examples/satellites/splits/
-src/examples/swallows/resources/
-src/examples/swallows/splits/
-src/examples/swallows/univariate.py
+examples/satellites/splits/
+examples/swallows/resources/
+examples/swallows/splits/
+examples/swallows/univariate.py
