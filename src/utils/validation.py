@@ -25,7 +25,6 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import networkx
 import numpy as np
 
 def validate_crp_constrained_partition(Zv, Cd, Ci):
