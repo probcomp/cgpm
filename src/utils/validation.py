@@ -71,6 +71,9 @@ def validate_query_evidence(X, rowid, hypothetical, query, evidence=None):
         evidence = []
     qcols = [q[0] for q in query] if isinstance(query[0], list) else query
     ecols = [e[0] for e in evidence]
+    # Disallow duplicated query cols.
+    if len(set(qcols)) != len(qcols):
+        raise ValueError('Query columns must be unique.')
     # Disallow overlap between query and evidence.
     if len(set.intersection(set(qcols), set(ecols))) > 0:
         raise ValueError('Query and evidence columns must be disjoint.')

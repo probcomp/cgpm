@@ -139,6 +139,15 @@ class Engine(object):
         samples = mapper(_evaluate, args)
         return samples
 
+    def mutual_information(self, col0, col1, evidence=None, N=1000,
+            multithread=1):
+        """Returns list of mutual information estimates, one for each state."""
+        _, mapper = self._get_mapper(multithread)
+        args = [('mutual_information', self.metadata[i],
+            (col0, col1, evidence, N)) for i in xrange(self.num_states)]
+        mis = mapper(_evaluate, args)
+        return mis
+
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
         if states is None:
