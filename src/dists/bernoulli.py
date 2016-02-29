@@ -26,11 +26,8 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import math
 from math import log
 
-import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import betaln
 
 import gpmcc.utils.general as gu
@@ -74,10 +71,11 @@ class Bernoulli(DistributionGpm):
             self.beta)
 
     def simulate(self, y=None):
-        if np.random.random() < self.alpha / (self.alpha + self.beta):
-            return 1.
-        else:
-            return 0.
+        p0 = Bernoulli.calc_predictive_logp(0, self.N, self.k, self.alpha,
+            self.beta)
+        p1 = Bernoulli.calc_predictive_logp(1, self.N, self.k, self.alpha,
+            self.beta)
+        return gu.log_pflip([p0, p1])
 
     def transition_params(self):
         return
