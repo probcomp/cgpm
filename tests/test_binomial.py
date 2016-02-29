@@ -49,11 +49,8 @@ class TestBinomial(unittest.TestCase):
         sum_b = np.sum(xx[:,0])
         observed_prob_of_1 = (float(sum_b) / float(NUM_SIM))
         true_prob_of_1 = float(DATA_NUM_1) / float(DATA_NUM_0 + DATA_NUM_1)
-        # Check that the observed proportion of ones is about 2/3, out to two
-        # places. If this were a plain binomial model, we'd expect the sample
-        # proportion to have standard deviation sqrt(2/3*1/3/10000) = 0.005, so
-        # check out to two places.
-        self.assertAlmostEqual(true_prob_of_1, observed_prob_of_1, places=1)
+        # Check 1% relative match.
+        assert np.allclose(true_prob_of_1, observed_prob_of_1, rtol=.1)
 
 if __name__ == '__main__':
     unittest.main()
