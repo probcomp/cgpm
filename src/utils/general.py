@@ -30,7 +30,6 @@ import math
 import warnings
 from math import log
 
-import networkx as nx
 import numpy as np
 from scipy.special import i0 as bessel_0
 from scipy.misc import logsumexp
@@ -150,31 +149,17 @@ def simulate_crp_constrained(N, alpha, Cd, Ci):
     # Friends dictionary from Cd.
     friends = {col:block for block in Cd for col in block}
 
-    # Minimum number of tables is largest connected component in Ci.
-    G = nx.Graph(data=Ci)
-    components = list(sorted(nx.connected_components(G), key=len, reverse=True))
-
-    # Enemy customers in largest component all in seperate tables.
-    if components:
-        for i, cust in enumerate(components[0]):
-            assert Z[cust] == -1
-            # Create a table with cust and all its friends.
-            for f in friends.get(cust, [cust]):
-                assert Z[f] == -1
-                Z[f] = i
-
-    # Assign remaining customers.
+    # Assign customers.
     for cust in xrange(N):
         if Z[cust] > -1: continue
-        # Find valid tables for cust and all his friends.
+        # Find valid tables for cust and friends.
         assert all(Z[f] == -1 for f in friends.get(cust, [cust]))
         prob_table = [0] * (max(Z)+1)
         for t in xrange(max(Z)+1):
-            # All customers in table t.
+            # Current customers at table t.
             t_custs = [i for i,z in enumerate(Z) if z==t]
-            assert len(t_custs) > 0
             prob_table[t] = len(t_custs)
-            # Does f \in cust_friends have an enemy in table t?
+            # Does f \in {cust \union cust_friends} have an enemy in table t?
             for tc in t_custs:
                 for f in friends.get(cust, [cust]):
                     if (f, tc) in Ci or (tc, f) in Ci:
@@ -186,7 +171,12 @@ def simulate_crp_constrained(N, alpha, Cd, Ci):
         for f in friends.get(cust, [cust]):
             Z[f] = assignment
 
-    # At most t tables.
+    # At most N tables.
     assert all(0 <= t < N for t in Z)
-    vu.validate_crp_constrained_partition(Z, Cd, Ci)
+    assert vu.validate_crp_constrained_partition(Z, Cd, Ci)
     return Z
+
+def build_rowid_blocks(Zvr):
+    A = np.asarray(Zvr).T
+    U = map(tuple, A)
+    return {u:np.where(np.all(A==u, axis=1))[0] for u in U}

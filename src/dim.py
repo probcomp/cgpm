@@ -38,17 +38,12 @@ class Dim(object):
     shared hyperparameters and grids. Technically not GPM, but easily becomes
     one by placing creating a View with a single Dim."""
 
-    def __init__(self, X, cctype, index, distargs=None, Zr=None, n_grid=30,
-            hypers=None):
+    def __init__(self, cctype, index, distargs=None, hypers=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
         Parameters
         ----------
-        X : np.array
-            Array of data. Must be compatible with `cctype`. Missing entries
-            must be np.nan. The dataset X is summarized by the sufficient
-            statistics only and is not stored.
         cctype : str
             DistributionGpm name see `gpmcc.utils.config`.
         index : int
@@ -56,12 +51,6 @@ class Dim(object):
         distargs : dict, optional.
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
-        Zr : list<int>, optional
-            Partition of data X into clusters, where Zr[i] is the cluster
-            index of row X[i]. If None, intialized from CRP(1). The partition
-            is only for initialization and is not stored.
-        n_grid : int, optional
-            Number of bins in the hyperparameter grid.
         """
         # Identifier.
         self.index = index
@@ -72,17 +61,11 @@ class Dim(object):
         self.distargs = distargs if distargs is not None else {}
 
         # Hyperparams.
-        self.transition_hyper_grids(X, n_grid)
-        self.hypers = hypers
-        if hypers is None:
-            self.hypers = dict()
-            for h in self.hyper_grids:
-                self.hypers[h] = np.random.choice(self.hyper_grids[h])
+        self.hyper_grids = {}
+        self.hypers = hypers if hypers is not None else {}
 
-        # Row partition.
-        if Zr is None:
-            Zr = gu.simulate_crp(len(X), 1)
-        self.bulk_incorporate(X, Zr)
+        # Clusters.
+        self.clusters = []
 
         # Auxiliary singleton model.
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
@@ -90,7 +73,7 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate(self, x, k):
+    def incorporate(self, x, k, y=None):
         """Record an observation x in clusters[k].
         If k < len(self.clusters) then x will be incorporated to cluster k.
         If k == len(self.clusters) a new cluster will be created.
@@ -102,15 +85,15 @@ class Dim(object):
             self.aux_model = self.model(distargs=self.distargs,
                 **self.hypers)
         if not isnan(x):
-            self.clusters[k].incorporate(x)
+            self.clusters[k].incorporate(x, y=y)
 
-    def unincorporate(self, x, k):
+    def unincorporate(self, x, k, y=None):
         """Remove observation x from clusters[k]. Bad things will happen if x
         was not incorporated into cluster k before calling this method.
         """
         assert k < len(self.clusters)
         if not isnan(x):
-            self.clusters[k].unincorporate(x)
+            self.clusters[k].unincorporate(x, y=y)
 
     # Bulk operations for effeciency.
 
@@ -119,13 +102,17 @@ class Dim(object):
         assert k < len(self.clusters)
         del self.clusters[k]
 
-    def bulk_incorporate(self, X, Zr):
+    def bulk_incorporate(self, X, Zr, Y=None):
         """Reassigns data X to new clusters according to partitioning Zr.
         Destroys and recreates all clusters. Uncollapsed parameters are
         transitioned but hyperparameters are not transitioned. The partition
         is only for reassigning, and not stored internally.
         """
         assert len(X) == len(Zr)
+
+        if Y is None:
+            Y = [None] * len(Zr)
+
         self.clusters = []
         K = max(Zr) + 1
 
@@ -135,9 +122,9 @@ class Dim(object):
             self.clusters.append(cluster)
 
         # Populate clusters.
-        for x, k in zip(X, Zr):
+        for x, k, y in zip(X, Zr, Y):
             if not isnan(x):
-                self.clusters[k].incorporate(x)
+                self.clusters[k].incorporate(x, y=y)
 
         # Transition uncollapsed params if necessary.
         if not self.is_collapsed():
@@ -147,7 +134,7 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, x, k):
+    def logpdf(self, x, k, y=None):
         """Returns the predictive logp of x in clusters[k]. If x has been
         assigned to clusters[k], then use the unincorporate/incorporate
         interface to compute the true predictive logp."""
@@ -155,7 +142,7 @@ class Dim(object):
             cluster = self.aux_model
         else:
             cluster = self.clusters[k]
-        return cluster.logpdf(x) if not isnan(x) else 0
+        return cluster.logpdf(x, y=y) if not isnan(x) else 0
 
     def logpdf_marginal(self, k=None):
         """If k is not None, returns the marginal log_p of clusters[k].
@@ -166,14 +153,14 @@ class Dim(object):
 
     # --------------------------------------------------------------------------
     # Simulate
-    def simulate(self, k):
+    def simulate(self, k, y=None):
         """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
         if k == len(self.clusters):
             cluster = self.aux_model
         else:
             cluster = self.clusters[k]
-        return cluster.simulate()
+        return cluster.simulate(y=y)
 
     # --------------------------------------------------------------------------
     # Inferece
@@ -195,19 +182,28 @@ class Dim(object):
             proposal = gu.log_pflip(logps)
             self.hypers[target] = self.hyper_grids[target][proposal]
 
-    def transition_hyper_grids(self, X, n_grid):
+    def transition_hyper_grids(self, X, n_grid=30):
         """Resample the hyperparameter grids using empirical Bayes."""
         self.hyper_grids = self.model.construct_hyper_grids(
-            X[~np.isnan(X)], n_grid)
+            X[~np.isnan(X)], n_grid=n_grid)
+        for h in self.hyper_grids:
+            self.hypers[h] = np.random.choice(self.hyper_grids[h])
+        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
 
     # --------------------------------------------------------------------------
     # Helpers
 
-    def get_suffstats(self):
-        return [cluster.get_suffstats() for cluster in self.clusters]
-
     def is_collapsed(self):
         return self.model.is_collapsed()
+
+    def is_continuous(self):
+        return self.model.is_continuous()
+
+    def is_conditional(self):
+        return self.model.is_conditional()
+
+    def is_numeric(self):
+        return self.model.is_numeric()
 
     def plot_dist(self, X, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""

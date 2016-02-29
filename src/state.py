@@ -55,8 +55,7 @@ class State(object):
     """State, the main crosscat object."""
 
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
-            view_alphas=None, hypers=None, Cd=None, Ci=None, n_grid=30,
-            seed=None):
+            view_alphas=None, hypers=None, Cd=None, Ci=None, seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
         and row partition for each view.
@@ -72,8 +71,6 @@ class State(object):
             Distargs appropriate for each cctype in cctypes. For details on
             distargs see the documentation for each DistributionGpm. Empty
             distargs can be None or dict().
-        n_grid : int, optional
-            Number of bins for hyperparameter grids.
         Zv : list<int>, optional
             Assignmet of columns to views. If not specified a random
             partition is sampled.
@@ -99,9 +96,6 @@ class State(object):
         # Dataset.
         self.X = np.asarray(X)
 
-        # Hyperparameters.
-        self.n_grid = n_grid
-
         # Distargs.
         if distargs is None:
             distargs = [None] * len(cctypes)
@@ -113,16 +107,15 @@ class State(object):
             raise ValueError('Dependency constraints not yet implemented.')
 
         # Generate dimensions.
-        self.dims = []
+        dims = []
         for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
-            self.dims.append(
-                Dim(X[:,col], cctypes[col], col, n_grid=n_grid,
-                hypers=dim_hypers, distargs=distargs[col]))
+            D = Dim(cctypes[col], col, hypers=dim_hypers, distargs=distargs[col])
+            D.transition_hyper_grids(self.X[:,col])
+            dims.append(D)
 
         # Generate CRP alpha.
-        self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(),
-            self.n_grid)
+        self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(), 30)
         if alpha is None:
             alpha = np.random.choice(self.alpha_grid)
         self.alpha = alpha
@@ -140,10 +133,10 @@ class State(object):
         # Generate views.
         self.views = []
         for v in xrange(len(self.Nv)):
-            dims = [self.dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
+            view_dims = [dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrv is None else np.asarray(Zrv[v])
             alpha = None if view_alphas is None else view_alphas[v]
-            V = View(self.X, dims, Zr=Zr, alpha=alpha, n_grid=n_grid)
+            V = View(self.X, view_dims, Zr=Zr, alpha=alpha)
             self.views.append(V)
 
         self._check_partitions()
@@ -173,23 +166,22 @@ class State(object):
         self.X = np.column_stack((self.X, X))
 
         col = self.n_cols() - 1
-        self.dims.append(Dim(X, cctype, col, n_grid=self.n_grid,
-            distargs=distargs))
+        D = Dim(cctype, col, distargs=distargs)
+        D.transition_hyper_grids(self.X[:,col])
 
         for view in self.views:
             view.set_dataset(self.X)
 
         if 0 <= v < len(self.Nv):
-            self.views[v].incorporate_dim(self.dims[-1])
+            self.views[v].incorporate_dim(D)
             self.Zv.append(v)
             self.Nv[v] += 1
         elif v == len(self.Nv):
-            self.views.append(
-                View(self.X, [self.dims[-1]], n_grid=self.n_grid))
+            self.views.append(View(self.X, [D]))
             self.Zv.append(v)
             self.Nv.append(1)
         else:
-            self.views[0].incorporate_dim(self.dims[-1])
+            self.views[0].incorporate_dim(D)
             self.Zv.append(0)
             self.Nv[0] += 1
             self.transition_columns(cols=[col])
@@ -202,10 +194,12 @@ class State(object):
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
 
-        self.X = np.delete(self.X, col, 1)
+        D_all = self.dims()
+        D_del = D_all[col]
+        del D_all[col]
 
         v = self.Zv[col]
-        self.views[v].unincorporate_dim(self.dims[col])
+        self.views[v].unincorporate_dim(D_del)
         self.Nv[v] -= 1
         del self.Zv[col]
 
@@ -214,10 +208,10 @@ class State(object):
             del self.Nv[v]
             del self.views[v]
 
-        del self.dims[col]
-        for i, dim in enumerate(self.dims):
+        for i, dim in enumerate(D_all):
             dim.index = i
 
+        self.X = np.delete(self.X, col, 1)
         for view in self.views:
             view.set_dataset(self.X)
             view.reindex_dims()
@@ -294,58 +288,18 @@ class State(object):
         logpdf : float
             The logpdf(query|rowid, evidence).
         """
+        if evidence is None:
+            evidence = []
+
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
 
-        if self._is_hypothetical(rowid):
-            return self.logpdf_hypothetical(query, evidence=evidence)
-
-        # XXX Ignores evidence. Should the row cluster be renegotiated based on
-        # new evidence?
         logpdf = 0
-        for (col, val) in query:
-            k = self.views[self.Zv[col]].Zr[rowid]
-            logpdf += self.dims[col].logpdf(val, k)
-        return logsumexp(logpdf)
-
-    def logpdf_hypothetical(self, query, evidence=None):
-        """Simulates a hypothetical member, with no observed latents."""
-
-        # Algorithm. Partition all columns in query and evidence by views.
-        # P(x1,x2|x3,x4) where (x1...x4) in the same view.
-        #   = \sum_z p(x1,x2|z,x3,x4)p(z|x3,x4)     marginalization
-        #   = \sum_z p(x1,x2|z)p(z|x3,x4)           conditional independence
-        #   = \sum_z p(x1|z)p(x2|z)p(z|x3,x4)       conditional independence
-        # Now consider p(z|x3,x4)
-        #   \propto p(z)p(x3|z)p(x4|z)              Bayes rule
-        # [term]           [array]
-        # p(z)             logp_crp
-        # p(x3|z)p(x4|z)   logp_evidence
-        # p(z|x3,x4)       logp_cluster
-        # p(x1|z)p(x2|z)   logp_query
-
-        if evidence is None:
-            evidence = []
-
-        logpdf = 0
-        query_views = set([self.Zv[col] for (col, _) in query])
-
-        for v in query_views:
-            # Evidence densities.
-            logp_crp = self._compute_cluster_crp_logps(v)
-            logp_evidence = np.zeros(len(logp_crp))
-            for (col, val) in evidence:
-                if self.Zv[col] == v:
-                    logp_evidence += self._compute_cluster_data_logps(col, val)
-            logp_cluster = gu.log_normalize(logp_crp+logp_evidence)
-            # Query densities.
-            logp_query = np.zeros(len(logp_crp))
-            for (col, val) in query:
-                if self.Zv[col] == v:
-                    logp_query += self._compute_cluster_data_logps(col, val)
-            # Accumulate.
-            logpdf += logsumexp(logp_query+logp_cluster)
+        queries, evidences = self._get_view_qe(query, evidence)
+        for v in queries:
+            logpdf += self.views[v].logpdf(
+                rowid, queries[v], evidences.get(v,[]))
 
         return logpdf
 
@@ -357,7 +311,7 @@ class State(object):
         logpdfs = []
         for rowid, query, evidence in zip(rowids, queries, evidences):
             logpdfs.append(self.logpdf(rowid, query, evidence))
-        return logpdfs
+        return np.asarray(logpdfs)
 
     def logpdf_marginal(self):
         return gu.logp_crp(len(self.Zv), self.Nv, self.alpha) + \
@@ -390,61 +344,23 @@ class State(object):
         samples : np.array
             A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
         """
+        if evidence is None:
+            evidence = []
+
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
 
-        if self._is_hypothetical(rowid):
-            return self.simulate_hypothetical(query, evidence=evidence, N=N)
+        samples = np.zeros((N, len(query)))
+        queries, evidences = self._get_view_qe(query, evidence)
+        for v in queries:
+            v_query = queries[v]
+            v_evidence = evidences.get(v, [])
+            draws = self.views[v].simulate(rowid, v_query, v_evidence, N=N)
+            for i, c in enumerate(v_query):
+                samples[:,query.index(c)] = draws[:,i]
 
-        # XXX Ignores evidence. Should the row cluster be renegotiated based on
-        # new evidence?
-        samples = []
-        for _ in xrange(N):
-            draw = []
-            for col in query:
-                k = self.views[self.Zv[col]].Zr[rowid]
-                x = self.dims[col].simulate(k)
-                draw.append(x)
-            samples.append(draw)
-        return np.asarray(samples)
-
-    def simulate_hypothetical(self, query, evidence=None, N=1):
-        """Simulates a hypothetical member, with no observed latents."""
-        # Default parameter.
-        if evidence is None:
-            evidence = []
-
-        # Obtain views of query columns.
-        query_views = set([self.Zv[col] for col in query])
-
-        # Obtain probability of hypothetical row belonging to each cluster.
-        cluster_logps_for = dict()
-        for v in query_views:
-            # CRP densities.
-            logp_crp = self._compute_cluster_crp_logps(v)
-            # Evidence densities.
-            logp_evidence = np.zeros(len(logp_crp))
-            for (col, val) in evidence:
-                if self.Zv[col] == v:
-                    logp_evidence += self._compute_cluster_data_logps(col, val)
-            cluster_logps_for[v] = gu.log_normalize(logp_crp+logp_evidence)
-
-        samples = []
-        for _ in xrange(N):
-            sampled_k = dict()
-            draw = []
-            for v in query_views:
-                # Sample cluster.
-                sampled_k[v] = gu.log_pflip(cluster_logps_for[v])
-            for col in query:
-                # Sample data.
-                k = sampled_k[self.Zv[col]]
-                x = self.dims[col].simulate(k)
-                draw.append(x)
-            samples.append(draw)
-
-        return np.asarray(samples)
+        return samples
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
@@ -457,6 +373,61 @@ class State(object):
         for rowid, query, evidence, n in zip(rowids, queries, evidences, Ns):
             samples.append(self.simulate(rowid, query, evidence, n))
         return samples
+
+    # --------------------------------------------------------------------------
+    # Mutual information
+
+    def mutual_information(self, col0, col1, evidence=None, N=1000):
+        """Computes the mutual information MI(col0:col1|evidence).
+
+        Mutual information with conditioning variables can be interpreted in two
+        forms
+            - MI(X:Y|Z=z): point-wise CMI, (this function).
+            - MI(X:Y|Z): expected pointwise CMI E_Z[MI(X:Y|Z)] under Z.
+
+        The rowid is hypothetical. For any observed member, the rowid is
+        sufficient and decouples all columns.
+
+        Parameters
+        ----------
+        col0, col1 : int
+            Columns to comptue MI. If col0 = col1 then estimate of the entropy
+            is returned.
+        evidence : list(tuple<int>), optional
+            A list of pairs (col, val) of observed values to condition on.
+        N : int, optional.
+            Number of samples to use in the Monte Carlo estimate.
+
+        Returns
+        -------
+        mi : float
+            A point estimate of the mutual information.
+        """
+        # Contradictory base measures.
+        if self.dims(col0).is_numeric() != self.dims(col1).is_numeric():
+            raise ValueError('Cannot compute MI of numeric and symbolic.')
+        if self.dims(col0).is_continuous() != self.dims(col1).is_continuous():
+            raise ValueError('Cannot compute MI of continuous and discrete.')
+
+        if evidence is None:
+            evidence = []
+
+        def samples_logpdf(cols, samples, evidence):
+            queries = [zip(cols, samples[i]) for i in xrange(len(samples))]
+            return self.logpdf_bulk(
+                [-1]*len(samples), queries, [evidence]*(len(samples)))
+
+        # MI or entropy?
+        if col0 != col1:
+            samples = self.simulate(-1, [col0, col1], evidence=evidence, N=N)
+            PXY = samples_logpdf([col0, col1], samples, evidence)
+            PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
+            PY = samples_logpdf([col1], samples[:,1].reshape(-1,1), evidence)
+            return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
+        else:
+            samples = self.simulate(-1, [col0], evidence=evidence, N=N)
+            PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
+            return - np.sum(PX) / N
 
     # --------------------------------------------------------------------------
     # Inference
@@ -566,19 +537,19 @@ class State(object):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims[c].transition_params()
+            self.dims(c).transition_params()
 
     def transition_column_hypers(self, cols=None):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims[c].transition_hypers()
+            self.dims(c).transition_hypers()
 
     def transition_column_hyper_grids(self, cols=None):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims[c].transition_hyper_grids(self.X[:,c], self.n_grid)
+            self.dims(c).transition_hyper_grids(self.X[:,c])
 
     def transition_rows(self, views=None, rows=None):
         if self.n_rows() == 1:
@@ -608,10 +579,10 @@ class State(object):
         return np.shape(self.X)[1]
 
     def cctypes(self):
-        return [self.dims[i].cctype for i in xrange(self.n_cols())]
+        return [d.cctype for d in self.dims()]
 
     def distargs(self):
-        return [self.dims[i].distargs for i in xrange(self.n_cols())]
+        return [d.distargs for d in self.dims()]
 
     # --------------------------------------------------------------------------
     # Plotting
@@ -627,6 +598,11 @@ class State(object):
 
     # --------------------------------------------------------------------------
     # Internal
+
+    def dims(self, col=None):
+        if col is not None:
+            return self.views[self.Zv[col]].dims[col]
+        return [self.views[self.Zv[c]].dims[c] for c in xrange(self.n_cols())]
 
     def _transition_column(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
@@ -652,7 +628,7 @@ class State(object):
         p_view = []
         proposal_dims = []
         for v in xrange(len(self.views)):
-            D = get_propsal_dim(self.dims[col], v)
+            D = get_propsal_dim(self.dims(col), v)
             if v == v_a:
                 logp = self.views[v].unincorporate_dim(D)
                 self.views[v].incorporate_dim(D, reassign=D.is_collapsed())
@@ -666,8 +642,8 @@ class State(object):
         p_crp_aux = log(self.alpha/float(m))
         proposal_views = []
         for _ in xrange(m-1 if singleton else m):
-            D = get_propsal_dim(self.dims[col], None)
-            V = View(self.X, [], n_grid=self.n_grid)
+            D = get_propsal_dim(self.dims(col), None)
+            V = View(self.X, [])
             logp = V.incorporate_dim(D)
             p_view.append(logp + p_crp_aux)
             proposal_dims.append(D)
@@ -680,7 +656,7 @@ class State(object):
 
         # Draw view.
         v_b = gu.log_pflip(p_view)
-        self.dims[col] = proposal_dims[v_b]
+        D = proposal_dims[v_b]
 
         # Append auxiliary view?
         if v_b >= len(self.views):
@@ -690,9 +666,8 @@ class State(object):
 
         # Accounting.
         if v_a != v_b:
-            self.views[v_a].unincorporate_dim(self.dims[col])
-        self.views[v_b].incorporate_dim(
-            self.dims[col], reassign=self.dims[col].is_collapsed())
+            self.views[v_a].unincorporate_dim(D)
+        self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
         self.Zv[col] = v_b
         self.Nv[v_a] -= 1
         self.Nv[v_b] += 1
@@ -705,29 +680,32 @@ class State(object):
 
         self._check_partitions()
 
-    def _compute_cluster_crp_logps(self, view):
-        """Returns a list of log probabilities that a new row joins each of the
-        clusters in self.views[view], including a singleton."""
-        log_crp_numer = np.log(self.views[view].Nk + [self.views[view].alpha])
-        logp_crp_denom = log(self.n_rows() + self.views[view].alpha)
-        return log_crp_numer - logp_crp_denom
-
-    def _compute_cluster_data_logps(self, col, x):
-        """Returns a list of log probabilities that a new row for self.dims[col]
-        obtains value x for each of the clusters in self.Zr[col], including a
-        singleton."""
-        return [self.dims[col].logpdf(x,k) for k in
-            xrange(len(self.dims[col].clusters)+1)]
-
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
+
+    def _get_view_qe(self, query, evidence):
+        """queries[v], evidences[v] are the queries, evidences for view v."""
+        queries, evidences = {}, {}
+        for q in query:
+            col = q if isinstance(q, int) else q[0]
+            if self.Zv[col] in queries:
+                queries[self.Zv[col]].append(q)
+            else:
+                queries[self.Zv[col]] = [q]
+        for e in evidence:
+            col = e[0]
+            if self.Zv[col] in evidences:
+                evidences[self.Zv[col]].append(e)
+            else:
+                evidences[self.Zv[col]] = [e]
+        return queries, evidences
 
     def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.
         if self.n_cols() > 24:
             return
         fig.clear()
-        for dim in self.dims:
+        for dim in self.dims():
             index = dim.index
             ax = fig.add_subplot(layout['plots_x'], layout['plots_y'],
                 index+1)
@@ -754,7 +732,7 @@ class State(object):
         assert self.alpha > 0.
         # Zv and dims should match n_cols.
         assert len(self.Zv) == self.n_cols()
-        assert len(self.dims) == self.n_cols()
+        assert len(self.dims()) == self.n_cols()
         # Nv should account for each column.
         assert sum(self.Nv) == self.n_cols()
         # Nv should have an entry for each view.
@@ -788,7 +766,6 @@ class State(object):
         metadata['X'] = self.X.tolist()
 
         # Misc data.
-        metadata['n_grid'] = self.n_grid
         metadata['seed'] = self.seed
 
         # View partition data.
@@ -802,16 +779,14 @@ class State(object):
         metadata['view_alphas'] = []
 
         # Column data.
-        metadata['hypers'] = []
         metadata['cctypes'] = []
+        metadata['hypers'] = []
         metadata['distargs'] = []
-        metadata['suffstats'] = []
 
-        for dim in self.dims:
-            metadata['hypers'].append(dim.hypers)
+        for dim in self.dims():
             metadata['cctypes'].append(dim.cctype)
+            metadata['hypers'].append(dim.hypers)
             metadata['distargs'].append(dim.distargs)
-            metadata['suffstats'].append(dim.get_suffstats())
 
         for view in self.views:
             metadata['Nk'].append(view.Nk)
@@ -830,7 +805,7 @@ class State(object):
         return cls(X, metadata['cctypes'], metadata['distargs'],
             Zv=metadata['Zv'], Zrv=metadata['Zrv'], alpha=metadata['alpha'],
             view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
-            n_grid=metadata['n_grid'], seed=metadata['seed'])
+            seed=metadata['seed'])
 
     @classmethod
     def from_pickle(cls, fileptr):

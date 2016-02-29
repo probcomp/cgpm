@@ -52,17 +52,17 @@ class Exponential(DistributionGpm):
         self.a = a
         self.b = b
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         self.N += 1.0
         self.sum_x += x
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
         self.sum_x -= x
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Exponential.calc_predictive_logp(x, self.N, self.sum_x,
             self.a, self.b)
 
@@ -70,11 +70,7 @@ class Exponential(DistributionGpm):
         return Exponential.calc_logpdf_marginal(self.N, self.sum_x, self.a,
             self.b)
 
-    def logpdf_singleton(self, x):
-        return Exponential.calc_predictive_logp(x, 0, 0, self.a,
-            self.b)
-
-    def simulate(self):
+    def simulate(self, y=None):
         an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a, self.b)
         mu = gamma.rvs(an, scale=1./bn)
         return expon.rvs(scale=1./mu)
@@ -89,16 +85,13 @@ class Exponential(DistributionGpm):
         self.a = hypers['a']
 
     def get_hypers(self):
-        return {
-            'a': self.a,
-            'b': self.b,
-        }
+        return {'a': self.a, 'b': self.b}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_x': self.sum_x,
-        }
+        return {'N': self.N, 'sum_x': self.sum_x}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -119,6 +112,14 @@ class Exponential(DistributionGpm):
 
     @staticmethod
     def is_continuous():
+        return True
+
+    @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
+    def is_numeric():
         return True
 
     ##################

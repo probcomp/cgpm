@@ -31,15 +31,16 @@ from math import log
 import numpy as np
 from scipy.stats import norm, gamma
 
+from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.dists.normal import Normal
 from gpmcc.utils import general as gu
 from gpmcc.utils import sampling as su
-from gpmcc.dists.normal import Normal
 
 LOG2 = log(2.0)
 LOGPI = log(np.pi)
 LOG2PI = log(2*np.pi)
 
-class NormalTrunc(object):
+class NormalTrunc(DistributionGpm):
     """Normal distribution with normal prior on mean and gamma prior on
     precision. Uncollapsed.
     sigma ~ Gamma(shape=1, scale=.5)
@@ -61,13 +62,13 @@ class NormalTrunc(object):
         if mu is None or sigma is None:
             self.mu, self.sigma = NormalTrunc.sample_parameters(self.l, self.h)
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         assert self.l<=x<=self.h
         self.N += 1.0
         self.sum_x += x
         self.sum_x_sq += x*x
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         assert self.l<=x<=self.h
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
@@ -79,7 +80,7 @@ class NormalTrunc(object):
             self.sum_x -= x
             self.sum_x_sq -= x*x
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         if not self.l<=x<=self.h:
             return float('-inf')
         logpdf_unorm = NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma)
@@ -96,10 +97,7 @@ class NormalTrunc(object):
             self.l, self.h)
         return data_logp + prior_logp - self.N * normalizer_logp
 
-    def logpdf_singleton(self, x):
-        return NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma)
-
-    def simulate(self):
+    def simulate(self, y=None):
         max_iters = 1000
         for _ in xrange(max_iters):
             x = norm.rvs(loc=self.mu, scale=self.sigma)
@@ -134,6 +132,9 @@ class NormalTrunc(object):
     def get_hypers(self):
         return {}
 
+    def get_params(self):
+        return {'mu': self.mu, 'sigma': self.sigma}
+
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
 
@@ -151,6 +152,14 @@ class NormalTrunc(object):
 
     @staticmethod
     def is_continuous():
+        return True
+
+    @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
+    def is_numeric():
         return True
 
     ##################

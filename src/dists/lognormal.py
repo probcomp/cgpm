@@ -49,7 +49,7 @@ class Lognormal(DistributionGpm):
     """
 
     def __init__(self, N=0, sum_log_x=0, sum_log_x_sq=0, m=1, r=1, s=1,
-            nu=0, distargs=None):
+            nu=1, distargs=None):
         assert r > 0.
         assert s > 0.
         assert nu > 0.
@@ -63,14 +63,14 @@ class Lognormal(DistributionGpm):
         self.s = s
         self.nu = nu
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         if x <= 0:
             raise ValueError('Lognormal requires positive observations.')
         self.N += 1.0
         self.sum_log_x += log(x)
         self.sum_log_x_sq += log(x) * log(x)
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         if x <= 0:
@@ -79,7 +79,7 @@ class Lognormal(DistributionGpm):
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         if x < 0:
             return float('-inf')
         return -log(x) + \
@@ -91,14 +91,7 @@ class Lognormal(DistributionGpm):
             Normal.calc_logpdf_marginal(self.N, self.sum_log_x,
                 self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
 
-    def logpdf_singleton(self, x):
-        if x < 0:
-            return float('-inf')
-        return - log(x) + \
-            Normal.calc_predictive_logp(log(x), 0, 0, 0, self.m, self.r,
-                self.s, self.nu)
-
-    def simulate(self):
+    def simulate(self, y=None):
         # XXX This implementation is not verified but will be covered in
         # future univariate simulate tests, see Github issue #14.
         # Simulate normal parameters
@@ -121,7 +114,10 @@ class Lognormal(DistributionGpm):
         self.nu = hypers['nu']
 
     def get_hypers(self):
-        return { 'm': self.m, 'r': self.r, 's': self.s, 'nu': self.nu }
+        return {'m': self.m, 'r': self.r, 's': self.s, 'nu': self.nu}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
         return {'N': self.N, 'sum_log_x': self.sum_log_x,
@@ -147,4 +143,12 @@ class Lognormal(DistributionGpm):
 
     @staticmethod
     def is_continuous():
+        return True
+
+    @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
+    def is_numeric():
         return True

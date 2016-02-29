@@ -63,13 +63,13 @@ class Vonmises(DistributionGpm):
         self.b = b    # Prior mean of mean parameter.
         self.k = k    # Vonmises kappa.
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         assert 0 <= x <= 2*pi
         self.N += 1.0
         self.sum_sin_x += sin(x)
         self.sum_cos_x += cos(x)
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         assert 0 <= x and x <= 2*pi
@@ -77,7 +77,7 @@ class Vonmises(DistributionGpm):
         self.sum_sin_x -= sin(x)
         self.sum_cos_x -= cos(x)
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Vonmises.calc_predictive_logp(x, self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
 
@@ -86,11 +86,7 @@ class Vonmises(DistributionGpm):
             self.sum_cos_x, self.a, self.b, self.k)
         return logp
 
-    def logpdf_singleton(self, x):
-        return Vonmises.calc_predictive_logp(x, 0, 0, 0, self.a, self.b,
-            self.k)
-
-    def simulate(self):
+    def simulate(self, y=None):
         an, bn = Vonmises.posterior_hypers(self.N, self.sum_sin_x,
             self.sum_cos_x, self.a, self.b, self.k)
         # if not 0 <= bn <= 2*pi:
@@ -112,18 +108,11 @@ class Vonmises(DistributionGpm):
         self.k = hypers['k']
 
     def get_hypers(self):
-        return {
-            'a' : self.a,
-            'b' : self.b,
-            'k' : self.k
-        }
+        return {'a' : self.a, 'b' : self.b, 'k' : self.k}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_sin_x' : self.sum_sin_x,
-            'sum_cos_x' : self.sum_cos_x
-        }
+        return {'N': self.N, 'sum_sin_x' : self.sum_sin_x,
+            'sum_cos_x' : self.sum_cos_x}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -147,6 +136,14 @@ class Vonmises(DistributionGpm):
 
     @staticmethod
     def is_continuous():
+        return True
+
+    @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
+    def is_numeric():
         return True
 
     ##################

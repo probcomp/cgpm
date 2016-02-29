@@ -26,11 +26,8 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import math
 from math import log
 
-import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import betaln
 
 import gpmcc.utils.general as gu
@@ -53,19 +50,19 @@ class Bernoulli(DistributionGpm):
         self.alpha = alpha
         self.beta = beta
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         assert x == 1.0 or x == 0.0
         self.N += 1
         self.k += x
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         assert x == 1. or x == 0.
         self.N -= 1
         self.k -= x
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Bernoulli.calc_predictive_logp(x, self.N, self.k, self.alpha,
             self.beta)
 
@@ -73,14 +70,12 @@ class Bernoulli(DistributionGpm):
         return Bernoulli.calc_logpdf_marginal(self.N, self.k, self.alpha,
             self.beta)
 
-    def logpdf_singleton(self, x):
-        return Bernoulli.calc_predictive_logp(x, 0, 0, self.alpha, self.beta)
-
-    def simulate(self):
-        if np.random.random() < self.alpha / (self.alpha + self.beta):
-            return 1.
-        else:
-            return 0.
+    def simulate(self, y=None):
+        p0 = Bernoulli.calc_predictive_logp(0, self.N, self.k, self.alpha,
+            self.beta)
+        p1 = Bernoulli.calc_predictive_logp(1, self.N, self.k, self.alpha,
+            self.beta)
+        return gu.log_pflip([p0, p1])
 
     def transition_params(self):
         return
@@ -92,16 +87,13 @@ class Bernoulli(DistributionGpm):
         self.beta = hypers['beta']
 
     def get_hypers(self):
-        return {
-            'alpha': self.alpha,
-            'beta': self.beta
-        }
+        return {'alpha': self.alpha, 'beta': self.beta}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
-        return {
-            'N' : self.N,
-            'k' : self.k
-        }
+        return {'N' : self.N, 'k' : self.k}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -122,6 +114,14 @@ class Bernoulli(DistributionGpm):
 
     @staticmethod
     def is_continuous():
+        return False
+
+    @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
+    def is_numeric():
         return False
 
     ##################

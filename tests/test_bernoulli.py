@@ -41,18 +41,16 @@ class TestBinomial(unittest.TestCase):
         data = np.transpose(np.array([[0] * DATA_NUM_0 + [1] * DATA_NUM_1]))
         # Run a single chain for a few iterations.
         engine = gpmcc.engine.Engine(
-            data, ['categorical'], distargs=[{'k': 2}], initialize=True)
+            data, ['categorical'], distargs=[{'k': 2}], seeds=[12],
+            initialize=True)
         engine.transition(NUM_ITER)
         # Simulate from hypothetical row and compute the proportion of ones.
         xx = engine.simulate(-1, [0], N=NUM_SIM)[0]
         sum_b = np.sum(xx[:,0])
         observed_prob_of_1 = (float(sum_b) / float(NUM_SIM))
         true_prob_of_1 = float(DATA_NUM_1) / float(DATA_NUM_0 + DATA_NUM_1)
-        # Check that the observed proportion of ones is about 2/3, out to two
-        # places. If this were a plain binomial model, we'd expect the sample
-        # proportion to have standard deviation sqrt(2/3*1/3/10000) = 0.005, so
-        # check out to two places.
-        self.assertAlmostEqual(true_prob_of_1, observed_prob_of_1, places=2)
+        # Check 1% relative match.
+        assert np.allclose(true_prob_of_1, observed_prob_of_1, rtol=.1)
 
 if __name__ == '__main__':
     unittest.main()
