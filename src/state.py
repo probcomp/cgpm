@@ -311,7 +311,7 @@ class State(object):
         logpdfs = []
         for rowid, query, evidence in zip(rowids, queries, evidences):
             logpdfs.append(self.logpdf(rowid, query, evidence))
-        return logpdfs
+        return np.asarray(logpdfs)
 
     def logpdf_marginal(self):
         return gu.logp_crp(len(self.Zv), self.Nv, self.alpha) + \
@@ -373,6 +373,61 @@ class State(object):
         for rowid, query, evidence, n in zip(rowids, queries, evidences, Ns):
             samples.append(self.simulate(rowid, query, evidence, n))
         return samples
+
+    # --------------------------------------------------------------------------
+    # Mutual information
+
+    def mutual_information(self, col0, col1, evidence=None, N=1000):
+        """Computes the mutual information MI(col0:col1|evidence).
+
+        Mutual information with conditioning variables can be interpreted in two
+        forms
+            - MI(X:Y|Z=z): point-wise CMI, (this function).
+            - MI(X:Y|Z): expected pointwise CMI E_Z[MI(X:Y|Z)] under Z.
+
+        The rowid is hypothetical. For any observed member, the rowid is
+        sufficient and decouples all columns.
+
+        Parameters
+        ----------
+        col0, col1 : int
+            Columns to comptue MI. If col0 = col1 then estimate of the entropy
+            is returned.
+        evidence : list(tuple<int>), optional
+            A list of pairs (col, val) of observed values to condition on.
+        N : int, optional.
+            Number of samples to use in the Monte Carlo estimate.
+
+        Returns
+        -------
+        mi : float
+            A point estimate of the mutual information.
+        """
+        # Contradictory base measures.
+        if self.dims(col0).is_numeric() != self.dims(col1).is_numeric():
+            raise ValueError('Cannot compute MI of numeric and symbolic.')
+        if self.dims(col0).is_continuous() != self.dims(col1).is_continuous():
+            raise ValueError('Cannot compute MI of continuous and discrete.')
+
+        if evidence is None:
+            evidence = []
+
+        def samples_logpdf(cols, samples, evidence):
+            queries = [zip(cols, samples[i]) for i in xrange(len(samples))]
+            return self.logpdf_bulk(
+                [-1]*len(samples), queries, [evidence]*(len(samples)))
+
+        # MI or entropy?
+        if col0 != col1:
+            samples = self.simulate(-1, [col0, col1], evidence=evidence, N=N)
+            PXY = samples_logpdf([col0, col1], samples, evidence)
+            PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
+            PY = samples_logpdf([col1], samples[:,1].reshape(-1,1), evidence)
+            return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
+        else:
+            samples = self.simulate(-1, [col0], evidence=evidence, N=N)
+            PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
+            return - np.sum(PX) / N
 
     # --------------------------------------------------------------------------
     # Inference
