@@ -1,8 +1,0 @@
-import ipdb, traceback, sys
-
-try:
-    engine.simulate(-1,[6,7],[(8,1440)],N=1,multithread=0)
-except:
-    type, value, tb = sys.exc_info()
-    traceback.print_exc()
-    ipdb.post_mortem(tb)
