@@ -54,7 +54,7 @@ class TestValidateCrpConsrainedInput(unittest.TestCase):
     def test_valid_constraints(self):
         Cd = [[0,3], [2,4], [5,6]]
         Ci = [(0,2), (5,2)]
-        vu.validate_crp_constrained_input(7, Cd, Ci)
+        self.assertTrue(vu.validate_crp_constrained_input(7, Cd, Ci))
 
 class TestSimulateCrpConstrained(unittest.TestCase):
 
@@ -62,28 +62,28 @@ class TestSimulateCrpConstrained(unittest.TestCase):
         N, alpha = 10, .4
         Cd = Ci = []
         Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        vu.validate_crp_constrained_partition(Z, Cd, Ci)
+        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
 
     def test_all_friends(self):
         N, alpha = 10, 1.4
         Cd = [range(N)]
         Ci = []
         Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        vu.validate_crp_constrained_partition(Z, Cd, Ci)
+        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
 
     def test_all_enemies(self):
         N, alpha = 13, 1.4
         Cd = []
         Ci = list(itertools.combinations(range(N), 2))
         Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        vu.validate_crp_constrained_partition(Z, Cd, Ci)
+        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
 
     def test_complex_relationships(self):
         N, alpha = 15, 10
         Cd = [(0,1,4), (2,3,5), (8,7)]
         Ci = [(2,8), (0,3)]
         Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        vu.validate_crp_constrained_partition(Z, Cd, Ci)
+        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
 
 if __name__ == '__main__':
     unittest.main()

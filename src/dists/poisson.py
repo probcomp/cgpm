@@ -54,19 +54,19 @@ class Poisson(DistributionGpm):
         self.a = a
         self.b = b
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         self.N += 1.0
         self.sum_x += x
         self.sum_log_fact_x += gammaln(x+1)
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
         self.sum_x -= x
         self.sum_log_fact_x -= gammaln(x+1)
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return Poisson.calc_predictive_logp(x, self.N, self.sum_x,
             self.sum_log_fact_x, self.a, self.b)
 
@@ -74,11 +74,7 @@ class Poisson(DistributionGpm):
         return Poisson.calc_logpdf_marginal(self.N, self.sum_x,
             self.sum_log_fact_x, self.a, self.b)
 
-    def logpdf_singleton(self, x):
-        return Poisson.calc_predictive_logp(x, 0, 0, 0, self.a,
-            self.b)
-
-    def simulate(self):
+    def simulate(self, y=None):
         an, bn = Poisson.posterior_hypers(self.N, self.sum_x,
             self.a, self.b)
         draw = np.random.negative_binomial(an, bn/(bn+1.))
@@ -94,17 +90,14 @@ class Poisson(DistributionGpm):
         self.b = hypers['b']
 
     def get_hypers(self):
-        return {
-            'a': self.a,
-            'b': self.b
-        }
+        return {'a': self.a, 'b': self.b}
+
+    def get_params(self):
+        return {}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_x' : self.sum_x,
-            'sum_log_fact_x': self.sum_log_fact_x
-        }
+        return {'N': self.N, 'sum_x' : self.sum_x,
+            'sum_log_fact_x': self.sum_log_fact_x}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -126,6 +119,14 @@ class Poisson(DistributionGpm):
     @staticmethod
     def is_continuous():
         return False
+
+    @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
+    def is_numeric():
+        return True
 
     ##################
     # HELPER METHODS #

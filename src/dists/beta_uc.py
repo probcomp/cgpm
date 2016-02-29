@@ -65,13 +65,13 @@ class BetaUC(DistributionGpm):
             self.balance = np.random.beta(alpha, beta)
             assert self.strength > 0 and 0 < self.balance < 1
 
-    def incorporate(self, x):
+    def incorporate(self, x, y=None):
         assert x > 0 and x < 1
         self.N += 1.
         self.sum_log_x += log(x)
         self.sum_minus_log_x += log(1.-x)
 
-    def unincorporate(self, x):
+    def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         assert x > 0 and x < 1
@@ -83,7 +83,7 @@ class BetaUC(DistributionGpm):
             self.sum_log_x -= log(x)
             self.sum_minus_log_x -= log(1.-x)
 
-    def logpdf(self, x):
+    def logpdf(self, x, y=None):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def logpdf_marginal(self):
@@ -93,10 +93,7 @@ class BetaUC(DistributionGpm):
             self.mu, self.alpha, self.beta)
         return data_logp + prior_logp
 
-    def logpdf_singleton(self, x):
-        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
-
-    def simulate(self):
+    def simulate(self, y=None):
         alpha = self.strength * self.balance
         beta = self.strength * (1. - self.balance)
         return scipy.stats.beta.rvs(alpha, beta)
@@ -129,18 +126,15 @@ class BetaUC(DistributionGpm):
         self.beta = hypers['beta']
 
     def get_hypers(self):
-        return {
-            'mu': self.mu,
-            'alpha': self.alpha,
-            'beta': self.beta
-        }
+        return {'mu': self.mu, 'alpha': self.alpha, 'beta':
+            self.beta}
+
+    def get_params(self):
+        return {'balance': self.balance, 'strength': self.strength}
 
     def get_suffstats(self):
-        return {
-            'N': self.N,
-            'sum_log_x': self.sum_log_x,
-            'sum_minus_log_x': self.sum_minus_log_x
-        }
+        return {'N': self.N, 'sum_log_x': self.sum_log_x,
+            'sum_minus_log_x': self.sum_minus_log_x}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -163,6 +157,14 @@ class BetaUC(DistributionGpm):
 
     @staticmethod
     def is_continuous():
+        return True
+
+    @staticmethod
+    def is_conditional():
+        return False
+
+    @staticmethod
+    def is_numeric():
         return True
 
     ##################

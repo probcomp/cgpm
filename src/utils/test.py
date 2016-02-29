@@ -105,8 +105,9 @@ def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
     for col in xrange(n_cols):
         v = Zv[col]
         cctype = cctypes[col]
-        dim_c = dim.Dim(T[col], cctype, col, Zr=Zc[v],
-            distargs=distargs[col])
+        dim_c = dim.Dim(cctype, col, distargs=distargs[col])
+        dim_c.transition_hyper_grids(T[col])
+        dim_c.bulk_incorporate(T[col], Zc[v])
         dims.append(dim_c)
     return dims
 
