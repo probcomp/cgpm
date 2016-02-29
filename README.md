@@ -61,11 +61,10 @@ The simplest example is creating a synthetic dataset where each variable is
 a mixture of one of the available DistributionGpms. Try
 
 ```
-$ cd src/
 $ python -i examples/one_view.py
 ```
 
-A plot similar to ![src/examples/one_view.png](src/examples/one_view.png) should appear.
+A plot similar to ![examples/one_view.png](examples/one_view.png) should appear.
 
 ## Interactive Example (Experimental)
 
@@ -81,7 +80,7 @@ $ python -i particle_demo.py
 Click on the graph to produce observations and watch, the Gibbs kernel cycle
 through the hypothesis space
 
-![src/experiments/smc.gif](src/experiments/smc.gif)
+![experiments/smc.gif](experiments/smc.gif)
 
 The values printed in the console after each click are estimates of the
 marginal-log-likelihood of observations, based on the single particle
