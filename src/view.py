@@ -247,7 +247,8 @@ class View(object):
             samples.append(draw)
         return np.asarray(samples)
 
-    def _simulate_hypothetical(self, query, evidence, N):
+    def _simulate_hypothetical(self, query, evidence, N, cluster=False):
+        """cluster=True exposes latent cluster of each sample as extra col."""
         # CRP densities.
         logp_crp = self._compute_cluster_crp_logps()
 
@@ -265,6 +266,8 @@ class View(object):
             for col in query:
                 x = self.dims[col].simulate(k)
                 draw.append(x)
+            if cluster:
+                draw.append(k)
             samples.append(draw)
 
         return np.asarray(samples)
