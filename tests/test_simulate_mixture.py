@@ -35,7 +35,7 @@ from scipy.stats import ks_2samp
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.test as tu
-from gpmcc.state import State
+from gpmcc.engine import Engine
 
 class SimulateIndicatorTest(unittest.TestCase):
 
@@ -61,12 +61,14 @@ class SimulateIndicatorTest(unittest.TestCase):
             cls.data[i,1] = 2*cls.indicators[k] + counts[k] % 2
             counts[k] += 1
         # Create an engine.
-        cls.state = State(cls.data, ['normal', 'categorical'], [None, {'k':6}])
-        cls.state.transition(N=n_transitions)
+        state = Engine(cls.data, ['normal', 'categorical'], [None, {'k':6}],
+            num_states=1, initialize=True)
+        state.transition(N=n_transitions)
+        cls.model = state.get_state(0)
 
     def test_joint__ci_(self):
         # Simulate from the joint distribution of (x,i).
-        joint_samples = self.state.simulate(-1, [0,1], N=self.n_samples)
+        joint_samples = self.model.simulate(-1, [0,1], N=self.n_samples)
         _, ax = plt.subplots()
         ax.set_title('Joint Simulation')
         for t in self.indicators:
@@ -93,7 +95,7 @@ class SimulateIndicatorTest(unittest.TestCase):
             data_subpop = self.data[self.data[:,1] == t]
             ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
             # Plot simulated data.
-            conditional_samples_subpop = self.state.simulate(-1, [0],
+            conditional_samples_subpop = self.model.simulate(-1, [0],
                 evidence=[(1,t)], N=len(data_subpop))
             ax.scatter(np.repeat(t, len(data_subpop)) + .25,
                 conditional_samples_subpop[:,0], color=gu.colors[t])
@@ -112,7 +114,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         means = [np.mean(self.data[self.data[:,1]==i], axis=0)[0] for
             i in self.indicators]
         for mean, indicator, ax in zip(means, self.indicators, axes.ravel('F')):
-            conditional_samples_subpop = self.state.simulate(-1, [1],
+            conditional_samples_subpop = self.model.simulate(-1, [1],
                 evidence=[(0,mean)], N=self.n_samples)
             ax.hist(conditional_samples_subpop, color='g', alpha=.4)
             ax.set_title('True Indicator %d' % indicator)
@@ -121,7 +123,6 @@ class SimulateIndicatorTest(unittest.TestCase):
             ax.set_ylabel('Frequency')
             ax.set_ylim([0, ax.get_ylim()[1]+10])
             ax.grid()
-        plt.close('all')
 
 if __name__ == '__main__':
     unittest.main()

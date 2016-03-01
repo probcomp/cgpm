@@ -174,8 +174,10 @@ class Dim(object):
         """Resample the hyperparameter grids using empirical Bayes."""
         self.hyper_grids = self.model.construct_hyper_grids(
             X[~np.isnan(X)], n_grid=n_grid)
-        for h in self.hyper_grids:
-            self.hypers[h] = np.random.choice(self.hyper_grids[h])
+        # Only transition the hypers if previously uninstantiated.
+        if not self.hypers:
+            for h in self.hyper_grids:
+                self.hypers[h] = np.random.choice(self.hyper_grids[h])
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
 
     # --------------------------------------------------------------------------
