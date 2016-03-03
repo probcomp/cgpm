@@ -72,3 +72,7 @@ examples/satellites/splits/
 examples/swallows/resources/
 examples/swallows/splits/
 examples/swallows/univariate.py
+experiments/resources/
+experiments/*/resources/
+gpmcc
+src/debug
