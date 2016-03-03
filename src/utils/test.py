@@ -17,8 +17,7 @@
 import numpy as np
 import math
 
-from scipy.stats import norm
-from scipy.stats import geom
+from scipy.stats import geom, norm, multivariate_normal
 
 from gpmcc import dim
 import gpmcc.utils.general as gu
@@ -312,11 +311,11 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
-def gen_linear(N, noise=.1, rng=None):
+def simulate_linear(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
     return rng.multivariate_normal([0,0], cov=[[1,1-noise],[1-noise,1]], size=N)
 
-def gen_x(N, noise=.1, rng=None):
+def simulate_x(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
     X = np.zeros((N,2))
     for i in xrange(N):
@@ -328,18 +327,18 @@ def gen_x(N, noise=.1, rng=None):
         X[i,:] = x
     return X
 
-def gen_sin(N, noise=.1, rng=None):
+def simulate_sin(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
     x_range = [-3.*math.pi/2., 3.*math.pi/2.]
     X = np.zeros((N,2))
     for i in xrange(N):
         x = rng.uniform(x_range[0], x_range[1])
-        y = math.cos(x) + rng.uniform(-noise, noise)
+        y = math.cos(x)
         X[i,0] = x
-        X[i,1] = y
+        X[i,1] = y+(rng.uniform(0, noise) if y < 0 else rng.uniform(-noise, 0))
     return X
 
-def gen_ring(N, noise=.1, rng=None):
+def simulate_ring(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
     X = np.zeros((N,2))
     for i in xrange(N):
@@ -349,7 +348,7 @@ def gen_ring(N, noise=.1, rng=None):
         X[i,1] = math.sin(angle)*distance
     return X
 
-def gen_dots(N=200, noise=.1, rng=None):
+def simulate_dots(N=200, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
     X = np.zeros((N,2))
     mx = [ -1, 1, -1, 1]
