@@ -22,38 +22,6 @@ from gpmcc.state import State
 
 class TestMutualInformation(unittest.TestCase):
 
-    def __ci_test_continuous_discrete(self):
-        # Test that continuous and discrete CMI is not allowed.
-        rng = np.random.RandomState(0)
-        T = np.zeros((50,2))
-        T[:,0] = rng.normal(size=50)
-        T[:,1] = rng.poisson(size=50)
-        state = State(T, ['normal','poisson'])
-        state.transition(N=1, do_progress=0)
-        with self.assertRaises(ValueError):
-            state.mutual_information(0,1)
-
-    def __ci_test_numeric_continuous_symbolic(self):
-        rng = np.random.RandomState(0)
-        T = np.zeros((50,2))
-        T[:,0] = rng.normal(size=50)
-        T[:,1] = rng.choice(range(3), size=50)
-        state = State(T, ['normal','categorical'], distargs=[None, {'k':3}])
-        state.transition(N=1, do_progress=0)
-        with self.assertRaises(ValueError):
-            state.mutual_information(0,1)
-
-    def __ci_test_discrete_numeric_symbolic(self):
-        rng = np.random.RandomState(0)
-        cctypes = ['poisson','categorical']
-        T = np.zeros((50,2))
-        T[:,0] = rng.poisson(size=50)
-        T[:,1] = rng.choice(range(3), size=50)
-        state = State(T, cctypes, distargs=[None, {'k':3}])
-        state.transition(N=1, do_progress=0)
-        with self.assertRaises(ValueError):
-            state.mutual_information(0,1)
-
     def __ci_test_entropy_bernoulli(self):
         rng = np.random.RandomState(0)
         T = rng.choice([0,1], p=[.3,.7], size=1000).reshape(-1,1)
