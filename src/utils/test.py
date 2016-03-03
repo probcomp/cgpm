@@ -312,55 +312,55 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
-def gen_sine_wave(N, noise=.5):
-    x_range = [-3.0*math.pi/2.0, 3.0*math.pi/2.0]
-    X = np.zeros( (N,2) )
-    for i in xrange(N):
-        x = np.random.uniform(x_range[0], x_range[1])
-        y = math.cos(x)+np.random.random()*(-np.random.uniform(-noise, noise))
-        X[i,0] = x
-        X[i,1] = y
+def gen_linear(N, noise=.1, rng=None):
+    if rng is None: rng = np.random.RandomState(0)
+    return rng.multivariate_normal([0,0], cov=[[1,1-noise],[1-noise,1]], size=N)
 
-    T = [X[:,0],X[:,1]]
-    return T
-
-def gen_x(N, rho=.95):
-    X = np.zeros( (N,2) )
-    for i in xrange(N):
-        if np.random.random() < .5:
-            sigma = np.array([[1,rho],[rho,1]])
-        else:
-            sigma = np.array([[1,-rho],[-rho,1]])
-        x = np.random.multivariate_normal(np.zeros(2), sigma)
-        X[i,:] = x
-
-    T = [X[:,0],X[:,1]]
-    return T
-
-def gen_ring(N, width=.2):
+def gen_x(N, noise=.1, rng=None):
+    if rng is None: rng = np.random.RandomState(0)
     X = np.zeros((N,2))
     for i in xrange(N):
-        angle = np.random.uniform(0.0, 2.0*math.pi)
-        distance = np.random.uniform(1.0-width, 1.0)
+        if rng.rand() < .5:
+            cov = np.array([[1,1-noise],[1-noise,1]])
+        else:
+            cov = np.array([[1,-1+noise],[-1+noise,1]])
+        x = rng.multivariate_normal([0,0], cov=cov)
+        X[i,:] = x
+    return X
+
+def gen_sin(N, noise=.1, rng=None):
+    if rng is None: rng = np.random.RandomState(0)
+    x_range = [-3.*math.pi/2., 3.*math.pi/2.]
+    X = np.zeros((N,2))
+    for i in xrange(N):
+        x = rng.uniform(x_range[0], x_range[1])
+        y = math.cos(x) + rng.uniform(-noise, noise)
+        X[i,0] = x
+        X[i,1] = y
+    return X
+
+def gen_ring(N, noise=.1, rng=None):
+    if rng is None: rng = np.random.RandomState(0)
+    X = np.zeros((N,2))
+    for i in xrange(N):
+        angle = rng.uniform(0.0, 2.0*math.pi)
+        distance = rng.uniform(1.0-noise, 1.0)
         X[i,0] = math.cos(angle)*distance
         X[i,1] = math.sin(angle)*distance
+    return X
 
-    T = [X[:,0],X[:,1]]
-    return T
-
-def gen_four_dots(N=200, stddev=.25):
+def gen_dots(N=200, noise=.1, rng=None):
+    if rng is None: rng = np.random.RandomState(0)
     X = np.zeros((N,2))
     mx = [ -1, 1, -1, 1]
     my = [ -1, -1, 1, 1]
     for i in range(N):
-        n = np.random.randint(4)
-        x = np.random.normal(loc=mx[n], scale=stddev)
-        y = np.random.normal(loc=my[n], scale=stddev)
+        n = rng.randint(4)
+        x = rng.normal(loc=mx[n], scale=noise) if noise > 0 else mx[n]
+        y = rng.normal(loc=my[n], scale=noise) if noise > 0 else my[n]
         X[i,0] = x
         X[i,1] = y
-
-    T = [X[:,0],X[:,1]]
-    return T
+    return X
 
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,
