@@ -392,10 +392,10 @@ class State(object):
             A point estimate of the mutual information.
         """
         # Contradictory base measures.
-        if self.dims(col0).is_numeric() != self.dims(col1).is_numeric():
-            raise ValueError('Cannot compute MI of numeric and symbolic.')
-        if self.dims(col0).is_continuous() != self.dims(col1).is_continuous():
-            raise ValueError('Cannot compute MI of continuous and discrete.')
+        # if self.dims(col0).is_numeric() != self.dims(col1).is_numeric():
+        #     raise ValueError('Cannot compute MI of numeric and symbolic.')
+        # if self.dims(col0).is_continuous() != self.dims(col1).is_continuous():
+        #     raise ValueError('Cannot compute MI of continuous and discrete.')
 
         if evidence is None:
             evidence = []
