@@ -17,7 +17,7 @@
 import numpy as np
 import math
 
-from scipy.stats import geom, norm, multivariate_normal
+from scipy.stats import geom, norm
 
 from gpmcc import dim
 import gpmcc.utils.general as gu
