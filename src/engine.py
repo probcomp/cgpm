@@ -102,7 +102,7 @@ class Engine(object):
             xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return logpdfs
+        return np.asarray(logpdfs)
 
     def logpdf_bulk(self, rowids, queries, evidences=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
@@ -110,7 +110,7 @@ class Engine(object):
             for i in xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return logpdfs
+        return np.asarray(logpdfs)
 
     def logpdf_marginal(self, multithread=1):
         pool, mapper = self._get_mapper(multithread)
@@ -118,7 +118,7 @@ class Engine(object):
             xrange(self.num_states)]
         logpdf_marginals = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return logpdf_marginals
+        return np.asarray(logpdf_marginals)
 
     def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
         pool, mapper = self._get_mapper(multithread)
@@ -136,7 +136,7 @@ class Engine(object):
             (rowids, queries, evidences, Ns)) for i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return samples
+        return np.asarray(samples)
 
     def mutual_information(self, col0, col1, evidence=None, N=1000,
             multithread=1):
@@ -146,7 +146,7 @@ class Engine(object):
             (col0, col1, evidence, N)) for i in xrange(self.num_states)]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return mis
+        return np.asarray(mis)
 
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
