@@ -420,7 +420,7 @@ class State(object):
     # --------------------------------------------------------------------------
     # Inference
 
-    def transition(self, N=1, S=None, kernels=None, target_rows=None,
+    def transition(self, N=None, S=None, kernels=None, target_rows=None,
             target_cols=None, target_views=None, do_plot=False,
             do_progress=True):
         """Run all infernece kernels. For targeted inference, see other exposed
@@ -429,7 +429,10 @@ class State(object):
         Parameters
         ----------
         N : int, optional
-            Number of transitions.
+            Number of iterations to transition. Defaults to 1.
+        S : float, optional
+            Number of seconds to transition. If both N and S specified,
+            the minimum is used.
         kernels : list<{'alpha', 'view_alphas', 'column_params', 'column_hypers'
                 'rows', 'columns'}>, optional
             List of inference kernels to run in this inference transition.
@@ -449,7 +452,11 @@ class State(object):
         >>> State.transition(N=100)
         >>> State.transition(N=100, kernels=['rows', 'column_hypers'],
                 target_cols=[1,2], target_rows=range(100))
+        >>> State.transition(N=100, S=30)
         """
+        if N is None and S is None:
+            N = 1
+
         # Default order of kernel is important.
         _kernel_functions = [
             ('alpha',
@@ -471,26 +478,17 @@ class State(object):
         if kernels is None:
             kernels = [k[0] for k in _kernel_functions]
 
-        # Transition by time.
-        if S:
-            start = time.time()
-            if do_progress:
-                self._do_progress(0)
-            while True:
-                for k in kernels:
-                    _kernel_lookup[k]()
-                    elapsed = time.time() - start
-                    if elapsed >= S:
-                        if do_progress:
-                            self._do_progress(elapsed/S)
-                        print
-                        return
-                if do_progress:
-                    self._do_progress(elapsed/S)
+        def _proportion_done(N, S, iters, start):
+            if S is None:
+                p_seconds = 0
+            else:
+                p_seconds = (time.time() - start) / S
+            if N is None:
+                p_iters = 0
+            else:
+                p_iters = float(iters)/N
+            return max(p_iters, p_seconds)
 
-        # Transition by iterations.
-        if do_progress:
-            self._do_progress(0)
         if do_plot:
             plt.ion()
             plt.show()
@@ -499,15 +497,28 @@ class State(object):
                 layout['plot_inches_x']), dpi=75, facecolor='w',
                 edgecolor='k', frameon=False, tight_layout=True)
             self._do_plot(fig, layout)
-        for i in xrange(N):
+
+        iters = 0
+        start = time.time()
+        while True:
             for k in kernels:
+                p = _proportion_done(N, S, iters, start)
+                if p >= 1.:
+                    if do_progress:
+                        self._do_progress(p)
+                    break
                 _kernel_lookup[k]()
-            if do_progress:
-                self._do_progress(float(i+1)/N)
-            if do_plot:
-                self._do_plot(fig, layout)
-                plt.pause(1e-4)
-        print
+                if do_progress:
+                    self._do_progress(p)
+                if do_plot:
+                    self._do_plot(fig, layout)
+                    plt.pause(1e-4)
+            else:
+                iters += 1
+                continue
+            break
+        print 'Completed: %d iterations in %f seconds.' % \
+            (iters, time.time()-start)
 
     def transition_alpha(self):
         logps = [gu.logp_crp_unorm(self.n_cols(), len(self.Nv), alpha) for alpha
