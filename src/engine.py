@@ -51,89 +51,101 @@ class Engine(object):
             self.initialize()
 
     def initialize(self, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = ((self._X, self._cctypes, self._distargs, seed) for seed in
             self.seeds)
         self.metadata = mapper(_intialize, args)
+        self._close_mapper(pool)
         del (self._X, self._cctypes, self._distargs)
 
     def transition(self, N=1, S=None, kernels=None, target_views=None,
             target_rows=None, target_cols=None, do_plot=False, do_progress=True,
             multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('transition', self.metadata[i], (N, S, kernels, target_views,
             target_rows, target_cols, do_plot, do_progress)) for i in
             xrange(self.num_states)]
         self.metadata = mapper(_modify, args)
+        self._close_mapper(pool)
 
     def incorporate_dim(self, X, cctype, distargs=None, v=None, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('incorporate_dim', self.metadata[i],
             (X, cctype, distargs, v)) for i in xrange(self.num_states)]
         self.metadata = mapper(_modify, args)
+        self._close_mapper(pool)
 
     def unincorporate_dim(self, col, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('unincorporate_dim', self.metadata[i], (col,)) for i in
             xrange(self.num_states)]
         self.metadata = mapper(_modify, args)
+        self._close_mapper(pool)
 
     def incorporate_rows(self, X, k=None, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('incorporate_rows', self.metadata[i], (X, k)) for i in
             xrange(self.num_states)]
         self.metadata = mapper(_modify, args)
+        self._close_mapper(pool)
 
     def unincorporate_rows(self, rowid, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('unincorporate_rows', self.metadata[i], (rowid,)) for i in
             xrange(self.num_states)]
         self.metadata = mapper(_modify, args)
+        self._close_mapper(pool)
 
     def logpdf(self, rowid, query, evidence=None, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('logpdf', self.metadata[i], (rowid, query, evidence)) for i in
             xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
+        self._close_mapper(pool)
         return logpdfs
 
     def logpdf_bulk(self, rowids, queries, evidences=None, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('logpdf_bulk', self.metadata[i], (rowids, queries, evidences))
             for i in xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
+        self._close_mapper(pool)
         return logpdfs
 
     def logpdf_marginal(self, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('logpdf_marginal', self.metadata[i], ()) for i in
             xrange(self.num_states)]
         logpdf_marginals = mapper(_evaluate, args)
+        self._close_mapper(pool)
         return logpdf_marginals
 
     def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('simulate', self.metadata[i], (rowid, query, evidence, N)) for
             i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
+        self._close_mapper(pool)
         return np.asarray(samples)
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
             multithread=1):
         """Returns list of simualate_bulk, one for each state."""
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('simulate_bulk', self.metadata[i],
             (rowids, queries, evidences, Ns)) for i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
+        self._close_mapper(pool)
         return samples
 
     def mutual_information(self, col0, col1, evidence=None, N=1000,
             multithread=1):
         """Returns list of mutual information estimates, one for each state."""
-        _, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multithread)
         args = [('mutual_information', self.metadata[i],
             (col0, col1, evidence, N)) for i in xrange(self.num_states)]
         mis = mapper(_evaluate, args)
+        self._close_mapper(pool)
         return mis
 
     def dependence_probability(self, col0, col1, states=None):
@@ -178,6 +190,10 @@ class Engine(object):
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
             mapper = pool.map
         return pool, mapper
+
+    def _close_mapper(self, pool):
+        if pool is not None:
+            pool.close()
 
     def to_metadata(self):
         metadata = dict()
