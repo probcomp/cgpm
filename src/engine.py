@@ -184,6 +184,18 @@ class Engine(object):
     def get_state(self, index):
         return State.from_metadata(self.metadata[index])
 
+    def get_states(self, indices):
+        return [self.get_state(i) for i in indices]
+
+    def drop_state(self, index):
+        del self.metadata[index]
+        self.num_states = len(self.metadata)
+
+    def drop_states(self, indices):
+        drop = set(indices)
+        self.metadata = [m for i,m in enumerate(self.metadata) if i not in drop]
+        self.num_states = len(self.metadata)
+
     def _get_mapper(self, multithread):
         pool, mapper = None, map
         if multithread:
