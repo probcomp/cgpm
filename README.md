@@ -64,7 +64,7 @@ a mixture of one of the available DistributionGpms. Try
 $ python -i examples/one_view.py
 ```
 
-A plot similar to ![examples/one_view.png](examples/one_view.png) should appear.
+A plot similar to ![images/one_view.png](images/one_view.png) should appear.
 
 ## Interactive Example (Experimental)
 
@@ -79,7 +79,7 @@ $ python -i crp.py
 Click on the graph to produce observations and watch, the Gibbs kernel cycle
 through the hypothesis space
 
-![experiments/smc.gif](experiments/smc.gif)
+![images/smc.gif](images/smc.gif)
 
 The values printed in the console after each click are estimates of the
 marginal-log-likelihood of observations, based on the single particle
