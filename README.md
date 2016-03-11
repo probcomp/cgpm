@@ -72,9 +72,8 @@ Single-particle SMC is currently available for a dataset with a single
 variable. To view an interactive example, try the following
 
 ```
-$ git checkout particle-demo
-$ cd src/experiments
-$ python -i particle_demo.py
+$ cd experiments/univariate_crp
+$ python -i crp.py
 ```
 
 Click on the graph to produce observations and watch, the Gibbs kernel cycle
