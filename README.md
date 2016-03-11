@@ -105,9 +105,9 @@ See the open [issue](https://github.com/probcomp/gpmcc/issues/8).
 ## Acknowledgements
 
 This repository was originally forked off
-[BaxCat](https://github.com/BaxterEaves/BaxCat/). Most of the
-source has been significantly rewritten and redesigned, although original
-copyright headers and license have been maintained where necessary.
+[BaxCat](https://github.com/BaxterEaves/BaxCat/). Most of the source has been
+significantly rewritten, and copyright rights have been transferred with
+permission.
 
 ## License
 
