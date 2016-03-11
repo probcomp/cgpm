@@ -68,6 +68,7 @@ docs/_build/
 *_minted-*
 
 # specific directories
+examples/malawi/resources/
 examples/satellites/splits/
 examples/swallows/resources/
 examples/swallows/splits/
