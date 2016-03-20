@@ -17,7 +17,9 @@
 import numpy as np
 import math
 
-from scipy.stats import geom, norm
+from scipy.integrate import quad
+from scipy.stats import geom, multivariate_normal, norm
+from scipy.misc import logsumexp
 
 from gpmcc import dim
 import gpmcc.utils.general as gu
@@ -311,11 +313,25 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
+# -- linear --
+
 def simulate_linear(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
     return rng.multivariate_normal([0,0], cov=[[1,1-noise],[1-noise,1]], size=N)
 
-def simulate_x(N, noise=.1, rng=None):
+def logpdf_linear_xy(x, y, noise=.1):
+    return multivariate_normal.logpdf([x,y], [0,0],
+        cov=[[1,1-noise],[1-noise,1]])
+
+def logpdf_linear_x(x, noise=.1):
+    return norm.logpdf(x, loc=0, scale=1)
+
+def logpdf_linear_y(y, noise=.1):
+    return norm.logpdf(y, loc=0, scale=1)
+
+# -- xcross --
+
+def simulate_xcross(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
     X = np.zeros((N,2))
     for i in xrange(N):
@@ -323,20 +339,55 @@ def simulate_x(N, noise=.1, rng=None):
             cov = np.array([[1,1-noise],[1-noise,1]])
         else:
             cov = np.array([[1,-1+noise],[-1+noise,1]])
-        x = rng.multivariate_normal([0,0], cov=cov)
-        X[i,:] = x
+        X[i,:] = rng.multivariate_normal([0,0], cov=cov)
     return X
+
+def logpdf_cross_xy(x, y, noise=.1):
+    return logsumexp([
+        np.log(.5)+multivariate_normal.logpdf([x,y], [0,0],
+            cov=[[1,1-noise],[1-noise,1]]),
+        np.log(.5)+multivariate_normal.logpdf([x,y], [0,0],
+            cov=[[1,-1+noise],[-1+noise,1]]),
+        ])
+
+def logpdf_xcross_x(x, noise=.1):
+    return norm.logpdf(x, loc=0, scale=1)
+
+def logpdf_xcross_x(y, noise=.1):
+    return norm.logpdf(y, loc=0, scale=1)
+
+# -- sin --
+x_range = [-3.*math.pi/2., 3.*math.pi/2.]
 
 def simulate_sin(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
-    x_range = [-3.*math.pi/2., 3.*math.pi/2.]
     X = np.zeros((N,2))
     for i in xrange(N):
         x = rng.uniform(x_range[0], x_range[1])
-        y = math.cos(x)
         X[i,0] = x
-        X[i,1] = y+(rng.uniform(0, noise) if y < 0 else rng.uniform(-noise, 0))
+        X[i,1] = math.cos(x) + rng.normal(scale=noise)
     return X
+
+def logpdf_sin_xy(x, y, noise=.1):
+    if not x_range[0] <= x <= x_range[1]:
+        return -float('inf')
+    if math.cos(x) < 0 and not math.cos(x) <= y <= math.cos(x) + noise:
+        return -float('inf')
+    if math.cos(x) > 0 and not math.cos(x) - noise <= y <= math.cos(x):
+        return -float('inf')
+    return -np.log(max(x_range)-min(x_range)) - np.log(noise)
+
+def logpdf_sin_x(x, noise=.1):
+    if not x_range[0] <= x <= x_range[1]:
+        return -float('inf')
+    return -np.log(x_range[1]-x_range[0])
+
+def logpdf_sin_y(y, noise=.1):
+    def integrand(x):
+        return (math.cos(x) < 0 and math.cos(x) <= y <= math.cos(x) + noise) \
+                or (math.cos(x) > 0 and math.cos(x) - noise <= y <= math.cos(x))
+    length = quad(integrand, x_range[0], x_range[1])[0]
+    return -np.log(noise) - np.log(x_range[1]-x_range[0]) + np.log(length)
 
 def simulate_ring(N, noise=.1, rng=None):
     if rng is None: rng = np.random.RandomState(0)
