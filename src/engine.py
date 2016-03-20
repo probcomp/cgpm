@@ -58,7 +58,7 @@ class Engine(object):
         self._close_mapper(pool)
         del (self._X, self._cctypes, self._distargs)
 
-    def transition(self, N=1, S=None, kernels=None, target_views=None,
+    def transition(self, N=None, S=None, kernels=None, target_views=None,
             target_rows=None, target_cols=None, do_plot=False, do_progress=True,
             multithread=1):
         pool, mapper = self._get_mapper(multithread)
