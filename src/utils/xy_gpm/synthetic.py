@@ -40,12 +40,28 @@ class SyntheticXyGpm(object):
         self.rng = rng
         self.noise = noise
 
-    def simulate(self, size=None):
+    def simulate_xy(self, size=None):
         """Simulate from the joint distribution (X,Y)."""
         raise NotImplementedError
 
     def logpdf_xy(self, x, y):
         """Evaluate the joint log density p(x,y)."""
+        raise NotImplementedError
+
+    def simulate_x_given_y(self, y):
+        """Simulate from the conditional density p(x|y)."""
+        raise NotImplementedError
+
+    def logpdf_x_given_y(self, x, y):
+        """Evaluate the conditional log density p(x|y)."""
+        raise NotImplementedError
+
+    def simulate_y_given_x(self, x):
+        """Simulate from the conditional density p(y|x)."""
+        raise NotImplementedError
+
+    def logpdf_y_given_x(self, y, x):
+        """Evaluate the marginal log density p(y|x)."""
         raise NotImplementedError
 
     def logpdf_x(self, x):
@@ -54,12 +70,4 @@ class SyntheticXyGpm(object):
 
     def logpdf_y(self, y):
         """Evaluate the marginal log density p(y)."""
-        raise NotImplementedError
-
-    def logpdf_x_given_y(self, x, y):
-        """Evaluate the conditional log density p(x|y)."""
-        raise NotImplementedError
-
-    def logpdf_y_given_x(self, y, x):
-        """Evaluate the marginal log density p(y|x)."""
         raise NotImplementedError
