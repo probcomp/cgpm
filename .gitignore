@@ -68,6 +68,7 @@ docs/_build/
 *_minted-*
 
 # specific directories
+src/utils/xy_gpm/images
 examples/malawi/resources/
 examples/satellites/splits/
 examples/swallows/resources/
