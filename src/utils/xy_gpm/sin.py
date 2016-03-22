@@ -15,15 +15,15 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.integrate import quad
+from scipy.integrate import dblquad, quad
 
 from gpmcc.utils.xy_gpm import synthetic
 
 class SinGpm(synthetic.SyntheticXyGpm):
     """Y = cos(X) + Noise."""
 
-    # Domain of cos(X).
-    D = [-3.*np.pi/2., 3.*np.pi/2.]
+    # XXX Domain of cos(X), do not change!
+    D = [-1.5*np.pi, 1.5*np.pi]
 
     def simulate_xy(self, size=None):
         X = np.zeros((size,2))
@@ -52,15 +52,63 @@ class SinGpm(synthetic.SyntheticXyGpm):
         return -np.log(self.D[1]-self.D[0])
 
     def logpdf_y(self, y):
-        # XXX Figure out why this does not integrate to one over y \in [-1, 1]
-        def integrand(x):
-            return (np.cos(x)<0 and np.cos(x) <= y <= np.cos(x) + self.noise) \
-                or (np.cos(x)>0 and np.cos(x) - self.noise <= y <= np.cos(x))
-        length = quad(integrand, self.D[0], self.D[1])[0]
-        return -np.log(self.noise) - np.log(self.D[1]-self.D[0]) + np.log(length)
+        if 0 <= y:
+            length, overflow = self._valid_x(y)
+            length += 2*overflow
+        else:
+            length, overflow = self._valid_x(-y)
+            length = 2*length + overflow
+        length *= 2
+        return np.log(length) - np.log(self.noise) - np.log(self.D[1]-self.D[0])
 
     def logpdf_x_given_y(self, x, y):
         raise NotImplementedError
 
     def logpdf_y_given_x(self, y, x):
         raise NotImplementedError
+
+    def mutual_information(self):
+        def mi_integrand(x, y):
+            return np.exp(self.logpdf_xy(x,y)) * \
+                (self.logpdf_xy(x,y) - self.logpdf_x(x) - self.logpdf_y(y))
+        return dblquad(
+            lambda y, x: mi_integrand(x,y), self.D[0], self.D[1],
+            lambda x: self._lower_y(x), lambda x: self._upper_y(x))
+
+    def _valid_x(self, y):
+        """Compute valid regions of x for y \in [0, 1], with overflow."""
+        assert 0<=y<=1
+        x_max = np.arccos(y)
+        if y+self.noise < 1:
+            x_min = np.arccos(y+self.noise)
+        else:
+            x_min = 0
+        # compute overflow
+        overflow = 0
+        if y < self.noise:
+            overflow = np.arccos(y-self.noise) - np.pi / 2
+        return x_max - x_min, overflow
+
+    def _lower_y(self, x):
+        if np.cos(x) < 0:
+            return np.cos(x)
+        else:
+            return np.cos(x) - self.noise
+
+    def _upper_y(self, x):
+        if np.cos(x) < 0:
+            return np.cos(x) + self.noise
+        else:
+            return np.cos(x)
+
+    def _sanity_test(self):
+        # Marginal of x integrates to one.
+        print quad(lambda x: np.exp(self.logpdf_x(x)), self.D[0], self.D[1])
+
+        # Marginal of y integrates to one.
+        print quad(lambda y: np.exp(self.logpdf_y(y)), -1 ,1)
+
+        # Joint of x,y integrates to one; quadrature will fail for small noise.
+        print dblquad(
+            lambda y,x: np.exp(self.logpdf_xy(x,y)), self.D[0], self.D[1],
+            lambda x: -1, lambda x: 1)
