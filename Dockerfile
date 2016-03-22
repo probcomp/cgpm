@@ -10,6 +10,9 @@ RUN apt-get install -y -qq python-dev python-pip
 # Transitive non-python dependencies for matplotlib.
 RUN apt-get install -y -qq libjpeg-dev libxft-dev
 
+# Transitive non-python dependencies for scipy: Will need to use pip to upgrade.
+RUN apt-get install -y -qq liblapack-dev gfortran
+
 # SciPy dependency tracking is confusing and slow. Install at the OS level
 # instead of with pip to avoid thinking.
 # See also: https://github.com/scikit-learn/scikit-learn/issues/4164
