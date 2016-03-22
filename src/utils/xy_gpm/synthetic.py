@@ -48,6 +48,14 @@ class SyntheticXyGpm(object):
         """Evaluate the joint log density p(x,y)."""
         raise NotImplementedError
 
+    def logpdf_x(self, x):
+        """Evaluate the marginal log density p(x,y)."""
+        raise NotImplementedError
+
+    def logpdf_y(self, y):
+        """Evaluate the marginal log density p(y)."""
+        raise NotImplementedError
+
     def simulate_x_given_y(self, y):
         """Simulate from the conditional density p(x|y)."""
         raise NotImplementedError
@@ -64,10 +72,6 @@ class SyntheticXyGpm(object):
         """Evaluate the marginal log density p(y|x)."""
         raise NotImplementedError
 
-    def logpdf_x(self, x):
-        """Evaluate the marginal log density p(x,y)."""
-        raise NotImplementedError
-
-    def logpdf_y(self, y):
-        """Evaluate the marginal log density p(y)."""
+    def mutual_information(self):
+        """Compute the mutual information MI(X:Y)"""
         raise NotImplementedError
