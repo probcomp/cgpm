@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 from scipy.stats import multivariate_normal, norm
 
 from gpmcc.utils.xy_gpm import synthetic
@@ -40,3 +41,7 @@ class LinearGpm(synthetic.SyntheticXyGpm):
 
     def logpdf_y_given_x(self, y, x):
         raise NotImplementedError
+
+    def mutual_information(self):
+        cov = 1-self.noise
+        return .5 * np.log(1/np.abs(1-cov**2))
