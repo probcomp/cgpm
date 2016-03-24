@@ -73,7 +73,7 @@ class SinGpm(synthetic.SyntheticXyGpm):
                 (self.logpdf_xy(x,y) - self.logpdf_x(x) - self.logpdf_y(y))
         return dblquad(
             lambda y, x: mi_integrand(x,y), self.D[0], self.D[1],
-            lambda x: self._lower_y(x), lambda x: self._upper_y(x))
+            self._lower_y, self._upper_y)
 
     def _valid_x(self, y):
         """Compute valid regions of x for y \in [0, 1], with overflow."""
