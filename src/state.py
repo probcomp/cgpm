@@ -391,12 +391,6 @@ class State(object):
         mi : float
             A point estimate of the mutual information.
         """
-        # Contradictory base measures.
-        # if self.dims(col0).is_numeric() != self.dims(col1).is_numeric():
-        #     raise ValueError('Cannot compute MI of numeric and symbolic.')
-        # if self.dims(col0).is_continuous() != self.dims(col1).is_continuous():
-        #     raise ValueError('Cannot compute MI of continuous and discrete.')
-
         if evidence is None:
             evidence = []
 
@@ -416,6 +410,43 @@ class State(object):
             samples = self.simulate(-1, [col0], evidence=evidence, N=N)
             PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
             return - np.sum(PX) / N
+
+    def conditional_mutual_information(self, col0, col1, evidence, T=100,
+            N=1000):
+        """Computes conditional mutual information MI(col0:col1|evidence).
+
+        Mutual information with conditioning variables can be interpreted in two
+        forms
+            - MI(X:Y|Z=z): point-wise CMI.
+            - MI(X:Y|Z): expected pointwise CMI E_z[MI(X:Y|Z=z)] under Z
+            (this function).
+
+        The rowid is hypothetical. For any observed member, the rowid is
+        sufficient and decouples all columns.
+
+        Parameters
+        ----------
+        col0, col1 : int
+            Columns to comptue MI. If col0 = col1 then estimate of the entropy
+            is returned.
+        evidence : list<int>
+            A list of columns to condition on.
+        T : int, optional.
+            Number of samples to use in external Monte Carlo estimate (z~Z).
+        N : int, optional.
+            Number of samples to use in internal Monte Carlo estimate.
+
+        Returns
+        -------
+        mi : float
+            A point estimate of the mutual information.
+        """
+        samples = self.simulate(-1, evidence, N=T)
+        mi = 0
+        for sample in samples:
+            mi += self.mutual_information(
+                col0, col1, evidence=zip(evidence, sample), N=N)
+        return mi / T
 
     # --------------------------------------------------------------------------
     # Inference

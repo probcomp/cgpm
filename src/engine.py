@@ -148,6 +148,16 @@ class Engine(object):
         self._close_mapper(pool)
         return np.asarray(mis)
 
+    def conditional_mutual_information(self, col0, col1, evidence, T=100,
+            N=1000, multithread=1):
+        """Returns list of mutual information estimates, one for each state."""
+        pool, mapper = self._get_mapper(multithread)
+        args = [('conditional_mutual_information', self.metadata[i],
+            (col0, col1, evidence, T, N)) for i in xrange(self.num_states)]
+        mis = mapper(_evaluate, args)
+        self._close_mapper(pool)
+        return np.asarray(mis)
+
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
         if states is None:
