@@ -43,7 +43,8 @@ class State(object):
     """State, the main crosscat object."""
 
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
-            view_alphas=None, hypers=None, Cd=None, Ci=None, seed=None):
+            view_alphas=None, hypers=None, Cd=None, Ci=None, Rd=None, Ri=None,
+            seed=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
         and row partition for each view.
@@ -67,13 +68,24 @@ class State(object):
             the Zr for View k. If not specified a random partition is
             sampled. If specified, then Zv must also be specified.
         Cd : list(list<int>), optional
-            List of marginal dependence constraints. Each element in the list
-            is a list of columns which are to be in the same view. Each column
-            can only be in one such list i.e. [[1,2,5],[1,5]] is not allowed.
+            List of marginal dependence constraints for columns. Each element in
+            the list is a list of columns which are to be in the same view. Each
+            column can only be in one such list i.e. [[1,2,5],[1,5]] is not
+            allowed.
         Ci : list(tuple<int>), optional
-            List of marginal independence constraints. Each element in the list
-            is a 2-tuple of columns that must be independent, i.e.
-            [(1,2),(1,3)].
+            List of marginal independence constraints for columns.
+            Each element in the list is a 2-tuple of columns that must be
+            independent, i.e. [(1,2),(1,3)].
+        Rd : dict(int:Cd), optional
+            Dictionary of dependence constraints for rows, wrt.
+            Each entry is (col: Cd), where col is a column number and Cd is a
+            list of dependence constraints for the rows with respect to that
+            column (see doc for Cd).
+        Ri : dict(int:Cid), optional
+            Dictionary of independence constraints for rows, wrt.
+            Each entry is (col: Ci), where col is a column number and Ci is a
+            list of independence constraints for the rows with respect to that
+            column (see doc for Ci).
         seed : int
             Seed the random number generator.
         """
@@ -91,6 +103,8 @@ class State(object):
         # Constraints.
         self.Cd = [] if Cd is None else Cd
         self.Ci = [] if Ci is None else Ci
+        self.Rd = {} if Rd is None else Rd
+        self.Ri = {} if Ri is None else Ri
         if len(self.Cd) > 0:
             raise ValueError('Dependency constraints not yet implemented.')
 
@@ -114,7 +128,8 @@ class State(object):
                 Zv = gu.simulate_crp(self.n_cols(), self.alpha)
             else:
                 Zv = gu.simulate_crp_constrained(
-                    self.n_cols(), self.alpha, self.Cd, self.Ci)
+                    self.n_cols(), self.alpha, self.Cd, self.Ci, self.Rd,
+                    self.Ri)
         self.Zv = list(Zv)
         self.Nv = list(np.bincount(Zv))
 
@@ -784,7 +799,8 @@ class State(object):
                     num_nans = np.sum(np.isnan(self.X[rowids,dim.index]))
                     assert dim.clusters[k].N == Nk[k] - num_nans
         # Dependence constraints.
-        assert vu.validate_crp_constrained_partition(self.Zv, self.Cd, self.Ci)
+        assert vu.validate_crp_constrained_partition(
+            self.Zv, self.Cd, self.Ci, self.Rd, self.Ri)
 
     # --------------------------------------------------------------------------
     # Serialize
