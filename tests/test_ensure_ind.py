@@ -30,7 +30,7 @@ class EnsureIndependentTest(unittest.TestCase):
         Ci = list(itertools.combinations(range(10), 2))
         state = State(T, ['normal']*10, Ci=Ci, seed=0)
         state.transition(N=10, do_progress=0)
-        vu.validate_crp_constrained_partition(state.Zv, [], Ci)
+        vu.validate_crp_constrained_partition(state.Zv, [], Ci, {}, {})
 
     def test_complex_relationships(self):
         D = np.random.normal(size=(10,1))
@@ -38,7 +38,7 @@ class EnsureIndependentTest(unittest.TestCase):
         Ci = [(2,8), (0,3)]
         state = State(T, ['normal']*10, Ci=Ci, seed=0)
         state.transition(N=10, do_progress=0)
-        vu.validate_crp_constrained_partition(state.Zv, [], Ci)
+        vu.validate_crp_constrained_partition(state.Zv, [], Ci, {}, {})
 
 if __name__ == '__main__':
     unittest.main()

@@ -124,11 +124,11 @@ def simulate_crp(N, alpha):
         np.random.shuffle(partition)
     return np.array(partition)
 
-def simulate_crp_constrained(N, alpha, Cd, Ci):
+def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri):
     """Simulates a CRP with N customers and concentration alpha. Cd is a list,
     where each entry is a list of friends. Ci is a list of tuples, where each
     tuple is a pair of enemies."""
-    vu.validate_crp_constrained_input(N, Cd, Ci)
+    vu.validate_crp_constrained_input(N, Cd, Ci, Rd, Ri)
     assert N > 0 and alpha > 0.
 
     # Initial partition.
@@ -150,10 +150,10 @@ def simulate_crp_constrained(N, alpha, Cd, Ci):
             # Does f \in {cust \union cust_friends} have an enemy in table t?
             for tc in t_custs:
                 for f in friends.get(cust, [cust]):
-                    if (f, tc) in Ci or (tc, f) in Ci:
+                    if not vu.check_compatible_customers(N,Cd,Ci,Ri,Rd,f,tc):
                         prob_table[t] = 0
                         break
-        # Choose from valid_view using CRP.
+        # Choose from valid tables using CRP.
         prob_table.append(alpha)
         assignment = pflip(prob_table)
         for f in friends.get(cust, [cust]):
@@ -161,7 +161,7 @@ def simulate_crp_constrained(N, alpha, Cd, Ci):
 
     # At most N tables.
     assert all(0 <= t < N for t in Z)
-    assert vu.validate_crp_constrained_partition(Z, Cd, Ci)
+    assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
     return Z
 
 def build_rowid_blocks(Zvr):

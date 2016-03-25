@@ -26,53 +26,67 @@ class TestValidateCrpConsrainedInput(unittest.TestCase):
 
     def test_duplicate_dependence(self):
         Cd = [[0,2,3], [4,5,0]]
+        Ci = []
+        Rd = Ri = {}
         with self.assertRaises(ValueError):
-            vu.validate_crp_constrained_input(6, Cd ,[])
+            vu.validate_crp_constrained_input(6, Cd , Ci, Rd, Ri)
 
     def test_single_customer_dependence(self):
         Cd = [[0], [4,5,2]]
+        Ci = []
+        Rd = Ri = {}
         with self.assertRaises(ValueError):
-            vu.validate_crp_constrained_input(6, Cd, [])
+            vu.validate_crp_constrained_input(6, Cd, Ci, Rd, Ri)
 
     def test_contradictory_independece(self):
         Cd = [[0,1,3], [2,4]]
         Ci = [(0,1)]
+        Rd = Ri = {}
         with self.assertRaises(ValueError):
-            vu.validate_crp_constrained_input(5, Cd, Ci)
+            vu.validate_crp_constrained_input(5, Cd, Ci, Rd, Ri)
 
     def test_valid_constraints(self):
         Cd = [[0,3], [2,4], [5,6]]
         Ci = [(0,2), (5,2)]
-        self.assertTrue(vu.validate_crp_constrained_input(7, Cd, Ci))
+        Rd = Ri = {}
+        self.assertTrue(vu.validate_crp_constrained_input(7, Cd, Ci, Rd, Ri))
 
 class TestSimulateCrpConstrained(unittest.TestCase):
 
     def test_no_constraints(self):
         N, alpha = 10, .4
         Cd = Ci = []
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
+        Rd = Ri = {}
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        self.assertTrue(
+            vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
     def test_all_friends(self):
         N, alpha = 10, 1.4
         Cd = [range(N)]
         Ci = []
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
+        Rd = Ri = {}
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        self.assertTrue(
+            vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
     def test_all_enemies(self):
         N, alpha = 13, 1.4
         Cd = []
         Ci = list(itertools.combinations(range(N), 2))
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
+        Rd = Ri = {}
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        self.assertTrue(
+            vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
     def test_complex_relationships(self):
         N, alpha = 15, 10
         Cd = [(0,1,4), (2,3,5), (8,7)]
         Ci = [(2,8), (0,3)]
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci)
-        self.assertTrue(vu.validate_crp_constrained_partition(Z, Cd, Ci))
+        Rd = Ri = {}
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        self.assertTrue(
+            vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
 if __name__ == '__main__':
     unittest.main()
