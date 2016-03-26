@@ -150,7 +150,7 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri):
             # Does f \in {cust \union cust_friends} have an enemy in table t?
             for tc in t_custs:
                 for f in friends.get(cust, [cust]):
-                    if not vu.check_compatible_customers(N,Cd,Ci,Ri,Rd,f,tc):
+                    if not vu.check_compatible_customers(Cd,Ci,Ri,Rd,f,tc):
                         prob_table[t] = 0
                         break
         # Choose from valid tables using CRP.
