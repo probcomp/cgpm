@@ -24,31 +24,64 @@ from gpmcc.utils import general as gu
 
 class TestValidateCrpConsrainedInput(unittest.TestCase):
 
-    def test_duplicate_dependence(self):
+    def test_duplicate_Cd(self):
         Cd = [[0,2,3], [4,5,0]]
         Ci = []
         Rd = Ri = {}
         with self.assertRaises(ValueError):
             vu.validate_crp_constrained_input(6, Cd , Ci, Rd, Ri)
 
-    def test_single_customer_dependence(self):
+    def test_duplicate_dependence_Rd(self):
+        Cd = [[2,3], [4,5,0]]
+        Ci = []
+        Rd = {2: [[0,1], [1,1]]}
+        Ri = {}
+        with self.assertRaises(ValueError):
+            vu.validate_crp_constrained_input(6, Cd , Ci, Rd, Ri)
+
+    def test_single_customer_dependence_Cd(self):
         Cd = [[0], [4,5,2]]
         Ci = []
         Rd = Ri = {}
         with self.assertRaises(ValueError):
             vu.validate_crp_constrained_input(6, Cd, Ci, Rd, Ri)
 
-    def test_contradictory_independece(self):
+    def test_single_customer_dependence_Ri(self):
+        Cd = [[0,1], [4,5,2]]
+        Ci = []
+        Rd = {0: [[1,3,4], [10]]}
+        Ri = {}
+        with self.assertRaises(ValueError):
+            vu.validate_crp_constrained_input(6, Cd, Ci, Rd, Ri)
+
+    def test_contradictory_independece_Cdi(self):
         Cd = [[0,1,3], [2,4]]
         Ci = [(0,1)]
         Rd = Ri = {}
         with self.assertRaises(ValueError):
             vu.validate_crp_constrained_input(5, Cd, Ci, Rd, Ri)
 
+    def test_contradictory_independece_Rdi(self):
+        Cd = [[0,1,3], [2,4]]
+        Ci = [(1,4)]
+        Rd = {2: [[0,1,5]]}
+        Ri = {2: [(0,5)]}
+        with self.assertRaises(ValueError):
+            vu.validate_crp_constrained_input(5, Cd, Ci, Rd, Ri)
+
+    def test_contradictory_independece_Cdi_Rdi(self):
+        Cd = [[0,1,3], [2,4]]
+        Ci = [(1,4)]
+        Rd = {1: [[0,1,5], [6,2]]}
+        Ri = {3: [(0,1)]}
+        with self.assertRaises(ValueError):
+            vu.validate_crp_constrained_input(5, Cd, Ci, Rd, Ri)
+
     def test_valid_constraints(self):
         Cd = [[0,3], [2,4], [5,6]]
         Ci = [(0,2), (5,2)]
-        Rd = Ri = {}
+        Rd = {0:[[1,4]], 3:[[1,2], [9,5]]}
+        Ri = {0:[(1,19)], 4:[(1,2)]}
         self.assertTrue(vu.validate_crp_constrained_input(7, Cd, Ci, Rd, Ri))
 
 class TestSimulateCrpConstrained(unittest.TestCase):
@@ -75,6 +108,17 @@ class TestSimulateCrpConstrained(unittest.TestCase):
         Cd = []
         Ci = list(itertools.combinations(range(N), 2))
         Rd = Ri = {}
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        self.assertTrue(
+            vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
+
+    def test_all_enemies_rows(self):
+        # The row constraints will force all columns to be independent.
+        N, alpha = 3, 1
+        Cd = []
+        Ci = []
+        Rd = {0:[[0,1]], 1:[[1,2]], 2:[[2,3]]}
+        Ri = {0:[(1,2)], 1:[(2,3)], 2:[(0,1)]}
         Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
         self.assertTrue(
             vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
