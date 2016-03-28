@@ -55,8 +55,8 @@ class Poisson(DistributionGpm):
         self.sum_log_fact_x -= gammaln(x+1)
 
     def logpdf(self, x, y=None):
-        return Poisson.calc_predictive_logp(x, self.N, self.sum_x,
-            self.sum_log_fact_x, self.a, self.b)
+        return Poisson.calc_predictive_logp(x, self.N, self.sum_x, self.a,
+            self.b)
 
     def logpdf_marginal(self):
         return Poisson.calc_logpdf_marginal(self.N, self.sum_x,
@@ -121,7 +121,7 @@ class Poisson(DistributionGpm):
     ##################
 
     @staticmethod
-    def calc_predictive_logp(x, N, sum_x, sum_log_fact_x, a, b):
+    def calc_predictive_logp(x, N, sum_x, a, b):
         if float(x) != x or x < 0:
             return float('-inf')
         an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
@@ -145,5 +145,5 @@ class Poisson(DistributionGpm):
 
     @staticmethod
     def calc_log_Z(a, b):
-        Z =  gammaln(a)-a*log(b)
+        Z =  gammaln(a) - a*log(b)
         return Z
