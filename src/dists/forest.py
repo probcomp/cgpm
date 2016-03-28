@@ -45,7 +45,7 @@ class RandomForest(DistributionGpm):
         self.Y.append(y)
         self.x.append(x)
         self.counts[x] += 1
-        self.regressor.fit(self.Y, self.x)
+        self.transition_params()
 
     def unincorporate(self, x, y=None):
         assert len(y) == self.p
@@ -56,8 +56,7 @@ class RandomForest(DistributionGpm):
         else:
             raise ValueError('Observation %s not incorporated.' % str((x, y)))
         self.counts[x] -= 1
-        if len(self.Y) > 0:
-            self.regressor.fit(self.Y, self.x)
+        self.transition_params()
 
     def logpdf(self, x, y=None):
         if len(self.Y) == 0:
@@ -86,7 +85,8 @@ class RandomForest(DistributionGpm):
         return gu.log_pflip(logps)
 
     def transition_params(self):
-        self.regressor.fit(self.Y, self.x)
+        if len(self.Y) > 0:
+            self.regressor.fit(self.Y, self.x)
 
     def set_hypers(self, hypers):
         return
