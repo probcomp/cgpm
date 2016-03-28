@@ -37,38 +37,38 @@ class LinearRegression(DistributionGpm):
             elif 'k' in cca: # XXX HACK
                 self.discrete_covariates[i] = cca['k']
                 p += cca['k'] - 1
-        # Observations.
         self.x = []
         self.Y = []
-        # Number of covariates with dummy.
         self.p = p
-        # Hyperparam.
         self.alpha = 1.0
-        # Param.
         self.sigma = 0
         self.regressor = Ridge(alpha=self.alpha)
+
+    def bulk_incorporate(self, X, Y=None):
+        # For effeciency.
+        pass
+
+    def bulk_unincorporate(self, X, Y=None):
+        # For effeciency.
+        pass
 
     def incorporate(self, x, y=None):
         y = du.dummy_code(y, self.discrete_covariates)
         assert len(y) == self.p
         self.Y.append(y)
         self.x.append(x)
-        # XXX Do we need to retrain?
-        self.regressor.fit(self.Y, self.x)
-        self.sigma = np.sqrt(np.sum(
-            (self.regressor.predict(self.Y) - self.x)**2 / len(self.x)))
+        self.transition_params()
 
     def unincorporate(self, x, y=None):
         y = du.dummy_code(y, self.discrete_covariates)
         assert len(y) == self.p
-        # Search for y.
         for i in xrange(len(self.Y)):
-            if self.Y[i] == y and self.x[i] == x:
-                del self.Y[i]
-                del self.x[i]
+            if np.allclose(self.Y[i], y) and self.x[i] == x:
+                del self.x[i], self.Y[i]
                 break
         else:
             raise ValueError('Observation %s not incorporated.' % str((x, y)))
+        self.transition_params()
 
     def logpdf(self, x, y=None):
         # XXX We need to be sampling \beta_i from N(0,alpha) to compute a
@@ -92,9 +92,10 @@ class LinearRegression(DistributionGpm):
         return self.regressor.predict(y)[0]
 
     def transition_params(self):
-        self.regressor.fit(self.Y, self.x)
-        self.sigma = np.sqrt(np.sum(
-            (self.regressor.predict(self.Y) - self.x)**2 / len(self.x)))
+        if len(self.Y) > 0:
+            self.regressor.fit(self.Y, self.x)
+            self.sigma = np.sqrt(np.sum(
+                (self.regressor.predict(self.Y) - self.x)**2 / len(self.x)))
 
     def set_hypers(self, hypers):
         return
