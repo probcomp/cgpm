@@ -410,9 +410,8 @@ class State(object):
             evidence = []
 
         def samples_logpdf(cols, samples, evidence):
-            queries = [zip(cols, samples[i]) for i in xrange(len(samples))]
-            return self.logpdf_bulk(
-                [-1]*len(samples), queries, [evidence]*(len(samples)))
+            queries = [zip(cols, samples[i]) for i in xrange(N)]
+            return self.logpdf_bulk([-1]*N, queries, [evidence]*N)
 
         # MI or entropy?
         if col0 != col1:
