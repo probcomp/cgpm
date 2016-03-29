@@ -44,4 +44,4 @@ class LinearGpm(synthetic.SyntheticXyGpm):
 
     def mutual_information(self):
         cov = 1-self.noise
-        return .5 * np.log(1/np.abs(1-cov**2))
+        return -.5 * np.log(1-cov**2)
