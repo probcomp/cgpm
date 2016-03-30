@@ -20,16 +20,17 @@ from datetime import datetime
 import importlib
 
 cctype_class_lookup = {
+    'bernoulli'         : ('gpmcc.dists.bernoulli', 'Bernoulli'),
+    'beta_uc'           : ('gpmcc.dists.beta_uc', 'BetaUC'),
+    'categorical'       : ('gpmcc.dists.categorical', 'Categorical'),
+    'exponential'       : ('gpmcc.dists.exponential', 'Exponential'),
+    'forest'            : ('gpmcc.dists.forest', 'RandomForest'),
+    'geometric'         : ('gpmcc.dists.geometric', 'Geometric'),
+    'linreg'            : ('gpmcc.dists.linreg', 'LinearRegression'),
+    'lognormal'         : ('gpmcc.dists.lognormal', 'Lognormal'),
     'normal'            : ('gpmcc.dists.normal', 'Normal'),
     'normal_trunc'      : ('gpmcc.dists.normal_trunc', 'NormalTrunc'),
-    'beta_uc'           : ('gpmcc.dists.beta_uc', 'BetaUC'),
-    'bernoulli'         : ('gpmcc.dists.bernoulli', 'Bernoulli'),
-    'categorical'       : ('gpmcc.dists.categorical', 'Categorical'),
-    'lognormal'         : ('gpmcc.dists.lognormal', 'Lognormal'),
-    'linreg'            : ('gpmcc.dists.linreg', 'LinearRegression'),
     'poisson'           : ('gpmcc.dists.poisson', 'Poisson'),
-    'exponential'       : ('gpmcc.dists.exponential', 'Exponential'),
-    'geometric'         : ('gpmcc.dists.geometric', 'Geometric'),
     'vonmises'          : ('gpmcc.dists.vonmises', 'Vonmises'),
 }
 
