@@ -28,12 +28,14 @@ class Bernoulli(DistributionGpm):
     x ~ Bernoulli(theta)
     """
 
-    def __init__(self, N=0, k=0, alpha=1, beta=1, distargs=None):
+    def __init__(self, N=0, x_sum=0, alpha=1, beta=1, distargs=None):
         assert alpha > 0
         assert beta > 0
+        # Discrete outcomes.
+        self.k = 2
         # Sufficient statistics.
         self.N = N
-        self.k = k
+        self.x_sum = x_sum
         # Hyperparameter.
         self.alpha = alpha
         self.beta = beta
@@ -41,27 +43,27 @@ class Bernoulli(DistributionGpm):
     def incorporate(self, x, y=None):
         assert x == 1.0 or x == 0.0
         self.N += 1
-        self.k += x
+        self.x_sum += x
 
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         assert x == 1. or x == 0.
         self.N -= 1
-        self.k -= x
+        self.x_sum -= x
 
     def logpdf(self, x, y=None):
-        return Bernoulli.calc_predictive_logp(x, self.N, self.k, self.alpha,
+        return Bernoulli.calc_predictive_logp(x, self.N, self.x_sum, self.alpha,
             self.beta)
 
     def logpdf_marginal(self):
-        return Bernoulli.calc_logpdf_marginal(self.N, self.k, self.alpha,
+        return Bernoulli.calc_logpdf_marginal(self.N, self.x_sum, self.alpha,
             self.beta)
 
     def simulate(self, y=None):
-        p0 = Bernoulli.calc_predictive_logp(0, self.N, self.k, self.alpha,
+        p0 = Bernoulli.calc_predictive_logp(0, self.N, self.x_sum, self.alpha,
             self.beta)
-        p1 = Bernoulli.calc_predictive_logp(1, self.N, self.k, self.alpha,
+        p1 = Bernoulli.calc_predictive_logp(1, self.N, self.x_sum, self.alpha,
             self.beta)
         return gu.log_pflip([p0, p1])
 
@@ -81,7 +83,7 @@ class Bernoulli(DistributionGpm):
         return {}
 
     def get_suffstats(self):
-        return {'N' : self.N, 'k' : self.k}
+        return {'N':self.N, 'x_sum':self.x_sum}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -117,15 +119,15 @@ class Bernoulli(DistributionGpm):
     ##################
 
     @staticmethod
-    def calc_predictive_logp(x, N, k, alpha, beta):
+    def calc_predictive_logp(x, N, x_sum, alpha, beta):
         if int(x) not in [0, 1]:
             return float('-inf')
         log_denom = log(N + alpha + beta)
         if x == 1.0:
-            return log(k + alpha) - log_denom
+            return log(x_sum + alpha) - log_denom
         else:
-            return log(N - k + beta) - log_denom
+            return log(N - x_sum + beta) - log_denom
 
     @staticmethod
-    def calc_logpdf_marginal(N, k, alpha, beta):
-        return betaln(k + alpha, N - k + beta) - betaln(alpha, beta)
+    def calc_logpdf_marginal(N, x_sum, alpha, beta):
+        return betaln(x_sum + alpha, N - x_sum + beta) - betaln(alpha, beta)
