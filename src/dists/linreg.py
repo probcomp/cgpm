@@ -23,9 +23,7 @@ import gpmcc.utils.data as du
 from gpmcc.dists.distribution import DistributionGpm
 
 class LinearRegression(DistributionGpm):
-    """LinearRegression conditional distribution p(x|y) with L1
-    regulariation. Note that x is the regressed variable and y are the
-    covariates."""
+    """Linear regression conditional distribution with L2 regularization."""
 
     def __init__(self, distargs=None):
         p = 0
@@ -34,8 +32,8 @@ class LinearRegression(DistributionGpm):
                 enumerate(zip(distargs['cctypes'], distargs['ccargs'])):
             if cu.cctype_class(cct).is_numeric():
                 p += 1
-            elif 'k' in cca: # XXX HACK
-                self.discrete_covariates[i] = cca['k']
+            elif cca is not None and 'k' in cca: # XXX HACK
+                self.discrete_covariates[i] = int(cca['k'])
                 p += cca['k'] - 1
         self.x = []
         self.Y = []
@@ -89,7 +87,7 @@ class LinearRegression(DistributionGpm):
     def simulate(self, y=None):
         y = du.dummy_code(y, self.discrete_covariates)
         assert len(y) == self.p
-        return self.regressor.predict(y)[0]
+        return self.regressor.predict(y)[0] + norm.rvs(loc=0, scale=self.sigma)
 
     def transition_params(self):
         if len(self.Y) > 0:
