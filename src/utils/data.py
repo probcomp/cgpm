@@ -112,10 +112,9 @@ def dummy_code(x, discretes):
     Parameters
     ----------
     x : list
-        List of data; categorical values must be integer starting at 0.
-        must start from zero.
+        List of data. Categorical values must be integer starting at 0.
     discretes : dict{int:int}
-        discretes[i] is the number of discrete categories in covariate x[i].
+        discretes[i] is the number of discrete categories in x[i].
 
     Returns
     -------
