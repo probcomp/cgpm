@@ -100,11 +100,9 @@ class LinearRegressionDirectTest(unittest.TestCase):
             distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs})
         for row in self.D[:25]:
             linreg.incorporate(row[0], y=row[1:])
-        correct, total = 0, 0.
-        fig, ax = plt.subplots()
-        xpred = []
-        xtrue = []
-        for i, row in enumerate(self.D[25:]):
+        _, ax = plt.subplots()
+        xpred, xtrue = [], []
+        for row in self.D[25:]:
             xtrue.append(row[0])
             xpred.append([linreg.simulate(y=row[1:]) for _ in xrange(100)])
         xpred = np.asarray(xpred)
