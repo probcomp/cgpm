@@ -24,13 +24,13 @@ cctype_class_lookup = {
     'beta_uc'           : ('gpmcc.dists.beta_uc', 'BetaUC'),
     'categorical'       : ('gpmcc.dists.categorical', 'Categorical'),
     'exponential'       : ('gpmcc.dists.exponential', 'Exponential'),
-    'forest'            : ('gpmcc.dists.forest', 'RandomForest'),
     'geometric'         : ('gpmcc.dists.geometric', 'Geometric'),
-    'linreg'            : ('gpmcc.dists.linreg', 'LinearRegression'),
+    'linear_regression' : ('gpmcc.dists.linreg', 'LinearRegression'),
     'lognormal'         : ('gpmcc.dists.lognormal', 'Lognormal'),
     'normal'            : ('gpmcc.dists.normal', 'Normal'),
     'normal_trunc'      : ('gpmcc.dists.normal_trunc', 'NormalTrunc'),
     'poisson'           : ('gpmcc.dists.poisson', 'Poisson'),
+    'random_forest'     : ('gpmcc.dists.forest', 'RandomForest'),
     'vonmises'          : ('gpmcc.dists.vonmises', 'Vonmises'),
 }
 
