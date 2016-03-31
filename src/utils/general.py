@@ -65,14 +65,14 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
     singleton = Nk[Z[i]] == 1
     m_aux = m-1 if singleton else m
 
-    logp_table_aux = log(alpha/float(m))
+    p_table_aux = alpha/float(m)
 
-    logp_current = lambda : logp_table_aux if singleton else log(Nk[Z[i]]-1)
-    logp_other = lambda t : log(Nk[t])
-    logp_table = lambda t: logp_current() if t == Z[i] else logp_other(t)
+    p_current = lambda : p_table_aux if singleton else Nk[Z[i]]-1
+    p_other = lambda t : Nk[t]
+    p_table = lambda t: p_current() if t == Z[i] else p_other(t)
 
-    logp_tables = [logp_table(t) for t in xrange(len(Nk))]
-    logp_aux = [logp_table_aux for _ in xrange(m_aux)]
+    logp_tables = [log(p_table(t)) for t in xrange(len(Nk))]
+    logp_aux = [log(p_table_aux) for _ in xrange(m_aux)]
 
     return logp_tables + logp_aux
 
