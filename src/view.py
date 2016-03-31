@@ -275,41 +275,33 @@ class View(object):
     # --------------------------------------------------------------------------
     # Internal
 
-    def _transition_row(self, rowid):
+    def _transition_row(self, rowid, m=1):
         # Skip unincorporated rows.
         if self.Zr[rowid] == np.nan:
             return
 
-        # Get current assignment z_a.
-        z_a = self.Zr[rowid]
-        is_singleton = (self.Nk[z_a] == 1)
+        # Existing clusters.
+        logp_data = [self._logpdf_row(rowid, k) for k in xrange(len(self.Nk))]
 
-        # Get CRP probabilities.
-        p_crp = list(self.Nk)
-        if is_singleton:
-            p_crp[z_a] = self.alpha
-        else:
-            p_crp[z_a] -= 1
-            p_crp.append(self.alpha)
-        p_crp = gu.log_normalize(np.log(p_crp))
+        # Auxiliary clusters.
+        # XXX Currently only works for m=1, otherwise need to cache proposals.
+        m_aux = range(m-1) if self.Nk[self.Zr[rowid]] == 1 else range(m)
+        logp_data_aux = [self._logpdf_row(rowid, len(self.Nk)) for _ in m_aux]
 
-        # Calculate probability of rowid in each cluster k \in K.
-        p_cluster = []
-        for k in xrange(len(self.Nk)):
-            lp = self._logpdf_row(rowid, k) + p_crp[k]
-            p_cluster.append(lp)
+        # Extend data structs with auxiliary proposals.
+        logp_data.extend(logp_data_aux)
 
-        # Propose singleton.
-        if not is_singleton:
-            # Using len(self.Nk) will compute singleton.
-            lp = self._logpdf_row(rowid, len(self.Nk)) + p_crp[-1]
-            p_cluster.append(lp)
+        # Compute the CRP probabilities.
+        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, m)
+
+        assert len(logp_data) == len(logp_crp)
+        p_cluster = [d+c for (d,c) in zip(logp_data, logp_crp)]
 
         # Draw new assignment, z_b
         z_b = gu.log_pflip(p_cluster)
 
         # Migrate the row.
-        if z_a != z_b:
+        if z_b != self.Zr[rowid]:
             self.unincorporate_row(rowid)
             self.incorporate_row(rowid, z_b)
 
