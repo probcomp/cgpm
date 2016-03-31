@@ -655,27 +655,9 @@ class State(object):
         # Some reusable variables.
         v_a = self.Zv[col]
         vid = range(len(self.views))
-        singleton = (self.Nv(v_a) == 1)
-        m_aux = range(m-1) if singleton else range(m)
 
         def is_member(view, dim):
             return view is not None and dim.index in view.dims
-
-        # Compute probability of a CRP transition to view.
-        def get_crp_logp(v):
-            if v == v_a:
-                return get_crp_logp_current(v)
-            else:
-                return get_crp_logp_other(v)
-
-        def get_crp_logp_current(v):
-            if singleton:
-                return log(self.alpha/float(m))
-            else:
-                return log(self.Nv(v)-1)
-
-        def get_crp_logp_other(v):
-            return log(self.Nv(v))
 
         # Compute probability of dim data under view partition.
         def get_data_logp(view, dim):
@@ -705,20 +687,21 @@ class State(object):
         dprops = [get_prop_dim(view, self.dims(col)) for view in self.views]
         logp_data = [get_data_logp(view, dim) for (view, dim)
             in zip(self.views, dprops)]
-        logp_crp = [get_crp_logp(v) for v in vid]
 
         # Auxiliary views.
+        m_aux = range(m-1) if self.Nv(self.Zv[col]) == 1 else range(m)
         dprops_aux = [get_prop_dim(None, self.dims(col)) for _ in m_aux]
         vprops_aux = [View(self.X, []) for _ in m_aux]
 
         logp_data_aux = [get_data_logp(view, dim)
             for (view, dim) in zip(vprops_aux, dprops_aux)]
-        logp_crp_aux = [log(self.alpha/float(m)) for _ in m_aux]
 
         # Extend data structs with auxiliary proposals.
         dprops.extend(dprops_aux)
         logp_data.extend(logp_data_aux)
-        logp_crp.extend(logp_crp_aux)
+
+        # Compute the CRP probabilities.
+        logp_crp = gu.logp_crp_gibbs(self.Nv(), self.Zv, col, self.alpha, m)
 
         assert len(logp_data) == len(logp_crp)
 
@@ -735,7 +718,6 @@ class State(object):
 
         if v_a != v_b:
             self.views[v_a].unincorporate_dim(D)
-            # Incorporate D.
             if v_b >= len(self.views):
                 v_b = self._append_view(vprops_aux[v_b-len(self.views)])
             self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
