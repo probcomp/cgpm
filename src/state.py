@@ -175,20 +175,20 @@ class State(object):
         for view in self.views:
             view.set_dataset(self.X)
 
-        if 0 <= v < len(self.Nv):
-            self.views[v].incorporate_dim(D)
-            self.Zv.append(v)
-            self.Nv[v] += 1
-        elif v == len(self.Nv):
-            self.views.append(View(self.X, [D]))
-            self.Zv.append(v)
-            self.Nv.append(1)
-        else:
-            self.views[0].incorporate_dim(D)
-            self.Zv.append(0)
-            self.Nv[0] += 1
-            self.transition_columns(cols=[col])
+        transition = [col] if v is None else []
+        v = 0 if v is None else v
 
+        if 0 <= v < len(self.Nv):
+            view = self.views[v]
+        elif v == len(self.Nv):
+            view = View(self.X, [])
+            self._append_view(view)
+
+        view.incorporate_dim(D)
+        self.Nv[v] += 1
+        self.Zv.append(v)
+
+        self.transition_columns(cols=transition)
         self.transition_column_hypers(cols=[col])
         self._check_partitions()
 
@@ -207,9 +207,7 @@ class State(object):
         del self.Zv[col]
 
         if self.Nv[v] == 0:
-            self.Zv = [i-1 if i>v else i for i in self.Zv]
-            del self.Nv[v]
-            del self.views[v]
+            self._delete_view(v)
 
         for i, dim in enumerate(D_all):
             dim.index = i
@@ -656,57 +654,61 @@ class State(object):
         singleton = (self.Nv[v_a] == 1)
         m_aux = range(m-1) if singleton else range(m)
 
-        # Compute probability of a CRP transition to view.
-        def get_crp_logp(view):
-            if view == v_a:
-                return get_crp_logp_current(view)
-            else:
-                return get_crp_logp_other(view)
+        def is_member(view, dim):
+            return view is not None and dim.index in view.dims
 
-        def get_crp_logp_current(view):
+        # Compute probability of a CRP transition to view.
+        def get_crp_logp(v):
+            if v == v_a:
+                return get_crp_logp_current(v)
+            else:
+                return get_crp_logp_other(v)
+
+        def get_crp_logp_current(v):
             if singleton:
                 return log(self.alpha/float(m))
             else:
-                return log(self.Nv[view]-1)
+                return log(self.Nv[v]-1)
 
-        def get_crp_logp_other(view):
-            return log(self.Nv[view])
+        def get_crp_logp_other(v):
+            return log(self.Nv[v])
 
         # Compute probability of dim data under view partition.
         def get_data_logp(view, dim):
-            if view == v_a:
+            if is_member(view, dim):
                 return get_data_logp_current(view, dim)
             else:
                 return get_data_logp_other(view, dim)
 
         def get_data_logp_current(view, dim):
-            logp = self.views[view].unincorporate_dim(dim)
-            self.views[view].incorporate_dim(dim, reassign=dim.is_collapsed())
+            logp = view.unincorporate_dim(dim)
+            view.incorporate_dim(dim, reassign=dim.is_collapsed())
             return logp
 
         def get_data_logp_other(view, dim):
-            logp = self.views[view].incorporate_dim(dim)
-            self.views[view].unincorporate_dim(dim)
+            logp = view.incorporate_dim(dim)
+            view.unincorporate_dim(dim)
             return logp
 
         # Reuse collapsed, deepcopy uncollapsed.
         def get_prop_dim(view, dim):
-            if dim.is_collapsed() or view == v_a:
+            if dim.is_collapsed() or is_member(view, dim):
                 return dim
             else:
                 return copy.deepcopy(dim)
 
         # Existing views.
-        dprops = [get_prop_dim(v, self.dims(col)) for v in vid]
-        logp_data = [get_data_logp(v, dim) for (v, dim) in zip(vid, dprops)]
+        dprops = [get_prop_dim(view, self.dims(col)) for view in self.views]
+        logp_data = [get_data_logp(view, dim) for (view, dim)
+            in zip(self.views, dprops)]
         logp_crp = [get_crp_logp(v) for v in vid]
 
         # Auxiliary views.
         dprops_aux = [get_prop_dim(None, self.dims(col)) for _ in m_aux]
         vprops_aux = [View(self.X, []) for _ in m_aux]
 
-        logp_data_aux = [v.incorporate_dim(d)
-            for (v,d) in zip(vprops_aux, dprops_aux)]
+        logp_data_aux = [get_data_logp(view, dim)
+            for (view, dim) in zip(vprops_aux, dprops_aux)]
         logp_crp_aux = [log(self.alpha/float(m)) for _ in m_aux]
 
         # Extend data structs with auxiliary proposals.
@@ -727,27 +729,36 @@ class State(object):
         v_b = gu.log_pflip(p_view)
         D = dprops[v_b]
 
-        # Append auxiliary view?
-        if v_b >= len(self.views):
-            self.views.append(vprops_aux[v_b-len(self.Nv)])
-            self.Nv.append(0)
-            v_b = len(self.Nv)-1
-
-        # Accounting.
         if v_a != v_b:
             self.views[v_a].unincorporate_dim(D)
-        self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
-        self.Zv[col] = v_b
-        self.Nv[v_a] -= 1
-        self.Nv[v_b] += 1
-
-        # Delete empty view?
-        if self.Nv[v_a] == 0:
-            self.Zv = [i-1 if i>v_a else i for i in self.Zv]
-            del self.Nv[v_a]
-            del self.views[v_a]
+            # Incorporate D.
+            if v_b >= len(self.views):
+                v_b = self._append_view(vprops_aux[v_b-len(self.Nv)])
+            self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
+            # Accounting
+            self.Zv[col] = v_b
+            self.Nv[v_a] -= 1
+            self.Nv[v_b] += 1
+            # Delete empty view?
+            if self.Nv[v_a] == 0:
+                self._delete_view(v_a)
+        else:
+            self.views[v_a].incorporate_dim(D, reassign=D.is_collapsed())
 
         self._check_partitions()
+
+    def _delete_view(self, v):
+        assert self.Nv[v] == 0
+        del self.Nv[v]
+        del self.views[v]
+        self.Zv = [i-1 if i>v else i for i in self.Zv]
+
+    def _append_view(self, view):
+        """Append a view and return and its index."""
+        assert len(view.dims) == 0
+        self.views.append(view)
+        self.Nv.append(0)
+        return len(self.Nv)-1
 
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
