@@ -131,16 +131,15 @@ class State(object):
                     self.n_cols(), self.alpha, self.Cd, self.Ci, self.Rd,
                     self.Ri)
         self.Zv = list(Zv)
-        self.Nv = list(np.bincount(Zv))
 
         # Generate views.
         self.views = []
-        for v in xrange(len(self.Nv)):
+        for v in sorted(set(self.Zv)):
             view_dims = [dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrv is None else np.asarray(Zrv[v])
             alpha = None if view_alphas is None else view_alphas[v]
-            V = View(self.X, view_dims, Zr=Zr, alpha=alpha)
-            self.views.append(V)
+            view = View(self.X, view_dims, Zr=Zr, alpha=alpha)
+            self.views.append(view)
 
         self._check_partitions()
 
@@ -161,9 +160,9 @@ class State(object):
             distargs see the documentation for each DistributionGpm.
         v : int, optional
             Index of the view to assign the data. If unspecified, will be
-            sampled. If 0 <= v < len(state.Nv) then will insert into an existing
-            View. If v = len(state.Nv) a singleton view will be created with a
-            partition from the prior.
+            sampled. If 0 <= v < len(state.views) then insert into an existing
+            View. If v = len(state.views) then singleton view will be created
+            with a partition from the CRP prior.
         """
         assert len(X) == self.n_rows()
         self.X = np.column_stack((self.X, X))
@@ -178,14 +177,13 @@ class State(object):
         transition = [col] if v is None else []
         v = 0 if v is None else v
 
-        if 0 <= v < len(self.Nv):
+        if 0 <= v < len(self.views):
             view = self.views[v]
-        elif v == len(self.Nv):
+        elif v == len(self.views):
             view = View(self.X, [])
             self._append_view(view)
 
         view.incorporate_dim(D)
-        self.Nv[v] += 1
         self.Zv.append(v)
 
         self.transition_columns(cols=transition)
@@ -203,10 +201,9 @@ class State(object):
 
         v = self.Zv[col]
         self.views[v].unincorporate_dim(D_del)
-        self.Nv[v] -= 1
         del self.Zv[col]
 
-        if self.Nv[v] == 0:
+        if self.Nv(v) == 0:
             self._delete_view(v)
 
         for i, dim in enumerate(D_all):
@@ -315,7 +312,7 @@ class State(object):
         return np.asarray(logpdfs)
 
     def logpdf_marginal(self):
-        return gu.logp_crp(len(self.Zv), self.Nv, self.alpha) + \
+        return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
             sum(v.logpdf_marginal() for v in self.views)
 
     # --------------------------------------------------------------------------
@@ -564,8 +561,8 @@ class State(object):
             (iters, time.time()-start)
 
     def transition_alpha(self):
-        logps = [gu.logp_crp_unorm(self.n_cols(), len(self.Nv), alpha) for alpha
-            in self.alpha_grid]
+        logps = [gu.logp_crp_unorm(self.n_cols(), len(self.views), alpha)
+            for alpha in self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
@@ -641,17 +638,24 @@ class State(object):
     # --------------------------------------------------------------------------
     # Internal
 
-    def dims(self, col=None):
-        if col is not None:
-            return self.views[self.Zv[col]].dims[col]
-        return [self.views[self.Zv[c]].dims[c] for c in xrange(self.n_cols())]
+    def dims(self, d=None):
+        if d is not None:
+            return self.views[self.Zv[d]].dims[d]
+        else:
+            return [self.views[self.Zv[d]].dims[d] for d in
+                xrange(self.n_cols())]
+
+    def Nv(self, v=None):
+        if v is not None:
+            return len(self.views[v].dims)
+        return [len(view.dims) for view in self.views]
 
     def _transition_column(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
         # Some reusable variables.
         v_a = self.Zv[col]
         vid = range(len(self.views))
-        singleton = (self.Nv[v_a] == 1)
+        singleton = (self.Nv(v_a) == 1)
         m_aux = range(m-1) if singleton else range(m)
 
         def is_member(view, dim):
@@ -668,10 +672,10 @@ class State(object):
             if singleton:
                 return log(self.alpha/float(m))
             else:
-                return log(self.Nv[v]-1)
+                return log(self.Nv(v)-1)
 
         def get_crp_logp_other(v):
-            return log(self.Nv[v])
+            return log(self.Nv(v))
 
         # Compute probability of dim data under view partition.
         def get_data_logp(view, dim):
@@ -733,14 +737,12 @@ class State(object):
             self.views[v_a].unincorporate_dim(D)
             # Incorporate D.
             if v_b >= len(self.views):
-                v_b = self._append_view(vprops_aux[v_b-len(self.Nv)])
+                v_b = self._append_view(vprops_aux[v_b-len(self.views)])
             self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
             # Accounting
             self.Zv[col] = v_b
-            self.Nv[v_a] -= 1
-            self.Nv[v_b] += 1
             # Delete empty view?
-            if self.Nv[v_a] == 0:
+            if self.Nv(v_a) == 0:
                 self._delete_view(v_a)
         else:
             self.views[v_a].incorporate_dim(D, reassign=D.is_collapsed())
@@ -748,8 +750,7 @@ class State(object):
         self._check_partitions()
 
     def _delete_view(self, v):
-        assert self.Nv[v] == 0
-        del self.Nv[v]
+        assert self.Nv(v) == 0
         del self.views[v]
         self.Zv = [i-1 if i>v else i for i in self.Zv]
 
@@ -757,8 +758,7 @@ class State(object):
         """Append a view and return and its index."""
         assert len(view.dims) == 0
         self.views.append(view)
-        self.Nv.append(0)
-        return len(self.Nv)-1
+        return len(self.views)-1
 
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
@@ -787,8 +787,7 @@ class State(object):
         fig.clear()
         for dim in self.dims():
             index = dim.index
-            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'],
-                index+1)
+            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index+1)
             if self.Zv[index] >= len(layout['border_color']):
                 border_color = 'gray'
             else:
@@ -814,13 +813,13 @@ class State(object):
         assert len(self.Zv) == self.n_cols()
         assert len(self.dims()) == self.n_cols()
         # Nv should account for each column.
-        assert sum(self.Nv) == self.n_cols()
+        assert sum(self.Nv()) == self.n_cols()
         # Nv should have an entry for each view.
-        assert len(self.Nv) == max(self.Zv)+1
-        for v in xrange(len(self.Nv)):
+        assert len(self.Nv()) == max(self.Zv)+1
+        for v in xrange(len(self.Nv())):
             # Check that the number of dims actually assigned to the view
             # matches the count in Nv.
-            assert len(self.views[v].dims) == self.Nv[v]
+            assert len(self.views[v].dims) == self.Nv(v)
             Nk = self.views[v].Nk
             assert len(self.views[v].Zr) == sum(Nk) == self.n_rows()
             assert max(self.views[v].Zr) == len(Nk)-1
@@ -851,7 +850,6 @@ class State(object):
 
         # View partition data.
         metadata['alpha'] = self.alpha
-        metadata['Nv'] = self.Nv
         metadata['Zv'] = self.Zv
 
         # View data.

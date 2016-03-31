@@ -55,8 +55,8 @@ class IncorporateDimTest(unittest.TestCase):
 
         # Incorporate a new dim into a newly created singleton view.
         self.state.incorporate_dim(self.T[:,3], self.cctypes[3],
-            self.distargs[3], v=len(self.state.Nv))
-        self.assertEqual(self.state.Zv[3], len(self.state.Nv)-1)
+            self.distargs[3], v=len(self.state.views))
+        self.assertEqual(self.state.Zv[3], len(self.state.views)-1)
 
         # Incorporate dim without specifying a view.
         self.state.incorporate_dim(self.T[:,4], self.cctypes[4],
@@ -73,14 +73,14 @@ class IncorporateDimTest(unittest.TestCase):
 
         # Incorporate dim into singleton view, remove it, assert destroyed.
         self.state.incorporate_dim(self.T[:,5], self.cctypes[5],
-            self.distargs[5], v=len(self.state.Nv))
+            self.distargs[5], v=len(self.state.views))
         previous = len(self.state.views)
         self.state.unincorporate_dim(5)
         self.assertEqual(len(self.state.views), previous-1)
 
         # Reincorporate dim into a singleton view.
         self.state.incorporate_dim(self.T[:,5], self.cctypes[4],
-            self.distargs[4], v=len(self.state.Nv))
+            self.distargs[4], v=len(self.state.views))
 
         # Incorporate the rest of the dims in the default way.
         for i in xrange(6, len(self.cctypes)):
