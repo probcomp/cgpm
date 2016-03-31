@@ -59,6 +59,23 @@ def logp_crp_unorm(N, K, alpha):
     """
     return gammaln(alpha) + K*log(alpha) - gammaln(N+alpha)
 
+def logp_crp_gibbs(Nk, Z, i, alpha, m):
+    """Compute the CRP probabilities for a Gibbs transition of customer i,
+    with table counts Nk, table assignments Z, and m auxiliary tables."""
+    singleton = Nk[Z[i]] == 1
+    m_aux = m-1 if singleton else m
+
+    logp_table_aux = log(alpha/float(m))
+
+    logp_current = lambda : logp_table_aux if singleton else log(Nk[Z[i]]-1)
+    logp_other = lambda t : log(Nk[t])
+    logp_table = lambda t: logp_current() if t == Z[i] else logp_other(t)
+
+    logp_tables = [logp_table(t) for t in xrange(len(Nk))]
+    logp_aux = [logp_table_aux for _ in xrange(m_aux)]
+
+    return logp_tables + logp_aux
+
 def log_pflip(logp):
     """Categorical draw from a vector logp of log probabilities."""
     if len(logp) == 1:
