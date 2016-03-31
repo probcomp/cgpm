@@ -650,48 +650,73 @@ class State(object):
 
     def _transition_column(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
+        # Some reusable variables.
         v_a = self.Zv[col]
+        vid = range(len(self.views))
         singleton = (self.Nv[v_a] == 1)
+        m_aux = range(m-1) if singleton else range(m)
 
-        # Compute CRP probabilities.
-        p_crp = list(self.Nv)
-        v_a = self.Zv[col]
-        if self.Nv[v_a] == 1:
-            p_crp[v_a] = self.alpha / float(m)
-        else:
-            p_crp[v_a] -= 1
-        p_crp = np.log(p_crp)
+        # Compute probability of a CRP transition to view.
+        def get_crp_logp(view):
+            if view == v_a:
+                return get_crp_logp_current(view)
+            else:
+                return get_crp_logp_other(view)
+
+        def get_crp_logp_current(view):
+            if singleton:
+                return log(self.alpha/float(m))
+            else:
+                return log(self.Nv[view]-1)
+
+        def get_crp_logp_other(view):
+            return log(self.Nv[view])
+
+        # Compute probability of dim data under view partition.
+        def get_data_logp(view, dim):
+            if view == v_a:
+                return get_data_logp_current(view, dim)
+            else:
+                return get_data_logp_other(view, dim)
+
+        def get_data_logp_current(view, dim):
+            logp = self.views[view].unincorporate_dim(dim)
+            self.views[view].incorporate_dim(dim, reassign=dim.is_collapsed())
+            return logp
+
+        def get_data_logp_other(view, dim):
+            logp = self.views[view].incorporate_dim(dim)
+            self.views[view].unincorporate_dim(dim)
+            return logp
 
         # Reuse collapsed, deepcopy uncollapsed.
-        def get_propsal_dim(dim, view):
+        def get_prop_dim(view, dim):
             if dim.is_collapsed() or view == v_a:
                 return dim
-            return copy.deepcopy(dim)
-
-        # Calculate probability under existing views.
-        p_view = []
-        proposal_dims = []
-        for v in xrange(len(self.views)):
-            D = get_propsal_dim(self.dims(col), v)
-            if v == v_a:
-                logp = self.views[v].unincorporate_dim(D)
-                self.views[v].incorporate_dim(D, reassign=D.is_collapsed())
             else:
-                logp = self.views[v].incorporate_dim(D)
-                self.views[v].unincorporate_dim(D)
-            p_view.append(logp + p_crp[v])
-            proposal_dims.append(D)
+                return copy.deepcopy(dim)
 
-        # Propose auxiliary views.
-        p_crp_aux = log(self.alpha/float(m))
-        proposal_views = []
-        for _ in xrange(m-1 if singleton else m):
-            D = get_propsal_dim(self.dims(col), None)
-            V = View(self.X, [])
-            logp = V.incorporate_dim(D)
-            p_view.append(logp + p_crp_aux)
-            proposal_dims.append(D)
-            proposal_views.append(V)
+        # Existing views.
+        dprops = [get_prop_dim(v, self.dims(col)) for v in vid]
+        logp_data = [get_data_logp(v, dim) for (v, dim) in zip(vid, dprops)]
+        logp_crp = [get_crp_logp(v) for v in vid]
+
+        # Auxiliary views.
+        dprops_aux = [get_prop_dim(None, self.dims(col)) for _ in m_aux]
+        vprops_aux = [View(self.X, []) for _ in m_aux]
+
+        logp_data_aux = [v.incorporate_dim(d)
+            for (v,d) in zip(vprops_aux, dprops_aux)]
+        logp_crp_aux = [log(self.alpha/float(m)) for _ in m_aux]
+
+        # Extend data structs with auxiliary proposals.
+        dprops.extend(dprops_aux)
+        logp_data.extend(logp_data_aux)
+        logp_crp.extend(logp_crp_aux)
+
+        assert len(logp_data) == len(logp_crp)
+
+        p_view = [d+c for (d,c) in zip(logp_data, logp_crp)]
 
         # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
@@ -700,11 +725,11 @@ class State(object):
 
         # Draw view.
         v_b = gu.log_pflip(p_view)
-        D = proposal_dims[v_b]
+        D = dprops[v_b]
 
         # Append auxiliary view?
         if v_b >= len(self.views):
-            self.views.append(proposal_views[v_b-len(self.Nv)])
+            self.views.append(vprops_aux[v_b-len(self.Nv)])
             self.Nv.append(0)
             v_b = len(self.Nv)-1
 
