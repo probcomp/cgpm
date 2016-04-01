@@ -262,6 +262,33 @@ class State(object):
         self._check_partitions()
 
     # --------------------------------------------------------------------------
+    # Schema updates.
+
+    def update_cctype(self, col, cctype, hypers=None, distargs=None):
+        """Update the distribution type of self.dims[col] to cctype.
+
+        Parameters
+        ----------
+        col : int
+            Index of column to update.
+        cctype : str
+            DistributionGpm name see `gpmcc.utils.config`.
+        distargs : dict, optional.
+            Distargs appropriate for the cctype. For details on
+            distargs see the documentation for each DistributionGpm.
+        """
+        D_old = self.dims(col)
+        D_new = Dim(cctype, col, hypers=hypers, distargs=distargs)
+        # Update views.
+        self.views[self.Zv[col]].unincorporate_dim(D_old)
+        self.views[self.Zv[col]].incorporate_dim(D_new)
+        # Run transitions.
+        self.transition_column_hyper_grids(cols=[col])
+        self.transition_column_hypers(cols=[col])
+        self.transition_column_params(cols=[col])
+        self._check_partitions()
+
+    # --------------------------------------------------------------------------
     # logpdf
 
     def logpdf(self, rowid, query, evidence=None):
