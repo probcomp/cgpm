@@ -277,6 +277,7 @@ class State(object):
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
         """
+        # Obtain dimensions.
         D_old = self.dims(col)
         D_new = Dim(cctype, col, hypers=hypers, distargs=distargs)
         # Update views.
@@ -286,6 +287,7 @@ class State(object):
         self.transition_column_hyper_grids(cols=[col])
         self.transition_column_hypers(cols=[col])
         self.transition_column_params(cols=[col])
+        # Confirm OK.
         self._check_partitions()
 
     # --------------------------------------------------------------------------

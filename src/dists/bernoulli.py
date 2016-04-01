@@ -32,7 +32,7 @@ class Bernoulli(DistributionGpm):
         assert alpha > 0
         assert beta > 0
         # Discrete outcomes.
-        self.k = 2
+        self.distargs = {'k':2}
         # Sufficient statistics.
         self.N = N
         self.x_sum = x_sum
