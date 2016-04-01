@@ -14,16 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import math
 
-from scipy.integrate import quad
-from scipy.stats import geom, multivariate_normal, norm
-from scipy.misc import logsumexp
+import numpy as np
+from scipy.stats import geom, norm
 
-from gpmcc import dim
 import gpmcc.utils.general as gu
-import gpmcc.utils.config as cu
+from gpmcc import dim
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
         separation):
@@ -75,8 +72,8 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
     ...     cluster_weights, dists, distargs, separation)
     """
     n_cols = len(cctypes)
-    Zv, Zc = gen_partition_from_weights(n_rows, n_cols, view_weights,
-        cluster_weights)
+    Zv, Zc = gen_partition_from_weights(
+        n_rows, n_cols, view_weights, cluster_weights)
     T = np.zeros((n_cols, n_rows))
 
     for col in xrange(n_cols):
@@ -104,15 +101,14 @@ def _gen_beta_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     K = np.max(Z)+1
-    alphas = np.linspace(.5 -.5*separation*.85, .5 + .5*separation*.85, K)
+    alphas = np.linspace(.5 - .5*separation*.85, .5 + .5*separation*.85, K)
     Tc = np.zeros(n_rows)
 
     for r in xrange(n_rows):
         cluster = Z[r]
         alpha = alphas[cluster]
-        beta = (1.0-alpha)*20.0*(norm.pdf(alpha,.5,.25))
-        alpha *= 20.0*norm.pdf(alpha,.5,.25)
-        # beta *= 10.0
+        beta = (1.-alpha) * 20.* (norm.pdf(alpha, .5, .25))
+        alpha *= 20. * norm.pdf(alpha, .5, .25)
         Tc[r] = np.random.beta(alpha, beta)
 
     return Tc
@@ -123,7 +119,7 @@ def _gen_normal_data(Z, separation=.9, distargs=None):
     Tc = np.zeros(n_rows)
     for r in xrange(n_rows):
         cluster = Z[r]
-        mu = cluster*(5.0*separation)
+        mu = cluster * (5.*separation)
         sigma = 1.0
         Tc[r] = np.random.normal(loc=mu, scale=sigma)
 
@@ -140,7 +136,7 @@ def _gen_normal_trunc_data(Z, separation=.9, distargs=None):
     bins = np.linspace(l, h, K+1)
     bin_centers = [.5*(bins[i-1]+bins[i]) for i in xrange(1, len(bins))]
     distances = [mean - bc for bc in bin_centers]
-    mus = [bc+(1-separation)*d for bc, d in zip(bin_centers, distances)]
+    mus = [bc + (1-separation)*d for bc, d in zip(bin_centers, distances)]
 
     Tc = np.zeros(n_rows)
     for r in xrange(n_rows):
@@ -150,9 +146,9 @@ def _gen_normal_trunc_data(Z, separation=.9, distargs=None):
         while True:
             i += 1
             x = np.random.normal(loc=mus[cluster], scale=sigma)
-            if l<=x<=h:
+            if l <= x <= h:
                 break
-            if i > max_draws:
+            if max_draws < i:
                 raise ValueError('Could not generate normal_trunc data.')
         Tc[r] = x
 
@@ -161,12 +157,12 @@ def _gen_normal_trunc_data(Z, separation=.9, distargs=None):
 def _gen_vonmises_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
-    num_clusters =  max(Z)+1
-    sep = (2*math.pi/num_clusters)
+    num_clusters = max(Z)+1
+    sep = 2*math.pi / num_clusters
 
     mus = [c*sep for c in xrange(num_clusters)]
-    std = sep/(5.0*separation**.75)
-    k = 1/(std*std)
+    std = sep/(5.*separation**.75)
+    k = 1 / (std*std)
 
     Tc = np.zeros(n_rows)
     for r in xrange(n_rows):
@@ -182,7 +178,7 @@ def _gen_poisson_data(Z, separation=.9, distargs=None):
 
     for r in xrange(n_rows):
         cluster = Z[r]
-        lam = (cluster)*(4.0*separation)+1
+        lam = cluster * (4.*separation) + 1
         Tc[r] = np.random.poisson(lam)
 
     return Tc
@@ -193,7 +189,7 @@ def _gen_exponential_data(Z, separation=.9, distargs=None):
 
     for r in xrange(n_rows):
         cluster = Z[r]
-        mu = (cluster)*(4.0*separation)+1
+        mu = cluster * (4.*separation) + 1
         Tc[r] = np.random.exponential(mu)
 
     return Tc
@@ -203,7 +199,7 @@ def _gen_geometric_data(Z, separation=.9, distargs=None):
     Tc = np.zeros(n_rows)
     K = np.max(Z)+1
 
-    ps = np.linspace(.5 -.5*separation*.85, .5 + .5*separation*.85, K)
+    ps = np.linspace(.5 - .5*separation*.85, .5 + .5*separation*.85, K)
     Tc = np.zeros(n_rows)
     for r in xrange(n_rows):
         cluster = Z[r]
@@ -220,9 +216,8 @@ def _gen_lognormal_data(Z, separation=.9, distargs=None):
     Tc = np.zeros(n_rows)
     for r in xrange(n_rows):
         cluster = Z[r]
-        mu = cluster*(.9*separation**2)
-        Tc[r] = np.random.lognormal(mean=mu,
-            sigma=(1.0-separation)/(cluster+1.0))
+        mu = cluster * (.9*separation**2)
+        Tc[r] = np.random.lognormal(mean=mu, sigma=(1.-separation)/(cluster+1.))
 
     return Tc
 
@@ -231,7 +226,7 @@ def _gen_bernoulli_data(Z, separation=.9, distargs=None):
 
     Tc = np.zeros(n_rows)
     K = max(Z)+1
-    thetas = np.linspace(0.0,separation,K)
+    thetas = np.linspace(0., separation, K)
 
     for r in range(n_rows):
         cluster = Z[r]
@@ -252,14 +247,14 @@ def _gen_categorical_data(Z, separation=.9, distargs=None):
 
     Tc = np.zeros(n_rows, dtype=int)
     C = max(Z)+1
-    theta_arrays = [np.random.dirichlet(np.ones(k)*(1.0-separation), 1)
+    theta_arrays = [np.random.dirichlet(np.ones(k)*(1.-separation), 1)
         for _ in range(C)]
 
     for r in xrange(n_rows):
         cluster = Z[r]
         thetas = theta_arrays[cluster][0]
-        x = int(gu.pflip(thetas))
-        Tc[r] = x
+        x = gu.pflip(thetas)
+        Tc[r] = int(x)
     return Tc
 
 def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
@@ -276,7 +271,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
     for v in xrange(n_views):
         n_clusters = len(clusters_weights[v])
         Z = [c for c in xrange(n_clusters)]
-        for _ in range(n_rows-n_clusters):
+        for _ in xrange(n_rows - n_clusters):
             c_weights = np.copy(clusters_weights[v])
             c = gu.pflip(c_weights)
             Z.append(c)
@@ -285,17 +280,6 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights):
 
     assert len(Zc) == n_views
     assert len(Zc[0]) == n_rows
-
-    return Zv, Zc
-
-def gen_partition_crp(n_rows, n_cols, n_views, alphas):
-    Zv = [v for v in range(n_views)]
-    for _ in range(n_cols-n_views):
-        Zv.append(np.random.randrange(n_views))
-    np.random.shuffle(Zv)
-    Zc = []
-    for v in range(n_views):
-        Zc.append(gu.simulate_crp(n_rows, alphas[v]))
 
     return Zv, Zc
 
