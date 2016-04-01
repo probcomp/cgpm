@@ -45,10 +45,12 @@ class Geometric(DistributionGpm):
         self.b = b
 
     def incorporate(self, x, y=None):
+        assert float(x) == int(x) and 0 <= x
         self.N += 1.0
         self.sum_x += x
 
     def unincorporate(self, x, y=None):
+        assert float(x) == int(x) and 0 <= x
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
