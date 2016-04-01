@@ -131,7 +131,7 @@ def _gen_normal_trunc_data(Z, separation=.9, distargs=None):
     n_rows = len(Z)
 
     K = max(Z) + 1
-    mean = l+h/2.
+    mean = (l+h)/2.
 
     bins = np.linspace(l, h, K+1)
     bin_centers = [.5*(bins[i-1]+bins[i]) for i in xrange(1, len(bins))]
