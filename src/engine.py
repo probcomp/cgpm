@@ -96,6 +96,14 @@ class Engine(object):
         self.metadata = mapper(_modify, args)
         self._close_mapper(pool)
 
+    def update_cctype(self, col, cctype, hypers=None, distargs=None,
+            multithread=1):
+        pool, mapper = self._get_mapper(multithread)
+        args = [('update_cctype', self.metadata[i],
+            (col, cctype, hypers, distargs)) for i in xrange(self.num_states)]
+        self.metadata = mapper(_modify, args)
+        self._close_mapper(pool)
+
     def logpdf(self, rowid, query, evidence=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('logpdf', self.metadata[i], (rowid, query, evidence)) for i in
