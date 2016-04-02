@@ -586,8 +586,9 @@ class State(object):
                 iters += 1
                 continue
             break
-        print 'Completed: %d iterations in %f seconds.' % \
-            (iters, time.time()-start)
+        if do_progress:
+            print 'Completed: %d iterations in %f seconds.' % \
+                (iters, time.time()-start)
 
     def transition_alpha(self):
         logps = [gu.logp_crp_unorm(self.n_cols(), len(self.views), alpha)
