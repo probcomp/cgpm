@@ -22,7 +22,7 @@ from gpmcc.state import State
 
 class TestMutualInformation(unittest.TestCase):
 
-    def __ci_test_entropy_bernoulli(self):
+    def test_entropy_bernoulli__ci_(self):
         rng = np.random.RandomState(0)
         T = rng.choice([0,1], p=[.3,.7], size=1000).reshape(-1,1)
         state = State(T, ['bernoulli'], seed=0)
@@ -35,7 +35,7 @@ class TestMutualInformation(unittest.TestCase):
         # Punt CLT analysis and go for 1 percent.
         assert np.allclose(entropy_exact, entropy_mc, rtol=0.1)
 
-    def __ci_test_cmi_different_views(self):
+    def test_cmi_different_views__ci_(self):
         rng = np.random.RandomState(0)
         T = np.zeros((50,3))
         T[:,0] = rng.normal(loc=-5, scale=1, size=50)
