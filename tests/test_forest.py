@@ -21,6 +21,7 @@ import numpy as np
 from gpmcc.dists.forest import RandomForest
 
 from gpmcc.utils import config as cu
+from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
 class RandomForestDirectTest(unittest.TestCase):
@@ -28,11 +29,10 @@ class RandomForestDirectTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         n_rows = 50
-        np.random.seed(0)
         view_weights = [1]
         cluster_weights = np.array([[.33, .33, .34]])
         cls.cctypes = [
-            'categorical(k=4)',
+            'categorical(k=3)',
             'normal',
             'poisson',
             'bernoulli',
@@ -40,10 +40,10 @@ class RandomForestDirectTest(unittest.TestCase):
             'exponential',
             'geometric',
             'vonmises']
-        separation = [.8] * len(cls.cctypes)
+        separation = [.2] * len(cls.cctypes)
         cls.cctypes, cls.distargs = cu.parse_distargs(cls.cctypes)
         D, _, _ = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-            cls.cctypes, cls.distargs, separation)
+            cls.cctypes, cls.distargs, separation, rng=gu.gen_rng(0))
         cls.D = D.T
 
     def test_incorporate(self):
@@ -78,17 +78,15 @@ class RandomForestDirectTest(unittest.TestCase):
         Dx0 = self.D[self.D[:,0]==0]
         Dx1 = self.D[self.D[:,0]==1]
         Dx2 = self.D[self.D[:,0]==2]
-        Dx3 = self.D[self.D[:,0]==3]
         for row in Dx0[:-1]:
             forest.incorporate(row[0], y=row[1:])
-        # Ensure can compute predictive for seen class 0.
+        # Compute predictive for only seen class 0 which must be log(1)=0.
         self.assertEqual(forest.logpdf(Dx0[-1,0], y=Dx0[-1,1:]), 0)
-        # Ensure can compute predictive for unseen class 1.
-        self.assertLess(forest.logpdf(Dx1[0,0],y=Dx1[0,1:]), 0)
-        # Ensure can compute predictive for unseen class 2.
-        self.assertLess(forest.logpdf(Dx2[0,0],y=Dx2[0,1:]), 0)
-        # Ensure can compute predictive for unseen class 3.
-        self.assertLess(forest.logpdf(Dx3[0,0],y=Dx3[0,1:]), 0)
+        # Ensure can compute predictive for unseen classes, which will be.
+        if len(Dx1) > 0:
+            self.assertLess(forest.logpdf(Dx1[0,0], y=Dx1[0,1:]), 0)
+        if len(Dx2) > 0:
+            self.assertLess(forest.logpdf(Dx2[0,0], y=Dx2[0,1:]), 0)
 
     def test_simulate(self):
         forest = RandomForest(
