@@ -42,16 +42,10 @@ class SimulateIndicatorTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Entropy.
-        np.random.seed(0)
         cls.n_samples = 250
-        n_transitions = 200
         # Generate synthetic data.
-        view_weights = [1.]
-        cluster_weights = [[.3, .5, .2]]
-        cctypes = ['normal']
-        separation = [.95]
-        T, Zv, Zc = tu.gen_data_table(cls.n_samples, view_weights,
-            cluster_weights, cctypes, [None], separation)
+        T, Zv, Zc = tu.gen_data_table(cls.n_samples, [1], [[.3, .5, .2]],
+            ['normal'], [None], [.95], rng=gu.gen_rng(0))
         cls.data = np.zeros((cls.n_samples, 2))
         cls.data[:,0] = T[0]
         cls.indicators = [0, 1, 2, 3, 4, 5]
@@ -63,7 +57,7 @@ class SimulateIndicatorTest(unittest.TestCase):
         # Create an engine.
         state = Engine(cls.data, ['normal', 'categorical'], [None, {'k':6}],
             num_states=1, initialize=True)
-        state.transition(N=n_transitions)
+        state.transition(N=200)
         cls.model = state.get_state(0)
 
     def test_joint__ci_(self):

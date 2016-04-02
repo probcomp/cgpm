@@ -16,6 +16,7 @@
 
 import math
 import warnings
+import sys
 from math import log
 
 import numpy as np
@@ -27,6 +28,11 @@ from gpmcc.utils import validation as vu
 
 colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
     'black']
+
+def gen_rng(seed=None):
+    if seed is None:
+        seed = np.random.randint(sys.maxsize)
+    return np.random.RandomState(seed)
 
 def curve_color(k):
     return (colors[k], .7) if k < len(colors) else ('white', .3)

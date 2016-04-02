@@ -40,25 +40,17 @@ The elemnts of the returned list differ based on the method, where we use
 This test suite is slow because many simulate/logpdf queries are invoked.
 """
 
+from gpmcc.utils import general as gu
+
 class EngineDimensionsTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         # Set up the data generation
-        n_rows = 100
-        view_weights = np.ones(1)
-        cluster_weights = [[.25, .25, .5]]
-        cctypes = [
-            'normal',
-            'poisson',
-            'bernoulli',
-            'lognormal',
-            'beta_uc',
-            'vonmises']
-        separation = [.95] * len(cctypes)
-        cctypes, distargs = cu.parse_distargs(cctypes)
-        T, Zv, Zc = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-            cctypes, distargs, separation)
+        cctypes, distargs = cu.parse_distargs(['normal','poisson','bernoulli',
+            'lognormal','beta_uc','vonmises'])
+        T, Zv, Zc = tu.gen_data_table(100, [1], [[.25, .25, .5]],
+            cctypes, distargs, [.95]*len(cctypes), rng=gu.gen_rng(0))
         T = T.T
         # Make some nan cells for evidence.
         T[5,2]=T[5,3]=T[5,0]=T[5,1]=np.nan
