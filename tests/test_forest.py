@@ -28,22 +28,11 @@ class RandomForestDirectTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        n_rows = 50
-        view_weights = [1]
-        cluster_weights = np.array([[.33, .33, .34]])
-        cls.cctypes = [
-            'categorical(k=3)',
-            'normal',
-            'poisson',
-            'bernoulli',
-            'lognormal',
-            'exponential',
-            'geometric',
-            'vonmises']
-        separation = [.2] * len(cls.cctypes)
-        cls.cctypes, cls.distargs = cu.parse_distargs(cls.cctypes)
-        D, _, _ = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-            cls.cctypes, cls.distargs, separation, rng=gu.gen_rng(0))
+        cls.cctypes, cls.distargs = cu.parse_distargs(['categorical(k=3)',
+            'normal','poisson','bernoulli','lognormal','exponential',
+            'geometric','vonmises'])
+        D, Zv, Zc = tu.gen_data_table(50, [1], [[.33, .33, .34]], cls.cctypes,
+            cls.distargs, [.2]*len(cls.cctypes), rng=gu.gen_rng(0))
         cls.D = D.T
 
     def test_incorporate(self):

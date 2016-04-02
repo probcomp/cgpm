@@ -14,29 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import unittest
-
-import numpy as np
 
 from gpmcc.state import State
 from gpmcc.utils import config as cu
+from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
 class UpdateCctypeTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        n_rows = 20
-        np.random.seed(0)
-        view_weights = np.ones(1)
-        cluster_weights = [np.array([.33, .33, .34])]
-        cls.cctypes = ['normal','poisson','categorical(k=2)','bernoulli',
-            'lognormal','exponential','geometric','vonmises']
-        separation = [.95] * len(cls.cctypes)
-        cls.cctypes, cls.distargs = cu.parse_distargs(cls.cctypes)
-        T, _, _ = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-            cls.cctypes, cls.distargs, separation)
+        cls.cctypes, cls.distargs = cu.parse_distargs(['normal','poisson',
+            'categorical(k=2)','bernoulli','lognormal','exponential',
+            'geometric','vonmises'])
+        T, Zv, Zc = tu.gen_data_table(20, [1], [[.33, .33, .34]], cls.cctypes,
+            cls.distargs, [.95]*len(cls.cctypes), rng=gu.gen_rng(0))
         cls.T = T.T
 
     def test_categorical_bernoulli(self):

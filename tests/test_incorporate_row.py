@@ -18,30 +18,19 @@ import unittest
 
 import numpy as np
 
-from gpmcc.utils import config as cu
-from gpmcc.utils import test as tu
 from gpmcc import state
+from gpmcc.utils import config as cu
+from gpmcc.utils import general as gu
+from gpmcc.utils import test as tu
 
 class IncorporateRowTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        n_rows = 200
-        np.random.seed(0)
-        view_weights = np.ones(1)
-        cluster_weights = [np.array([.33, .33, .34])]
-        cls.cctypes = [
-            'normal',
-            'poisson',
-            'bernoulli',
-            'lognormal',
-            'exponential',
-            'geometric',
-            'vonmises']
-        separation = [.95] * len(cls.cctypes)
-        cls.cctypes, cls.distargs = cu.parse_distargs(cls.cctypes)
-        T, _, _ = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-            cls.cctypes, cls.distargs, separation)
+        cls.cctypes, cls.distargs = cu.parse_distargs(['normal','poisson',
+            'bernoulli','lognormal','exponential','geometric','vonmises'])
+        T, Zv, Zc = tu.gen_data_table(200, [1], [[.33, .33, .34]],
+            cls.cctypes, cls.distargs, [.95]*len(cls.cctypes), rng=gu.gen_rng(0))
         cls.T = T.T
         cls.state = state.State(cls.T[:10,:], cls.cctypes,
             distargs=cls.distargs, seed=0)

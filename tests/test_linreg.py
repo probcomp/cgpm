@@ -22,30 +22,18 @@ import matplotlib.pyplot as plt
 from gpmcc.dists.linreg import LinearRegression
 
 from gpmcc.utils import config as cu
+from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
 class LinearRegressionDirectTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        n_rows = 50
-        np.random.seed(0)
-        view_weights = [1]
-        cluster_weights = np.array([[.33, .33, .34]])
-        cls.cctypes = [
-            'normal',
-            'categorical(k=4)',
-            'lognormal',
-            'poisson',
-            'bernoulli',
-            'exponential',
-            'geometric',
-            'vonmises'
-            ]
-        separation = [.8] * len(cls.cctypes)
-        cls.cctypes, cls.distargs = cu.parse_distargs(cls.cctypes)
-        D, _, _ = tu.gen_data_table(n_rows, view_weights, cluster_weights,
-            cls.cctypes, cls.distargs, separation)
+        cls.cctypes, cls.distargs = cu.parse_distargs(['normal',
+            'categorical(k=4)','lognormal','poisson','bernoulli',
+            'exponential','geometric','vonmises'])
+        D, Zv, Zc = tu.gen_data_table(50, [1], [[.33, .33, .34]], cls.cctypes,
+            cls.distargs, [.8]*len(cls.cctypes), rng=gu.gen_rng(0))
         cls.cctypes = cls.cctypes[1:]
         cls.ccargs = cls.distargs[1:]
         cls.ccargs[cls.cctypes.index('bernoulli')] = {'k':2}
