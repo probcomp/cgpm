@@ -58,16 +58,17 @@ def normalize(p):
 def logp_crp(N, Nk, alpha):
     """Returns the log normalized P(N,K|alpha), where N is the number of
     customers and K is the number of tables.
+    https://www.cs.princeton.edu/~blei/papers/GershmanBlei2012.pdf#page=4 (eq 8)
     """
-    return gammaln(alpha) + len(Nk)*log(alpha) - gammaln(N+alpha) \
-        + np.sum(gammaln(Nk))
+    return len(Nk)*log(alpha) + np.sum(gammaln(Nk)) \
+        + gammaln(alpha) - gammaln(N+alpha)
 
 def logp_crp_unorm(N, K, alpha):
     """Returns the log unnormalized P(N,K|alpha), where N is the number of
     customers and K is the number of tables. Use for effeciency to avoid
     computing terms that are not a function of alpha.
     """
-    return gammaln(alpha) + K*log(alpha) - gammaln(N+alpha)
+    return K*log(alpha) + gammaln(alpha) - gammaln(N+alpha)
 
 def logp_crp_gibbs(Nk, Z, i, alpha, m):
     """Compute the CRP probabilities for a Gibbs transition of customer i,
