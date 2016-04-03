@@ -21,11 +21,12 @@ import pickle
 import numpy as np
 
 from gpmcc.state import State
+from gpmcc.utils import general as gu
 
 # Multiprocessing functions.
 
-def _intialize((X, cctypes, distargs, seed)):
-    state = State(X, cctypes, distargs=distargs, seed=seed)
+def _intialize((X, cctypes, distargs, rng)):
+    state = State(X, cctypes, distargs=distargs, rng=rng)
     return state.to_metadata()
 
 def _modify((name, metadata, args)):
@@ -40,23 +41,21 @@ def _evaluate((name, metadata, args)):
 class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel States."""
 
-    def __init__(self, X, cctypes, distargs=None, num_states=1, seeds=None,
-            state_metadatas=None, initialize=False):
+    def __init__(self, X, cctypes, distargs=None, num_states=1, rng=None,
+            state_rngs=None, state_metadatas=None, multithread=1):
         """Do not explicitly use state_metadatas, use Engine.from_metadata."""
-        self._X , self._cctypes, self._distargs = X, cctypes, distargs
-        self.num_states = num_states
-        self.seeds = range(num_states) if seeds is None else seeds
-        self.metadata = state_metadatas
-        if initialize:
-            self.initialize()
-
-    def initialize(self, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
-        args = ((self._X, self._cctypes, self._distargs, seed) for seed in
-            self.seeds)
-        self.metadata = mapper(_intialize, args)
-        self._close_mapper(pool)
-        del (self._X, self._cctypes, self._distargs)
+        self.rng = gu.gen_rng() if rng is None else rng
+        if state_metadatas:
+            self.metadata = state_metadatas
+            self.num_states = len(state_metadatas)
+        else:
+            self.num_states = num_states
+            if state_rngs is None:
+                state_rngs = map(gu.gen_rng, xrange(num_states))
+            pool, mapper = self._get_mapper(multithread)
+            args = ((X, cctypes, distargs, rng) for rng in state_rngs)
+            self.metadata = mapper(_intialize, args)
+            self._close_mapper(pool)
 
     def transition(self, N=None, S=None, kernels=None, target_views=None,
             target_rows=None, target_cols=None, do_plot=False, do_progress=True,
@@ -227,18 +226,18 @@ class Engine(object):
 
     def to_metadata(self):
         metadata = dict()
-        metadata['num_states'] = self.num_states
-        metadata['seeds'] = self.seeds
+        metadata['rng'] = self.rng
         metadata['state_metadatas'] = self.metadata
         return metadata
 
     @classmethod
     def from_metadata(cls, metadata):
+        if 'rng' not in metadata:  # XXX Backward compatability.
+            metadata['rng'] = gu.gen_rng(0)
         return cls(metadata['state_metadatas'][0]['X'],
             metadata['state_metadatas'][0]['cctypes'],
             metadata['state_metadatas'][0]['distargs'],
-            num_states=metadata['num_states'],
-            seeds=metadata['seeds'],
+            rng=metadata['rng'],
             state_metadatas=metadata['state_metadatas'])
 
     def to_pickle(self, fileptr):
