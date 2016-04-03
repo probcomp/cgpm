@@ -26,7 +26,7 @@ class Dim(object):
     shared hyperparameters and grids. Technically not GPM, but easily becomes
     one by placing creating a View with a single Dim."""
 
-    def __init__(self, cctype, index, distargs=None, hypers=None):
+    def __init__(self, cctype, index, distargs=None, hypers=None, rng=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -40,6 +40,8 @@ class Dim(object):
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
         """
+        self.rng = gu.gen_rng() if rng is None else rng
+
         # Identifier.
         self.index = index
 
@@ -167,7 +169,7 @@ class Dim(object):
         np.random.shuffle(targets)
         for target in targets:
             logps = self._calc_hyper_proposal_logps(target)
-            proposal = gu.log_pflip(logps)
+            proposal = gu.log_pflip(logps, rng=self.rng)
             self.hypers[target] = self.hyper_grids[target][proposal]
 
     def transition_hyper_grids(self, X, n_grid=30):
@@ -177,7 +179,7 @@ class Dim(object):
         # Only transition the hypers if previously uninstantiated.
         if not self.hypers:
             for h in self.hyper_grids:
-                self.hypers[h] = np.random.choice(self.hyper_grids[h])
+                self.hypers[h] = self.rng.choice(self.hyper_grids[h])
         self.aux_model = self.model(distargs=self.distargs, **self.hypers)
 
     # --------------------------------------------------------------------------

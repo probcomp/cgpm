@@ -44,7 +44,7 @@ class State(object):
 
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
             view_alphas=None, hypers=None, Cd=None, Ci=None, Rd=None, Ri=None,
-            seed=None):
+            rng=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data, and optinally view partition
         and row partition for each view.
@@ -86,12 +86,11 @@ class State(object):
             Each entry is (col: Ci), where col is a column number and Ci is a
             list of independence constraints for the rows with respect to that
             column (see doc for Ci).
-        seed : int
-            Seed the random number generator.
+        rng : np.random.RandomState, optional.
+            Source of entropy.
         """
         # Seed.
-        self.seed = 0 if seed is None else seed
-        np.random.seed(self.seed)
+        self.rng = gu.gen_rng() if rng is None else rng
 
         # Dataset.
         self.X = np.asarray(X)
@@ -112,24 +111,24 @@ class State(object):
         dims = []
         for col in xrange(self.n_cols()):
             dim_hypers = None if hypers is None else hypers[col]
-            D = Dim(cctypes[col], col, hypers=dim_hypers, distargs=distargs[col])
+            D = Dim(cctypes[col], col, hypers=dim_hypers,
+                distargs=distargs[col], rng=self.rng)
             D.transition_hyper_grids(self.X[:,col])
             dims.append(D)
 
         # Generate CRP alpha.
         self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(), 30)
         if alpha is None:
-            alpha = np.random.choice(self.alpha_grid)
+            alpha = self.rng.choice(self.alpha_grid)
         self.alpha = alpha
 
         # Generate view partition.
         if Zv is None:
             if len(self.Cd) + len(self.Ci) == 0:
-                Zv = gu.simulate_crp(self.n_cols(), self.alpha)
+                Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
             else:
-                Zv = gu.simulate_crp_constrained(
-                    self.n_cols(), self.alpha, self.Cd, self.Ci, self.Rd,
-                    self.Ri)
+                Zv = gu.simulate_crp_constrained(self.n_cols(), self.alpha,
+                    self.Cd, self.Ci, self.Rd, self.Ri, rng=self.rng)
         self.Zv = list(Zv)
 
         # Generate views.
@@ -138,7 +137,7 @@ class State(object):
             view_dims = [dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
             Zr = None if Zrv is None else np.asarray(Zrv[v])
             alpha = None if view_alphas is None else view_alphas[v]
-            view = View(self.X, view_dims, Zr=Zr, alpha=alpha)
+            view = View(self.X, view_dims, Zr=Zr, alpha=alpha, rng=self.rng)
             self.views.append(view)
 
         self._check_partitions()
@@ -168,7 +167,7 @@ class State(object):
         self.X = np.column_stack((self.X, X))
 
         col = self.n_cols() - 1
-        D = Dim(cctype, col, distargs=distargs)
+        D = Dim(cctype, col, distargs=distargs, rng=self.rng)
         D.transition_hyper_grids(self.X[:,col])
 
         for view in self.views:
@@ -180,7 +179,7 @@ class State(object):
         if 0 <= v < self.n_views():
             view = self.views[v]
         elif v == self.n_views():
-            view = View(self.X, [])
+            view = View(self.X, [], rng=self.rng)
             self._append_view(view)
 
         view.incorporate_dim(D)
@@ -279,7 +278,7 @@ class State(object):
         """
         # Obtain dimensions.
         D_old = self.dim_for(col)
-        D_new = Dim(cctype, col, hypers=hypers, distargs=distargs)
+        D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
         # Update views.
         self.view_for(col).unincorporate_dim(D_old)
         self.view_for(col).incorporate_dim(D_new)
@@ -593,7 +592,7 @@ class State(object):
     def transition_alpha(self):
         logps = [gu.logp_crp_unorm(self.n_cols(), self.n_views(), alpha)
             for alpha in self.alpha_grid]
-        index = gu.log_pflip(logps)
+        index = gu.log_pflip(logps, rng=self.rng)
         self.alpha = self.alpha_grid[index]
 
     def transition_view_alphas(self, views=None):
@@ -634,7 +633,7 @@ class State(object):
             return
         if cols is None:
             cols = range(self.n_cols())
-        np.random.shuffle(cols)
+        self.rng.shuffle(cols)
         for c in cols:
             self._transition_column(c, m)
 
@@ -730,7 +729,7 @@ class State(object):
         # Auxiliary views.
         m_aux = range(m-1) if self.Nv(self.Zv[col]) == 1 else range(m)
         dprops_aux = [get_prop_dim(None, self.dim_for(col)) for _ in m_aux]
-        vprops_aux = [View(self.X, []) for _ in m_aux]
+        vprops_aux = [View(self.X, [], rng=self.rng) for _ in m_aux]
 
         logp_data_aux = [get_data_logp(view, dim)
             for (view, dim) in zip(vprops_aux, dprops_aux)]
@@ -741,9 +740,9 @@ class State(object):
 
         # Compute the CRP probabilities.
         logp_crp = gu.logp_crp_gibbs(self.Nv(), self.Zv, col, self.alpha, m)
-
         assert len(logp_data) == len(logp_crp)
 
+        # Overall view probabilities.
         p_view = [d+c for (d,c) in zip(logp_data, logp_crp)]
 
         # Enforce independence constraints.
@@ -752,7 +751,7 @@ class State(object):
             p_view[self.Zv[a]] = float('-inf')
 
         # Draw view.
-        v_b = gu.log_pflip(p_view)
+        v_b = gu.log_pflip(p_view, rng=self.rng)
         D = dprops[v_b]
 
         if v_a != v_b:
@@ -866,8 +865,8 @@ class State(object):
         # Dataset.
         metadata['X'] = self.X.tolist()
 
-        # Misc data.
-        metadata['seed'] = self.seed
+        # Entropy.
+        metadata['rng'] = self.rng
 
         # View partition data.
         metadata['alpha'] = self.alpha
@@ -902,10 +901,12 @@ class State(object):
     @classmethod
     def from_metadata(cls, metadata):
         X = np.asarray(metadata['X'])
+        if 'seed' in metadata:  # XXX Backward compatability.
+            metadata['rng'] = gu.gen_rng(metadata['seed'])
         return cls(X, metadata['cctypes'], metadata['distargs'],
             Zv=metadata['Zv'], Zrv=metadata['Zrv'], alpha=metadata['alpha'],
             view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
-            seed=metadata['seed'])
+            rng=metadata['rng'])
 
     @classmethod
     def from_pickle(cls, fileptr):

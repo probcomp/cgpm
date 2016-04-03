@@ -23,7 +23,7 @@ import gpmcc.utils.general as gu
 class View(object):
     """View, a collection of Dim and their row mixtures."""
 
-    def __init__(self, X, dims, alpha=None, Zr=None):
+    def __init__(self, X, dims, alpha=None, Zr=None, rng=None):
         """View constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -42,18 +42,21 @@ class View(object):
             Starting partiton of rows to categories where Zr[i] is the latent
             clsuter of row i. If None, is sampled from CRP(alpha).
         """
+        # Entropy.
+        self.rng = gu.gen_rng() if rng is None else rng
+
         # Dataset.
         self.X = X
 
         # Generate alpha.
         self.alpha_grid = gu.log_linspace(1./len(self.X), len(self.X), 30)
         if alpha is None:
-            alpha = np.random.choice(self.alpha_grid)
+            alpha = self.rng.choice(self.alpha_grid)
         self.alpha = alpha
 
         # Generate row partition.
         if Zr is None:
-            Zr = gu.simulate_crp(len(self.X), alpha)
+            Zr = gu.simulate_crp(len(self.X), alpha, rng=self.rng)
         self.Zr = list(Zr)
         self.Nk = list(np.bincount(Zr))
 
@@ -157,7 +160,7 @@ class View(object):
         """Calculate CRP alpha conditionals over grid and transition."""
         logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha) for
             alpha in self.alpha_grid]
-        index = gu.log_pflip(logps)
+        index = gu.log_pflip(logps, rng=self.rng)
         self.alpha = self.alpha_grid[index]
 
     def transition_column_hypers(self, cols=None):
@@ -298,7 +301,7 @@ class View(object):
         p_cluster = [d+c for (d,c) in zip(logp_data, logp_crp)]
 
         # Draw new assignment, z_b
-        z_b = gu.log_pflip(p_cluster)
+        z_b = gu.log_pflip(p_cluster, rng=self.rng)
 
         # Migrate the row.
         if z_b != self.Zr[rowid]:
