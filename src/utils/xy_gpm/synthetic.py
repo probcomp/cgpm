@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+from gpmcc.utils.general import gen_rng
 
 class SyntheticXyGpm(object):
     """Interface synthetic, two-dimensional GPMs that take arbitrary noise
@@ -31,12 +31,12 @@ class SyntheticXyGpm(object):
         ----------
         noise : float
             Value in (0,1) indicating the noise level of the distribution.
-        rng : np.random.RandomState, optional
-            Random seed to use.
+        rng : np.random.RandomState, optional.
+            Source of entropy.
         """
         assert 0 < noise < 1
         if rng is None:
-            rng = np.random.RandomState(0)
+            rng = gen_rng(0)
         self.rng = rng
         self.noise = noise
 
