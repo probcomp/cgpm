@@ -29,11 +29,11 @@ class IncorporateRowTest(unittest.TestCase):
     def setUpClass(cls):
         cls.cctypes, cls.distargs = cu.parse_distargs(['normal','poisson',
             'bernoulli','lognormal','exponential','geometric','vonmises'])
-        T, Zv, Zc = tu.gen_data_table(200, [1], [[.33, .33, .34]],
-            cls.cctypes, cls.distargs, [.95]*len(cls.cctypes), rng=gu.gen_rng(0))
+        T, Zv, Zc = tu.gen_data_table(200, [1], [[.33, .33, .34]], cls.cctypes,
+            cls.distargs, [.95]*len(cls.cctypes), rng=gu.gen_rng(0))
         cls.T = T.T
         cls.state = state.State(cls.T[:10,:], cls.cctypes,
-            distargs=cls.distargs, seed=0)
+            distargs=cls.distargs, rng=gu.gen_rng(0))
         cls.state.transition(N=5)
 
     def test_incorporate(self):

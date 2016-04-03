@@ -48,8 +48,7 @@ def run_test(args):
         T_o = np.asarray(gen_function[shape](n_rows))
         T_i = []
 
-        engine = Engine(T_o.T, cctypes, distargs, num_states=n_chains,
-            initialize=True)
+        engine = Engine(T_o.T, cctypes, distargs, num_states=n_chains)
         engine.transition(N=n_iters)
 
         for chain in xrange(n_chains):

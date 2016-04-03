@@ -33,7 +33,8 @@ class UpdateCctypeTest(unittest.TestCase):
         cls.T = T.T
 
     def test_categorical_bernoulli(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs, seed=0)
+        state = State(self.T, self.cctypes, distargs=self.distargs,
+            rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(
             self.cctypes.index('categorical'), 'bernoulli')
@@ -42,7 +43,8 @@ class UpdateCctypeTest(unittest.TestCase):
             self.cctypes.index('categorical'), 'categorical', distargs={'k':2})
 
     def test_poisson_categorical(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs, seed=0)
+        state = State(self.T, self.cctypes, distargs=self.distargs,
+            rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(
             self.cctypes.index('categorical'), 'poisson')
@@ -51,7 +53,8 @@ class UpdateCctypeTest(unittest.TestCase):
             self.cctypes.index('categorical'), 'categorical', distargs={'k':2})
 
     def test_vonmises_normal(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs, seed=0)
+        state = State(self.T, self.cctypes, distargs=self.distargs,
+            rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(
             self.cctypes.index('vonmises'), 'normal')
@@ -63,7 +66,8 @@ class UpdateCctypeTest(unittest.TestCase):
                 self.cctypes.index('normal'), 'vonmises')
 
     def test_geometric_exponential(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs, seed=0)
+        state = State(self.T, self.cctypes, distargs=self.distargs,
+            rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(
             self.cctypes.index('geometric'), 'exponential')

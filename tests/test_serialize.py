@@ -51,7 +51,7 @@ class TestSerialize(unittest.TestCase):
         # Run a single chain for a few iterations.
         engine = gpmcc.engine.Engine(
             data, ['bernoulli','normal','normal','normal','normal'],
-            initialize=True, num_states=4)
+            num_states=4)
         engine.transition(N=1)
         # To JSON.
         metadata = engine.to_metadata()
