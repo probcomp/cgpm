@@ -96,10 +96,10 @@ def log_pflip(logp, rng=None):
 
 def pflip(p, rng=None):
     """Categorical draw from a vector p of probabilities."""
-    if rng is None:
-        rng = gen_rng()
     if len(p) == 1:
         return 0
+    if rng is None:
+        rng = gen_rng()
     p = normalize(p)
     if 10.**(-8.) < math.fabs(1.-sum(p)):
         warnings.warn('pflip probability vector sums to %f.' % sum(p))
