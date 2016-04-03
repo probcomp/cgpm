@@ -17,12 +17,12 @@
 from math import fabs, log
 
 import numpy as np
-from numpy.random import normal
 from scipy.stats import norm
 
 import gpmcc.utils.general as gu
 
-def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
+def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1,
+        rng=None):
     """Uses MH to sample from logpdf_target.
 
     Parameters
@@ -59,6 +59,9 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
     """
     assert D[0] <= x <= D[1]
 
+    if rng is None:
+        rng = gu.gen_rng()
+
     num_collected = 0
     iters = 0
     samples = []
@@ -77,17 +80,17 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
     # Is proposal symmetric? The folded normal is, but taking % 1?
     if D[0] == 0 and D[1] == 1:
         def jumpfun(x, jstd):
-            x_prime = fabs(normal(x, jstd))
+            x_prime = fabs(rng.normal(x, jstd))
             if x_prime > 1.0:
                 x_prime = x_prime % 1
             return x_prime
     elif 0 <= D[0] and D[1] == float('inf'):
-        jumpfun = lambda x, jstd: fabs(x + normal(0.0, jstd))
+        jumpfun = lambda x, jstd: fabs(x + rng.normal(0.0, jstd))
     else:
         def jumpfun(x, jstd):
             MAX_TRIALS = 1000
             for _ in xrange(MAX_TRIALS):
-                x_prime = normal(x, jstd)
+                x_prime = rng.normal(x, jstd)
                 if D[0] < x_prime < D[1]:
                     return x_prime
             raise RuntimeError('MH failed to rejection sample the proposal.')
@@ -108,7 +111,7 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
         # XXX DISABLED Correct MH sampler requires the log correction!
         # logp_corr = log_correction(x, x_prime, jump_std)
 
-        if log(np.random.random()) < logp_prime - logp:
+        if log(rng.rand()) < logp_prime - logp:
             x = x_prime
             logp = logp_prime
             accepted += 1.0
@@ -138,7 +141,7 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1):
         return samples
 
 def slice_sample(proposal_fun, log_pdf_fun, D, num_samples=1, burn=1, lag=1,
-        w=1.0):
+        w=1.0, rng=None):
     """Slice samples from the disitrbution defined by log_pdf_fun.
 
     Parameters
@@ -169,17 +172,20 @@ def slice_sample(proposal_fun, log_pdf_fun, D, num_samples=1, burn=1, lag=1,
     >>> D = (0.0, float('Inf'))
     >>> sample = slice_sample(proposal_fun, log_pdf_fun, D)
     """
+    if rng is None:
+        rng = gu.gen_rng()
     samples = []
     x = proposal_fun()
     f = lambda xp : log_pdf_fun(xp) # f is a log pdf
     num_iters = 0
     while len(samples) < num_samples:
         num_iters += 1
-        u = log(np.random.random()) + f(x)
-        a, b = _find_slice_interval(f, x, u, D, w=w)
+        u = log(rng.rand()) + f(x)
+        r = rng.rand()
+        a, b = _find_slice_interval(f, r, x, u, D, w=w)
 
         while True:
-            x_prime = np.random.uniform(a, b)
+            x_prime = rng.uniform(a, b)
             if f(x_prime) > u:
                 x = x_prime
                 break
@@ -197,11 +203,10 @@ def slice_sample(proposal_fun, log_pdf_fun, D, num_samples=1, burn=1, lag=1,
     else:
         return samples
 
-def _find_slice_interval(f, x, u, D, w=1.0):
+def _find_slice_interval(f, r, x, u, D, w=1.):
     """Given a point u between 0 and f(x), returns an approximated interval
     under f(x) at height u.
     """
-    r = np.random.random()
     a = x - r*w
     b = x + (1-r)*w
 
@@ -224,7 +229,8 @@ def _find_slice_interval(f, x, u, D, w=1.0):
                 break
     return a, b
 
-def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
+def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1,
+        rng=None):
     """Samples from target pdf using rejection sampling.
 
     Parameters
@@ -243,17 +249,20 @@ def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
     samples : int or list
         If N == 1 returns a float. Othewrise returns an `N` length list.
     """
+    if rng is None:
+        rng = gu.gen_rng()
+
     samples = []
 
     while len(samples) < N:
-        # Draw point along X-axis from proposal distribution.
+        # Draw point along x-axis from proposal distribution.
         x = proposal_draw_fn()
         # Calculate proposal pdf at x.
         qx = proposal_pdf_fn(x)
         # Calculate pdf at x.
         px = target_pdf_fn(x)
         # Draw point randomly between 0 and qx.
-        u = np.random.random()*qx
+        u = rng.rand()*qx
         # The proposal should contain the target for all x.
         assert px <= qx
         # If u is less than the target distribution pdf at x, then accept x
@@ -266,9 +275,7 @@ def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1):
         return samples
 
 def resample_data(state):
-    """Samples and resets data in the state.
-    XXX Currently broken.
-    """
+    """Samples and resets data in the state. XXX Currently broken."""
     n_rows = state.n_rows
     n_cols = state.n_cols
     table = np.zeros( (n_rows, n_cols) )
