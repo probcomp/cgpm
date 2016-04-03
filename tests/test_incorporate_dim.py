@@ -33,7 +33,7 @@ class IncorporateDimTest(unittest.TestCase):
             cls.distargs, [.95]*len(cls.cctypes), rng=gu.gen_rng(0))
         cls.T = T.T
         cls.state = state.State(cls.T[:,:2], cls.cctypes[:2],
-            distargs=cls.distargs[:2], seed=0)
+            distargs=cls.distargs[:2], rng=gu.gen_rng(0))
         cls.state.transition(N=5)
 
     def test_incorporate(self):

@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 
 import gpmcc.engine
+from gpmcc.utils.general import gen_rng
 
 DATA_NUM_0 = 100
 DATA_NUM_1 = 200
@@ -32,8 +33,8 @@ class TestBinomial(unittest.TestCase):
         data = np.transpose(np.array([[0] * DATA_NUM_0 + [1] * DATA_NUM_1]))
         # Run a single chain for a few iterations.
         engine = gpmcc.engine.Engine(
-            data, ['categorical'], distargs=[{'k': 2}], seeds=[12],
-            initialize=True)
+            data, ['categorical'], distargs=[{'k': 2}],
+            state_rngs=[gen_rng(12)])
         engine.transition(NUM_ITER)
         # Simulate from hypothetical row and compute the proportion of ones.
         xx = engine.simulate(-1, [0], N=NUM_SIM)[0]

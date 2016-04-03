@@ -37,6 +37,7 @@ from scipy.special import gammaln
 from scipy.stats import t
 
 from gpmcc.dists.normal import Normal
+from gpmcc.utils.general import gen_rng
 
 # Prepare some functions for use in the test.
 
@@ -74,7 +75,7 @@ class TestTehMurphyNigNormal(unittest.TestCase):
         all_nu = map(float, (4., .6, 14., 8.))
 
         # Dataset
-        rng = np.random.RandomState(0)
+        rng = gen_rng(0)
         x1 = rng.normal(10, 3, size=100)
         x2 = rng.normal(-3, 7, size=100)
 

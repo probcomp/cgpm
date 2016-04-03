@@ -56,7 +56,7 @@ class SimulateIndicatorTest(unittest.TestCase):
             counts[k] += 1
         # Create an engine.
         state = Engine(cls.data, ['normal', 'categorical'], [None, {'k':6}],
-            num_states=1, initialize=True)
+            num_states=1)
         state.transition(N=200)
         cls.model = state.get_state(0)
 
