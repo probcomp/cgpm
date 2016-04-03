@@ -177,9 +177,9 @@ class State(object):
         transition = [col] if v is None else []
         v = 0 if v is None else v
 
-        if 0 <= v < len(self.views):
+        if 0 <= v < self.n_views():
             view = self.views[v]
-        elif v == len(self.views):
+        elif v == self.n_views():
             view = View(self.X, [])
             self._append_view(view)
 
@@ -225,7 +225,7 @@ class State(object):
             A (r x self.n_cols) list of data, where r is the number of
             new rows to incorporate.
         k : list(list<int>), optional
-            A (r x len(self.views)) list of integers, where r is the number of
+            A (r x self.n_views()) list of integers, where r is the number of
             new rows to incorporate, and k[r][i] is the cluster to insert row r
             in view i. If k[r][i] is greater than the number of
             clusters in view[i] an error will be thrown. To specify cluster
@@ -236,7 +236,7 @@ class State(object):
         self.X = np.vstack((self.X, X))
 
         if k is None:
-            k = [[None] * len(self.views)] * len(rowids)
+            k = [[None] * self.n_views()] * len(rowids)
 
         for v, view in enumerate(self.views):
             view.set_dataset(self.X)
@@ -278,11 +278,11 @@ class State(object):
             distargs see the documentation for each DistributionGpm.
         """
         # Obtain dimensions.
-        D_old = self.dims(col)
+        D_old = self.dim_for(col)
         D_new = Dim(cctype, col, hypers=hypers, distargs=distargs)
         # Update views.
-        self.views[self.Zv[col]].unincorporate_dim(D_old)
-        self.views[self.Zv[col]].incorporate_dim(D_new)
+        self.view_for(col).unincorporate_dim(D_old)
+        self.view_for(col).incorporate_dim(D_new)
         # Run transitions.
         self.transition_column_hyper_grids(cols=[col])
         self.transition_column_hypers(cols=[col])
@@ -591,14 +591,14 @@ class State(object):
                 (iters, time.time()-start)
 
     def transition_alpha(self):
-        logps = [gu.logp_crp_unorm(self.n_cols(), len(self.views), alpha)
+        logps = [gu.logp_crp_unorm(self.n_cols(), self.n_views(), alpha)
             for alpha in self.alpha_grid]
         index = gu.log_pflip(logps)
         self.alpha = self.alpha_grid[index]
 
     def transition_view_alphas(self, views=None):
         if views is None:
-            views = xrange(len(self.views))
+            views = xrange(self.n_views())
         for v in views:
             self.views[v].transition_alpha()
 
@@ -606,25 +606,25 @@ class State(object):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims(c).transition_params()
+            self.dim_for(c).transition_params()
 
     def transition_column_hypers(self, cols=None):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims(c).transition_hypers()
+            self.dim_for(c).transition_hypers()
 
     def transition_column_hyper_grids(self, cols=None):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dims(c).transition_hyper_grids(self.X[:,c])
+            self.dim_for(c).transition_hyper_grids(self.X[:,c])
 
     def transition_rows(self, views=None, rows=None):
         if self.n_rows() == 1:
             return
         if views is None:
-            views = xrange(len(self.views))
+            views = xrange(self.n_views())
         for v in views:
             self.views[v].transition_rows(rows=rows)
 
@@ -668,14 +668,24 @@ class State(object):
     # --------------------------------------------------------------------------
     # Internal
 
-    def dims(self, d=None):
-        if d is not None:
-            return self.views[self.Zv[d]].dims[d]
-        else:
-            return [self.views[self.Zv[d]].dims[d] for d in
-                xrange(self.n_cols())]
+    def dim_for(self, c):
+        """Dim object for column c."""
+        return self.view_for(c).dims[c]
+
+    def dims(self):
+        """Dim d."""
+        return [self.view_for(d).dims[d] for d in xrange(self.n_cols())]
+
+    def view_for(self, d):
+        """View object for Dim d."""
+        return self.views[self.Zv[d]]
+
+    def n_views(self):
+        """Number of Views."""
+        return len(self.views)
 
     def Nv(self, v=None):
+        """Number of dims in View v."""
         if v is not None:
             return len(self.views[v].dims)
         return [len(view.dims) for view in self.views]
@@ -684,7 +694,6 @@ class State(object):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
         # Some reusable variables.
         v_a = self.Zv[col]
-        vid = range(len(self.views))
 
         def is_member(view, dim):
             return view is not None and dim.index in view.dims
@@ -714,13 +723,13 @@ class State(object):
                 return copy.deepcopy(dim)
 
         # Existing views.
-        dprops = [get_prop_dim(view, self.dims(col)) for view in self.views]
+        dprops = [get_prop_dim(view, self.dim_for(col)) for view in self.views]
         logp_data = [get_data_logp(view, dim) for (view, dim)
             in zip(self.views, dprops)]
 
         # Auxiliary views.
         m_aux = range(m-1) if self.Nv(self.Zv[col]) == 1 else range(m)
-        dprops_aux = [get_prop_dim(None, self.dims(col)) for _ in m_aux]
+        dprops_aux = [get_prop_dim(None, self.dim_for(col)) for _ in m_aux]
         vprops_aux = [View(self.X, []) for _ in m_aux]
 
         logp_data_aux = [get_data_logp(view, dim)
@@ -748,8 +757,8 @@ class State(object):
 
         if v_a != v_b:
             self.views[v_a].unincorporate_dim(D)
-            if v_b >= len(self.views):
-                v_b = self._append_view(vprops_aux[v_b-len(self.views)])
+            if v_b >= self.n_views():
+                v_b = self._append_view(vprops_aux[v_b-self.n_views()])
             self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
             # Accounting
             self.Zv[col] = v_b
@@ -770,7 +779,7 @@ class State(object):
         """Append a view and return and its index."""
         assert len(view.dims) == 0
         self.views.append(view)
-        return len(self.views)-1
+        return self.n_views()-1
 
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
