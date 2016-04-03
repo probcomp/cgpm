@@ -51,6 +51,10 @@ def log_normalize(logp):
     """Normalizes a np array of log probabilites."""
     return logp - logsumexp(logp)
 
+def normalize(p):
+    """Normalizes a np array of probabilites."""
+    return np.asarray(p, dtype=float) / sum(p)
+
 def logp_crp(N, Nk, alpha):
     """Returns the log normalized P(N,K|alpha), where N is the number of
     customers and K is the number of tables.
@@ -82,24 +86,23 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
 
     return logp_tables + logp_aux
 
-def log_pflip(logp):
+def log_pflip(logp, rng=None):
     """Categorical draw from a vector logp of log probabilities."""
     if len(logp) == 1:
         return 0
     p = np.exp(log_normalize(logp))
-    if not math.fabs(1.0-sum(p)) < 10.0**(-8.0):
-        warnings.warn('log_pflip probability vector sums to {}.'.format(sum(p)))
-    return pflip(p)
+    return pflip(p, rng=rng)
 
-def pflip(p):
+def pflip(p, rng=None):
     """Categorical draw from a vector p of probabilities."""
+    if rng is None:
+        rng = gen_rng()
     if len(p) == 1:
         return 0
-    p = np.asarray(p).astype(float)
-    p /= sum(p)
-    if not math.fabs(1.0-sum(p)) < 10.0**(-8.0):
-        warnings.warn('pflip probability vector sums to {}.'.format(sum(p)))
-    return np.random.choice(range(len(p)), size=1, p=p)[0]
+    p = normalize(p)
+    if 10.**(-8.) < math.fabs(1.-sum(p)):
+        warnings.warn('pflip probability vector sums to %f.' % sum(p))
+    return rng.choice(range(len(p)), size=1, p=p)[0]
 
 def log_linspace(a, b, n):
     """linspace from a to b with n entries over log scale (mor entries at

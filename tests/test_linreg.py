@@ -75,13 +75,13 @@ class LinearRegressionDirectTest(unittest.TestCase):
         for row in Dx0[:-1]:
             linreg.incorporate(row[0], y=row[1:])
         # Ensure can compute predictive for seen class 0.
-        self.assertLess(linreg.logpdf(Dx0[-1,0], y=Dx0[-1,1:]), 0)
+        linreg.logpdf(Dx0[-1,0], y=Dx0[-1,1:])
         # Ensure can compute predictive for unseen class 1.
-        self.assertLess(linreg.logpdf(Dx1[0,0], y=Dx1[0,1:]), 0)
+        linreg.logpdf(Dx1[0,0], y=Dx1[0,1:])
         # Ensure can compute predictive for unseen class 2.
-        self.assertLess(linreg.logpdf(Dx2[0,0], y=Dx2[0,1:]), 0)
+        linreg.logpdf(Dx2[0,0], y=Dx2[0,1:])
         # Ensure can compute predictive for unseen class 3.
-        self.assertLess(linreg.logpdf(Dx3[0,0], y=Dx3[0,1:]), 0)
+        linreg.logpdf(Dx3[0,0], y=Dx3[0,1:])
 
     def test_simulate(self):
         linreg = LinearRegression(
