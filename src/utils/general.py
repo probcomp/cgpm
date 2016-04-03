@@ -117,10 +117,13 @@ def log_nCk(n, k):
         return 0
     return log(n) + gammaln(n) - log(k) - gammaln(k) - log(n-k) - gammaln(n-k)
 
-def simulate_crp(N, alpha):
+def simulate_crp(N, alpha, rng=None):
     """Generates a random, N-length partition from the CRP with parameter
     alpha.
     """
+    if rng is None:
+        rng = gen_rng()
+
     assert N > 0 and alpha > 0.
     alpha = float(alpha)
 
@@ -133,7 +136,7 @@ def simulate_crp(N, alpha):
             ps[k] = float(Nk[k])
         ps[K] = alpha
         ps /= (float(i) - 1 + alpha)
-        assignment = pflip(ps)
+        assignment = pflip(ps, rng=rng)
         if assignment == K:
             Nk.append(1)
         elif assignment < K:
@@ -148,13 +151,16 @@ def simulate_crp(N, alpha):
 
     K = len(Nk)
     if K > 1:
-        np.random.shuffle(partition)
+        rng.shuffle(partition)
     return np.array(partition)
 
-def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri):
+def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     """Simulates a CRP with N customers and concentration alpha. Cd is a list,
     where each entry is a list of friends. Ci is a list of tuples, where each
     tuple is a pair of enemies."""
+    if rng is None:
+        rng = gen_rng()
+
     vu.validate_crp_constrained_input(N, Cd, Ci, Rd, Ri)
     assert N > 0 and alpha > 0.
 
@@ -182,7 +188,7 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri):
                         break
         # Choose from valid tables using CRP.
         prob_table.append(alpha)
-        assignment = pflip(prob_table)
+        assignment = pflip(prob_table, rng=rng)
         for f in friends.get(cust, [cust]):
             Z[f] = assignment
 
