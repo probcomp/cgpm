@@ -276,12 +276,8 @@ class State(object):
             Distargs appropriate for the cctype. For details on
             distargs see the documentation for each DistributionGpm.
         """
-        # Obtain dimensions.
-        D_old = self.dim_for(col)
-        D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
-        # Update views.
-        self.view_for(col).unincorporate_dim(D_old)
-        self.view_for(col).incorporate_dim(D_new)
+        self.view_for(col).update_cctype(
+            col, cctype, hypers=hypers, distargs=distargs)
         # Run transitions.
         self.transition_column_hyper_grids(cols=[col])
         self.transition_column_hypers(cols=[col])
