@@ -16,6 +16,7 @@
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from scipy.misc import logsumexp
 
 from gpmcc.utils import general as gu
 from gpmcc.dists.distribution import DistributionGpm
@@ -23,21 +24,21 @@ from gpmcc.dists.distribution import DistributionGpm
 class RandomForest(DistributionGpm):
     """RandomForest conditional distribution p(x|y) where x is categorical."""
 
-    def __init__(self, distargs=None):
+    def __init__(self, alpha=.1, distargs=None, rng=None):
+        self.rng = gu.gen_rng() if rng is None else rng
+        # Number of categories.
         self.k = int(distargs['k'])
+        # Number of conditions.
         self.p = len(distargs['cctypes'])
+        # Outlier hyperparam.
+        self.alpha = alpha
+        # Sufficient statistics.
+        self.N = 0
         self.x = []
         self.Y = []
         self.counts = np.zeros(self.k)
-        self.regressor = RandomForestClassifier(random_state=0)
-
-    def bulk_incorporate(self, X, Y=None):
-        # For effeciency.
-        pass
-
-    def bulk_unincorporate(self, X, Y=None):
-        # For effeciency.
-        pass
+        # Random forest parameters.
+        self.regressor = RandomForestClassifier(random_state=self.rng)
 
     def incorporate(self, x, y=None):
         assert len(y) == self.p
@@ -45,7 +46,7 @@ class RandomForest(DistributionGpm):
         self.Y.append(y)
         self.x.append(x)
         self.counts[x] += 1
-        self.transition_params()
+        self.N += 1
 
     def unincorporate(self, x, y=None):
         assert len(y) == self.p
@@ -56,53 +57,42 @@ class RandomForest(DistributionGpm):
         else:
             raise ValueError('Observation %s not incorporated.' % str((x, y)))
         self.counts[x] -= 1
-        self.transition_params()
+        self.N -= 1
 
     def logpdf(self, x, y=None):
-        if len(self.Y) == 0:
-            return 0
-        # Should this just be the definition of the predictive logpdf?
-        if self.counts[x] == 0:
-            current_logp = self.calc_log_likelihood(
-                self.regressor, self.x, self.Y)
-            temp_regressor = RandomForestClassifier(random_state=0)
-            self.Y.append(y)
-            self.x.append(x)
-            temp_regressor.fit(self.Y, self.x)
-            temp_logp = self.calc_log_likelihood(temp_regressor, self.x, self.Y)
-            del self.x[-1], self.Y[-1]
-            return temp_logp - current_logp
-        else:
-            return self.calc_predictive_logp(self.regressor, x, y)
+        return RandomForest.calc_predictive_logp(
+            x, y, self.regressor, self.counts, self.alpha, self.k)
 
     def logpdf_marginal(self):
-        if len(self.Y) == 0:
-            return 0
-        return self.calc_log_likelihood(self.regressor, self.x, self.Y)
+        return RandomForest.calc_log_likelihood(self.x, self.Y,
+            self.regressor, self.counts, self.alpha, self.k)
 
     def simulate(self, y=None):
-        logps = self.regressor.predict_log_proba([y])[0]
-        return gu.log_pflip(logps)
+        logps = [self.logpdf(x, y=y) for x in xrange(self.k)]
+        return gu.log_pflip(logps, rng=self.rng)
 
     def transition_params(self):
         if len(self.Y) > 0:
             self.regressor.fit(self.Y, self.x)
 
     def set_hypers(self, hypers):
-        return
+        assert 0 < hypers['alpha'] < 1
+        self.alpha = hypers['alpha']
 
     def get_hypers(self):
-        return {}
+        return {'alpha': self.alpha}
 
     def get_params(self):
-        return {}
+        return {'forest': self.regressor}
 
     def get_suffstats(self):
         return {}
 
     @staticmethod
-    def construct_hyper_grids(X, n_grid=20):
-        return {}
+    def construct_hyper_grids(X, n_grid=30):
+        grids = dict()
+        grids['alpha'] = np.linspace(0.01, 0.99, n_grid)
+        return grids
 
     @staticmethod
     def name():
@@ -129,12 +119,20 @@ class RandomForest(DistributionGpm):
     ##################
 
     @staticmethod
-    def calc_log_likelihood(regressor, X, Y):
-        logps = regressor.predict_log_proba(Y)
-        classes = list(regressor.classes_)
-        lookup = {c:classes.index(c) for c in classes}
-        return np.sum([logp[lookup[X[i]]] for i, logp in enumerate(logps)])
+    def calc_log_likelihood(X, Y, regressor, counts, alpha, k):
+        return np.sum([RandomForest.calc_predictive_logp(x, y, regressor,
+                counts, alpha, k) for x, y in zip(X,Y)])
 
     @staticmethod
-    def calc_predictive_logp(regressor, x, y):
-        return regressor.predict_log_proba([y])[0][x]
+    def calc_predictive_logp(x, y, regressor, counts, alpha, k):
+        logp_uniform = -np.log(k)
+        if not hasattr(regressor, 'classes_'):
+            return logp_uniform
+        elif counts[x] == 0:
+            return np.log(alpha) + logp_uniform
+        else:
+            index = list(regressor.classes_).index(x)
+            logp_rf = regressor.predict_log_proba([y])[0][index]
+            return logsumexp([
+                np.log(alpha) + logp_uniform,
+                np.log(1-alpha) + logp_rf])

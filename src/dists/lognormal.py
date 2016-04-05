@@ -37,10 +37,11 @@ class Lognormal(DistributionGpm):
     """
 
     def __init__(self, N=0, sum_log_x=0, sum_log_x_sq=0, m=1, r=1, s=1,
-            nu=1, distargs=None):
+            nu=1, distargs=None, rng=None):
         assert r > 0.
         assert s > 0.
         assert nu > 0.
+        self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
         self.N = N
         self.sum_log_x_sq = sum_log_x_sq
@@ -86,7 +87,7 @@ class Lognormal(DistributionGpm):
         mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_log_x,
             self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
-        x = np.random.normal(loc=mu, scale=rho**-.5)
+        x = self.rng.normal(loc=mu, scale=rho**-.5)
         return np.exp(x)
 
     def transition_params(self):

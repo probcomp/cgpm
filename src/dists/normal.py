@@ -43,10 +43,11 @@ class Normal(DistributionGpm):
     """
 
     def __init__(self, N=0, sum_x=0, sum_x_sq=0, m=0., r=1., s=1., nu=1.,
-            distargs=None):
+            distargs=None, rng=None):
         assert s > 0.
         assert r > 0.
         assert nu > 0.
+        self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
         self.N = N
         self.sum_x = sum_x
@@ -84,8 +85,8 @@ class Normal(DistributionGpm):
     def simulate(self, y=None):
         mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_x,
             self.sum_x_sq, self.m, self.r, self.s, self.nu)
-        mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
-        return np.random.normal(loc=mu, scale=rho**-.5)
+        mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
+        return self.rng.normal(loc=mu, scale=rho**-.5)
 
     def transition_params(self):
         return
@@ -147,10 +148,10 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        mn, rn, sn, nun = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
-            s, nu)
-        mm, rm, sm, num = Normal.posterior_hypers(N+1, sum_x+x,
-            sum_x_sq+x*x, m, r, s, nu)
+        mn, rn, sn, nun = Normal.posterior_hypers(
+            N, sum_x, sum_x_sq, m, r, s, nu)
+        mm, rm, sm, num = Normal.posterior_hypers(
+            N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
         return -.5 * LOG2PI + ZM - ZN
@@ -179,13 +180,13 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def posterior_logcdf(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        mn, rn, sn, nun = Normal.posterior_hypers(N, sum_x, sum_x_sq, m, r,
-            s, nu)
+        mn, rn, sn, nun = Normal.posterior_hypers(
+            N, sum_x, sum_x_sq, m, r, s, nu)
         scalesq = sn/2.*(rn+1)/(nun/2.*rn)
         return t.logcdf(x, 2*nun/2., loc=mn, scale=np.sqrt(scalesq))
 
     @staticmethod
-    def sample_parameters(m, r, s, nu):
-        rho = np.random.gamma(nu/2., scale=2./s)
-        mu = np.random.normal(loc=m, scale=1./(rho*r)**.5)
+    def sample_parameters(m, r, s, nu, rng):
+        rho = rng.gamma(nu/2., scale=2./s)
+        mu = rng.normal(loc=m, scale=1./(rho*r)**.5)
         return mu, rho

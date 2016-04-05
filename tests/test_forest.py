@@ -15,9 +15,13 @@
 # limitations under the License.
 
 import unittest
+from math import log
 
+import numpy as np
+from scipy.misc import logsumexp
+
+from gpmcc.dim import Dim
 from gpmcc.dists.forest import RandomForest
-
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
@@ -26,17 +30,17 @@ class RandomForestDirectTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.rng = gu.gen_rng(0)
-        cls.cctypes, cls.distargs = cu.parse_distargs(['categorical(k=3)',
+        cctypes, distargs = cu.parse_distargs(['categorical(k=3)',
             'normal','poisson','bernoulli','lognormal','exponential',
             'geometric','vonmises'])
-        D, Zv, Zc = tu.gen_data_table(50, [1], [[.33, .33, .34]], cls.cctypes,
-            cls.distargs, [.2]*len(cls.cctypes), rng=cls.rng)
+        D, Zv, Zc = tu.gen_data_table(50, [1], [[.33, .33, .34]], cctypes,
+            distargs, [.2]*len(cctypes), rng=gu.gen_rng(0))
         cls.D = D.T
+        cls.rf_distargs = {'k':distargs[0]['k'], 'cctypes':cctypes[1:]}
+        cls.num_classes = 3
 
     def test_incorporate(self):
-        forest = RandomForest(
-            distargs={'k':self.distargs[0]['k'], 'cctypes':self.cctypes[1:]})
+        forest = RandomForest(distargs=self.rf_distargs, rng=gu.gen_rng(0))
         # Incorporate first 20 rows.
         for row in self.D[:20]:
             forest.incorporate(row[0], y=row[1:])
@@ -53,43 +57,77 @@ class RandomForestDirectTest(unittest.TestCase):
         for row in self.D[:10]:
             forest.incorporate(row[0], y=row[1:])
 
+    def test_logpdf_uniform(self):
+        """No observations implies uniform."""
+        forest = RandomForest(distargs=self.rf_distargs, rng=gu.gen_rng(0))
+        forest.transition_params()
+        for x in xrange(self.num_classes):
+            self.assertAlmostEqual(
+                forest.logpdf(x, y=self.D[0,1:]), -log(self.num_classes))
+
+    def test_logpdf_normalized(self):
+        def train_on(c):
+            D = [row for row in self.D if row[0] in c]
+            forest = RandomForest(distargs=self.rf_distargs, rng=gu.gen_rng(0))
+            for row in D:
+                forest.incorporate(row[0], y=row[1:])
+            forest.transition_params()
+            return forest
+
+        def test_on(forest, c):
+            D = [row for row in self.D if row[0] not in c]
+            for row in D:
+                lps = [forest.logpdf(x, y=row[1:]) for x in
+                    xrange(self.num_classes)]
+                self.assertAlmostEqual(logsumexp(lps), 0)
+
+        forest = train_on([])
+        test_on(forest, [])
+
+        forest = train_on([2])
+        test_on(forest, [2])
+
+        forest = train_on([0,1])
+        test_on(forest, [0,1])
+
     def test_logpdf_marginal(self):
-        forest = RandomForest(
-            distargs={'k':self.distargs[0]['k'], 'cctypes':self.cctypes[1:]})
+        forest = RandomForest(distargs=self.rf_distargs, rng=gu.gen_rng(0))
         for row in self.D[:25]:
             forest.incorporate(row[0], y=row[1:])
+        forest.transition_params()
         self.assertLess(forest.logpdf_marginal(), 0)
 
-    def test_logpdf_predictive(self):
-        forest = RandomForest(
-            distargs={'k':self.distargs[0]['k'], 'cctypes':self.cctypes[1:]})
-        Dx0 = self.D[self.D[:,0]==0]
-        Dx1 = self.D[self.D[:,0]==1]
-        Dx2 = self.D[self.D[:,0]==2]
-        for row in Dx0[:-1]:
-            forest.incorporate(row[0], y=row[1:])
-        # Compute predictive for only seen class 0 which must be log(1)=0.
-        self.assertEqual(forest.logpdf(Dx0[-1,0], y=Dx0[-1,1:]), 0)
-        # Ensure can compute predictive for unseen classes, which will be.
-        if len(Dx1) > 0:
-            self.assertLess(forest.logpdf(Dx1[0,0], y=Dx1[0,1:]), 0)
-        if len(Dx2) > 0:
-            self.assertLess(forest.logpdf(Dx2[0,0], y=Dx2[0,1:]), 0)
+    def test_transition_hypers(self):
+        forest = Dim(
+            'random_forest', 0, distargs=self.rf_distargs, rng=gu.gen_rng(0))
+        forest.transition_hyper_grids(self.D[:,0])
+        # Create two clusters.
+        Zr = np.zeros(len(self.D), dtype=int)
+        Zr[len(self.D)/2:] = 1
+        forest.bulk_incorporate(self.D[:,0], Zr, Y=self.D[:,1:])
+        # Transitions.
+        forest.transition_params()
+        forest.transition_hypers()
 
-    @unittest.expectedFailure
     def test_simulate(self):
-        forest = RandomForest(
-            distargs={'k':self.distargs[0]['k'], 'cctypes':self.cctypes[1:]})
-        self.rng.shuffle(self.D)
-        for row in self.D[:35]:
-            forest.incorporate(row[0], y=row[1:])
+        forest = Dim(
+            'random_forest', 0, distargs=self.rf_distargs, rng=gu.gen_rng(0))
+        forest.transition_hyper_grids(self.D[:,0])
+        # Create 1 clusters.
+        Zr = np.zeros(len(self.D[:40]), dtype=int)
+        forest.bulk_incorporate(self.D[:40,0], Zr, Y=self.D[:40,1:])
+        # Transitions.
+        forest.transition_params()
+        for _ in xrange(2):
+            forest.transition_hypers()
         correct, total = 0, 0.
-        for row in self.D[35:]:
-            s = forest.simulate(y=row[1:])
+        for row in self.D[40:]:
+            s = [forest.simulate(0, y=row[1:]) for _ in xrange(10)]
+            s = np.argmax(np.bincount(s))
             correct += (s==row[0])
             total += 1.
-        # Classification should be better than random?
-        self.assertGreater(correct/total, 1./self.distargs[0]['k'])
+        # Classification should be better than random.
+        self.assertGreater(correct/total, 1./self.num_classes)
 
 if __name__ == '__main__':
     unittest.main()

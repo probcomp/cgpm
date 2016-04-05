@@ -20,12 +20,14 @@ from sklearn.linear_model import Ridge
 
 import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
+import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
 class LinearRegression(DistributionGpm):
     """Linear regression conditional distribution with L2 regularization."""
 
-    def __init__(self, distargs=None):
+    def __init__(self, distargs=None, rng=None):
+        self.rng = gu.gen_rng() if rng is None else rng
         p = 0
         self.discrete_covariates = {}
         for i, (cct, cca) in \
@@ -41,14 +43,6 @@ class LinearRegression(DistributionGpm):
         self.alpha = 1.0
         self.sigma = 0
         self.regressor = Ridge(alpha=self.alpha)
-
-    def bulk_incorporate(self, X, Y=None):
-        # For effeciency.
-        pass
-
-    def bulk_unincorporate(self, X, Y=None):
-        # For effeciency.
-        pass
 
     def incorporate(self, x, y=None):
         y = du.dummy_code(y, self.discrete_covariates)
@@ -87,7 +81,8 @@ class LinearRegression(DistributionGpm):
     def simulate(self, y=None):
         y = du.dummy_code(y, self.discrete_covariates)
         assert len(y) == self.p
-        return self.regressor.predict(y)[0] + norm.rvs(loc=0, scale=self.sigma)
+        return self.regressor.predict(y)[0] + \
+            self.rng.normal(loc=0, scale=self.sigma)
 
     def transition_params(self):
         if len(self.Y) > 0:

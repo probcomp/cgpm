@@ -28,15 +28,15 @@ class Bernoulli(DistributionGpm):
     x ~ Bernoulli(theta)
     """
 
-    def __init__(self, N=0, x_sum=0, alpha=1, beta=1, distargs=None):
+    def __init__(self, N=0, x_sum=0, alpha=1, beta=1, distargs=None, rng=None):
         assert alpha > 0
         assert beta > 0
-        # Discrete outcomes.
+        self.rng = gu.gen_rng() if rng is None else rng
         self.distargs = {'k':2}
-        # Sufficient statistics.
+        # Sufficent statistics.
         self.N = N
         self.x_sum = x_sum
-        # Hyperparameter.
+        # Hyperparameters.
         self.alpha = alpha
         self.beta = beta
 
@@ -53,19 +53,19 @@ class Bernoulli(DistributionGpm):
         self.x_sum -= x
 
     def logpdf(self, x, y=None):
-        return Bernoulli.calc_predictive_logp(x, self.N, self.x_sum, self.alpha,
-            self.beta)
+        return Bernoulli.calc_predictive_logp(
+            x, self.N, self.x_sum, self.alpha, self.beta)
 
     def logpdf_marginal(self):
-        return Bernoulli.calc_logpdf_marginal(self.N, self.x_sum, self.alpha,
-            self.beta)
+        return Bernoulli.calc_logpdf_marginal(
+            self.N, self.x_sum, self.alpha, self.beta)
 
     def simulate(self, y=None):
-        p0 = Bernoulli.calc_predictive_logp(0, self.N, self.x_sum, self.alpha,
-            self.beta)
-        p1 = Bernoulli.calc_predictive_logp(1, self.N, self.x_sum, self.alpha,
-            self.beta)
-        return gu.log_pflip([p0, p1])
+        p0 = Bernoulli.calc_predictive_logp(
+            0, self.N, self.x_sum, self.alpha, self.beta)
+        p1 = Bernoulli.calc_predictive_logp(
+            1, self.N, self.x_sum, self.alpha, self.beta)
+        return gu.log_pflip([p0, p1], rng=self.rng)
 
     def transition_params(self):
         return

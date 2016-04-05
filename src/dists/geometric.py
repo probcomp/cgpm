@@ -34,9 +34,10 @@ class Geometric(DistributionGpm):
     http://halweb.uc3m.es/esp/Personal/personas/mwiper/docencia/English/PhD_Bayesian_Statistics/ch3_2009.pdf
     """
 
-    def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None):
+    def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None, rng=None):
         assert a > 0
         assert b > 0
+        self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
         self.N = N
         self.sum_x = sum_x
@@ -57,18 +58,18 @@ class Geometric(DistributionGpm):
         self.sum_x -= x
 
     def logpdf(self, x, y=None):
-        return Geometric.calc_predictive_logp(x, self.N, self.sum_x, self.a,
-            self.b)
+        return Geometric.calc_predictive_logp(
+            x, self.N, self.sum_x, self.a, self.b)
 
     def logpdf_marginal(self):
-        return Geometric.calc_logpdf_marginal(self.N, self.sum_x, self.a,
-            self.b)
+        return Geometric.calc_logpdf_marginal(
+            self.N, self.sum_x, self.a, self.b)
 
     def simulate(self, y=None):
-        an, bn = Geometric.posterior_hypers(self.N, self.sum_x, self.a,
-            self.b)
-        pn = beta.rvs(an, bn)
-        return geom.rvs(pn) - 1
+        an, bn = Geometric.posterior_hypers(
+            self.N, self.sum_x, self.a, self.b)
+        pn = self.rng.beta(an, bn)
+        return self.rng.geometric(pn) - 1
 
     def transition_params(self):
         return

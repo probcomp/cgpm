@@ -31,9 +31,10 @@ class Poisson(DistributionGpm):
     """
 
     def __init__(self, N=0, sum_x=0, sum_log_fact_x=0, a=1, b=1,
-            distargs=None):
+            distargs=None, rng=None):
         assert a > 0
         assert b > 0
+        self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
         self.N = N
         self.sum_x = sum_x
@@ -55,18 +56,17 @@ class Poisson(DistributionGpm):
         self.sum_log_fact_x -= gammaln(x+1)
 
     def logpdf(self, x, y=None):
-        return Poisson.calc_predictive_logp(x, self.N, self.sum_x, self.a,
-            self.b)
+        return Poisson.calc_predictive_logp(
+            x, self.N, self.sum_x, self.a, self.b)
 
     def logpdf_marginal(self):
-        return Poisson.calc_logpdf_marginal(self.N, self.sum_x,
-            self.sum_log_fact_x, self.a, self.b)
+        return Poisson.calc_logpdf_marginal(
+            self.N, self.sum_x, self.sum_log_fact_x, self.a, self.b)
 
     def simulate(self, y=None):
-        an, bn = Poisson.posterior_hypers(self.N, self.sum_x,
-            self.a, self.b)
-        draw = np.random.negative_binomial(an, bn/(bn+1.))
-        return draw
+        an, bn = Poisson.posterior_hypers(
+            self.N, self.sum_x, self.a, self.b)
+        return self.rng.negative_binomial(an, bn/(bn+1.))
 
     def transition_params(self):
         return

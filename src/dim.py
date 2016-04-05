@@ -58,7 +58,8 @@ class Dim(object):
         self.clusters = []
 
         # Auxiliary singleton model.
-        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+        self.aux_model = self.model(
+            distargs=self.distargs, rng=self.rng, **self.hypers)
 
     # --------------------------------------------------------------------------
     # Observe
@@ -108,7 +109,8 @@ class Dim(object):
 
         # Create clusters.
         for k in xrange(K):
-            cluster = self.model(distargs=self.distargs, **self.hypers)
+            cluster = self.model(
+                distargs=self.distargs, rng=self.rng, **self.hypers)
             self.clusters.append(cluster)
 
         # Populate clusters.
@@ -166,7 +168,7 @@ class Dim(object):
         for cluster in self.clusters:
             cluster.set_hypers(self.hypers)
         targets = self.hypers.keys()
-        np.random.shuffle(targets)
+        self.rng.shuffle(targets)
         for target in targets:
             logps = self._calc_hyper_proposal_logps(target)
             proposal = gu.log_pflip(logps, rng=self.rng)
@@ -180,7 +182,8 @@ class Dim(object):
         if not self.hypers:
             for h in self.hyper_grids:
                 self.hypers[h] = self.rng.choice(self.hyper_grids[h])
-        self.aux_model = self.model(distargs=self.distargs, **self.hypers)
+        self.aux_model = self.model(
+            distargs=self.distargs, rng=self.rng, **self.hypers)
 
     # --------------------------------------------------------------------------
     # Helpers
