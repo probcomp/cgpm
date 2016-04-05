@@ -19,6 +19,7 @@ from scipy.misc import logsumexp
 
 import numpy as np
 import gpmcc.utils.general as gu
+from gpmcc.dim import Dim
 
 class View(object):
     """View, a collection of Dim and their row mixtures."""
@@ -60,9 +61,9 @@ class View(object):
         self.Zr = list(Zr)
         self.Nk = list(np.bincount(Zr))
 
-        # Initialize the dimensions.
+        # Incoroprate the dimensions.
         self.dims = dict()
-        for dim in dims:
+        for dim in sorted(dims, key=lambda d: d.is_conditional()):
             self.incorporate_dim(dim)
 
         # self._check_partitions()
@@ -125,6 +126,20 @@ class View(object):
             for dim in self.dims.values():
                 dim.bulk_unincorporate(k)
         self.Zr[rowid] = np.nan
+
+    # --------------------------------------------------------------------------
+    # Update schema.
+
+    def update_cctype(self, col, cctype, hypers=None, distargs=None):
+        """Update the distribution type of self.dims[col] to cctype."""
+        if distargs is None:
+            distargs = {}
+        distargs['cctypes'] = self._regressor_cctypes()
+        distargs['ccargs'] = self._regressor_ccargs()
+        D_old = self.dims[col]
+        D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
+        self.unincorporate_dim(D_old)
+        self.incorporate_dim(D_new)
 
     # --------------------------------------------------------------------------
     # Accounting
