@@ -257,7 +257,7 @@ def _gen_categorical_data(Z, rng, separation=.9, distargs=None):
     for r in xrange(n_rows):
         cluster = Z[r]
         thetas = theta_arrays[cluster][0]
-        x = gu.pflip(thetas)
+        x = gu.pflip(thetas, rng=rng)
         Tc[r] = int(x)
     return Tc
 
@@ -266,7 +266,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights,
     n_views = len(view_weights)
     Zv = [v for v in range(n_views)]
     for _ in xrange(n_cols - n_views):
-        v = gu.pflip(view_weights)
+        v = gu.pflip(view_weights, rng=rng)
         Zv.append(v)
 
     rng.shuffle(Zv)
@@ -278,7 +278,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights,
         Z = [c for c in xrange(n_clusters)]
         for _ in xrange(n_rows - n_clusters):
             c_weights = np.copy(clusters_weights[v])
-            c = gu.pflip(c_weights)
+            c = gu.pflip(c_weights, rng=rng)
             Z.append(c)
         rng.shuffle(Z)
         Zc.append(Z)
