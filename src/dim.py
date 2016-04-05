@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import numpy as np
-from math import isnan
 
 import gpmcc.utils.config as cu
 import gpmcc.utils.general as gu
@@ -75,7 +74,7 @@ class Dim(object):
             self.clusters.append(self.aux_model)
             self.aux_model = self.model(distargs=self.distargs,
                 **self.hypers)
-        if not isnan(x):
+        if self._valid_xy(x, y):
             self.clusters[k].incorporate(x, y=y)
 
     def unincorporate(self, x, k, y=None):
@@ -83,7 +82,7 @@ class Dim(object):
         was not incorporated into cluster k before calling this method.
         """
         assert k < len(self.clusters)
-        if not isnan(x):
+        if self._valid_xy(x, y):
             self.clusters[k].unincorporate(x, y=y)
 
     # Bulk operations for effeciency.
@@ -115,7 +114,7 @@ class Dim(object):
 
         # Populate clusters.
         for x, k, y in zip(X, Zr, Y):
-            if not isnan(x):
+            if self._valid_xy(x, y):
                 self.clusters[k].incorporate(x, y=y)
 
         # Transition uncollapsed params if necessary.
@@ -134,7 +133,10 @@ class Dim(object):
             cluster = self.aux_model
         else:
             cluster = self.clusters[k]
-        return cluster.logpdf(x, y=y) if not isnan(x) else 0
+        if self._valid_xy(x, y):
+            return cluster.logpdf(x, y=y)
+        else:
+            return 0
 
     def logpdf_marginal(self, k=None):
         """If k is not None, returns the marginal log_p of clusters[k].
@@ -208,6 +210,9 @@ class Dim(object):
 
     # --------------------------------------------------------------------------
     # Internal
+
+    def _valid_xy(self, x, y):
+        return not (np.isnan(x) or (y is not None and np.isnan(y).any()))
 
     def _calc_hyper_proposal_logps(self, target):
         """Computes the marginal likelihood (over all clusters) for each
