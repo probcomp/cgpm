@@ -37,11 +37,12 @@ class Vonmises(DistributionGpm):
     cctype = 'vonmises'
 
     def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, a=1, b=pi, k=1.5,
-            distargs=None):
+            distargs=None, rng=None):
         assert N >= 0
         assert a > 0
         assert 0 <= b <= TWOPI
         assert k > 0
+        self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
         self.N = N
         self.sum_sin_x = sum_sin_x
@@ -66,21 +67,20 @@ class Vonmises(DistributionGpm):
         self.sum_cos_x -= cos(x)
 
     def logpdf(self, x, y=None):
-        return Vonmises.calc_predictive_logp(x, self.N, self.sum_sin_x,
-            self.sum_cos_x, self.a, self.b, self.k)
+        return Vonmises.calc_predictive_logp(
+            x, self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 
     def logpdf_marginal(self):
-        logp = Vonmises.calc_logpdf_marginal(self.N, self.sum_sin_x,
-            self.sum_cos_x, self.a, self.b, self.k)
-        return logp
+        return Vonmises.calc_logpdf_marginal(
+            self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 
     def simulate(self, y=None):
-        an, bn = Vonmises.posterior_hypers(self.N, self.sum_sin_x,
-            self.sum_cos_x, self.a, self.b, self.k)
+        an, bn = Vonmises.posterior_hypers(
+            self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
         # if not 0 <= bn <= 2*pi:
         #     import ipdb; ipdb.set_trace()
-        mu = np.random.vonmises(bn - pi, an) + pi
-        x = np.random.vonmises(mu - pi, self.k) + pi
+        mu = self.rng.vonmises(bn-pi, an) + pi
+        x = self.rng.vonmises(mu-pi, self.k) + pi
         assert 0 <= x <= 2*pi
         return x
 

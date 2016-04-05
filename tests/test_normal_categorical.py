@@ -44,8 +44,9 @@ class SimulateIndicatorTest(unittest.TestCase):
         # Entropy.
         cls.n_samples = 250
         # Generate synthetic data.
-        T, Zv, Zc = tu.gen_data_table(cls.n_samples, [1], [[.3, .5, .2]],
-            ['normal'], [None], [.95], rng=gu.gen_rng(0))
+        T, Zv, Zc = tu.gen_data_table(
+            cls.n_samples, [1], [[.3, .5, .2]], ['normal'], [None], [.95],
+            rng=gu.gen_rng(0))
         cls.data = np.zeros((cls.n_samples, 2))
         cls.data[:,0] = T[0]
         cls.indicators = [0, 1, 2, 3, 4, 5]
@@ -55,8 +56,9 @@ class SimulateIndicatorTest(unittest.TestCase):
             cls.data[i,1] = 2*cls.indicators[k] + counts[k] % 2
             counts[k] += 1
         # Create an engine.
-        state = Engine(cls.data, ['normal', 'categorical'], [None, {'k':6}],
-            num_states=1)
+        state = Engine(
+            cls.data, ['normal', 'categorical'], [None, {'k':6}], num_states=1,
+            state_rngs=[gu.gen_rng(0)])
         state.transition(N=200)
         cls.model = state.get_state(0)
 
@@ -71,8 +73,9 @@ class SimulateIndicatorTest(unittest.TestCase):
             ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
             # Plot simulated data.
             joint_samples_subpop = joint_samples[joint_samples[:,1] == t]
-            ax.scatter(joint_samples_subpop[:,1] + .25,
-                joint_samples_subpop[:,0], color=gu.colors[t])
+            ax.scatter(
+                joint_samples_subpop[:,1] + .25, joint_samples_subpop[:,0],
+                color=gu.colors[t])
             # KS test.
             pvalue = ks_2samp(data_subpop[:,0], joint_samples_subpop[:,0])[1]
             self.assertGreater(pvalue, 0.05)
@@ -89,12 +92,14 @@ class SimulateIndicatorTest(unittest.TestCase):
             data_subpop = self.data[self.data[:,1] == t]
             ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
             # Plot simulated data.
-            conditional_samples_subpop = self.model.simulate(-1, [0],
-                evidence=[(1,t)], N=len(data_subpop))
-            ax.scatter(np.repeat(t, len(data_subpop)) + .25,
+            conditional_samples_subpop = self.model.simulate(
+                -1, [0], evidence=[(1,t)], N=len(data_subpop))
+            ax.scatter(
+                np.repeat(t, len(data_subpop)) + .25,
                 conditional_samples_subpop[:,0], color=gu.colors[t])
             # KS test.
-            pvalue = ks_2samp(data_subpop[:,0], conditional_samples_subpop[:,0])[1]
+            pvalue = ks_2samp(
+                data_subpop[:,0], conditional_samples_subpop[:,0])[1]
             self.assertGreater(pvalue, 0.1)
         ax.set_xlabel('Indicator')
         ax.set_ylabel('x')
@@ -108,8 +113,8 @@ class SimulateIndicatorTest(unittest.TestCase):
         means = [np.mean(self.data[self.data[:,1]==i], axis=0)[0] for
             i in self.indicators]
         for mean, indicator, ax in zip(means, self.indicators, axes.ravel('F')):
-            conditional_samples_subpop = self.model.simulate(-1, [1],
-                evidence=[(0,mean)], N=self.n_samples)
+            conditional_samples_subpop = self.model.simulate(
+                -1, [1], evidence=[(0,mean)], N=self.n_samples)
             ax.hist(conditional_samples_subpop, color='g', alpha=.4)
             ax.set_title('True Indicator %d' % indicator)
             ax.set_xlabel('Simulated Indicator')

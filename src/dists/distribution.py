@@ -35,7 +35,7 @@ class DistributionGpm(object):
     recovered in the limit n \to \infty.
     """
 
-    def __init__(self, suffstats, params, hypers, distargs):
+    def __init__(self, suffstats, params, hypers, distargs, rng):
         """Initialize the Gpm.
 
         This constructor signature is abstract. `suffstats`, `params`, and
@@ -55,6 +55,8 @@ class DistributionGpm(object):
             Initial values of hyperparams.
         distargs : dict
             Any other arguments.
+        rng : np.random.RandomState, optional.
+            Source of entropy.
         """
         raise NotImplementedError
 

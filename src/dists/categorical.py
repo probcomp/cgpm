@@ -17,7 +17,6 @@
 from math import log
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import gammaln
 
 import gpmcc.utils.general as gu
@@ -33,7 +32,8 @@ class Categorical(DistributionGpm):
     http://www.cs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
     """
 
-    def __init__(self, N=0, counts=None, alpha=1, distargs=None):
+    def __init__(self, N=0, counts=None, alpha=1, distargs=None, rng=None):
+        self.rng = gu.gen_rng() if rng is None else rng
         # Number of categories.
         assert float(distargs['k']) == int(distargs['k'])
         self.k = int(distargs['k'])
@@ -62,15 +62,15 @@ class Categorical(DistributionGpm):
         self.counts[int(x)] -= 1
 
     def logpdf(self, x, y=None):
-        return Categorical.calc_predictive_logp(x, self.N, self.counts,
-            self.alpha)
+        return Categorical.calc_predictive_logp(
+            x, self.N, self.counts, self.alpha)
 
     def logpdf_marginal(self):
-        return Categorical.calc_logpdf_marginal(self.N, self.counts,
-            self.alpha)
+        return Categorical.calc_logpdf_marginal(
+            self.N, self.counts, self.alpha)
 
     def simulate(self, y=None):
-        return gu.pflip(self.counts + self.alpha)
+        return gu.pflip(self.counts + self.alpha, rng=self.rng)
 
     def transition_params(self):
         return
@@ -91,8 +91,7 @@ class Categorical(DistributionGpm):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['alpha'] = gu.log_linspace(1./float(len(X)), float(len(X)),
-            n_grid)
+        grids['alpha'] = gu.log_linspace(1./float(len(X)), float(len(X)), n_grid)
         return grids
 
     @staticmethod

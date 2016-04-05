@@ -17,7 +17,6 @@
 from math import log
 
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy
 
 import gpmcc.utils.general as gu
@@ -34,10 +33,11 @@ class BetaUC(DistributionGpm):
     """
 
     def __init__(self, N=0, sum_log_x=0, sum_minus_log_x=0, strength=None,
-            balance=None, mu=1, alpha=.5, beta=.5, distargs=None):
+            balance=None, mu=1, alpha=.5, beta=.5, distargs=None, rng=None):
         assert mu > 0
         assert alpha > 0
         assert beta > 0
+        self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
         self.N = N
         self.sum_log_x = sum_log_x
@@ -49,8 +49,8 @@ class BetaUC(DistributionGpm):
         # Parameters.
         self.strength, self.balance = strength, balance
         if strength is None or balance is None:
-            self.strength = np.random.exponential(scale=1./mu)
-            self.balance = np.random.beta(alpha, beta)
+            self.strength = self.rng.exponential(scale=1./mu)
+            self.balance = self.rng.beta(alpha, beta)
             assert self.strength > 0 and 0 < self.balance < 1
 
     def incorporate(self, x, y=None):
@@ -75,35 +75,38 @@ class BetaUC(DistributionGpm):
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def logpdf_marginal(self):
-        data_logp = BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
-            self.sum_minus_log_x, self.strength, self.balance)
-        prior_logp = BetaUC.calc_log_prior(self.strength, self.balance,
-            self.mu, self.alpha, self.beta)
+        data_logp = BetaUC.calc_log_likelihood(
+            self.N, self.sum_log_x, self.sum_minus_log_x, self.strength,
+            self.balance)
+        prior_logp = BetaUC.calc_log_prior(
+            self.strength, self.balance, self.mu, self.alpha, self.beta)
         return data_logp + prior_logp
 
     def simulate(self, y=None):
         alpha = self.strength * self.balance
         beta = self.strength * (1. - self.balance)
-        return scipy.stats.beta.rvs(alpha, beta)
+        return self.rng.beta(alpha, beta)
 
     def transition_params(self):
         n_samples = 25
         # Transition strength.
         log_pdf_fun_str = lambda strength :\
-            BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
-                self.sum_minus_log_x, strength, self.balance) \
-            + BetaUC.calc_log_prior(strength, self.balance, self.mu,
-                self.alpha, self.beta)
+            BetaUC.calc_log_likelihood(
+                self.N, self.sum_log_x, self.sum_minus_log_x, strength,
+                self.balance) \
+            + BetaUC.calc_log_prior(
+                strength, self.balance, self.mu, self.alpha, self.beta)
         self.strength = su.mh_sample(self.strength, log_pdf_fun_str,
-            .5, [.0, float('Inf')], burn=n_samples)
+            .5, [.0, float('Inf')], burn=n_samples, rng=self.rng)
         # Transition balance.
         log_pdf_fun_bal = lambda balance : \
-            BetaUC.calc_log_likelihood(self.N, self.sum_log_x,
-                self.sum_minus_log_x, self.strength, balance) \
-            + BetaUC.calc_log_prior(self.strength, balance, self.mu,
-                self.alpha, self.beta)
+            BetaUC.calc_log_likelihood(
+                self.N, self.sum_log_x, self.sum_minus_log_x, self.strength,
+                balance) \
+            + BetaUC.calc_log_prior(
+                self.strength, balance, self.mu, self.alpha, self.beta)
         self.balance = su.mh_sample(self.balance, log_pdf_fun_bal,
-            .25, [0, 1], burn=n_samples)
+            .25, [0, 1], burn=n_samples, rng=self.rng)
 
     def set_hypers(self, hypers):
         assert hypers['mu'] > 0

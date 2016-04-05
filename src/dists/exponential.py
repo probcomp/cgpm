@@ -31,9 +31,10 @@ class Exponential(DistributionGpm):
     x ~ Exponential(mu)
     """
 
-    def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None):
+    def __init__(self, N=0, sum_x=0, a=1, b=1, distargs=None, rng=None):
         assert a > 0
         assert b > 0
+        self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
         self.N = N
         self.sum_x = sum_x
@@ -52,17 +53,17 @@ class Exponential(DistributionGpm):
         self.sum_x -= x
 
     def logpdf(self, x, y=None):
-        return Exponential.calc_predictive_logp(x, self.N, self.sum_x,
-            self.a, self.b)
+        return Exponential.calc_predictive_logp(
+            x, self.N, self.sum_x, self.a, self.b)
 
     def logpdf_marginal(self):
-        return Exponential.calc_logpdf_marginal(self.N, self.sum_x, self.a,
-            self.b)
+        return Exponential.calc_logpdf_marginal(
+            self.N, self.sum_x, self.a, self.b)
 
     def simulate(self, y=None):
         an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a, self.b)
-        mu = gamma.rvs(an, scale=1./bn)
-        return expon.rvs(scale=1./mu)
+        mu = self.rng.gamma(an, scale=1./bn)
+        return self.rng.exponential(scale=1./mu)
 
     def transition_params(self):
         return
@@ -85,10 +86,8 @@ class Exponential(DistributionGpm):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['a'] = gu.log_linspace(.5, float(len(X)),
-            n_grid)
-        grids['b'] = gu.log_linspace(.5, float(len(X)),
-            n_grid)
+        grids['a'] = gu.log_linspace(.5, float(len(X)), n_grid)
+        grids['b'] = gu.log_linspace(.5, float(len(X)), n_grid)
         return grids
 
     @staticmethod
