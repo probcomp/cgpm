@@ -76,7 +76,12 @@ class View(object):
         partition of dim should match self.Zr already."""
         self.dims[dim.index] = dim
         if reassign:
-            dim.bulk_incorporate(self.X[:, dim.index], self.Zr)
+            Y = None
+            if dim.is_conditional():
+                Y = self._regressor_values()
+                dim.distargs['cctypes'] = self._regressor_cctypes()
+                dim.distargs['ccargs'] = self._regressor_ccargs()
+            dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
         return sum(dim.logpdf_marginal())
 
     def unincorporate_dim(self, dim):
@@ -299,12 +304,13 @@ class View(object):
             return
 
         # Existing clusters.
-        logp_data = [self._logpdf_row(rowid, k) for k in xrange(len(self.Nk))]
+        logp_data = [self._logpdf_row_gibbs(rowid, k) for k in xrange(len(self.Nk))]
 
         # Auxiliary clusters.
         # XXX Currently only works for m=1, otherwise need to cache proposals.
         m_aux = range(m-1) if self.Nk[self.Zr[rowid]] == 1 else range(m)
-        logp_data_aux = [self._logpdf_row(rowid, len(self.Nk)) for _ in m_aux]
+        logp_data_aux = [self._logpdf_row_gibbs(rowid, len(self.Nk))
+            for _ in m_aux]
 
         # Extend data structs with auxiliary proposals.
         logp_data.extend(logp_data_aux)
@@ -325,21 +331,34 @@ class View(object):
 
         self._check_partitions()
 
-    def _logpdf_row(self, rowid, k):
+    def _logpdf_row_gibbs(self, rowid, k):
         """Internal use only for Gibbs. Compute logpdf(X[rowid]|cluster k).
         If k < len(self.Nk), predictive is taken. If k == len(self.Nk), new
         parameters are sampled."""
         assert k <= len(self.Nk)
-        logp = 0
-        for dim in self.dims.values():
+
+        def conditions(dim, rowid):
+            if dim.is_conditional():
+                return self._regressor_values(rowids=rowid)[0]
+            return None
+
+        def logpdf_current(dim, x, y):
+            dim.unincorporate(x, k, y=y)
+            logp = dim.logpdf(x, k, y=y)
+            dim.incorporate(x, k, y=y)
+            return logp
+
+        def logpdf_other(dim, x, y):
+            return dim.logpdf(x, k, y=y)
+
+        def logpdf(dim, rowid):
             x = self.X[rowid, dim.index]
+            y = conditions(dim, rowid)
             if self.Zr[rowid] == k:
-                dim.unincorporate(x, k)
-                logp += dim.logpdf(x, k)
-                dim.incorporate(x, k)
-            else:
-                logp += dim.logpdf(x, k)
-        return logp
+                return logpdf_current(dim, x, y)
+            return logpdf_other(dim, x, y)
+
+        return sum([logpdf(dim, rowid) for dim in self.dims.values()])
 
     def _compute_cluster_crp_logps(self):
         """Returns a list of log probabilities that a new row joins each of the
@@ -357,6 +376,23 @@ class View(object):
 
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < len(self.Zr)
+
+    def _unconditionals(self):
+        return filter(lambda d: not self.dims[d].is_conditional(),
+            sorted(self.dims))
+
+    def _regressor_values(self, rowids=None):
+        unconditionals = self._unconditionals()
+        return self.X[:,unconditionals] if rowids is None else \
+            self.X[rowids,unconditionals]
+
+    def _regressor_cctypes(self, rowids=None):
+        dims = [self.dims[i] for i in self._unconditionals()]
+        return [d.cctype for d in dims]
+
+    def _regressor_ccargs(self, rowids=None):
+        dims = [self.dims[i] for i in self._unconditionals()]
+        return [d.distargs for d in dims]
 
     def _check_partitions(self):
         # For debugging only.
