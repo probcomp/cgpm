@@ -86,7 +86,7 @@ class Lognormal(DistributionGpm):
         # Simulate normal parameters
         mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_log_x,
             self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
-        mu, rho = Normal.sample_parameters(mn, rn, sn, nun)
+        mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
         x = self.rng.normal(loc=mu, scale=rho**-.5)
         return np.exp(x)
 
