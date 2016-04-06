@@ -78,9 +78,9 @@ class View(object):
         if reassign:
             Y = None
             if dim.is_conditional():
-                Y = self._regressor_values()
-                dim.distargs['cctypes'] = self._regressor_cctypes()
-                dim.distargs['ccargs'] = self._regressor_ccargs()
+                Y = self._unconditional_values()
+                dim.distargs['cctypes'] = self._unconditional_cctypes()
+                dim.distargs['ccargs'] = self._unconditional_ccargs()
             dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
         return sum(dim.logpdf_marginal())
 
@@ -139,8 +139,8 @@ class View(object):
         """Update the distribution type of self.dims[col] to cctype."""
         if distargs is None:
             distargs = {}
-        distargs['cctypes'] = self._regressor_cctypes()
-        distargs['ccargs'] = self._regressor_ccargs()
+        distargs['cctypes'] = self._unconditional_cctypes()
+        distargs['ccargs'] = self._unconditional_ccargs()
         D_old = self.dims[col]
         D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
@@ -178,8 +178,8 @@ class View(object):
 
     def transition_alpha(self):
         """Calculate CRP alpha conditionals over grid and transition."""
-        logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha) for
-            alpha in self.alpha_grid]
+        logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha)
+            for alpha in self.alpha_grid]
         index = gu.log_pflip(logps, rng=self.rng)
         self.alpha = self.alpha_grid[index]
 
@@ -339,7 +339,7 @@ class View(object):
 
         def conditions(dim, rowid):
             return None if not dim.is_conditional() \
-                else self._regressor_values(rowids=rowid)[0]
+                else self._unconditional_values(rowids=rowid)[0]
 
         def logpdf_current(dim, x, y):
             dim.unincorporate(x, k, y=y)
@@ -365,31 +365,31 @@ class View(object):
         logp_crp_denom = log(len(self.Zr) + self.alpha)
         return log_crp_numer - logp_crp_denom
 
-    def _compute_cluster_data_logps(self, col, x):
+    def _cluster_data_logps(self, col, x):
         """Returns a list of log probabilities that a new row for self.dims[col]
         obtains value x for each of the clusters in self.Zr[col], including a
         singleton."""
-        return [self.dims[col].logpdf(x,k) for k in
+        return [self.dims[col].logpdf(x, k) for k in
             xrange(len(self.dims[col].clusters)+1)]
 
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < len(self.Zr)
 
-    def _unconditionals(self):
+    def _unconditional_dims(self):
         return filter(lambda d: not self.dims[d].is_conditional(),
             sorted(self.dims))
 
-    def _regressor_values(self, rowids=None):
-        unconditionals = self._unconditionals()
+    def _unconditional_values(self, rowids=None):
+        unconditionals = self._unconditional_dims()
         return self.X[:,unconditionals] if rowids is None else \
             self.X[rowids,unconditionals]
 
-    def _regressor_cctypes(self, rowids=None):
-        dims = [self.dims[i] for i in self._unconditionals()]
+    def _unconditional_cctypes(self, rowids=None):
+        dims = [self.dims[i] for i in self._unconditional_dims()]
         return [d.cctype for d in dims]
 
-    def _regressor_ccargs(self, rowids=None):
-        dims = [self.dims[i] for i in self._unconditionals()]
+    def _unconditional_ccargs(self, rowids=None):
+        dims = [self.dims[i] for i in self._unconditional_dims()]
         return [d.distargs for d in dims]
 
     def _check_partitions(self):
