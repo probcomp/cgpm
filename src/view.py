@@ -208,13 +208,8 @@ class View(object):
             return self._logpdf_observed(rowid, query, evidence)
 
     def _logpdf_observed(self, rowid, query, evidence):
-        # XXX Ignores evidence. Should the row cluster be renegotiated based on
-        # new evidence?
-        logpdf = 0
-        for (col, val) in query:
-            k = self.Zr[rowid]
-            logpdf += self.dims[col].logpdf(val, k)
-        return logpdf
+        # XXX Should row cluster be renegotiated based on new evidence?
+        return sum([self.dims[c].logpdf(v, self.Zr[rowid]) for (c,v) in query])
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
@@ -229,24 +224,17 @@ class View(object):
         # p(x3|z)p(x4|z)   logp_evidence
         # p(z|x3,x4)       logp_cluster
         # p(x1|z)p(x2|z)   logp_query
-
-        logp_crp = self._compute_cluster_crp_logps()
-        logp_evidence = np.zeros(len(logp_crp))
-        for (col, val) in evidence:
-            logp_evidence += self._compute_cluster_data_logps(col, val)
-        logp_cluster = gu.log_normalize(logp_crp+logp_evidence)
-
-        # Query densities.
-        logp_query = np.zeros(len(logp_crp))
-        for (col, val) in query:
-            logp_query += self._compute_cluster_data_logps(col, val)
-
-        return logsumexp(logp_query+logp_cluster)
+        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        logp_evidence = self._cluster_query_logps(evidence)
+        logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
+        logp_query = self._cluster_query_logps(query)
+        return logsumexp(np.add(logp_cluster, logp_query))
 
     def logpdf_marginal(self):
-        """Compute the marginal logpdf of data and CRP assignment."""
-        return gu.logp_crp(len(self.Zr), self.Nk, self.alpha) + \
-            sum(sum(dim.logpdf_marginal()) for dim in self.dims.values())
+        """Compute the marginal logpdf CRP assignment and data."""
+        logp_crp = gu.logp_crp(len(self.Zr), self.Nk, self.alpha)
+        logp_dims = [sum(dim.logpdf_marginal()) for dim in self.dims.values()]
+        return logp_crp + sum(logp_dims)
 
     # --------------------------------------------------------------------------
     # simulate
@@ -258,42 +246,19 @@ class View(object):
             return self._simulate_observed(rowid, query, evidence, N)
 
     def _simulate_observed(self, rowid, query, evidence, N):
-        # XXX Ignores evidence. Should the row cluster be renegotiated based on
-        # new evidence?
-        samples = []
-        for _ in xrange(N):
-            draw = []
-            for col in query:
-                k = self.Zr[rowid]
-                x = self.dims[col].simulate(k)
-                draw.append(x)
-            samples.append(draw)
+        # XXX Should row cluster be renegotiated based on new evidence?
+        k = self.Zr[rowid]
+        samples = [[self.dims[c].simulate(k) for c in query] for _ in xrange(N)]
         return np.asarray(samples)
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
-        # CRP densities.
-        logp_crp = self._compute_cluster_crp_logps()
-
-        # Evidence densities.
-        logp_evidence = np.zeros(len(logp_crp))
-        for (col, val) in evidence:
-            logp_evidence += self._compute_cluster_data_logps(col, val)
-
-        cluster_logps = gu.log_normalize(logp_crp+logp_evidence)
-
-        samples = []
-        for _ in xrange(N):
-            draw = []
-            k = gu.log_pflip(cluster_logps)
-            for col in query:
-                x = self.dims[col].simulate(k)
-                draw.append(x)
-            if cluster:
-                draw.append(k)
-            samples.append(draw)
-
-        return np.asarray(samples)
+        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        logp_evidence = self._cluster_query_logps(evidence)
+        logp_cluster = np.add(logp_crp, logp_evidence)
+        ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
+        samples = [[self.dims[c].simulate(k) for c in query] for k in ks]
+        return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
 
     # --------------------------------------------------------------------------
     # Internal
@@ -302,33 +267,25 @@ class View(object):
         # Skip unincorporated rows.
         if self.Zr[rowid] == np.nan:
             return
-
         # Existing clusters.
         logp_data = [self._logpdf_row_gibbs(rowid, k) for k in xrange(len(self.Nk))]
-
         # Auxiliary clusters.
         # XXX Currently only works for m=1, otherwise need to cache proposals.
         m_aux = range(m-1) if self.Nk[self.Zr[rowid]] == 1 else range(m)
         logp_data_aux = [self._logpdf_row_gibbs(rowid, len(self.Nk))
             for _ in m_aux]
-
         # Extend data structs with auxiliary proposals.
         logp_data.extend(logp_data_aux)
-
         # Compute the CRP probabilities.
         logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, m)
-
         assert len(logp_data) == len(logp_crp)
-        p_cluster = [d+c for (d,c) in zip(logp_data, logp_crp)]
-
+        p_cluster = np.add(logp_data, logp_crp)
         # Draw new assignment, z_b
         z_b = gu.log_pflip(p_cluster, rng=self.rng)
-
         # Migrate the row.
         if z_b != self.Zr[rowid]:
             self.unincorporate_row(rowid)
             self.incorporate_row(rowid, z_b)
-
         self._check_partitions()
 
     def _logpdf_row_gibbs(self, rowid, k):
@@ -358,22 +315,19 @@ class View(object):
 
         return sum([logpdf(dim, rowid) for dim in self.dims.values()])
 
-    def _compute_cluster_crp_logps(self):
-        """Returns a list of log probabilities that a new row joins each of the
-        clusters in self.views[view], including a singleton."""
-        log_crp_numer = np.log(self.Nk + [self.alpha])
-        logp_crp_denom = log(len(self.Zr) + self.alpha)
-        return log_crp_numer - logp_crp_denom
+    def _cluster_query_logps(self, query):
+        """Returns a list of log probabilities of a query for each of the
+        clusters in self.Nk, including a singleton."""
+        return np.sum([self._cluster_data_logps(c,v) for c,v in query],
+            axis=0) if query else np.zeros(len(self.Nk)+1)
 
     def _cluster_data_logps(self, col, x):
-        """Returns a list of log probabilities that a new row for self.dims[col]
-        obtains value x for each of the clusters in self.Zr[col], including a
-        singleton."""
-        return [self.dims[col].logpdf(x, k) for k in
-            xrange(len(self.dims[col].clusters)+1)]
+        """Returns a list of log probabilities of self.dims[col] = x  for each
+        of the clusters in self.Nk, including a singleton."""
+        return [self.dims[col].logpdf(x, k) for k in xrange(len(self.Nk)+1)]
 
     def _is_hypothetical(self, rowid):
-        return not 0 <= rowid < len(self.Zr)
+        return not (0 <= rowid < len(self.Zr))
 
     def _unconditional_dims(self):
         return filter(lambda d: not self.dims[d].is_conditional(),
