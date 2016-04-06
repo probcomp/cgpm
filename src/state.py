@@ -280,8 +280,8 @@ class State(object):
             col, cctype, hypers=hypers, distargs=distargs)
         # Run transitions.
         self.transition_column_hyper_grids(cols=[col])
-        self.transition_column_hypers(cols=[col])
         self.transition_column_params(cols=[col])
+        self.transition_column_hypers(cols=[col])
         # Confirm OK.
         self._check_partitions()
 
@@ -687,6 +687,10 @@ class State(object):
 
     def _transition_column(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
+        # XXX Disable col transitions if \exists conditional model anywhere.
+        if any(d.is_conditional() for d in self.dims()):
+            raise ValueError('Cannot transition columns with conditional dims.')
+
         # Some reusable variables.
         v_a = self.Zv[col]
 

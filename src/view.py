@@ -338,9 +338,8 @@ class View(object):
         assert k <= len(self.Nk)
 
         def conditions(dim, rowid):
-            if dim.is_conditional():
-                return self._regressor_values(rowids=rowid)[0]
-            return None
+            return None if not dim.is_conditional() \
+                else self._regressor_values(rowids=rowid)[0]
 
         def logpdf_current(dim, x, y):
             dim.unincorporate(x, k, y=y)
@@ -354,9 +353,8 @@ class View(object):
         def logpdf(dim, rowid):
             x = self.X[rowid, dim.index]
             y = conditions(dim, rowid)
-            if self.Zr[rowid] == k:
-                return logpdf_current(dim, x, y)
-            return logpdf_other(dim, x, y)
+            return logpdf_current(dim, x, y) if self.Zr[rowid] == k \
+                else logpdf_other(dim, x, y)
 
         return sum([logpdf(dim, rowid) for dim in self.dims.values()])
 
