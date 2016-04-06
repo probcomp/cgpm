@@ -87,14 +87,21 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
 
     return logp_tables + logp_aux
 
-def log_pflip(logp, rng=None):
+def logp_crp_new(Nk, Z, alpha, m=1):
+    """Compute the CRP probabilities for a new customer i, with table counts Nk,
+    table assignments Z, and m auxiliary tables."""
+    log_crp_numer = np.log(Nk + [alpha/m]*m)
+    logp_crp_denom = log(len(Z) + alpha)
+    return log_crp_numer - logp_crp_denom
+
+def log_pflip(logp, size=1, rng=None):
     """Categorical draw from a vector logp of log probabilities."""
     if len(logp) == 1:
         return 0
     p = np.exp(log_normalize(logp))
-    return pflip(p, rng=rng)
+    return pflip(p, size=size, rng=rng)
 
-def pflip(p, rng=None):
+def pflip(p, size=1, rng=None):
     """Categorical draw from a vector p of probabilities."""
     if len(p) == 1:
         return 0
@@ -103,7 +110,8 @@ def pflip(p, rng=None):
     p = normalize(p)
     if 10.**(-8.) < math.fabs(1.-sum(p)):
         warnings.warn('pflip probability vector sums to %f.' % sum(p))
-    return rng.choice(range(len(p)), size=1, p=p)[0]
+    flips = rng.choice(range(len(p)), size=size, p=p)
+    return flips[0] if size == 1 else flips
 
 def log_linspace(a, b, n):
     """linspace from a to b with n entries over log scale (mor entries at
