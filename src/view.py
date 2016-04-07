@@ -294,10 +294,6 @@ class View(object):
         parameters are sampled."""
         assert k <= len(self.Nk)
 
-        def conditions(dim, rowid):
-            return None if not dim.is_conditional() \
-                else self._unconditional_values(rowids=rowid)[0]
-
         def logpdf_current(dim, x, y):
             dim.unincorporate(x, k, y=y)
             logp = dim.logpdf(x, k, y=y)
@@ -309,22 +305,34 @@ class View(object):
 
         def logpdf(dim, rowid):
             x = self.X[rowid, dim.index]
-            y = conditions(dim, rowid)
+            y = self._unconditional_values(rowids=rowid)[0] if \
+                dim.is_conditional() else None
             return logpdf_current(dim, x, y) if self.Zr[rowid] == k \
                 else logpdf_other(dim, x, y)
 
         return sum([logpdf(dim, rowid) for dim in self.dims.values()])
 
     def _cluster_query_logps(self, query):
-        """Returns a list of log probabilities of a query for each of the
-        clusters in self.Nk, including a singleton."""
-        return np.sum([self._cluster_data_logps(c,v) for c,v in query],
-            axis=0) if query else np.zeros(len(self.Nk)+1)
+        """Returns a list of log probabilities of a query,1 entry for each of
+        the clusters in self.Nk, including a singleton."""
 
-    def _cluster_data_logps(self, col, x):
-        """Returns a list of log probabilities of self.dims[col] = x  for each
-        of the clusters in self.Nk, including a singleton."""
-        return [self.dims[col].logpdf(x, k) for k in xrange(len(self.Nk)+1)]
+        def conditional_logps(c, v):
+            # XXX Placeholder.
+            # find known unconditionals in the joint query.
+            # find missing unconditional from the joint query.
+            # for each k \in K simulate missing columns.
+            # compute average logpdf under the known and simulated.
+            return np.zeros(len(self.Nk)+1)
+
+        def unconditional_logps(c, x):
+            return [self.dims[c].logpdf(x,k) for k in xrange(len(self.Nk)+1)]
+
+        def column_logps(c, v):
+            return conditional_logps(c,v) if self.dims[c].is_conditional() else\
+                unconditional_logps(c,v)
+
+        return np.sum([column_logps(c,v) for c,v in query], axis=0) if query \
+            else np.zeros(len(self.Nk)+1)
 
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
