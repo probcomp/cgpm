@@ -264,6 +264,54 @@ class View(object):
         samples = [self._simulate_unconditional(query, k) for k in ks]
         return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
 
+    def _weighted_sample(self, evidence, k):
+        evidence = sorted(evidence)
+        # Find root and leaf indices.
+        roots = self._unconditional_dims()
+        leafs = self._conditional_dims()
+        # Separate root and leaf evidence.
+        evidence_roots = [e for e in evidence if e[0] in roots]
+        evidence_leafs = [e for e in evidence if e[0] in leafs]
+        # Simulate missing roots.
+        roots_observed = [e[0] for e in evidence if e in roots]
+        roots_missing = [r for r in roots if r not in roots_observed]
+        roots_sims = self._simulate_unconditional(roots_missing, k)
+        roots_all = evidence_roots + zip(roots_missing, roots_sims)
+        # Simulate missing leafs.
+        leafs_observed = [e[0] for e in evidence if e in leafs]
+        leafs_missing = [l for l in leafs if l not in leafs_observed]
+        leaf_sims = self._simulate_conditional(leafs_missing, roots_all, k)
+        leafs_all = evidence_leafs + zip(leafs_missing, leaf_sims)
+        # Likelihood of evidence in sample.
+        weight = self._logpdf_unconditional(evidence_roots, k) + \
+            self._logpdf_conditional(evidence_leafs, roots_all, k)
+        # Combine the entire sample.
+        sample = [s[1] for s in sorted(roots_all + leafs_all)]
+        # Sample and its weight.
+        return sample, weight
+
+    def _simulate_unconditional(self, query, k):
+        """Simulate query from cluster k, N times."""
+        assert not any(self.dims[c].is_conditional() for c in query)
+        return [self.dims[c].simulate(k) for c in query]
+
+    def _simulate_conditional(self, query, evidence, k):
+        """Simulate query from cluster k, N times."""
+        assert all(self.dims[c].is_conditional() for c in query)
+        assert set(self._unconditional_dims) == set([e[0] for e in evidence])
+        y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
+        return [self.dims[c].simulate(k, y=y) for c in query]
+
+    def _logpdf_unconditional(self, query, k):
+        assert not any(self.dims[c].is_conditional() for c, x in query)
+        return np.sum([self.dims[c].logpdf(x, k) for c, x in query])
+
+    def _logpdf_conditional(self, query, evidence, k):
+        assert all(self.dims[c].is_conditional() for c, x in query)
+        assert set(self._unconditional_dims) == set([e[0] for e in evidence])
+        y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
+        return np.sum([self.dims[c].logpdf(x, k, y=y) for c, x in query])
+
     # --------------------------------------------------------------------------
     # Internal row transition.
 
