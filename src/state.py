@@ -817,6 +817,7 @@ class State(object):
                 transform=ax.transAxes, fontsize=12, weight='bold',
                 color='blue', horizontalalignment='right',
                 verticalalignment='top')
+            ax.grid()
         plt.draw()
 
     def _do_progress(self, percentage):
