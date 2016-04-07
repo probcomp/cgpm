@@ -17,7 +17,7 @@ RUN apt-get install -y -qq liblapack-dev gfortran
 # instead of with pip to avoid thinking.
 # See also: https://github.com/scikit-learn/scikit-learn/issues/4164
 RUN apt-get install -y -qq python-numpy python-scipy python-pandas
-
+RUN pip install scikit-learn
 
 ### Build and install gpmcc.
 
