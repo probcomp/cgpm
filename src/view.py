@@ -209,7 +209,7 @@ class View(object):
 
     def _logpdf_observed(self, rowid, query, evidence):
         # XXX Should row cluster be renegotiated based on new evidence?
-        return sum([self.dims[c].logpdf(v, self.Zr[rowid]) for (c,v) in query])
+        return self._logpdf_unconditional(query, self.Zr[rowid])
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
@@ -225,9 +225,12 @@ class View(object):
         # p(z|x3,x4)       logp_cluster
         # p(x1|z)p(x2|z)   logp_query
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = self._cluster_query_logps(evidence)
+        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in
+            xrange(len(self.Nk)+1)]
+        assert len(logp_crp) == len(logp_evidence)
         logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
-        logp_query = self._cluster_query_logps(query)
+        logp_query = [self._logpdf_unconditional(query, k) for k in
+            xrange(len(self.Nk)+1)]
         return logsumexp(np.add(logp_cluster, logp_query))
 
     def logpdf_marginal(self):
@@ -247,17 +250,18 @@ class View(object):
 
     def _simulate_observed(self, rowid, query, evidence, N):
         # XXX Should row cluster be renegotiated based on new evidence?
-        k = self.Zr[rowid]
-        samples = [[self.dims[c].simulate(k) for c in query] for _ in xrange(N)]
+        samples = [self._simulate_unconditional(query, self.Zr[rowid])
+            for _ in xrange(N)]
         return np.asarray(samples)
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = self._cluster_query_logps(evidence)
+        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in
+            xrange(len(self.Nk)+1)]
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
-        samples = [[self.dims[c].simulate(k) for c in query] for k in ks]
+        samples = [self._simulate_unconditional(query, k) for k in ks]
         return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
 
     # --------------------------------------------------------------------------
@@ -265,7 +269,8 @@ class View(object):
 
     def _transition_row(self, rowid):
         # Skip unincorporated rows.
-        if self.Zr[rowid] == np.nan: return
+        if self.Zr[rowid] == np.nan:
+            return
         logp_data = self._logpdf_row_gibbs(rowid, 1)
         logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
@@ -284,8 +289,8 @@ class View(object):
 
     def _logpdf_gibbs(self, dim, rowid, k):
         x = self.X[rowid, dim.index]
-        y = self._unconditional_values(rowids=rowid)[0] if \
-            dim.is_conditional() else None
+        y = self._unconditional_values(rowids=rowid)[0] if dim.is_conditional()\
+            else None
         return self._logpdf_gibbs_current(dim, x, y, k) if self.Zr[rowid] == k \
             else dim.logpdf(x, k, y=y)
 
@@ -298,32 +303,16 @@ class View(object):
     # --------------------------------------------------------------------------
     # Internal query utils.
 
-    def _cluster_query_logps(self, query):
-        """Returns a list of log probabilities of a query, 1 entry for each of
-        the clusters in self.Nk, including a singleton."""
-
-        def conditional_logps(c, v):
-            # XXX Placeholder.
-            # find known unconditionals in the joint query.
-            # find missing unconditional from the joint query.
-            # for each k \in K simulate missing columns.
-            # compute average logpdf under the known and simulated.
-            return np.zeros(len(self.Nk)+1)
-
-        def unconditional_logps(c, x):
-            return [self.dims[c].logpdf(x,k) for k in xrange(len(self.Nk)+1)]
-
-        def column_logps(c, v):
-            return conditional_logps(c,v) if self.dims[c].is_conditional() else\
-                unconditional_logps(c,v)
-
-        return np.sum([column_logps(c,v) for c,v in query], axis=0) if query \
-            else np.zeros(len(self.Nk)+1)
-
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
 
+    def _conditional_dims(self):
+        """Return conditional dims in sorted order."""
+        return filter(lambda d: self.dims[d].is_conditional(),
+            sorted(self.dims))
+
     def _unconditional_dims(self):
+        """Return unconditional dims in sorted order."""
         return filter(lambda d: not self.dims[d].is_conditional(),
             sorted(self.dims))
 
