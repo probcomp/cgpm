@@ -263,57 +263,40 @@ class View(object):
     # --------------------------------------------------------------------------
     # Internal
 
-    def _transition_row(self, rowid, m=1):
+    def _transition_row(self, rowid):
         # Skip unincorporated rows.
-        if self.Zr[rowid] == np.nan:
-            return
-        # Existing clusters.
-        logp_data = [self._logpdf_row_gibbs(rowid, k) for k in xrange(len(self.Nk))]
-        # Auxiliary clusters.
-        # XXX Currently only works for m=1, otherwise need to cache proposals.
-        m_aux = range(m-1) if self.Nk[self.Zr[rowid]] == 1 else range(m)
-        logp_data_aux = [self._logpdf_row_gibbs(rowid, len(self.Nk))
-            for _ in m_aux]
-        # Extend data structs with auxiliary proposals.
-        logp_data.extend(logp_data_aux)
-        # Compute the CRP probabilities.
-        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, m)
-        assert len(logp_data) == len(logp_crp)
+        if self.Zr[rowid] == np.nan: return
+        logp_data = self._logpdf_row_gibbs(rowid, 1)
+        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
+        assert len(logp_data) == len(logp_crp):
         p_cluster = np.add(logp_data, logp_crp)
-        # Draw new assignment, z_b
         z_b = gu.log_pflip(p_cluster, rng=self.rng)
-        # Migrate the row.
         if z_b != self.Zr[rowid]:
             self.unincorporate_row(rowid)
             self.incorporate_row(rowid, z_b)
         self._check_partitions()
 
-    def _logpdf_row_gibbs(self, rowid, k):
-        """Internal use only for Gibbs. Compute logpdf(X[rowid]|cluster k).
-        If k < len(self.Nk), predictive is taken. If k == len(self.Nk), new
-        parameters are sampled."""
-        assert k <= len(self.Nk)
+    def _logpdf_row_gibbs(self, rowid, m):
+        """Internal use only for Gibbs transition."""
+        m_aux = m-1 if self.Nk[self.Zr[rowid]]==1 else m
+        return [sum([self._logpdf_gibbs(dim, rowid, k) for dim in
+            self.dims.values()]) for k in xrange(len(self.Nk) + m_aux)]
 
-        def logpdf_current(dim, x, y):
-            dim.unincorporate(x, k, y=y)
-            logp = dim.logpdf(x, k, y=y)
-            dim.incorporate(x, k, y=y)
-            return logp
+    def _logpdf_gibbs_current(self, dim, x, y, k):
+        dim.unincorporate(x, k, y=y)
+        logp = dim.logpdf(x, k, y=y)
+        dim.incorporate(x, k, y=y)
+        return logp
 
-        def logpdf_other(dim, x, y):
-            return dim.logpdf(x, k, y=y)
-
-        def logpdf(dim, rowid):
-            x = self.X[rowid, dim.index]
-            y = self._unconditional_values(rowids=rowid)[0] if \
-                dim.is_conditional() else None
-            return logpdf_current(dim, x, y) if self.Zr[rowid] == k \
-                else logpdf_other(dim, x, y)
-
-        return sum([logpdf(dim, rowid) for dim in self.dims.values()])
+    def _logpdf_gibbs(self, dim, rowid, k):
+        x = self.X[rowid, dim.index]
+        y = self._unconditional_values(rowids=rowid)[0] if \
+            dim.is_conditional() else None
+        return self._logpdf_gibbs_current(dim, x, y, k) if self.Zr[rowid] == k \
+            else dim.logpdf(x, k, y=y)
 
     def _cluster_query_logps(self, query):
-        """Returns a list of log probabilities of a query,1 entry for each of
+        """Returns a list of log probabilities of a query, 1 entry for each of
         the clusters in self.Nk, including a singleton."""
 
         def conditional_logps(c, v):
