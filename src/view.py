@@ -298,7 +298,7 @@ class View(object):
     def _simulate_conditional(self, query, evidence, k):
         """Simulate query from cluster k, N times."""
         assert all(self.dims[c].is_conditional() for c in query)
-        assert set(self._unconditional_dims) == set([e[0] for e in evidence])
+        assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
         y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
         return [self.dims[c].simulate(k, y=y) for c in query]
 
@@ -308,7 +308,7 @@ class View(object):
 
     def _logpdf_conditional(self, query, evidence, k):
         assert all(self.dims[c].is_conditional() for c, x in query)
-        assert set(self._unconditional_dims) == set([e[0] for e in evidence])
+        assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
         y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
         return np.sum([self.dims[c].logpdf(x, k, y=y) for c, x in query])
 
