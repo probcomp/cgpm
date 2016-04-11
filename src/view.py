@@ -76,13 +76,18 @@ class View(object):
         partition of dim should match self.Zr already."""
         self.dims[dim.index] = dim
         if reassign:
-            Y = None
-            if dim.is_conditional():
-                Y = self._unconditional_values()
-                dim.distargs['cctypes'] = self._unconditional_cctypes()
-                dim.distargs['ccargs'] = self._unconditional_ccargs()
+            Y, distargs = self._prepare_incorporate(dim)
+            dim.distargs.update(distargs)
             dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
         return sum(dim.logpdf_marginal())
+
+    def _prepare_incorporate(self, dim):
+        Y, distargs = None, {}
+        if dim.is_conditional():
+            Y = self._unconditional_values()
+            distargs['cctypes'] = self._unconditional_cctypes()
+            distargs['ccargs'] = self._unconditional_ccargs()
+        return Y, distargs
 
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify dim)."""
@@ -224,13 +229,13 @@ class View(object):
         # p(x3|z)p(x4|z)   logp_evidence
         # p(z|x3,x4)       logp_cluster
         # p(x1|z)p(x2|z)   logp_query
+        clusters = range(len(self.Nk)+1)
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
         logp_evidence = [self._logpdf_unconditional(evidence, k) for k in
-            xrange(len(self.Nk)+1)]
+            clusters]
         assert len(logp_crp) == len(logp_evidence)
         logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
-        logp_query = [self._logpdf_unconditional(query, k) for k in
-            xrange(len(self.Nk)+1)]
+        logp_query = [self._logpdf_unconditional(query, k) for k in clusters]
         return logsumexp(np.add(logp_cluster, logp_query))
 
     def logpdf_marginal(self):
