@@ -19,7 +19,9 @@ from scipy.misc import logsumexp
 
 import numpy as np
 import gpmcc.utils.general as gu
+
 from gpmcc.dim import Dim
+from gpmcc.utils.general import logmeanexp
 
 class View(object):
     """View, a collection of Dim and their row mixtures."""
@@ -208,13 +210,20 @@ class View(object):
 
     def logpdf(self, rowid, query, evidence):
         if self._is_hypothetical(rowid):
-            return self._logpdf_hypothetical(query, evidence)
+            lp1 = self._logpdf_hypothetical(query, evidence)
+            lp2 = self._logpdf_hypothetical_2(query, evidence)
         else:
-            return self._logpdf_observed(rowid, query, evidence)
+            lp1 = self._logpdf_observed(rowid, query, evidence)
+            lp2 = self._logpdf_observed_2(rowid, query, evidence)
+        assert np.allclose(lp1, lp2)
+        return lp1
 
     def _logpdf_observed(self, rowid, query, evidence):
         # XXX Should row cluster be renegotiated based on new evidence?
         return self._logpdf_unconditional(query, self.Zr[rowid])
+
+    def _logpdf_observed_2(self, rowid, query, evidence):
+        return self._logpdf_joint(query, evidence, self.Zr[rowid], N=1)[1]
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
@@ -238,6 +247,24 @@ class View(object):
         logp_query = [self._logpdf_unconditional(query, k) for k in clusters]
         return logsumexp(np.add(logp_cluster, logp_query))
 
+    def _logpdf_hypothetical_2(self, query, evidence):
+        clusters = range(len(self.Nk)+1)
+        logp_evidence, logp_query = zip(
+            *[self._logpdf_joint(query, evidence, k) for k in clusters])
+        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
+        assert len(logp_crp) == len(logp_evidence)
+
+        # XXX COMPARISON XXX
+        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in
+            clusters]
+        logp_query_2 = [self._logpdf_unconditional(query, k) for k in clusters]
+        assert np.allclose(logp_evidence, logp_evidence_2)
+        assert np.allclose(logp_evidence_2, logp_evidence_2)
+        # XXX COMPARISON XXX
+
+        return logsumexp(np.add(logp_cluster, logp_query))
+
     def logpdf_marginal(self):
         """Compute the marginal logpdf CRP assignment and data."""
         logp_crp = gu.logp_crp(len(self.Zr), self.Nk, self.alpha)
@@ -249,7 +276,7 @@ class View(object):
 
     def simulate(self, rowid, query, evidence, N=1):
         if self._is_hypothetical(rowid):
-            return self._simulate_hypothetical(query, evidence, N)
+            return self._simulate_hypothetical_2(query, evidence, N)
         else:
             return self._simulate_observed(rowid, query, evidence, N)
 
@@ -262,12 +289,75 @@ class View(object):
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in
-            xrange(len(self.Nk)+1)]
+        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in xrange(len(self.Nk)+1)]
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
         samples = [self._simulate_unconditional(query, k) for k in ks]
         return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
+
+    def _simulate_hypothetical_2(self, query, evidence, N, cluster=False):
+        """cluster=True exposes latent cluster of each sample as extra col."""
+        clusters = range(len(self.Nk)+1)
+        samples, weights = zip(*[self._weighted_samples(evidence, k)
+            for k in clusters])
+        # import ipdb; ipdb.set_trace()
+        logp_evidence = map(logmeanexp, weights)
+
+        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        logp_cluster = np.add(logp_crp, logp_evidence)
+
+        # XXX COMPARISON XXX
+        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in
+            xrange(len(self.Nk)+1)]
+        if not np.allclose(logp_evidence, logp_evidence_2):
+            import ipdb; ipdb.set_trace()
+        else:
+            print 'OK!'
+        # XXX COMPARISON XXX
+
+        # import ipdb; ipdb.set_trace()
+
+        ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
+        N_per_k = np.bincount(ks)
+
+        samples_all = [self._simulate_joint(query, evidence, k, N=n) for k, n in
+            enumerate(N_per_k)]
+        samples = [s for samples_k in samples_all for s in samples_k]
+        # import ipdb; ipdb.set_trace()
+
+        return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
+
+    # --------------------------------------------------------------------------
+    # simulate/logpdf helpers
+
+    def _simulate_joint(self, query, evidence, k, N=1):
+        roots = self._unconditional_dims()
+        if all(e[0] in roots for e in evidence):
+            if all(q in roots for q in query):
+                return [self._simulate_unconditional(query, k)
+                    for _ in xrange(N)]
+            else:
+                samples, weights = self._weighted_samples(evidence, k, N=N)
+                return [[s[q] for q in query] for s in samples]
+        else:
+            raise ValueError('Conditions not yet implemented.')
+
+    def _importance_resample(self, query, samples, weights):
+        i = gu.log_pflip(weights, rng=self.rng)
+        # import ipdb; ipdb.set_trace()
+        sample = samples[i]
+        return [sample[q] for q in query]
+
+    def _logpdf_joint(self, query, evidence, k, N=1):
+        _, weights_eq = self._weighted_samples(evidence+query, k, N)
+        _, weights_e = self._weighted_samples(evidence, k, N)
+        logp_evidence = logmeanexp(weights_e)
+        logp_query = logmeanexp(weights_eq) - logp_evidence
+        return logp_evidence, logp_query
+
+    def _weighted_samples(self, evidence, k, N=1):
+        # Return list of samples and list of their weights.
+        return zip(*[self._weighted_sample(evidence, k) for _ in xrange(N)])
 
     def _weighted_sample(self, evidence, k):
         evidence = sorted(evidence)
