@@ -210,58 +210,27 @@ class View(object):
 
     def logpdf(self, rowid, query, evidence):
         if self._is_hypothetical(rowid):
-            lp1 = self._logpdf_hypothetical(query, evidence)
-            lp2 = self._logpdf_hypothetical_2(query, evidence)
+            return self._logpdf_hypothetical(query, evidence)
         else:
-            lp1 = self._logpdf_observed(rowid, query, evidence)
-            lp2 = self._logpdf_observed_2(rowid, query, evidence)
-        assert np.allclose(lp1, lp2)
-        return lp1
+            return self._logpdf_observed(rowid, query, evidence)
 
     def _logpdf_observed(self, rowid, query, evidence):
-        # XXX Should row cluster be renegotiated based on new evidence?
-        return self._logpdf_unconditional(query, self.Zr[rowid])
-
-    def _logpdf_observed_2(self, rowid, query, evidence):
         return self._logpdf_joint(query, evidence, self.Zr[rowid])[1]
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
-        # P(x1,x2|x3,x4) where (x1...x4) in the same view.
-        #   = \sum_z p(x1,x2|z,x3,x4)p(z|x3,x4)     marginalization
-        #   = \sum_z p(x1,x2|z)p(z|x3,x4)           conditional independence
-        #   = \sum_z p(x1|z)p(x2|z)p(z|x3,x4)       conditional independence
-        # Now consider p(z|x3,x4)
-        #   \propto p(z)p(x3|z)p(x4|z)              Bayes rule
-        # [term]           [array]
-        # p(z)             logp_crp
-        # p(x3|z)p(x4|z)   logp_evidence
-        # p(z|x3,x4)       logp_cluster
-        # p(x1|z)p(x2|z)   logp_query
-        clusters = range(len(self.Nk)+1)
-        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in
-            clusters]
-        assert len(logp_crp) == len(logp_evidence)
-        logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
-        logp_query = [self._logpdf_unconditional(query, k) for k in clusters]
-        return logsumexp(np.add(logp_cluster, logp_query))
-
-    def _logpdf_hypothetical_2(self, query, evidence):
+        # P(xQ|xE) = \sum_z p(xQ|z,xE)p(z|xE)       marginalization
+        # Now consider p(z|xE) \propto p(z)p(xE|z)  Bayes rule
+        # [term]    [array]
+        # p(z)      logp_crp
+        # p(xE|z)   logp_evidence
+        # p(z|xE)   logp_cluster
+        # p(xQ|z)   logp_query
         K = range(len(self.Nk)+1)
         logp_evidence, logp_query = zip(
             *[self._logpdf_joint(query, evidence, k) for k in K])
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
         logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
-        assert len(logp_crp) == len(logp_evidence)
-
-        # XXX COMPARISON XXX
-        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in K]
-        logp_query_2 = [self._logpdf_unconditional(query, k) for k in K]
-        assert np.allclose(logp_evidence, logp_evidence_2)
-        assert np.allclose(logp_evidence_2, logp_evidence_2)
-        # XXX COMPARISON XXX
-
         return logsumexp(np.add(logp_cluster, logp_query))
 
     def logpdf_marginal(self):
@@ -275,7 +244,7 @@ class View(object):
 
     def simulate(self, rowid, query, evidence, N=1):
         if self._is_hypothetical(rowid):
-            return self._simulate_hypothetical_2(query, evidence, N)
+            return self._simulate_hypothetical(query, evidence, N)
         else:
             return self._simulate_observed(rowid, query, evidence, N)
 
@@ -286,33 +255,13 @@ class View(object):
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
-        K = xrange(len(self.Nk)+1)
-        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in K]
-        logp_cluster = np.add(logp_crp, logp_evidence)
-        ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
-        samples = [self._simulate_unconditional(query, k, 1)[0] for k in ks]
-        return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
-
-    def _simulate_hypothetical_2(self, query, evidence, N, cluster=False):
-        """cluster=True exposes latent cluster of each sample as extra col."""
         K = range(len(self.Nk)+1)
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
         logp_evidence = [self._logpdf_joint(evidence, [], k)[1] for k in K]
         logp_cluster = np.add(logp_crp, logp_evidence)
-
-        # XXX COMPARISON XXX
-        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in K]
-        if not np.allclose(logp_evidence, logp_evidence_2):
-            import ipdb; ipdb.set_trace()
-        else:
-            print 'OK!'
-        # XXX COMPARISON XXX
-
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
         N_per_k = np.bincount(ks)
         ks = [i for i, n in enumerate(N_per_k) if n > 0]
-
         samples_all = [self._simulate_joint(query, evidence, k, N=n)
             for k, n in enumerate(N_per_k)]
         samples = [s for samples_k in samples_all for s in samples_k]
@@ -327,7 +276,7 @@ class View(object):
             return self._simulate_unconditional(query, k, N=N)
         else:
             # XXX Should we resample ACCURACY times from the prior for 1 sample?
-            ACCURACY = 1 if all(q in roots for q in query) else 20*N
+            ACCURACY = N if all(q in roots for q in query) else 20*N
             samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
             return self._importance_resample(query, samples, weights, N=N)
 
