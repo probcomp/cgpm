@@ -297,8 +297,8 @@ class View(object):
     def _simulate_hypothetical_2(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
         clusters = range(len(self.Nk)+1)
-        samples, weights = zip(*[self._weighted_samples(evidence, k)
-            for k in clusters])
+        samples, weights = zip(
+            *[self._weighted_samples(evidence, k, 1) for k in clusters])
         # import ipdb; ipdb.set_trace()
         logp_evidence = map(logmeanexp, weights)
 
@@ -360,35 +360,36 @@ class View(object):
         sample = samples[i]
         return [sample[q] for q in query]
 
-    def _weighted_samples(self, evidence, k, N=1):
-        # Return list of samples and list of their weights.
-        return zip(*[self._weighted_sample(evidence, k) for _ in xrange(N)])
+    # def _weighted_samples(self, evidence, k, N=1):
+    #     # Return list of samples and list of their weights.
+    #     return zip(*[self._weighted_sample(evidence, k) for _ in xrange(N)])
 
-    def _weighted_sample(self, evidence, k):
-        evidence = sorted(evidence)
-        # Find root and leaf indices.
-        roots = self._unconditional_dims()
-        leafs = self._conditional_dims()
+    def _weighted_samples(self, evidence, k, N):
+        ev = sorted(evidence)
+        # Find roots and leafs indices.
+        rts = self._unconditional_dims()
+        lfs = self._conditional_dims()
         # Separate root and leaf evidence.
-        evidence_roots = [e for e in evidence if e[0] in roots]
-        evidence_leafs = [e for e in evidence if e[0] in leafs]
+        ev_rts = [e for e in evidence if e[0] in rts]
+        ev_lfs = [e for e in evidence if e[0] in lfs]
         # Simulate missing roots.
-        roots_observed = [e[0] for e in evidence if e in roots]
-        roots_missing = [r for r in roots if r not in roots_observed]
-        roots_sims = self._simulate_unconditional(roots_missing, k, 1)[0]
-        roots_all = evidence_roots + zip(roots_missing, roots_sims)
+        rts_obs = [e[0] for e in ev if e in rts]
+        rts_mis = [r for r in rts if r not in rts_obs]
+        rts_sim = self._simulate_unconditional(rts_mis, k, N)
+        rts_all = [ev_rts + zip(rts_mis, r) for r in rts_sim]
         # Simulate missing leafs.
-        leafs_observed = [e[0] for e in evidence if e in leafs]
-        leafs_missing = [l for l in leafs if l not in leafs_observed]
-        leaf_sims = self._simulate_conditional(leafs_missing, roots_all, k)
-        leafs_all = evidence_leafs + zip(leafs_missing, leaf_sims)
+        lfs_obs = [e[0] for e in ev if e in lfs]
+        lfs_mis = [l for l in lfs if l not in lfs_obs]
+        lfs_sim = [self._simulate_conditional(lfs_mis, r, k) for r in rts_all]
+        lfs_all = [ev_lfs + zip(lfs_mis, l) for l in lfs_sim]
         # Likelihood of evidence in sample.
-        weight = self._logpdf_unconditional(evidence_roots, k) + \
-            self._logpdf_conditional(evidence_leafs, roots_all, k)
+        weights = [self._logpdf_unconditional(ev_rts, k)
+            + self._logpdf_conditional(ev_lfs, r, k) for r in rts_all]
         # Combine the entire sample.
-        sample = [s[1] for s in sorted(roots_all + leafs_all)]
+        samples = [[s[1] for s in sorted(ra+la)] for (ra,la)
+            in zip(rts_all, lfs_all)]
         # Sample and its weight.
-        return sample, weight
+        return samples, weights
 
     def _simulate_unconditional(self, query, k, N):
         """Simulate query from cluster k, N times."""
