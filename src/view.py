@@ -281,7 +281,7 @@ class View(object):
 
     def _simulate_observed(self, rowid, query, evidence, N):
         # XXX Should row cluster be renegotiated based on new evidence?
-        samples = self._simulate_unconditional(query, self.Zr[rowid], N=N)
+        samples = self._simulate_joint(query, evidence, self.Zr[rowid], N=N)
         return np.asarray(samples)
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
