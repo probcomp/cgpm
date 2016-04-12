@@ -86,7 +86,7 @@ class View(object):
     def _prepare_incorporate(self, dim):
         Y, distargs = None, {}
         if dim.is_conditional():
-            Y = self._unconditional_values()
+            Y = self._unconditional_values(range(len(self.Zr)))
             distargs['cctypes'] = self._unconditional_cctypes()
             distargs['ccargs'] = self._unconditional_ccargs()
         return Y, distargs
@@ -114,7 +114,8 @@ class View(object):
         transition = [rowid] if k is None else []
         # Incorporate into dims.
         for dim in self.dims.values():
-            dim.incorporate(self.X[rowid, dim.index], k)
+            dim.incorporate(
+                self.X[rowid, dim.index], k, y=self._get_conditions(dim, rowid))
         # Account.
         if k == len(self.Nk):
             self.Nk.append(0)
@@ -371,8 +372,7 @@ class View(object):
 
     def _logpdf_gibbs(self, dim, rowid, k):
         x = self.X[rowid, dim.index]
-        y = self._unconditional_values(rowids=rowid)[0] if dim.is_conditional()\
-            else None
+        y = self._get_conditions(dim, rowid)
         return self._logpdf_gibbs_current(dim, x, y, k) if self.Zr[rowid] == k \
             else dim.logpdf(x, k, y=y)
 
@@ -388,6 +388,10 @@ class View(object):
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
 
+    def _get_conditions(self, dim, rowid):
+        return None if dim.index in self._unconditional_dims() else\
+            self._unconditional_values(rowids=[rowid])[0]
+
     def _conditional_dims(self):
         """Return conditional dims in sorted order."""
         return filter(lambda d: self.dims[d].is_conditional(),
@@ -398,16 +402,27 @@ class View(object):
         return filter(lambda d: not self.dims[d].is_conditional(),
             sorted(self.dims))
 
-    def _unconditional_values(self, rowids=None):
+    def _unconditional_values(self, rowids):
         unconditionals = self._unconditional_dims()
-        return self.X[:,unconditionals] if rowids is None else \
-            self.X[rowids,unconditionals]
+        return self.X[rowids,:][:,unconditionals]
 
-    def _unconditional_cctypes(self, rowids=None):
+    def _conditional_values(self, rowids):
+        conditionals = self._conditional_dims()
+        return self.X[rowids,:][:,conditionals]
+
+    def _unconditional_cctypes(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
         return [d.cctype for d in dims]
 
-    def _unconditional_ccargs(self, rowids=None):
+    def _conditional_cctypes(self):
+        dims = [self.dims[i] for i in self._conditional_dims()]
+        return [d.cctype for d in dims]
+
+    def _unconditional_ccargs(self):
+        dims = [self.dims[i] for i in self._unconditional_dims()]
+        return [d.distargs for d in dims]
+
+    def _conditional_ccargs(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
         return [d.distargs for d in dims]
 

@@ -76,5 +76,13 @@ class UpdateCctypeTest(unittest.TestCase):
             state.update_cctype(
                 self.cctypes.index('exponential'), 'geometric')
 
+    def test_categorical_forest(self):
+        state = State(self.T, self.cctypes, distargs=self.distargs,
+            rng=gu.gen_rng(0))
+        state.transition(N=1)
+        state.update_cctype(
+            self.cctypes.index('categorical'), 'random_forest',
+            distargs={'k':2})
+
 if __name__ == '__main__':
     unittest.main()
