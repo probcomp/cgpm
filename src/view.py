@@ -297,10 +297,7 @@ class View(object):
     def _simulate_hypothetical_2(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
         clusters = range(len(self.Nk)+1)
-        samples, weights = zip(
-            *[self._weighted_samples(evidence, k, 1) for k in clusters])
-        # import ipdb; ipdb.set_trace()
-        logp_evidence = map(logmeanexp, weights)
+        logp_evidence = [self._logpdf_joint(evidence, [], k)[1] for k in clusters]
 
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
         logp_cluster = np.add(logp_crp, logp_evidence)
