@@ -223,7 +223,7 @@ class View(object):
         return self._logpdf_unconditional(query, self.Zr[rowid])
 
     def _logpdf_observed_2(self, rowid, query, evidence):
-        return self._logpdf_joint(query, evidence, self.Zr[rowid], N=1)[1]
+        return self._logpdf_joint(query, evidence, self.Zr[rowid])[1]
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
@@ -248,17 +248,16 @@ class View(object):
         return logsumexp(np.add(logp_cluster, logp_query))
 
     def _logpdf_hypothetical_2(self, query, evidence):
-        clusters = range(len(self.Nk)+1)
+        K = range(len(self.Nk)+1)
         logp_evidence, logp_query = zip(
-            *[self._logpdf_joint(query, evidence, k) for k in clusters])
+            *[self._logpdf_joint(query, evidence, k) for k in K])
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
         logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
         assert len(logp_crp) == len(logp_evidence)
 
         # XXX COMPARISON XXX
-        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in
-            clusters]
-        logp_query_2 = [self._logpdf_unconditional(query, k) for k in clusters]
+        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in K]
+        logp_query_2 = [self._logpdf_unconditional(query, k) for k in K]
         assert np.allclose(logp_evidence, logp_evidence_2)
         assert np.allclose(logp_evidence_2, logp_evidence_2)
         # XXX COMPARISON XXX
@@ -287,8 +286,9 @@ class View(object):
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
+        K = xrange(len(self.Nk)+1)
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in xrange(len(self.Nk)+1)]
+        logp_evidence = [self._logpdf_unconditional(evidence, k) for k in K]
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
         samples = [self._simulate_unconditional(query, k, 1)[0] for k in ks]
@@ -296,22 +296,18 @@ class View(object):
 
     def _simulate_hypothetical_2(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
-        clusters = range(len(self.Nk)+1)
-        logp_evidence = [self._logpdf_joint(evidence, [], k)[1] for k in clusters]
-
+        K = range(len(self.Nk)+1)
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        logp_evidence = [self._logpdf_joint(evidence, [], k)[1] for k in K]
         logp_cluster = np.add(logp_crp, logp_evidence)
 
         # XXX COMPARISON XXX
-        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in
-            xrange(len(self.Nk)+1)]
+        logp_evidence_2 = [self._logpdf_unconditional(evidence, k) for k in K]
         if not np.allclose(logp_evidence, logp_evidence_2):
             import ipdb; ipdb.set_trace()
         else:
             print 'OK!'
         # XXX COMPARISON XXX
-
-        # import ipdb; ipdb.set_trace()
 
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
         N_per_k = np.bincount(ks)
@@ -319,8 +315,6 @@ class View(object):
         samples_all = [self._simulate_joint(query, evidence, k, N=n) for k, n in
             enumerate(N_per_k)]
         samples = [s for samples_k in samples_all for s in samples_k]
-        # import ipdb; ipdb.set_trace()
-
         return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
 
     # --------------------------------------------------------------------------
