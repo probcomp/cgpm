@@ -311,9 +311,10 @@ class View(object):
 
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
         N_per_k = np.bincount(ks)
+        ks = [i for i, n in enumerate(N_per_k) if n > 0]
 
-        samples_all = [self._simulate_joint(query, evidence, k, N=n) for k, n in
-            enumerate(N_per_k)]
+        samples_all = [self._simulate_joint(query, evidence, k, N=n)
+            for k, n in enumerate(N_per_k)]
         samples = [s for samples_k in samples_all for s in samples_k]
         return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
 
@@ -323,37 +324,29 @@ class View(object):
     def _simulate_joint(self, query, evidence, k, N=1):
         roots = self._unconditional_dims()
         if all(e[0] in roots for e in evidence):
-            if all(q in roots for q in query):
-                return self._simulate_unconditional(query, k, N=N)
-            else:
-                samples, weights = self._weighted_samples(evidence, k, N=N)
-                return [[s[q] for q in query] for s in samples]
+            return self._simulate_unconditional(query, k, N=N)
         else:
-            # Need to implement importance sampling with resampling.
-            raise ValueError('Simulate constraining leaf not yet implemented.')
+            # XXX Should we resample ACCURACY times from the prior for 1 sample?
+            ACCURACY = 1 if all(q in r for q in query) else 20*N
+            samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
+            return self._importance_resample(query, samples, weights, N=N)
 
     def _logpdf_joint(self, query, evidence, k):
         r = self._unconditional_dims()
-        if all (e[0] in r for e in evidence) and all(q in r for q in query):
+        if all (e[0] in r for e in evidence) and all(q[0] in r for q in query):
             logp_evidence = self._logpdf_unconditional(evidence, k)
             logp_query = self._logpdf_unconditional(query, k)
         else:
-            ACCURACY = 10
+            ACCURACY = 20
             _, weights_eq = self._weighted_samples(evidence+query, k, ACCURACY)
             _, weights_e = self._weighted_samples(evidence, k, ACCURACY)
             logp_evidence = logmeanexp(weights_e)
             logp_query = logmeanexp(weights_eq) - logp_evidence
         return logp_evidence, logp_query
 
-    def _importance_resample(self, query, samples, weights):
-        i = gu.log_pflip(weights, rng=self.rng)
-        # import ipdb; ipdb.set_trace()
-        sample = samples[i]
-        return [sample[q] for q in query]
-
-    # def _weighted_samples(self, evidence, k, N=1):
-    #     # Return list of samples and list of their weights.
-    #     return zip(*[self._weighted_sample(evidence, k) for _ in xrange(N)])
+    def _importance_resample(self, query, samples, weights, N=1):
+        indices = gu.log_pflip(weights, size=N, rng=self.rng)
+        return [[samples[i][q] for q in query] for i in indices]
 
     def _weighted_samples(self, evidence, k, N):
         ev = sorted(evidence)
