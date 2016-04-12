@@ -282,8 +282,7 @@ class View(object):
 
     def _simulate_observed(self, rowid, query, evidence, N):
         # XXX Should row cluster be renegotiated based on new evidence?
-        samples = [self._simulate_unconditional(query, self.Zr[rowid])
-            for _ in xrange(N)]
+        samples = self._simulate_unconditional(query, self.Zr[rowid], N=N)
         return np.asarray(samples)
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
@@ -292,7 +291,7 @@ class View(object):
         logp_evidence = [self._logpdf_unconditional(evidence, k) for k in xrange(len(self.Nk)+1)]
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
-        samples = [self._simulate_unconditional(query, k) for k in ks]
+        samples = [self._simulate_unconditional(query, k, 1)[0] for k in ks]
         return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
 
     def _simulate_hypothetical_2(self, query, evidence, N, cluster=False):
@@ -334,26 +333,32 @@ class View(object):
         roots = self._unconditional_dims()
         if all(e[0] in roots for e in evidence):
             if all(q in roots for q in query):
-                return [self._simulate_unconditional(query, k)
-                    for _ in xrange(N)]
+                return self._simulate_unconditional(query, k, N=N)
             else:
                 samples, weights = self._weighted_samples(evidence, k, N=N)
                 return [[s[q] for q in query] for s in samples]
         else:
-            raise ValueError('Conditions not yet implemented.')
+            # Need to implement importance sampling with resampling.
+            raise ValueError('Simulate constraining leaf not yet implemented.')
+
+    def _logpdf_joint(self, query, evidence, k):
+        r = self._unconditional_dims()
+        if all (e[0] in r for e in evidence) and all(q in r for q in query):
+            logp_evidence = self._logpdf_unconditional(evidence, k)
+            logp_query = self._logpdf_unconditional(query, k)
+        else:
+            ACCURACY = 10
+            _, weights_eq = self._weighted_samples(evidence+query, k, ACCURACY)
+            _, weights_e = self._weighted_samples(evidence, k, ACCURACY)
+            logp_evidence = logmeanexp(weights_e)
+            logp_query = logmeanexp(weights_eq) - logp_evidence
+        return logp_evidence, logp_query
 
     def _importance_resample(self, query, samples, weights):
         i = gu.log_pflip(weights, rng=self.rng)
         # import ipdb; ipdb.set_trace()
         sample = samples[i]
         return [sample[q] for q in query]
-
-    def _logpdf_joint(self, query, evidence, k, N=1):
-        _, weights_eq = self._weighted_samples(evidence+query, k, N)
-        _, weights_e = self._weighted_samples(evidence, k, N)
-        logp_evidence = logmeanexp(weights_e)
-        logp_query = logmeanexp(weights_eq) - logp_evidence
-        return logp_evidence, logp_query
 
     def _weighted_samples(self, evidence, k, N=1):
         # Return list of samples and list of their weights.
@@ -370,7 +375,7 @@ class View(object):
         # Simulate missing roots.
         roots_observed = [e[0] for e in evidence if e in roots]
         roots_missing = [r for r in roots if r not in roots_observed]
-        roots_sims = self._simulate_unconditional(roots_missing, k)
+        roots_sims = self._simulate_unconditional(roots_missing, k, 1)[0]
         roots_all = evidence_roots + zip(roots_missing, roots_sims)
         # Simulate missing leafs.
         leafs_observed = [e[0] for e in evidence if e in leafs]
@@ -385,10 +390,10 @@ class View(object):
         # Sample and its weight.
         return sample, weight
 
-    def _simulate_unconditional(self, query, k):
+    def _simulate_unconditional(self, query, k, N):
         """Simulate query from cluster k, N times."""
         assert not any(self.dims[c].is_conditional() for c in query)
-        return [self.dims[c].simulate(k) for c in query]
+        return [[self.dims[c].simulate(k) for c in query] for _ in xrange(N)]
 
     def _simulate_conditional(self, query, evidence, k):
         """Simulate query from cluster k, N times."""
