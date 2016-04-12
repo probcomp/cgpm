@@ -361,8 +361,8 @@ class View(object):
         rts = self._unconditional_dims()
         lfs = self._conditional_dims()
         # Separate root and leaf evidence.
-        ev_rts = [e for e in evidence if e[0] in rts]
-        ev_lfs = [e for e in evidence if e[0] in lfs]
+        ev_rts = [e for e in ev if e[0] in rts]
+        ev_lfs = [e for e in ev if e[0] in lfs]
         # Simulate missing roots.
         rts_obs = [e[0] for e in ev if e in rts]
         rts_mis = [r for r in rts if r not in rts_obs]
