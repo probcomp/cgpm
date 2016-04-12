@@ -743,7 +743,7 @@ class State(object):
         assert len(logp_data) == len(logp_crp)
 
         # Overall view probabilities.
-        p_view = [d+c for (d,c) in zip(logp_data, logp_crp)]
+        p_view = np.add(logp_data, logp_crp)
 
         # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
