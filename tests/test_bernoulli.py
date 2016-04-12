@@ -30,8 +30,8 @@ NUM_ITER = 5
 class TestBinomial(unittest.TestCase):
 
     def test_binomial(self):
-        # Switch for multithread.
-        multithread = True
+        # Switch for multithread (0 is faster).
+        multithread = 1
         # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
         data = np.transpose(np.array([[0] * DATA_NUM_0 + [1] * DATA_NUM_1]))
         # Run a single chain for a few iterations.
@@ -46,6 +46,8 @@ class TestBinomial(unittest.TestCase):
         true_prob_of_1 = float(DATA_NUM_1) / float(DATA_NUM_0 + DATA_NUM_1)
         # Check 1% relative match.
         assert np.allclose(true_prob_of_1, observed_prob_of_1, rtol=.1)
+        # Simulate from observed row as a crash test.
+        sample = engine.simulate(1, [0], N=1, multithread=multithread)
         # Ensure normalized unobserved probabilities.
         p0_uob = engine.logpdf(-1, [(0,0)], multithread=multithread)
         p1_uob = engine.logpdf(-1, [(0,1)], multithread=multithread)
