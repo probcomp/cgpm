@@ -327,7 +327,7 @@ class View(object):
             return self._simulate_unconditional(query, k, N=N)
         else:
             # XXX Should we resample ACCURACY times from the prior for 1 sample?
-            ACCURACY = 1 if all(q in r for q in query) else 20*N
+            ACCURACY = 1 if all(q in roots for q in query) else 20*N
             samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
             return self._importance_resample(query, samples, weights, N=N)
 
