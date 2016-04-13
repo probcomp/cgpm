@@ -166,6 +166,7 @@ class State(object):
         assert len(X) == self.n_rows()
         self.X = np.column_stack((self.X, X))
 
+        # XXX Handle conditional models; consider moving to View?
         col = self.n_cols() - 1
         D = Dim(cctype, col, distargs=distargs, rng=self.rng)
         D.transition_hyper_grids(self.X[:,col])
