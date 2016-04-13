@@ -120,9 +120,7 @@ class Categorical(DistributionGpm):
 
     @staticmethod
     def validate(x, K):
-        assert int(x) == float(x)
-        assert 0 <= x and x < K
-        return int(x) == float(x) and 0 <= x and x < K
+        return int(x) == float(x) and 0 <= x < K
 
     @staticmethod
     def calc_predictive_logp(x, N, counts, alpha):
