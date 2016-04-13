@@ -220,6 +220,7 @@ class View(object):
             return self._logpdf_observed(rowid, query, evidence)
 
     def _logpdf_observed(self, rowid, query, evidence):
+        evidence = self._evidence_for_observed_query(rowid, query, evidence)
         return self._logpdf_joint(query, evidence, self.Zr[rowid])[1]
 
     def _logpdf_hypothetical(self, query, evidence):
@@ -254,7 +255,7 @@ class View(object):
             return self._simulate_observed(rowid, query, evidence, N)
 
     def _simulate_observed(self, rowid, query, evidence, N):
-        # XXX Should row cluster be renegotiated based on new evidence?
+        evidence = self._evidence_for_observed_query(rowid, query, evidence)
         samples = self._simulate_joint(query, evidence, self.Zr[rowid], N=N)
         return np.asarray(samples)
 
@@ -393,6 +394,21 @@ class View(object):
 
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
+
+    def _evidence_for_observed_query(self, rowid, query, evidence):
+        """Builds the evidence for an observed simulate/logpdb query."""
+        ecols = [e[0] for e in evidence]
+        ucols = self._unconditional_dims()
+        ccols = self._conditional_dims()
+        uvals = self._unconditional_values([rowid])[0]
+        cvals = self._conditional_values([rowid])[0]
+        qcols = query if isinstance(query[0],int) else [q[0] for q in query]
+        qrts = [q for q in qcols if q in ucols]
+        qlfs = [q for q in qcols if q in ccols]
+        ev_c = filter(lambda e: e[0] not in qrts, zip(ucols, uvals))
+        ev_u = filter(lambda e: e[0] not in qlfs, zip(ccols, cvals))
+        ev_new = filter(lambda e: e[0] not in ecols, ev_c + ev_u)
+        return ev_new + evidence
 
     def _get_conditions(self, dim, rowid):
         return None if dim.index in self._unconditional_dims() else\
