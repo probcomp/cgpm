@@ -22,6 +22,7 @@ import gpmcc.utils.general as gu
 
 from gpmcc.dim import Dim
 from gpmcc.utils.general import logmeanexp
+from gpmcc.utils.config import cctype_class
 
 class View(object):
     """View, a collection of Dim and their row mixtures."""
@@ -76,17 +77,20 @@ class View(object):
     def incorporate_dim(self, dim, reassign=True):
         """Incorporate the dim into this View. If reassign is False, the row
         partition of dim should match self.Zr already."""
-        self.dims[dim.index] = dim
         if reassign:
-            Y, distargs = self._prepare_incorporate(dim)
+            Y, distargs = self._prepare_incorporate(dim.cctype)
             dim.distargs.update(distargs)
             dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
+        self.dims[dim.index] = dim
         return sum(dim.logpdf_marginal())
 
-    def _prepare_incorporate(self, dim):
+    def _prepare_incorporate(self, cctype):
         Y, distargs = None, {}
-        if dim.is_conditional():
+        if cctype_class(cctype).is_conditional():
             Y = self._unconditional_values(range(len(self.Zr)))
+            if Y.shape[1] == 0:
+                raise ValueError(
+                    'Cannot incorporate conditional dim in singleton View.')
             distargs['cctypes'] = self._unconditional_cctypes()
             distargs['ccargs'] = self._unconditional_ccargs()
         return Y, distargs
@@ -129,7 +133,9 @@ class View(object):
         """Remove rowid from the global datset X from this view."""
         # Unincorporate from dims.
         for dim in self.dims.values():
-            dim.unincorporate(self.X[rowid, dim.index], self.Zr[rowid])
+            dim.unincorporate(
+                self.X[rowid, dim.index], self.Zr[rowid],
+                y=self._get_conditions(dim, rowid))
         # Account.
         k = self.Zr[rowid]
         self.Nk[k] -= 1
@@ -145,10 +151,8 @@ class View(object):
 
     def update_cctype(self, col, cctype, hypers=None, distargs=None):
         """Update the distribution type of self.dims[col] to cctype."""
-        if distargs is None:
-            distargs = {}
-        distargs['cctypes'] = self._unconditional_cctypes()
-        distargs['ccargs'] = self._unconditional_ccargs()
+        if distargs is None: distargs = {}
+        distargs.update(self._prepare_incorporate(cctype)[1])
         D_old = self.dims[col]
         D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
