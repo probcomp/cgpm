@@ -265,23 +265,25 @@ class View(object):
         logp_evidence = [self._logpdf_joint(evidence, [], k)[1] for k in K]
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
-        N_per_k = np.bincount(ks)
-        ks = [i for i, n in enumerate(N_per_k) if n > 0]
-        samples_all = [self._simulate_joint(query, evidence, k, N=n)
-            for k, n in enumerate(N_per_k)]
-        samples = [s for samples_k in samples_all for s in samples_k]
-        return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
+        counts = {k:n for k,n in enumerate(np.bincount(ks)) if n > 0}
+        samples = [self._simulate_joint(query, evidence, k, N=counts[k])
+            for k in counts]
+        samples = np.asarray([s for samples_k in samples for s in samples_k])
+        if cluster:
+            ks = [k for i in counts for k in [i for _ in xrange(counts[i])]]
+            samples = np.column_stack((samples, ks))
+        return samples
 
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
 
     def _simulate_joint(self, query, evidence, k, N=1):
-        roots = self._unconditional_dims()
-        if all(e[0] in roots for e in evidence):
+        r = self._unconditional_dims()
+        if all (e[0] in r for e in evidence) and all(q in r for q in query):
             return self._simulate_unconditional(query, k, N=N)
         else:
             # XXX Should we resample ACCURACY times from the prior for 1 sample?
-            ACCURACY = N if all(q in roots for q in query) else 20*N
+            ACCURACY = N if all(q in r for q in query) else 20*N
             samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
             return self._importance_resample(query, samples, weights, N=N)
 
