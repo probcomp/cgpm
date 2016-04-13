@@ -31,7 +31,7 @@ colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
 
 def gen_rng(seed=None):
     if seed is None:
-        seed = np.random.randint(sys.maxsize)
+        seed = np.random.randint(low=1, high=2**31)
     return np.random.RandomState(seed)
 
 def curve_color(k):
