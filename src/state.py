@@ -328,13 +328,10 @@ class State(object):
 
     def logpdf_bulk(self, rowids, queries, evidences=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None:
-            evidences = [[] for _ in xrange(len(rowids))]
+        if evidences is None: evidences = [[] for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences)
-        logpdfs = []
-        for rowid, query, evidence in zip(rowids, queries, evidences):
-            logpdfs.append(self.logpdf(rowid, query, evidence))
-        return np.asarray(logpdfs)
+        return np.asarray([self.logpdf(r, q, e)
+            for (r, q, e) in zip(rowids, queries, evidences)])
 
     def logpdf_marginal(self):
         return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
@@ -387,15 +384,11 @@ class State(object):
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None:
-            evidences = [[] for _ in xrange(len(rowids))]
-        if Ns is None:
-            Ns = [1 for _ in xrange(len(rowids))]
+        if evidences is None: evidences = [[] for _ in xrange(len(rowids))]
+        if Ns is None: Ns = [1 for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences) == len(Ns)
-        samples = []
-        for rowid, query, evidence, n in zip(rowids, queries, evidences, Ns):
-            samples.append(self.simulate(rowid, query, evidence, n))
-        return samples
+        return np.asarray([self.simulate(r, q, e, n)
+            for (r, q, e, n) in zip(rowids, queries, evidences, Ns)])
 
     # --------------------------------------------------------------------------
     # Mutual information
