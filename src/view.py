@@ -313,7 +313,7 @@ class View(object):
         ev_rts = [e for e in ev if e[0] in rts]
         ev_lfs = [e for e in ev if e[0] in lfs]
         # Simulate missing roots.
-        rts_obs = [e[0] for e in ev if e in rts]
+        rts_obs = [e[0] for e in ev_rts]
         rts_mis = [r for r in rts if r not in rts_obs]
         rts_sim = self._simulate_unconditional(rts_mis, k, N)
         rts_all = [ev_rts + zip(rts_mis, r) for r in rts_sim]
