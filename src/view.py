@@ -19,7 +19,10 @@ from scipy.misc import logsumexp
 
 import numpy as np
 import gpmcc.utils.general as gu
+
 from gpmcc.dim import Dim
+from gpmcc.utils.general import logmeanexp
+from gpmcc.utils.config import cctype_class
 
 class View(object):
     """View, a collection of Dim and their row mixtures."""
@@ -74,15 +77,23 @@ class View(object):
     def incorporate_dim(self, dim, reassign=True):
         """Incorporate the dim into this View. If reassign is False, the row
         partition of dim should match self.Zr already."""
-        self.dims[dim.index] = dim
         if reassign:
-            Y = None
-            if dim.is_conditional():
-                Y = self._unconditional_values()
-                dim.distargs['cctypes'] = self._unconditional_cctypes()
-                dim.distargs['ccargs'] = self._unconditional_ccargs()
+            Y, distargs = self._prepare_incorporate(dim.cctype)
+            dim.distargs.update(distargs)
             dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
+        self.dims[dim.index] = dim
         return sum(dim.logpdf_marginal())
+
+    def _prepare_incorporate(self, cctype):
+        Y, distargs = None, {}
+        if cctype_class(cctype).is_conditional():
+            Y = self._unconditional_values(range(len(self.Zr)))
+            if Y.shape[1] == 0:
+                raise ValueError(
+                    'Cannot incorporate conditional dim in singleton View.')
+            distargs['cctypes'] = self._unconditional_cctypes()
+            distargs['ccargs'] = self._unconditional_ccargs()
+        return Y, distargs
 
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify dim)."""
@@ -107,7 +118,8 @@ class View(object):
         transition = [rowid] if k is None else []
         # Incorporate into dims.
         for dim in self.dims.values():
-            dim.incorporate(self.X[rowid, dim.index], k)
+            dim.incorporate(
+                self.X[rowid, dim.index], k, y=self._get_conditions(dim, rowid))
         # Account.
         if k == len(self.Nk):
             self.Nk.append(0)
@@ -121,7 +133,9 @@ class View(object):
         """Remove rowid from the global datset X from this view."""
         # Unincorporate from dims.
         for dim in self.dims.values():
-            dim.unincorporate(self.X[rowid, dim.index], self.Zr[rowid])
+            dim.unincorporate(
+                self.X[rowid, dim.index], self.Zr[rowid],
+                y=self._get_conditions(dim, rowid))
         # Account.
         k = self.Zr[rowid]
         self.Nk[k] -= 1
@@ -137,10 +151,8 @@ class View(object):
 
     def update_cctype(self, col, cctype, hypers=None, distargs=None):
         """Update the distribution type of self.dims[col] to cctype."""
-        if distargs is None:
-            distargs = {}
-        distargs['cctypes'] = self._unconditional_cctypes()
-        distargs['ccargs'] = self._unconditional_ccargs()
+        if distargs is None: distargs = {}
+        distargs.update(self._prepare_incorporate(cctype)[1])
         D_old = self.dims[col]
         D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
@@ -208,26 +220,23 @@ class View(object):
             return self._logpdf_observed(rowid, query, evidence)
 
     def _logpdf_observed(self, rowid, query, evidence):
-        # XXX Should row cluster be renegotiated based on new evidence?
-        return sum([self.dims[c].logpdf(v, self.Zr[rowid]) for (c,v) in query])
+        evidence = self._evidence_for_observed_query(rowid, query, evidence)
+        return self._logpdf_joint(query, evidence, self.Zr[rowid])[1]
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
-        # P(x1,x2|x3,x4) where (x1...x4) in the same view.
-        #   = \sum_z p(x1,x2|z,x3,x4)p(z|x3,x4)     marginalization
-        #   = \sum_z p(x1,x2|z)p(z|x3,x4)           conditional independence
-        #   = \sum_z p(x1|z)p(x2|z)p(z|x3,x4)       conditional independence
-        # Now consider p(z|x3,x4)
-        #   \propto p(z)p(x3|z)p(x4|z)              Bayes rule
-        # [term]           [array]
-        # p(z)             logp_crp
-        # p(x3|z)p(x4|z)   logp_evidence
-        # p(z|x3,x4)       logp_cluster
-        # p(x1|z)p(x2|z)   logp_query
+        # P(xQ|xE) = \sum_z p(xQ|z,xE)p(z|xE)       marginalization
+        # Now consider p(z|xE) \propto p(z)p(xE|z)  Bayes rule
+        # [term]    [array]
+        # p(z)      logp_crp
+        # p(xE|z)   logp_evidence
+        # p(z|xE)   logp_cluster
+        # p(xQ|z)   logp_query
+        K = range(len(self.Nk)+1)
+        logp_evidence, logp_query = zip(
+            *[self._logpdf_joint(query, evidence, k) for k in K])
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = self._cluster_query_logps(evidence)
         logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
-        logp_query = self._cluster_query_logps(query)
         return logsumexp(np.add(logp_cluster, logp_query))
 
     def logpdf_marginal(self):
@@ -246,103 +255,196 @@ class View(object):
             return self._simulate_observed(rowid, query, evidence, N)
 
     def _simulate_observed(self, rowid, query, evidence, N):
-        # XXX Should row cluster be renegotiated based on new evidence?
-        k = self.Zr[rowid]
-        samples = [[self.dims[c].simulate(k) for c in query] for _ in xrange(N)]
+        evidence = self._evidence_for_observed_query(rowid, query, evidence)
+        samples = self._simulate_joint(query, evidence, self.Zr[rowid], N=N)
         return np.asarray(samples)
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
+        K = range(len(self.Nk)+1)
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = self._cluster_query_logps(evidence)
+        logp_evidence = [self._logpdf_joint(evidence, [], k)[1] for k in K]
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
-        samples = [[self.dims[c].simulate(k) for c in query] for k in ks]
-        return np.column_stack((samples, ks)) if cluster else np.asarray(samples)
+        counts = {k:n for k,n in enumerate(np.bincount(ks)) if n > 0}
+        samples = [self._simulate_joint(query, evidence, k, N=counts[k])
+            for k in counts]
+        samples = np.asarray([s for samples_k in samples for s in samples_k])
+        if cluster:
+            ks = [k for i in counts for k in [i for _ in xrange(counts[i])]]
+            samples = np.column_stack((samples, ks))
+        return samples
 
     # --------------------------------------------------------------------------
-    # Internal
+    # simulate/logpdf helpers
 
-    def _transition_row(self, rowid, m=1):
+    def _simulate_joint(self, query, evidence, k, N=1):
+        r = self._unconditional_dims()
+        if all (e[0] in r for e in evidence) and all(q in r for q in query):
+            return self._simulate_unconditional(query, k, N=N)
+        else:
+            # XXX Should we resample ACCURACY times from the prior for 1 sample?
+            ACCURACY = N if all(q in r for q in query) else 20*N
+            samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
+            return self._importance_resample(query, samples, weights, N=N)
+
+    def _logpdf_joint(self, query, evidence, k):
+        r = self._unconditional_dims()
+        if all (e[0] in r for e in evidence) and all(q[0] in r for q in query):
+            logp_evidence = self._logpdf_unconditional(evidence, k)
+            logp_query = self._logpdf_unconditional(query, k)
+        else:
+            ACCURACY = 20
+            _, weights_eq = self._weighted_samples(evidence+query, k, ACCURACY)
+            _, weights_e = self._weighted_samples(evidence, k, ACCURACY)
+            logp_evidence = logmeanexp(weights_e)
+            logp_query = logmeanexp(weights_eq) - logp_evidence
+        return logp_evidence, logp_query
+
+    def _importance_resample(self, query, samples, weights, N=1):
+        indices = gu.log_pflip(weights, size=N, rng=self.rng)
+        return [[samples[i][q] for q in query] for i in indices]
+
+    def _weighted_samples(self, evidence, k, N):
+        ev = sorted(evidence)
+        # Find roots and leafs indices.
+        rts = self._unconditional_dims()
+        lfs = self._conditional_dims()
+        # Separate root and leaf evidence.
+        ev_rts = [e for e in ev if e[0] in rts]
+        ev_lfs = [e for e in ev if e[0] in lfs]
+        # Simulate missing roots.
+        rts_obs = [e[0] for e in ev_rts]
+        rts_mis = [r for r in rts if r not in rts_obs]
+        rts_sim = self._simulate_unconditional(rts_mis, k, N)
+        rts_all = [ev_rts + zip(rts_mis, r) for r in rts_sim]
+        # Simulate missing leafs.
+        lfs_obs = [e[0] for e in ev if e in lfs]
+        lfs_mis = [l for l in lfs if l not in lfs_obs]
+        lfs_sim = [self._simulate_conditional(lfs_mis, r, k) for r in rts_all]
+        lfs_all = [ev_lfs + zip(lfs_mis, l) for l in lfs_sim]
+        # Likelihood of evidence in sample.
+        weights = [self._logpdf_unconditional(ev_rts, k)
+            + self._logpdf_conditional(ev_lfs, r, k) for r in rts_all]
+        # Combine the entire sample.
+        samples = [[s[1] for s in sorted(ra+la)] for (ra,la)
+            in zip(rts_all, lfs_all)]
+        # Sample and its weight.
+        return samples, weights
+
+    def _simulate_unconditional(self, query, k, N):
+        """Simulate query from cluster k, N times."""
+        assert not any(self.dims[c].is_conditional() for c in query)
+        return [[self.dims[c].simulate(k) for c in query] for _ in xrange(N)]
+
+    def _simulate_conditional(self, query, evidence, k):
+        """Simulate query from cluster k, N times."""
+        assert all(self.dims[c].is_conditional() for c in query)
+        assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
+        y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
+        return [self.dims[c].simulate(k, y=y) for c in query]
+
+    def _logpdf_unconditional(self, query, k):
+        assert not any(self.dims[c].is_conditional() for c, x in query)
+        return np.sum([self.dims[c].logpdf(x, k) for c, x in query])
+
+    def _logpdf_conditional(self, query, evidence, k):
+        assert all(self.dims[c].is_conditional() for c, x in query)
+        assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
+        y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
+        return np.sum([self.dims[c].logpdf(x, k, y=y) for c, x in query])
+
+    # --------------------------------------------------------------------------
+    # Internal row transition.
+
+    def _transition_row(self, rowid):
         # Skip unincorporated rows.
         if self.Zr[rowid] == np.nan:
             return
-        # Existing clusters.
-        logp_data = [self._logpdf_row_gibbs(rowid, k) for k in xrange(len(self.Nk))]
-        # Auxiliary clusters.
-        # XXX Currently only works for m=1, otherwise need to cache proposals.
-        m_aux = range(m-1) if self.Nk[self.Zr[rowid]] == 1 else range(m)
-        logp_data_aux = [self._logpdf_row_gibbs(rowid, len(self.Nk))
-            for _ in m_aux]
-        # Extend data structs with auxiliary proposals.
-        logp_data.extend(logp_data_aux)
-        # Compute the CRP probabilities.
-        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, m)
+        logp_data = self._logpdf_row_gibbs(rowid, 1)
+        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
         p_cluster = np.add(logp_data, logp_crp)
-        # Draw new assignment, z_b
         z_b = gu.log_pflip(p_cluster, rng=self.rng)
-        # Migrate the row.
         if z_b != self.Zr[rowid]:
             self.unincorporate_row(rowid)
             self.incorporate_row(rowid, z_b)
         self._check_partitions()
 
-    def _logpdf_row_gibbs(self, rowid, k):
-        """Internal use only for Gibbs. Compute logpdf(X[rowid]|cluster k).
-        If k < len(self.Nk), predictive is taken. If k == len(self.Nk), new
-        parameters are sampled."""
-        assert k <= len(self.Nk)
+    def _logpdf_row_gibbs(self, rowid, m):
+        """Internal use only for Gibbs transition."""
+        m_aux = m-1 if self.Nk[self.Zr[rowid]]==1 else m
+        return [sum([self._logpdf_gibbs(dim, rowid, k) for dim in
+            self.dims.values()]) for k in xrange(len(self.Nk) + m_aux)]
 
-        def conditions(dim, rowid):
-            return None if not dim.is_conditional() \
-                else self._unconditional_values(rowids=rowid)[0]
+    def _logpdf_gibbs(self, dim, rowid, k):
+        x = self.X[rowid, dim.index]
+        y = self._get_conditions(dim, rowid)
+        return self._logpdf_gibbs_current(dim, x, y, k) if self.Zr[rowid] == k \
+            else dim.logpdf(x, k, y=y)
 
-        def logpdf_current(dim, x, y):
-            dim.unincorporate(x, k, y=y)
-            logp = dim.logpdf(x, k, y=y)
-            dim.incorporate(x, k, y=y)
-            return logp
+    def _logpdf_gibbs_current(self, dim, x, y, k):
+        dim.unincorporate(x, k, y=y)
+        logp = dim.logpdf(x, k, y=y)
+        dim.incorporate(x, k, y=y)
+        return logp
 
-        def logpdf_other(dim, x, y):
-            return dim.logpdf(x, k, y=y)
-
-        def logpdf(dim, rowid):
-            x = self.X[rowid, dim.index]
-            y = conditions(dim, rowid)
-            return logpdf_current(dim, x, y) if self.Zr[rowid] == k \
-                else logpdf_other(dim, x, y)
-
-        return sum([logpdf(dim, rowid) for dim in self.dims.values()])
-
-    def _cluster_query_logps(self, query):
-        """Returns a list of log probabilities of a query for each of the
-        clusters in self.Nk, including a singleton."""
-        return np.sum([self._cluster_data_logps(c,v) for c,v in query],
-            axis=0) if query else np.zeros(len(self.Nk)+1)
-
-    def _cluster_data_logps(self, col, x):
-        """Returns a list of log probabilities of self.dims[col] = x  for each
-        of the clusters in self.Nk, including a singleton."""
-        return [self.dims[col].logpdf(x, k) for k in xrange(len(self.Nk)+1)]
+    # --------------------------------------------------------------------------
+    # Internal query utils.
 
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
 
+    def _evidence_for_observed_query(self, rowid, query, evidence):
+        """Builds the evidence for an observed simulate/logpdb query."""
+        ecols = [e[0] for e in evidence]
+        ucols = self._unconditional_dims()
+        ccols = self._conditional_dims()
+        uvals = self._unconditional_values([rowid])[0]
+        cvals = self._conditional_values([rowid])[0]
+        qcols = query if isinstance(query[0],int) else [q[0] for q in query]
+        qrts = [q for q in qcols if q in ucols]
+        qlfs = [q for q in qcols if q in ccols]
+        ev_c = filter(lambda e: e[0] not in qrts, zip(ucols, uvals))
+        ev_u = filter(lambda e: e[0] not in qlfs, zip(ccols, cvals))
+        ev_new = filter(lambda e: e[0] not in ecols, ev_c + ev_u)
+        return ev_new + evidence
+
+    def _get_conditions(self, dim, rowid):
+        return None if dim.index in self._unconditional_dims() else\
+            self._unconditional_values(rowids=[rowid])[0]
+
+    def _conditional_dims(self):
+        """Return conditional dims in sorted order."""
+        return filter(lambda d: self.dims[d].is_conditional(),
+            sorted(self.dims))
+
     def _unconditional_dims(self):
+        """Return unconditional dims in sorted order."""
         return filter(lambda d: not self.dims[d].is_conditional(),
             sorted(self.dims))
 
-    def _unconditional_values(self, rowids=None):
+    def _unconditional_values(self, rowids):
         unconditionals = self._unconditional_dims()
-        return self.X[:,unconditionals] if rowids is None else \
-            self.X[rowids,unconditionals]
+        return self.X[rowids,:][:,unconditionals]
 
-    def _unconditional_cctypes(self, rowids=None):
+    def _conditional_values(self, rowids):
+        conditionals = self._conditional_dims()
+        return self.X[rowids,:][:,conditionals]
+
+    def _unconditional_cctypes(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
         return [d.cctype for d in dims]
 
-    def _unconditional_ccargs(self, rowids=None):
+    def _conditional_cctypes(self):
+        dims = [self.dims[i] for i in self._conditional_dims()]
+        return [d.cctype for d in dims]
+
+    def _unconditional_ccargs(self):
+        dims = [self.dims[i] for i in self._unconditional_dims()]
+        return [d.distargs for d in dims]
+
+    def _conditional_ccargs(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
         return [d.distargs for d in dims]
 

@@ -112,6 +112,12 @@ def pflip(p, size=None, rng=None):
         warnings.warn('pflip probability vector sums to %f.' % sum(p))
     return rng.choice(range(len(p)), size=size, p=p)
 
+def logmeanexp(array):
+    if len(array) == 0:
+        return -float('inf')
+    noninfs = [a for a in array if not a == -float('inf')]
+    return logsumexp(noninfs) - math.log(len(array))
+
 def log_linspace(a, b, n):
     """linspace from a to b with n entries over log scale (mor entries at
     smaller values).
