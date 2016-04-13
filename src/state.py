@@ -18,11 +18,9 @@ import copy
 import sys
 import time
 import cPickle as pickle
-from math import log
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.misc import logsumexp
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
@@ -31,42 +29,29 @@ import gpmcc.utils.validation as vu
 from gpmcc.view import View
 from gpmcc.dim import Dim
 
-_all_kernels = [
-    'column_z',
-    'state_alpha',
-    'row_z',
-    'column_hypers',
-    'view_alphas'
-    ]
-
 class State(object):
-    """State, the main crosscat object."""
+    """The outer most GPM in gpmcc."""
 
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
             view_alphas=None, hypers=None, Cd=None, Ci=None, Rd=None, Ri=None,
             rng=None):
-        """Dim constructor provides a convenience method for bulk incorporate
-        and unincorporate by specifying the data, and optinally view partition
-        and row partition for each view.
+        """Construct a State.
 
         Parameters
         ----------
         X : np.ndarray
-            A data matrix DxN, where D is the number of variabels and N is
-            the number of observations.
+            Data matrix, each row is an observation and each column a variable.
         cctypes : list<str>
-            Data type of each colum, see `utils.config` for valid cctypes.
+            Data type of each column, see `utils.config` for valid cctypes.
         distargs : list<dict>, optional
             Distargs appropriate for each cctype in cctypes. For details on
-            distargs see the documentation for each DistributionGpm. Empty
-            distargs can be None or dict().
+            distargs see the documentation for each DistributionGpm.
         Zv : list<int>, optional
-            Assignmet of columns to views. If not specified a random
-            partition is sampled.
+            Assignmet of columns to views. If unspecified, sampled from CRP.
         Zrv : list(list<int>), optional
             Assignment of rows to clusters in each view, where Zrv[k] is
-            the Zr for View k. If not specified a random partition is
-            sampled. If specified, then Zv must also be specified.
+            the Zr for View k. If unspecified, sampled from CRP. If specified,
+            then Zv must also be specified.
         Cd : list(list<int>), optional
             List of marginal dependence constraints for columns. Each element in
             the list is a list of columns which are to be in the same view. Each
@@ -153,10 +138,9 @@ class State(object):
         X : np.array
             An array of data with length self.n_rows().
         cctype : str
-            DistributionGpm name see `gpmcc.utils.config`.
+            DistributionGpm name, see `gpmcc.utils.config`.
         distargs : dict, optional.
-            Distargs appropriate for the cctype. For details on
-            distargs see the documentation for each DistributionGpm.
+            Distargs appropriate for the cctype.
         v : int, optional
             Index of the view to assign the data. If unspecified, will be
             sampled. If 0 <= v < len(state.views) then insert into an existing
@@ -166,6 +150,7 @@ class State(object):
         assert len(X) == self.n_rows()
         self.X = np.column_stack((self.X, X))
 
+        # XXX Handle conditional models; consider moving to View?
         col = self.n_cols() - 1
         D = Dim(cctype, col, distargs=distargs, rng=self.rng)
         D.transition_hyper_grids(self.X[:,col])
@@ -216,12 +201,12 @@ class State(object):
         self._check_partitions()
 
     def incorporate_rows(self, X, k=None):
-        """Incorporate list of new rows into global dataset X.
+        """Incorporate list of new rows.
 
         Parameters
         ----------
         X : np.array
-            A (r x self.n_cols) list of data, where r is the number of
+            A (r x self.n_cols) list of data, where r is number of
             new rows to incorporate.
         k : list(list<int>), optional
             A (r x self.n_views()) list of integers, where r is the number of
@@ -245,8 +230,7 @@ class State(object):
         self._check_partitions()
 
     def unincorporate_rows(self, rowids):
-        """Unincorporate a list of rowids from dataset X. All r in rowids must
-        be in range(0, State.n_rows())."""
+        """Unincorporate a list of rowids, must be in range(0, State.n_rows)."""
         if self.n_rows() == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
 
@@ -273,8 +257,7 @@ class State(object):
         cctype : str
             DistributionGpm name see `gpmcc.utils.config`.
         distargs : dict, optional.
-            Distargs appropriate for the cctype. For details on
-            distargs see the documentation for each DistributionGpm.
+            Distargs appropriate for the cctype.
         """
         self.view_for(col).update_cctype(
             col, cctype, hypers=hypers, distargs=distargs)
@@ -300,10 +283,9 @@ class State(object):
             Otherwise logpdf for a hypothetical member is computed,
             marginalizing over latent variables.
         query : list(tuple<int>)
-            A list of pairs (col, val) at which to query the logpdf.
+            List of pairs (col, val) at which to query the logpdf.
         evidence : list(tuple<int>), optional
-            A list of pairs (col, val) of observed values in the row to
-            condition on
+            List of pairs (col, val) of conditioning values in the row.
 
         Returns
         -------
@@ -327,15 +309,13 @@ class State(object):
 
     def logpdf_bulk(self, rowids, queries, evidences=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None:
-            evidences = [[] for _ in xrange(len(rowids))]
+        if evidences is None: evidences = [[] for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences)
-        logpdfs = []
-        for rowid, query, evidence in zip(rowids, queries, evidences):
-            logpdfs.append(self.logpdf(rowid, query, evidence))
-        return np.asarray(logpdfs)
+        return np.asarray([self.logpdf(r, q, e)
+            for (r, q, e) in zip(rowids, queries, evidences)])
 
     def logpdf_marginal(self):
+        """Evaluate multiple queries at once, used by Engine."""
         return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
             sum(v.logpdf_marginal() for v in self.views)
 
@@ -386,15 +366,11 @@ class State(object):
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None:
-            evidences = [[] for _ in xrange(len(rowids))]
-        if Ns is None:
-            Ns = [1 for _ in xrange(len(rowids))]
+        if evidences is None: evidences = [[] for _ in xrange(len(rowids))]
+        if Ns is None: Ns = [1 for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences) == len(Ns)
-        samples = []
-        for rowid, query, evidence, n in zip(rowids, queries, evidences, Ns):
-            samples.append(self.simulate(rowid, query, evidence, n))
-        return samples
+        return np.asarray([self.simulate(r, q, e, n)
+            for (r, q, e, n) in zip(rowids, queries, evidences, Ns)])
 
     # --------------------------------------------------------------------------
     # Mutual information
@@ -413,8 +389,7 @@ class State(object):
         Parameters
         ----------
         col0, col1 : int
-            Columns to comptue MI. If col0 = col1 then estimate of the entropy
-            is returned.
+            Columns to comptue MI. If col0 = col1 then entropy is returned.
         evidence : list(tuple<int>), optional
             A list of pairs (col, val) of observed values to condition on.
         N : int, optional.
@@ -460,8 +435,7 @@ class State(object):
         Parameters
         ----------
         col0, col1 : int
-            Columns to comptue MI. If col0 = col1 then estimate of the entropy
-            is returned.
+            Columns to comptue MI. If col0 = col1 then entropy is returned.
         evidence : list<int>
             A list of columns to condition on.
         T : int, optional.
@@ -475,10 +449,8 @@ class State(object):
             A point estimate of the mutual information.
         """
         samples = self.simulate(-1, evidence, N=T)
-        mi = 0
-        for sample in samples:
-            mi += self.mutual_information(
-                col0, col1, evidence=zip(evidence, sample), N=N)
+        mi = sum(self.mutual_information(col0, col1, evidence=zip(evidence, s),
+            N=N) for s in samples)
         return mi / T
 
     # --------------------------------------------------------------------------
@@ -487,36 +459,23 @@ class State(object):
     def transition(self, N=None, S=None, kernels=None, target_rows=None,
             target_cols=None, target_views=None, do_plot=False,
             do_progress=True):
-        """Run all infernece kernels. For targeted inference, see other exposed
-        inference commands.
+        """Run targeted inference kernels.
 
         Parameters
         ----------
         N : int, optional
-            Number of iterations to transition. Defaults to 1.
+            Number of iterations to transition. Default 1.
         S : float, optional
-            Number of seconds to transition. If both N and S specified,
-            the minimum is used.
+            Number of seconds to transition. If both N and S set then min used.
         kernels : list<{'alpha', 'view_alphas', 'column_params', 'column_hypers'
-                'rows', 'columns'}>, optional
-            List of inference kernels to run in this inference transition.
-            Default is all.
+            'rows', 'columns'}>, optional
+            List of inference kernels to run in this transition. Default all.
         target_views, target_rows, target_cols : list<int>, optional
-            Views, rows and columns to apply the kernels. Default is all.
+            Views, rows and columns to apply the kernels. Default all.
         do_plot : boolean, optional
-            Plot the state of the sampler (real-time), 24 columns max. Only
-            available when transition by iterations.
+            Plot the state of the sampler (real-time), 24 columns max. Unstable.
         do_progress : boolean, optional
             Show a progress bar for number of target iterations or elapsed time.
-            If transition by time, may exceed 100%.
-
-        Examples
-        --------
-        >>> State.transition()
-        >>> State.transition(N=100)
-        >>> State.transition(N=100, kernels=['rows', 'column_hypers'],
-                target_cols=[1,2], target_rows=range(100))
-        >>> State.transition(N=100, S=30)
         """
         if N is None and S is None:
             N = 1
@@ -743,7 +702,7 @@ class State(object):
         assert len(logp_data) == len(logp_crp)
 
         # Overall view probabilities.
-        p_view = [d+c for (d,c) in zip(logp_data, logp_crp)]
+        p_view = np.add(logp_data, logp_crp)
 
         # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
@@ -817,6 +776,7 @@ class State(object):
                 transform=ax.transAxes, fontsize=12, weight='bold',
                 color='blue', horizontalalignment='right',
                 verticalalignment='top')
+            ax.grid()
         plt.draw()
 
     def _do_progress(self, percentage):
