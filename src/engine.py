@@ -42,7 +42,7 @@ class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel States."""
 
     def __init__(self, X, cctypes, distargs=None, num_states=1, rng=None,
-            state_rngs=None, state_metadatas=None, multithread=1):
+            state_metadatas=None, multithread=1):
         """Do not explicitly use state_metadatas, use Engine.from_metadata."""
         self.rng = gu.gen_rng() if rng is None else rng
         if state_metadatas:
@@ -50,10 +50,8 @@ class Engine(object):
             self.num_states = len(state_metadatas)
         else:
             self.num_states = num_states
-            if state_rngs is None:
-                state_rngs = map(gu.gen_rng, xrange(num_states))
             pool, mapper = self._get_mapper(multithread)
-            args = ((X, cctypes, distargs, rng) for rng in state_rngs)
+            args = ((X, cctypes, distargs, rng) for rng in self._get_rngs())
             self.metadata = mapper(_intialize, args)
             self._close_mapper(pool)
 
@@ -213,7 +211,14 @@ class Engine(object):
         self.metadata = [m for i,m in enumerate(self.metadata) if i not in drop]
         self.num_states = len(self.metadata)
 
+    def to_metadata(self):
+        metadata = dict()
+        metadata['rng'] = self.rng
+        metadata['state_metadatas'] = self.metadata
+        return metadata
+
     def _get_mapper(self, multithread):
+        self._seed_metadata() # XXX Right place?
         pool, mapper = None, map
         if multithread:
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
@@ -224,11 +229,14 @@ class Engine(object):
         if pool is not None:
             pool.close()
 
-    def to_metadata(self):
-        metadata = dict()
-        metadata['rng'] = self.rng
-        metadata['state_metadatas'] = self.metadata
-        return metadata
+    def _seed_metadata(self):
+        if hasattr(self, 'metadata'):
+            for r, m in zip(self._get_rngs(), self.metadata):
+                m['rng'] = r
+
+    def _get_rngs(self):
+        seeds = self.rng.randint(low=1, high=2**32-1, size=self.num_states)
+        return [gu.gen_rng(s) for s in seeds]
 
     @classmethod
     def from_metadata(cls, metadata):
