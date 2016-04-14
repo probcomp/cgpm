@@ -59,8 +59,8 @@ class SimulateIndicatorTest(unittest.TestCase):
         # Create an engine.
         state = Engine(
             cls.data, ['normal', 'categorical'], [None, {'k':6}], num_states=1,
-            rng=gu.gen_rng(0), state_rngs=[gu.gen_rng(0)])
-        state.transition(N=10)
+            rng=gu.gen_rng(100))
+        state.transition(N=15)
         cls.model = state.get_state(0)
 
     def test_joint(self):

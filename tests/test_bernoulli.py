@@ -36,8 +36,7 @@ class TestBinomial(unittest.TestCase):
         data = np.transpose(np.array([[0] * DATA_NUM_0 + [1] * DATA_NUM_1]))
         # Run a single chain for a few iterations.
         engine = gpmcc.engine.Engine(
-            data, ['categorical'], distargs=[{'k': 2}], rng=gen_rng(0),
-            state_rngs=[gen_rng(12)])
+            data, ['categorical'], distargs=[{'k': 2}], rng=gen_rng(0))
         engine.transition(NUM_ITER, multithread=multithread)
         # Simulate from hypothetical row and compute the proportion of ones.
         sample = engine.simulate(-1, [0], N=NUM_SIM, multithread=multithread)[0]
