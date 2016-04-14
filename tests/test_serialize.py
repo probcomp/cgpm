@@ -23,6 +23,7 @@ import numpy as np
 
 import gpmcc.state
 import gpmcc.engine
+from gpmcc.utils import general as gu
 
 class TestSerialize(unittest.TestCase):
 
@@ -32,7 +33,8 @@ class TestSerialize(unittest.TestCase):
         data[:,0] = 0
         # Run a single chain for a few iterations.
         state = gpmcc.state.State(
-            data, ['bernoulli','normal','normal','normal','normal'])
+            data, ['bernoulli','normal','normal','normal','normal'],
+            rng=gu.gen_rng(0))
         state.transition(N=1)
         # To JSON.
         metadata = state.to_metadata()
@@ -51,7 +53,8 @@ class TestSerialize(unittest.TestCase):
         # Run a single chain for a few iterations.
         engine = gpmcc.engine.Engine(
             data, ['bernoulli','normal','normal','normal','normal'],
-            num_states=4)
+            num_states=4, rng=gu.gen_rng(0),
+            state_rngs=[gu.gen_rng(i) for i in xrange(4)])
         engine.transition(N=1)
         # To JSON.
         metadata = engine.to_metadata()
