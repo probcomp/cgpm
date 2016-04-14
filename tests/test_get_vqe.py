@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 
 from gpmcc.state import State
+from gpmcc.utils import general as gu
 from gpmcc.utils import validation as vu
 
 class TestGetViewQueryEvidence(unittest.TestCase):
@@ -29,7 +30,7 @@ class TestGetViewQueryEvidence(unittest.TestCase):
         T = np.repeat(D, 10, axis=1)
         Zv = [0,0,0,1,1,1,2,2,2,3]
 
-        state = State(T, ['normal']*10, Zv=Zv)
+        state = State(T, ['normal']*10, Zv=Zv, rng=gu.gen_rng(0))
 
         query = [(9,1), (0,0), (1,1), (4,2), (5,7), (7,0)]
         evidence = [(3,1), (9,1), (6,-1)]

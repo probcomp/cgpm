@@ -41,7 +41,8 @@ class LinearRegressionDirectTest(unittest.TestCase):
 
     def test_incorporate(self):
         linreg = LinearRegression(
-            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs})
+            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
+            rng=gu.gen_rng(0))
         # Incorporate first 20 rows.
         for row in self.D[:20]:
             linreg.incorporate(row[0], y=row[1:])
@@ -60,14 +61,16 @@ class LinearRegressionDirectTest(unittest.TestCase):
 
     def test_logpdf_marginal(self):
         linreg = LinearRegression(
-            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs})
+            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
+            rng=gu.gen_rng(0))
         for row in self.D[:25]:
             linreg.incorporate(row[0], y=row[1:])
         self.assertLess(linreg.logpdf_marginal(), 0)
 
     def test_logpdf_predictive(self):
         linreg = LinearRegression(
-            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs})
+            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
+            rng=gu.gen_rng(0))
         Dx0 = self.D[self.D[:,1]==0]
         Dx1 = self.D[self.D[:,1]==1]
         Dx2 = self.D[self.D[:,1]==2]
@@ -85,7 +88,8 @@ class LinearRegressionDirectTest(unittest.TestCase):
 
     def test_simulate(self):
         linreg = LinearRegression(
-            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs})
+            distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
+            rng=gu.gen_rng(0))
         for row in self.D[:25]:
             linreg.incorporate(row[0], y=row[1:])
         _, ax = plt.subplots()
