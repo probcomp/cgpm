@@ -55,7 +55,8 @@ class EngineDimensionsTest(unittest.TestCase):
         # Make some nan cells for evidence.
         T[5,2]=T[5,3]=T[5,0]=T[5,1]=np.nan
         T[8,4]=np.nan
-        cls.engine = engine.Engine(T, cctypes, distargs, num_states=6)
+        cls.engine = engine.Engine(T, cctypes, distargs, num_states=6,
+            rng=gu.gen_rng(0))
         cls.engine.transition(N=2)
 
     def test_logpdf__ci_(self):
