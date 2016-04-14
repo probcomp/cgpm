@@ -90,7 +90,8 @@ class TestSimulateCrpConstrained(unittest.TestCase):
         N, alpha = 10, .4
         Cd = Ci = []
         Rd = Ri = {}
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri,
+            rng=gu.gen_rng(0))
         self.assertTrue(
             vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
@@ -99,7 +100,8 @@ class TestSimulateCrpConstrained(unittest.TestCase):
         Cd = [range(N)]
         Ci = []
         Rd = Ri = {}
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri,
+            rng=gu.gen_rng(0))
         self.assertTrue(
             vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
@@ -108,7 +110,8 @@ class TestSimulateCrpConstrained(unittest.TestCase):
         Cd = []
         Ci = list(itertools.combinations(range(N), 2))
         Rd = Ri = {}
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri,
+            rng=gu.gen_rng(0))
         self.assertTrue(
             vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
@@ -119,7 +122,8 @@ class TestSimulateCrpConstrained(unittest.TestCase):
         Ci = []
         Rd = {0:[[0,1]], 1:[[1,2]], 2:[[2,3]]}
         Ri = {0:[(1,2)], 1:[(2,3)], 2:[(0,1)]}
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri,
+            rng=gu.gen_rng(0))
         self.assertTrue(
             vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 
@@ -128,7 +132,8 @@ class TestSimulateCrpConstrained(unittest.TestCase):
         Cd = [(0,1,4), (2,3,5), (8,7)]
         Ci = [(2,8), (0,3)]
         Rd = Ri = {}
-        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri)
+        Z = gu.simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri,
+            rng=gu.gen_rng(0))
         self.assertTrue(
             vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri))
 

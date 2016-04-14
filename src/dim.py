@@ -72,7 +72,7 @@ class Dim(object):
         assert k <= len(self.clusters)
         if k == len(self.clusters):
             self.clusters.append(self.aux_model)
-            self.aux_model = self.model(distargs=self.distargs,
+            self.aux_model = self.model(distargs=self.distargs, rng=self.rng,
                 **self.hypers)
         if self._valid_xy(x, y):
             self.clusters[k].incorporate(x, y=y)
