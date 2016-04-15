@@ -165,8 +165,7 @@ class Engine(object):
 
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
-        if states is None:
-            states = xrange(self.num_states)
+        if states is None: states = xrange(self.num_states)
         Zvs = [self.metadata[s]['Zv'] for s in states]
         counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
         return sum(counts) / float(len(states))
@@ -179,21 +178,22 @@ class Engine(object):
             D[i,j] = D[j,i] = self.dependence_probability(i,j, states=states)
         return D
 
-    def row_similarity(self,row0, row1, states=None):
+    def row_similarity(self, row0, row1, cols=None, states=None):
         """Compute similiarty between row0 and row1 as float."""
-        if states is None:
-            states = xrange(self.num_states)
-        prob = 0
-        for Zrv in [self.metadata[s]['Zrv'] for s in states]:
-            prob += sum([Zr[row0]==Zr[row1] for Zr in Zrv]) / float(len(Zrv))
-        return prob / len(states)
+        if states is None: states = xrange(self.num_states)
+        if cols is None: cols = range(len(self.metadata[0]['cctypes']))
+        def row_sim_state(s):
+            Zv, Zrv = self.metadata[s]['Zv'], self.metadata[s]['Zrv']
+            Zrs = [Zrv[v] for v in set(Zv[c] for c in cols)]
+            return sum([Zr[row0]==Zr[row1] for Zr in Zrs]) / float(len(Zrv))
+        return sum(map(row_sim_state, states)) / len(states)
 
-    def row_similarity_pairwise(self, states=None):
+    def row_similarity_pairwise(self, cols=None, states=None):
         """Compute dependence probability between all pairs as matrix."""
         n_rows = len(self.metadata[0]['X'])
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
-            S[i,j] = S[j,i] = self.row_similarity(i,j, states=states)
+            S[i,j] = S[j,i] = self.row_similarity(i,j, cols=cols, states=states)
         return S
 
     def get_state(self, index):
