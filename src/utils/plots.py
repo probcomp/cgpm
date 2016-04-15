@@ -120,7 +120,8 @@ def plot_clustermap(D, xticklabels=None, yticklabels=None):
     import seaborn as sns
     if xticklabels is None: xticklabels = range(D.shape[0])
     if yticklabels is None: yticklabels = range(D.shape[1])
-    zmat = sns.clustermap(D, yticklabels=yticklabels, xticklabels=xticklabels)
+    zmat = sns.clustermap(D, yticklabels=yticklabels, xticklabels=xticklabels,
+        linewidths=0.2, cmap='BuGn')
     plt.setp(zmat.ax_heatmap.get_yticklabels(), rotation=0)
     plt.setp(zmat.ax_heatmap.get_xticklabels(), rotation=90)
     return zmat
