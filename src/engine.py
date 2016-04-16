@@ -143,7 +143,7 @@ class Engine(object):
         self._close_mapper(pool)
         return np.asarray(samples)
 
-    def mutual_information(self, col0, col1, evidence=None, N=1000,
+    def mutual_information(self, col0, col1, evidence=None, N=None,
             multithread=1):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
@@ -153,8 +153,8 @@ class Engine(object):
         self._close_mapper(pool)
         return np.asarray(mis)
 
-    def conditional_mutual_information(self, col0, col1, evidence, T=100,
-            N=1000, multithread=1):
+    def conditional_mutual_information(self, col0, col1, evidence, T=None,
+            N=None, multithread=1):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
         args = [('conditional_mutual_information', self.metadata[i],
