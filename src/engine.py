@@ -30,12 +30,12 @@ def _intialize((X, cctypes, distargs, rng)):
     return state.to_metadata()
 
 def _modify((name, metadata, args)):
-    state = State.from_metadata(metadata)
+    state = State.from_metadata(metadata, rng=metadata['rng'])
     getattr(state, name)(*args)
     return state.to_metadata()
 
 def _evaluate((name, metadata, args)):
-    state = State.from_metadata(metadata)
+    state = State.from_metadata(metadata, rng=metadata['rng'])
     return getattr(state, name)(*args)
 
 class Engine(object):
@@ -213,7 +213,6 @@ class Engine(object):
 
     def to_metadata(self):
         metadata = dict()
-        metadata['rng'] = self.rng
         metadata['state_metadatas'] = self.metadata
         return metadata
 
@@ -239,13 +238,13 @@ class Engine(object):
         return [gu.gen_rng(s) for s in seeds]
 
     @classmethod
-    def from_metadata(cls, metadata):
-        if 'rng' not in metadata:  # XXX Backward compatability.
-            metadata['rng'] = gu.gen_rng(0)
-        return cls(metadata['state_metadatas'][0]['X'],
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        return cls(
+            metadata['state_metadatas'][0]['X'],
             metadata['state_metadatas'][0]['cctypes'],
             metadata['state_metadatas'][0]['distargs'],
-            rng=metadata['rng'],
+            rng=rng,
             state_metadatas=metadata['state_metadatas'])
 
     def to_pickle(self, fileptr):
@@ -253,6 +252,6 @@ class Engine(object):
         pickle.dump(metadata, fileptr)
 
     @classmethod
-    def from_pickle(cls, fileptr):
+    def from_pickle(cls, fileptr, rng=None):
         metadata = pickle.load(fileptr)
-        return cls.from_metadata(metadata)
+        return cls.from_metadata(metadata, rng=rng)
