@@ -422,7 +422,7 @@ class State(object):
             PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
             return - np.sum(PX) / N
 
-    def conditional_mutual_information(self, col0, col1, evidence, T=100,
+    def conditional_mutual_information(self, col0, col1, evidence, T=None,
             N=None):
         """Computes conditional mutual information MI(col0:col1|evidence).
 
