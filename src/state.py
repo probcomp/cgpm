@@ -375,7 +375,7 @@ class State(object):
     # --------------------------------------------------------------------------
     # Mutual information
 
-    def mutual_information(self, col0, col1, evidence=None, N=1000):
+    def mutual_information(self, col0, col1, evidence=None, N=None):
         """Computes the mutual information MI(col0:col1|evidence).
 
         Mutual information with conditioning variables can be interpreted in two
@@ -400,6 +400,9 @@ class State(object):
         mi : float
             A point estimate of the mutual information.
         """
+        if N is None:
+            N = 1000
+
         if evidence is None:
             evidence = []
 
@@ -420,7 +423,7 @@ class State(object):
             return - np.sum(PX) / N
 
     def conditional_mutual_information(self, col0, col1, evidence, T=100,
-            N=1000):
+            N=None):
         """Computes conditional mutual information MI(col0:col1|evidence).
 
         Mutual information with conditioning variables can be interpreted in two
@@ -448,6 +451,8 @@ class State(object):
         mi : float
             A point estimate of the mutual information.
         """
+        if T is None:
+            T = 100
         samples = self.simulate(-1, evidence, N=T)
         mi = sum(self.mutual_information(col0, col1, evidence=zip(evidence, s),
             N=N) for s in samples)
