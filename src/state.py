@@ -825,9 +825,6 @@ class State(object):
         # Dataset.
         metadata['X'] = self.X.tolist()
 
-        # Entropy.
-        metadata['rng'] = self.rng
-
         # View partition data.
         metadata['alpha'] = self.alpha
         metadata['Zv'] = self.Zv
@@ -859,16 +856,20 @@ class State(object):
         pickle.dump(metadata, fileptr)
 
     @classmethod
-    def from_metadata(cls, metadata):
-        X = np.asarray(metadata['X'])
-        if 'seed' in metadata:  # XXX Backward compatability.
-            metadata['rng'] = gu.gen_rng(metadata['seed'])
-        return cls(X, metadata['cctypes'], metadata['distargs'],
-            Zv=metadata['Zv'], Zrv=metadata['Zrv'], alpha=metadata['alpha'],
-            view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
-            rng=metadata['rng'])
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        return cls(
+            np.asarray(metadata['X']),
+            metadata['cctypes'],
+            metadata['distargs'],
+            Zv=metadata['Zv'],
+            Zrv=metadata['Zrv'],
+            alpha=metadata['alpha'],
+            view_alphas=metadata['view_alphas'],
+            hypers=metadata['hypers'],
+            rng=rng)
 
     @classmethod
-    def from_pickle(cls, fileptr):
+    def from_pickle(cls, fileptr, rng=None):
         metadata = pickle.load(fileptr)
-        return cls.from_metadata(metadata)
+        return cls.from_metadata(metadata, rng=rng)
