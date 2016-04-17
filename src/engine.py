@@ -30,12 +30,12 @@ def _intialize((X, cctypes, distargs, rng)):
     return state.to_metadata()
 
 def _modify((name, metadata, args)):
-    state = State.from_metadata(metadata)
+    state = State.from_metadata(metadata, rng=metadata['rng'])
     getattr(state, name)(*args)
     return state.to_metadata()
 
 def _evaluate((name, metadata, args)):
-    state = State.from_metadata(metadata)
+    state = State.from_metadata(metadata, rng=metadata['rng'])
     return getattr(state, name)(*args)
 
 class Engine(object):
@@ -143,7 +143,7 @@ class Engine(object):
         self._close_mapper(pool)
         return np.asarray(samples)
 
-    def mutual_information(self, col0, col1, evidence=None, N=1000,
+    def mutual_information(self, col0, col1, evidence=None, N=None,
             multithread=1):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
@@ -153,8 +153,8 @@ class Engine(object):
         self._close_mapper(pool)
         return np.asarray(mis)
 
-    def conditional_mutual_information(self, col0, col1, evidence, T=100,
-            N=1000, multithread=1):
+    def conditional_mutual_information(self, col0, col1, evidence, T=None,
+            N=None, multithread=1):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
         args = [('conditional_mutual_information', self.metadata[i],
@@ -165,8 +165,7 @@ class Engine(object):
 
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
-        if states is None:
-            states = xrange(self.num_states)
+        if states is None: states = xrange(self.num_states)
         Zvs = [self.metadata[s]['Zv'] for s in states]
         counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
         return sum(counts) / float(len(states))
@@ -179,21 +178,22 @@ class Engine(object):
             D[i,j] = D[j,i] = self.dependence_probability(i,j, states=states)
         return D
 
-    def row_similarity(self,row0, row1, states=None):
+    def row_similarity(self, row0, row1, cols=None, states=None):
         """Compute similiarty between row0 and row1 as float."""
-        if states is None:
-            states = xrange(self.num_states)
-        prob = 0
-        for Zrv in [self.metadata[s]['Zrv'] for s in states]:
-            prob += sum([Zr[row0]==Zr[row1] for Zr in Zrv]) / float(len(Zrv))
-        return prob / len(states)
+        if states is None: states = xrange(self.num_states)
+        if cols is None: cols = range(len(self.metadata[0]['cctypes']))
+        def row_sim_state(s):
+            Zv, Zrv = self.metadata[s]['Zv'], self.metadata[s]['Zrv']
+            Zrs = [Zrv[v] for v in set(Zv[c] for c in cols)]
+            return sum([Zr[row0]==Zr[row1] for Zr in Zrs]) / float(len(Zrv))
+        return sum(map(row_sim_state, states)) / len(states)
 
-    def row_similarity_pairwise(self, states=None):
+    def row_similarity_pairwise(self, cols=None, states=None):
         """Compute dependence probability between all pairs as matrix."""
         n_rows = len(self.metadata[0]['X'])
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
-            S[i,j] = S[j,i] = self.row_similarity(i,j, states=states)
+            S[i,j] = S[j,i] = self.row_similarity(i,j, cols=cols, states=states)
         return S
 
     def get_state(self, index):
@@ -213,7 +213,6 @@ class Engine(object):
 
     def to_metadata(self):
         metadata = dict()
-        metadata['rng'] = self.rng
         metadata['state_metadatas'] = self.metadata
         return metadata
 
@@ -239,13 +238,13 @@ class Engine(object):
         return [gu.gen_rng(s) for s in seeds]
 
     @classmethod
-    def from_metadata(cls, metadata):
-        if 'rng' not in metadata:  # XXX Backward compatability.
-            metadata['rng'] = gu.gen_rng(0)
-        return cls(metadata['state_metadatas'][0]['X'],
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        return cls(
+            metadata['state_metadatas'][0]['X'],
             metadata['state_metadatas'][0]['cctypes'],
             metadata['state_metadatas'][0]['distargs'],
-            rng=metadata['rng'],
+            rng=rng,
             state_metadatas=metadata['state_metadatas'])
 
     def to_pickle(self, fileptr):
@@ -253,6 +252,6 @@ class Engine(object):
         pickle.dump(metadata, fileptr)
 
     @classmethod
-    def from_pickle(cls, fileptr):
+    def from_pickle(cls, fileptr, rng=None):
         metadata = pickle.load(fileptr)
-        return cls.from_metadata(metadata)
+        return cls.from_metadata(metadata, rng=rng)

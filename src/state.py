@@ -375,7 +375,7 @@ class State(object):
     # --------------------------------------------------------------------------
     # Mutual information
 
-    def mutual_information(self, col0, col1, evidence=None, N=1000):
+    def mutual_information(self, col0, col1, evidence=None, N=None):
         """Computes the mutual information MI(col0:col1|evidence).
 
         Mutual information with conditioning variables can be interpreted in two
@@ -400,6 +400,9 @@ class State(object):
         mi : float
             A point estimate of the mutual information.
         """
+        if N is None:
+            N = 1000
+
         if evidence is None:
             evidence = []
 
@@ -419,8 +422,8 @@ class State(object):
             PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
             return - np.sum(PX) / N
 
-    def conditional_mutual_information(self, col0, col1, evidence, T=100,
-            N=1000):
+    def conditional_mutual_information(self, col0, col1, evidence, T=None,
+            N=None):
         """Computes conditional mutual information MI(col0:col1|evidence).
 
         Mutual information with conditioning variables can be interpreted in two
@@ -448,6 +451,8 @@ class State(object):
         mi : float
             A point estimate of the mutual information.
         """
+        if T is None:
+            T = 100
         samples = self.simulate(-1, evidence, N=T)
         mi = sum(self.mutual_information(col0, col1, evidence=zip(evidence, s),
             N=N) for s in samples)
@@ -825,9 +830,6 @@ class State(object):
         # Dataset.
         metadata['X'] = self.X.tolist()
 
-        # Entropy.
-        metadata['rng'] = self.rng
-
         # View partition data.
         metadata['alpha'] = self.alpha
         metadata['Zv'] = self.Zv
@@ -859,16 +861,20 @@ class State(object):
         pickle.dump(metadata, fileptr)
 
     @classmethod
-    def from_metadata(cls, metadata):
-        X = np.asarray(metadata['X'])
-        if 'seed' in metadata:  # XXX Backward compatability.
-            metadata['rng'] = gu.gen_rng(metadata['seed'])
-        return cls(X, metadata['cctypes'], metadata['distargs'],
-            Zv=metadata['Zv'], Zrv=metadata['Zrv'], alpha=metadata['alpha'],
-            view_alphas=metadata['view_alphas'], hypers=metadata['hypers'],
-            rng=metadata['rng'])
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        return cls(
+            np.asarray(metadata['X']),
+            metadata['cctypes'],
+            metadata['distargs'],
+            Zv=metadata['Zv'],
+            Zrv=metadata['Zrv'],
+            alpha=metadata['alpha'],
+            view_alphas=metadata['view_alphas'],
+            hypers=metadata['hypers'],
+            rng=rng)
 
     @classmethod
-    def from_pickle(cls, fileptr):
+    def from_pickle(cls, fileptr, rng=None):
         metadata = pickle.load(fileptr)
-        return cls.from_metadata(metadata)
+        return cls.from_metadata(metadata, rng=rng)

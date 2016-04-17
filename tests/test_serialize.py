@@ -44,7 +44,7 @@ class TestSerialize(unittest.TestCase):
             with open(temp.name, 'w') as f:
                 state.to_pickle(f)
             with open(temp.name, 'r') as f:
-                state_clone = state.from_pickle(f)
+                state_clone = state.from_pickle(f, rng=gu.gen_rng(10))
 
     def test_engine_serialize(self):
         # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
