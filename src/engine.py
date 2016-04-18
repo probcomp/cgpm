@@ -19,6 +19,7 @@ import multiprocessing
 import pickle
 
 import numpy as np
+from scipy.misc import logsumexp
 
 from gpmcc.state import State
 from gpmcc.utils import general as gu
@@ -236,6 +237,21 @@ class Engine(object):
     def _get_rngs(self):
         seeds = self.rng.randint(low=1, high=2**32-1, size=self.num_states)
         return [gu.gen_rng(s) for s in seeds]
+
+    def _process_logpdfs(self, logpdfs, rowid, evidence=None, multithread=1):
+        assert len(logpdfs) == len(self.metadata)
+        weights = np.zeros(len(logpdfs)) if evidence is None else\
+            self.logpdf(rowid, evidence, multithread=multithread)
+        return logsumexp(logpdfs + weights) - logsumexp(weights)
+
+    def _process_samples(self, samples, rowid, evidence=None, multithread=1):
+        assert len(samples) == len(self.metadata)
+        assert all(len(s) == len(samples[0]) for s in samples[1:])
+        N = len(samples[0])
+        weights = np.zeros(len(samples)) if evidence is None else\
+            self.logpdf(rowid, evidence, multithread=multithread)
+        n_model = np.bincount(gu.log_pflip(weights, size=N, rng=self.rng))
+        return np.vstack([s[:n] for s,n in zip(samples, n_model) if n])
 
     @classmethod
     def from_metadata(cls, metadata, rng=None):

@@ -70,6 +70,8 @@ class EngineDimensionsTest(unittest.TestCase):
                 for state_logpdfs in logpdfs:
                     # Each element in logpdfs should be a single float.
                     self.assertTrue(isinstance(state_logpdfs, float))
+                lp = self.engine._process_logpdfs(logpdfs, rowid, evidence=E)
+                self.assertTrue(isinstance(lp, float))
 
     def test_simulate__ci_(self):
         for rowid in [-1, 5]:
@@ -86,6 +88,8 @@ class EngineDimensionsTest(unittest.TestCase):
                         for s in states_samples:
                             # Each raw sample should be len(Q) dimensional.
                             self.assertEqual(len(s), len(Q))
+                    s = self.engine._process_samples(samples, rowid, evidence=E)
+                    self.assertEqual(len(s), N)
 
     def test_logpdf_bulk__ci_(self):
         rowid1, query1, evidence1 = 5, [(0,0), (5,3)], [(2,1), (3,.5)]
