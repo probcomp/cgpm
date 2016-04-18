@@ -96,15 +96,12 @@ def logp_crp_fresh(Nk, Z, alpha, m=1):
 
 def log_pflip(logp, size=None, rng=None):
     """Categorical draw from a vector logp of log probabilities."""
-    if len(logp) == 1:
-        return 0
-    p = np.exp(log_normalize(logp))
-    return pflip(p, size=size, rng=rng)
+    return pflip(np.exp(log_normalize(logp)), size=size, rng=rng)
 
 def pflip(p, size=None, rng=None):
     """Categorical draw from a vector p of probabilities."""
     if len(p) == 1:
-        return 0
+        return 0 if size is None else [0] * size
     if rng is None:
         rng = gen_rng()
     p = normalize(p)
