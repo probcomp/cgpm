@@ -43,68 +43,67 @@ class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel States."""
 
     def __init__(self, X, cctypes, distargs=None, num_states=1, rng=None,
-            state_metadatas=None, multithread=1):
-        """Do not explicitly use state_metadatas, use Engine.from_metadata."""
+            states=None, multithread=1):
         self.rng = gu.gen_rng() if rng is None else rng
-        if state_metadatas:
-            self.metadata = state_metadatas
-            self.num_states = len(state_metadatas)
+        if states:
+            self.states = states
+            self.num_states = len(states)
         else:
             self.num_states = num_states
             pool, mapper = self._get_mapper(multithread)
             args = ((X, cctypes, distargs, rng) for rng in self._get_rngs())
-            self.metadata = mapper(_intialize, args)
+            self.states = mapper(_intialize, args)
             self._close_mapper(pool)
 
     def transition(self, N=None, S=None, kernels=None, target_views=None,
             target_rows=None, target_cols=None, do_plot=False, do_progress=True,
             multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('transition', self.metadata[i], (N, S, kernels, target_views,
+        args = [('transition', self.states[i], (N, S, kernels, target_views,
             target_rows, target_cols, do_plot, do_progress)) for i in
             xrange(self.num_states)]
-        self.metadata = mapper(_modify, args)
+        self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def incorporate_dim(self, X, cctype, distargs=None, v=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('incorporate_dim', self.metadata[i],
+        args = [('incorporate_dim', self.states[i],
             (X, cctype, distargs, v)) for i in xrange(self.num_states)]
-        self.metadata = mapper(_modify, args)
+        self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def unincorporate_dim(self, col, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('unincorporate_dim', self.metadata[i], (col,)) for i in
+        args = [('unincorporate_dim', self.states[i], (col,)) for i in
             xrange(self.num_states)]
-        self.metadata = mapper(_modify, args)
+        self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def incorporate_rows(self, X, k=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('incorporate_rows', self.metadata[i], (X, k)) for i in
+        args = [('incorporate_rows', self.states[i], (X, k)) for i in
             xrange(self.num_states)]
-        self.metadata = mapper(_modify, args)
+        self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def unincorporate_rows(self, rowid, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('unincorporate_rows', self.metadata[i], (rowid,)) for i in
+        args = [('unincorporate_rows', self.states[i], (rowid,)) for i in
             xrange(self.num_states)]
-        self.metadata = mapper(_modify, args)
+        self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def update_cctype(self, col, cctype, hypers=None, distargs=None,
             multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('update_cctype', self.metadata[i],
+        args = [('update_cctype', self.states[i],
             (col, cctype, hypers, distargs)) for i in xrange(self.num_states)]
-        self.metadata = mapper(_modify, args)
+        self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def logpdf(self, rowid, query, evidence=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('logpdf', self.metadata[i], (rowid, query, evidence)) for i in
+        args = [('logpdf', self.states[i], (rowid, query, evidence)) for i in
             xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -112,7 +111,7 @@ class Engine(object):
 
     def logpdf_bulk(self, rowids, queries, evidences=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('logpdf_bulk', self.metadata[i], (rowids, queries, evidences))
+        args = [('logpdf_bulk', self.states[i], (rowids, queries, evidences))
             for i in xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -120,7 +119,7 @@ class Engine(object):
 
     def logpdf_marginal(self, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('logpdf_marginal', self.metadata[i], ()) for i in
+        args = [('logpdf_marginal', self.states[i], ()) for i in
             xrange(self.num_states)]
         logpdf_marginals = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -128,7 +127,7 @@ class Engine(object):
 
     def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('simulate', self.metadata[i], (rowid, query, evidence, N)) for
+        args = [('simulate', self.states[i], (rowid, query, evidence, N)) for
             i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -138,7 +137,7 @@ class Engine(object):
             multithread=1):
         """Returns list of simualate_bulk, one for each state."""
         pool, mapper = self._get_mapper(multithread)
-        args = [('simulate_bulk', self.metadata[i],
+        args = [('simulate_bulk', self.states[i],
             (rowids, queries, evidences, Ns)) for i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -148,7 +147,7 @@ class Engine(object):
             multithread=1):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
-        args = [('mutual_information', self.metadata[i],
+        args = [('mutual_information', self.states[i],
             (col0, col1, evidence, N)) for i in xrange(self.num_states)]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -158,7 +157,7 @@ class Engine(object):
             N=None, multithread=1):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
-        args = [('conditional_mutual_information', self.metadata[i],
+        args = [('conditional_mutual_information', self.states[i],
             (col0, col1, evidence, T, N)) for i in xrange(self.num_states)]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -167,13 +166,13 @@ class Engine(object):
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
         if states is None: states = xrange(self.num_states)
-        Zvs = [self.metadata[s]['Zv'] for s in states]
+        Zvs = [self.states[s]['Zv'] for s in states]
         counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
         return sum(counts) / float(len(states))
 
     def dependence_probability_pairwise(self, states=None):
         """Compute dependence probability between all pairs as matrix."""
-        n_cols = len(self.metadata[0]['X'][0])
+        n_cols = len(self.states[0]['X'][0])
         D = np.eye(n_cols)
         for i,j in itertools.combinations(range(n_cols), 2):
             D[i,j] = D[j,i] = self.dependence_probability(i,j, states=states)
@@ -182,39 +181,39 @@ class Engine(object):
     def row_similarity(self, row0, row1, cols=None, states=None):
         """Compute similiarty between row0 and row1 as float."""
         if states is None: states = xrange(self.num_states)
-        if cols is None: cols = range(len(self.metadata[0]['cctypes']))
+        if cols is None: cols = range(len(self.states[0]['cctypes']))
         def row_sim_state(s):
-            Zv, Zrv = self.metadata[s]['Zv'], self.metadata[s]['Zrv']
+            Zv, Zrv = self.states[s]['Zv'], self.states[s]['Zrv']
             Zrs = [Zrv[v] for v in set(Zv[c] for c in cols)]
             return sum([Zr[row0]==Zr[row1] for Zr in Zrs]) / float(len(Zrv))
         return sum(map(row_sim_state, states)) / len(states)
 
     def row_similarity_pairwise(self, cols=None, states=None):
         """Compute dependence probability between all pairs as matrix."""
-        n_rows = len(self.metadata[0]['X'])
+        n_rows = len(self.states[0]['X'])
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
             S[i,j] = S[j,i] = self.row_similarity(i,j, cols=cols, states=states)
         return S
 
     def get_state(self, index):
-        return State.from_metadata(self.metadata[index])
+        return State.from_metadata(self.states[index])
 
     def get_states(self, indices):
         return [self.get_state(i) for i in indices]
 
     def drop_state(self, index):
-        del self.metadata[index]
-        self.num_states = len(self.metadata)
+        del self.states[index]
+        self.num_states = len(self.states)
 
     def drop_states(self, indices):
         drop = set(indices)
-        self.metadata = [m for i,m in enumerate(self.metadata) if i not in drop]
-        self.num_states = len(self.metadata)
+        self.states = [m for i,m in enumerate(self.states) if i not in drop]
+        self.num_states = len(self.states)
 
     def to_metadata(self):
         metadata = dict()
-        metadata['state_metadatas'] = self.metadata
+        metadata['states'] = self.states
         return metadata
 
     def _get_mapper(self, multithread):
@@ -230,22 +229,23 @@ class Engine(object):
             pool.close()
 
     def _seed_metadata(self):
-        if hasattr(self, 'metadata'):
-            for r, m in zip(self._get_rngs(), self.metadata):
-                m['rng'] = r
+        if not hasattr(self, 'states'):
+            return
+        for r, m in zip(self._get_rngs(), self.states):
+            m['rng'] = r
 
     def _get_rngs(self):
         seeds = self.rng.randint(low=1, high=2**32-1, size=self.num_states)
         return [gu.gen_rng(s) for s in seeds]
 
     def _process_logpdfs(self, logpdfs, rowid, evidence=None, multithread=1):
-        assert len(logpdfs) == len(self.metadata)
+        assert len(logpdfs) == len(self.states)
         weights = np.zeros(len(logpdfs)) if not evidence else\
             self.logpdf(rowid, evidence, evidence=None, multithread=multithread)
         return logsumexp(logpdfs + weights) - logsumexp(weights)
 
     def _process_samples(self, samples, rowid, evidence=None, multithread=1):
-        assert len(samples) == len(self.metadata)
+        assert len(samples) == len(self.states)
         assert all(len(s) == len(samples[0]) for s in samples[1:])
         N = len(samples[0])
         weights = np.zeros(len(samples)) if not evidence else\
@@ -256,12 +256,16 @@ class Engine(object):
     @classmethod
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
+        # XXX Backward compatability.
+        if 'states' not in metadata:
+            metadata['states'] = metadata['state_metadatas']
+        # XXX Backward compatability.
         return cls(
-            metadata['state_metadatas'][0]['X'],
-            metadata['state_metadatas'][0]['cctypes'],
-            metadata['state_metadatas'][0]['distargs'],
+            metadata['states'][0]['X'],
+            metadata['states'][0]['cctypes'],
+            metadata['states'][0]['distargs'],
             rng=rng,
-            state_metadatas=metadata['state_metadatas'])
+            states=metadata['states'])
 
     def to_pickle(self, fileptr):
         metadata = self.to_metadata()
