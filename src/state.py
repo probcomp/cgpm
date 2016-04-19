@@ -116,6 +116,8 @@ class State(object):
             else:
                 Zv = gu.simulate_crp_constrained(self.n_cols(), self.alpha,
                     self.Cd, self.Ci, self.Rd, self.Ri, rng=self.rng)
+        elif Zrv is not None:
+            assert len(Zrv) == len(set(Zv))
         self.Zv = list(Zv)
 
         # Generate views.
@@ -524,12 +526,12 @@ class State(object):
             return max(p_iters, p_seconds)
 
         if do_plot:
-            plt.ion()
-            plt.show()
+            plt.ion(); plt.show()
             layout = pu.get_state_plot_layout(self.n_cols())
-            fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
-                layout['plot_inches_x']), dpi=75, facecolor='w',
-                edgecolor='k', frameon=False, tight_layout=True)
+            fig = plt.figure(
+                figsize=(layout['plot_inches_y'], layout['plot_inches_x']),
+                dpi=75, facecolor='w', edgecolor='k', frameon=False,
+                tight_layout=True)
             self._do_plot(fig, layout)
 
         iters = 0
@@ -875,12 +877,12 @@ class State(object):
             np.asarray(metadata['X']),
             metadata['cctypes'],
             metadata['distargs'],
-            Zv=metadata['Zv'],
-            Zrv=metadata['Zrv'],
-            alpha=metadata['alpha'],
-            view_alphas=metadata['view_alphas'],
-            hypers=metadata['hypers'],
-            iterations=metadata['iterations'],
+            Zv=metadata.get('Zv', None),
+            Zrv=metadata.get('Zrv', None),
+            alpha=metadata.get('alpha', None),
+            view_alphas=metadata.get('view_alphas', None),
+            hypers=metadata.get('hypers', None),
+            iterations=metadata.get('iterations', None),
             rng=rng)
 
     @classmethod
