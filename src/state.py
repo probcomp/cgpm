@@ -835,7 +835,6 @@ class State(object):
         metadata['Zv'] = self.Zv
 
         # View data.
-        metadata['Nk'] = []
         metadata['Zrv'] = []
         metadata['view_alphas'] = []
 
@@ -850,7 +849,6 @@ class State(object):
             metadata['distargs'].append(dim.distargs)
 
         for view in self.views:
-            metadata['Nk'].append(view.Nk)
             metadata['Zrv'].append(view.Zr)
             metadata['view_alphas'].append(view.alpha)
 
