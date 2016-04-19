@@ -34,7 +34,7 @@ class State(object):
 
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
             view_alphas=None, hypers=None, Cd=None, Ci=None, Rd=None, Ri=None,
-            rng=None):
+            iterations=None, rng=None):
         """Construct a State.
 
         Parameters
@@ -71,6 +71,8 @@ class State(object):
             Each entry is (col: Ci), where col is a column number and Ci is a
             list of independence constraints for the rows with respect to that
             column (see doc for Ci).
+        iterations : dict(str:int), optional
+            Metadata holding the number of iters each kernel has been run.
         rng : np.random.RandomState, optional.
             Source of entropy.
         """
@@ -125,6 +127,10 @@ class State(object):
             view = View(self.X, view_dims, Zr=Zr, alpha=alpha, rng=self.rng)
             self.views.append(view)
 
+        # Iteration metadata.
+        self.iterations = iterations if iterations is not None else {}
+
+        # Validate.
         self._check_partitions()
 
     # --------------------------------------------------------------------------
@@ -536,6 +542,7 @@ class State(object):
                         self._do_progress(p)
                     break
                 _kernel_lookup[k]()
+                self.iterations[k] = self.iterations.get(k,0) + 1
                 if do_progress:
                     self._do_progress(p)
                 if do_plot:
@@ -830,6 +837,9 @@ class State(object):
         # Dataset.
         metadata['X'] = self.X.tolist()
 
+        # Iteration counts.
+        metadata['iterations'] = self.iterations
+
         # View partition data.
         metadata['alpha'] = self.alpha
         metadata['Zv'] = self.Zv
@@ -870,6 +880,7 @@ class State(object):
             alpha=metadata['alpha'],
             view_alphas=metadata['view_alphas'],
             hypers=metadata['hypers'],
+            iterations=metadata['iterations'],
             rng=rng)
 
     @classmethod
