@@ -34,8 +34,8 @@ class UpdateCctypeTest(unittest.TestCase):
         cls.T = T.T
 
     def test_categorical_bernoulli(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs,
-            rng=gu.gen_rng(0))
+        state = State(
+            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(self.cctypes.index('categorical'), 'bernoulli')
         state.transition(N=1)
@@ -43,8 +43,8 @@ class UpdateCctypeTest(unittest.TestCase):
             distargs={'k':2})
 
     def test_poisson_categorical(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs,
-            rng=gu.gen_rng(0))
+        state = State(
+            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(self.cctypes.index('categorical'), 'poisson')
         state.transition(N=1)
@@ -52,8 +52,8 @@ class UpdateCctypeTest(unittest.TestCase):
             distargs={'k':2})
 
     def test_vonmises_normal(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs,
-            rng=gu.gen_rng(0))
+        state = State(
+            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(self.cctypes.index('vonmises'), 'normal')
         state.transition(N=1)
@@ -64,8 +64,8 @@ class UpdateCctypeTest(unittest.TestCase):
             state.update_cctype(self.cctypes.index('normal'), 'vonmises')
 
     def test_geometric_exponential(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs,
-            rng=gu.gen_rng(0))
+        state = State(
+            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
         state.transition(N=1)
         state.update_cctype(self.cctypes.index('geometric'), 'exponential')
         state.transition(N=1)
@@ -75,15 +75,22 @@ class UpdateCctypeTest(unittest.TestCase):
             state.update_cctype(self.cctypes.index('exponential'), 'geometric')
 
     def test_categorical_forest(self):
-        state = State(self.T, self.cctypes, distargs=self.distargs,
-            rng=gu.gen_rng(0))
+        state = State(
+            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
         state.transition(N=1)
         cat_id = self.cctypes.index('categorical')
         cat_distargs = self.distargs[cat_id]
         state.update_cctype(cat_id, 'random_forest', distargs=cat_distargs)
 
+        bernoulli_id = self.cctypes.index('bernoulli')
+        state.incorporate_dim(
+            self.T[:,bernoulli_id], 'bernoulli', v=state.Zv[cat_id])
+        state.update_cctype(
+            len(state.dims())-1, 'random_forest', distargs={'k':2})
+
         # Run valid transitions.
-        state.transition(N=2, kernels=['rows','column_params','column_hypers'],
+        state.transition(
+            N=2, kernels=['rows','column_params','column_hypers'],
             target_views=[state.Zv[cat_id]])
 
         # Running column transition should raise.
@@ -91,8 +98,8 @@ class UpdateCctypeTest(unittest.TestCase):
             state.transition(N=1, kernels=['columns'])
 
         # Updating cctype in singleton View should raise.
-        state.incorporate_dim(self.T[:,cat_id], 'categorical', cat_distargs,
-            v=len(state.views))
+        state.incorporate_dim(
+            self.T[:,cat_id], 'categorical', cat_distargs, v=len(state.views))
         with self.assertRaises(ValueError):
             state.update_cctype(
                 len(state.dims())-1, 'random_forest', distargs=cat_distargs)

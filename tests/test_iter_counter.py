@@ -16,8 +16,6 @@
 
 import unittest
 
-import numpy as np
-
 from gpmcc.state import State
 from gpmcc.utils import general as gu
 
