@@ -597,7 +597,6 @@ class State(object):
             self.views[v].transition_rows(rows=rows)
 
     def transition_columns(self, cols=None, m=2):
-        """Transition column assignment to views."""
         if self.n_cols() == 1:
             return
         if cols is None:
