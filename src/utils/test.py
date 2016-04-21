@@ -243,7 +243,7 @@ def _gen_bernoulli_data(Z, rng, separation=.9, distargs=None):
     return Tc
 
 def _gen_categorical_data(Z, rng, separation=.9, distargs=None):
-    k = distargs['k']
+    k = int(distargs['k'])
     n_rows = len(Z)
 
     if separation > .95:
@@ -267,7 +267,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights,
     Zv = [v for v in range(n_views)]
     for _ in xrange(n_cols - n_views):
         v = gu.pflip(view_weights, rng=rng)
-        Zv.append(v)
+        Zv.append(int(v))
 
     rng.shuffle(Zv)
     assert len(Zv) == n_cols
@@ -279,7 +279,7 @@ def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights,
         for _ in xrange(n_rows - n_clusters):
             c_weights = np.copy(clusters_weights[v])
             c = gu.pflip(c_weights, rng=rng)
-            Z.append(c)
+            Z.append(int(c))
         rng.shuffle(Z)
         Zc.append(Z)
 
