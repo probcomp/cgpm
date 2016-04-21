@@ -48,7 +48,7 @@ class Vonmises(DistributionGpm):
         self.k = k    # Vonmises kappa.
 
     def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1.0
         self.sum_sin_x += sin(x)
         self.sum_cos_x += cos(x)
@@ -56,12 +56,14 @@ class Vonmises(DistributionGpm):
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N -= 1.0
         self.sum_sin_x -= sin(x)
         self.sum_cos_x -= cos(x)
 
     def logpdf(self, x, y=None):
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return Vonmises.calc_predictive_logp(
             x, self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 
@@ -138,10 +140,6 @@ class Vonmises(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_sin_x, sum_cos_x, a, b, k):
-        try:
-            x, y = Vonmises.preprocess(x, None)
-        except ValueError:
-            return -float('inf')
         assert N >= 0
         assert a > 0
         assert k > 0

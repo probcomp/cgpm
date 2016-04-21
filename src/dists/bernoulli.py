@@ -41,18 +41,20 @@ class Bernoulli(DistributionGpm):
         self.beta = beta
 
     def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1
         self.x_sum += x
 
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N -= 1
         self.x_sum -= x
 
     def logpdf(self, x, y=None):
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return Bernoulli.calc_predictive_logp(
             x, self.N, self.x_sum, self.alpha, self.beta)
 
@@ -123,10 +125,6 @@ class Bernoulli(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, x_sum, alpha, beta):
-        try:
-            x, y = Bernoulli.preprocess(x, None)
-        except ValueError:
-            return -float('inf')
         log_denom = log(N + alpha + beta)
         if x == 1:
             return log(x_sum + alpha) - log_denom

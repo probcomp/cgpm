@@ -44,13 +44,13 @@ class Poisson(DistributionGpm):
         self.b = b
 
     def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1.0
         self.sum_x += x
         self.sum_log_fact_x += gammaln(x+1)
 
     def unincorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
@@ -58,6 +58,8 @@ class Poisson(DistributionGpm):
         self.sum_log_fact_x -= gammaln(x+1)
 
     def logpdf(self, x, y=None):
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return Poisson.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
 
@@ -127,10 +129,6 @@ class Poisson(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
-        try:
-            x, y = Poisson.preprocess(x, None)
-        except ValueError:
-            return -float('inf')
         an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
         am, bm = Poisson.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Poisson.calc_log_Z(an, bn)

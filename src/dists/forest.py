@@ -62,10 +62,8 @@ class RandomForest(DistributionGpm):
             raise ValueError('Observation %s not incorporated.' % str((x, y)))
 
     def logpdf(self, x, y=None):
-        try:
-            x, y = RandomForest.preprocess(x, y, self.get_distargs())
-        except ValueError:
-            return -float('inf')
+        try: x, y = RandomForest.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return RandomForest.calc_predictive_logp(
             x, y, self.regressor, self.counts, self.alpha)
 

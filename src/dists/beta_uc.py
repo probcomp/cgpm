@@ -54,7 +54,7 @@ class BetaUC(DistributionGpm):
             assert self.strength > 0 and 0 < self.balance < 1
 
     def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1.
         self.sum_log_x += log(x)
         self.sum_minus_log_x += log(1.-x)
@@ -62,7 +62,7 @@ class BetaUC(DistributionGpm):
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N -= 1.
         if self.N <= 0:
             self.sum_log_x = 0
@@ -72,6 +72,8 @@ class BetaUC(DistributionGpm):
             self.sum_minus_log_x -= log(1.-x)
 
     def logpdf(self, x, y=None):
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
     def logpdf_marginal(self):
@@ -168,10 +170,6 @@ class BetaUC(DistributionGpm):
     @staticmethod
     def calc_predictive_logp(x, strength, balance):
         assert strength > 0 and balance > 0 and balance < 1
-        try:
-            x, y = BetaUC.preprocess(x, None)
-        except ValueError:
-            return -float('inf')
         alpha = strength * balance
         beta = strength * (1.-balance)
         return scipy.stats.beta.logpdf(x, alpha, beta)

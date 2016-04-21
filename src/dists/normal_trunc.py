@@ -65,6 +65,8 @@ class NormalTrunc(DistributionGpm):
             self.sum_x_sq -= x*x
 
     def logpdf(self, x, y=None):
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         logpdf_unorm = NormalTrunc.calc_predictive_logp(
             x, self.mu, self.sigma, self.l, self.h)
         logcdf_norm = NormalTrunc.calc_log_normalizer(
@@ -158,10 +160,6 @@ class NormalTrunc(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, mu, sigma, l, h):
-        try:
-            x, y = NormalTrunc.preprocess(x, None, {'l':l, 'h':h})
-        except ValueError:
-            return -float('inf')
         return norm.logpdf(x, loc=mu, scale=sigma)
 
     @staticmethod
