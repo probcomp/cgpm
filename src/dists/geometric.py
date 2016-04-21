@@ -14,12 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import log
-
-import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import betaln
-from scipy.stats import beta, geom
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
@@ -58,6 +53,8 @@ class Geometric(DistributionGpm):
         self.sum_x -= x
 
     def logpdf(self, x, y=None):
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return Geometric.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
 
@@ -125,10 +122,6 @@ class Geometric(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
-        try:
-            x, y = Geometric.preprocess(x, None)
-        except ValueError:
-            return -float('inf')
         an, bn = Geometric.posterior_hypers(N, sum_x, a, b)
         am, bm = Geometric.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Geometric.calc_log_Z(an, bn)

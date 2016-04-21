@@ -60,10 +60,8 @@ class Categorical(DistributionGpm):
         self.counts[x] -= 1
 
     def logpdf(self, x, y=None):
-        try:
-            x, y = self.preprocess(x, None, self.get_distargs())
-        except ValueError:
-            return -float('inf')
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return Categorical.calc_predictive_logp(
             x, self.N, self.counts, self.alpha)
 

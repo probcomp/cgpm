@@ -19,49 +19,46 @@ import pytest
 from gpmcc.utils import config as cu
 
 
-test_inputs = {
-    'bernoulli'         :
-        (None, [0, 1.], [-1, .5, 3]),
-    'beta_uc'           :
-        (None, [.3, .1, .9], [-1, 1.02, 21]),
-    'categorical'       :
-        ({'k':4}, [0., 1, 2, 3.], [-1, 2.5, 4]),
-    'exponential'       :
-        (None, [0, 1, 2, 3], [-1, -2.5]),
-    'geometric'         :
-        (None, [0, 2, 12], [-1, .5, -4]),
-    'lognormal'         :
-        (None, [1, 2, 3], [-12, -0.01, 0]),
-    'normal'            :
-        (None, [-1, 0, 10], []),
-    'normal_trunc'      :
-        ({'l':-1,'h':10}, [0, 4, 9], [44,-1.02]),
-    'poisson'           :
-        (None, [0, 5, 11], [-1, .5, -4]),
-    'vonmises'          :
-        (None, [0.1, 3.14, 6.2], [-1, 7, 12])
+cctypes_distargs_good_bad = {
+    'bernoulli'         : (None, [0, 1.], [-1, .5, 3]),
+    'beta_uc'           : (None, [.3, .1, .9], [-1, 1.02, 21]),
+    'categorical'       : ({'k':4}, [0., 1, 2, 3.], [-1, 2.5, 4]),
+    'exponential'       : (None, [0, 1, 2, 3], [-1, -2.5]),
+    'geometric'         : (None, [0, 2, 12], [-1, .5, -4]),
+    'lognormal'         : (None, [1, 2, 3], [-12, -0.01, 0]),
+    'normal'            : (None, [-1, 0, 10], []),
+    'normal_trunc'      : ({'l':-1,'h':10}, [0, 4, 9], [44,-1.02]),
+    'poisson'           : (None, [0, 5, 11], [-1, .5, -4]),
+    'random_forest'     : ({'k':1, 'cctypes':[0,1]}, [(0,[1,2])], [(-1,[1,2])]),
+    'vonmises'          : (None, [0.1, 3.14, 6.2], [-1, 7, 12])
 }
 
-def test_distributions():
-    for cctype, params in test_inputs.iteritems():
-        distargs, good, bad = params
-        assert_distribution(cctype, distargs, good, bad)
+
+@pytest.mark.parametrize('cctype', cctypes_distargs_good_bad.keys())
+def test_distributions(cctype):
+    (distargs, good, bad) = cctypes_distargs_good_bad[cctype]
+    assert_distribution(cctype, distargs, good, bad)
+
 
 def assert_distribution(cctype, distargs, good, bad):
-    def test_good(g):
-        print cctype, g
-        model.incorporate(g)
-        model.unincorporate(g)
-        assert model.logpdf(g) != -float('inf')
-    def test_bad(b):
-        with pytest.raises(ValueError):
-            print cctype, b
-            model.incorporate(b)
-        with pytest.raises(ValueError):
-            model.unincorporate(b)
-        assert model.logpdf(b) == -float('inf')
     model = cu.cctype_class(cctype)(distargs=distargs)
     for g in good:
-        test_good(g)
+        assert_good(model, g)
     for b in bad:
-        test_bad(b)
+        assert_bad(model, b)
+
+
+def assert_good(model, g):
+    (x, y) = (g[0], g[1]) if isinstance(g, tuple) else (g, None)
+    model.incorporate(x, y)
+    model.unincorporate(x, y)
+    assert model.logpdf(x, y) != -float('inf')
+
+
+def assert_bad(model, b):
+    (x, y) = (b[0], b[1]) if isinstance(b, tuple) else (b, None)
+    with pytest.raises(ValueError):
+        model.incorporate(x, y)
+    with pytest.raises(ValueError):
+        model.unincorporate(x, y)
+    assert model.logpdf(x, y) == -float('inf')

@@ -54,7 +54,7 @@ class Normal(DistributionGpm):
         self.nu = float(nu)
 
     def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1.
         self.sum_x += x
         self.sum_x_sq += x*x
@@ -62,7 +62,7 @@ class Normal(DistributionGpm):
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N -= 1.
         if self.N == 0:
             self.sum_x = 0.
@@ -107,7 +107,7 @@ class Normal(DistributionGpm):
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
 
-    def get_distargs():
+    def get_distargs(self):
         return {}
 
     @staticmethod

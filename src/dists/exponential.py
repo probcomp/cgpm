@@ -43,18 +43,20 @@ class Exponential(DistributionGpm):
         self.b = b
 
     def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1.0
         self.sum_x += x
 
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N -= 1.0
         self.sum_x -= x
 
     def logpdf(self, x, y=None):
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return Exponential.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
 
@@ -121,10 +123,6 @@ class Exponential(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
-        try:
-            x, y = Exponential.preprocess(x, None)
-        except ValueError:
-            return -float('inf')
         an,bn = Exponential.posterior_hypers(N, sum_x, a, b)
         am,bm = Exponential.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Exponential.calc_log_Z(an, bn)

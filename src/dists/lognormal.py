@@ -53,7 +53,7 @@ class Lognormal(DistributionGpm):
         self.nu = nu
 
     def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1.0
         self.sum_log_x += log(x)
         self.sum_log_x_sq += log(x) * log(x)
@@ -61,16 +61,14 @@ class Lognormal(DistributionGpm):
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y)
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N -= 1.0
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
 
     def logpdf(self, x, y=None):
-        try:
-            x, y = self.preprocess(x, y)
-        except:
-            return -float('inf')
+        try: x, y = self.preprocess(x, y, self.get_distargs())
+        except ValueError: return -float('inf')
         return -log(x) + Normal.calc_predictive_logp(
                     log(x), self.N, self.sum_log_x, self.sum_log_x_sq, self.m,
                     self.r, self.s, self.nu)
