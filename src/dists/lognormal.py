@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
 from math import log
 
 import numpy as np
@@ -23,9 +22,6 @@ import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 from gpmcc.dists.normal import Normal
 
-LOG2 = log(2.0)
-LOGPI = log(math.pi)
-LOG2PI = log(2.0*math.pi)
 
 class Lognormal(DistributionGpm):
     """Log-normal (zero-bounded) distribution with normal prior on mean and
@@ -117,7 +113,6 @@ class Lognormal(DistributionGpm):
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
         grids = dict()
-        ssqdev = np.var(X) * float(len(X));
         grids['m'] = gu.log_linspace(1e-4, max(X), n_grid)
         grids['r'] = gu.log_linspace(.1, float(len(X)), n_grid)
         grids['nu'] = gu.log_linspace(.1, float(len(X)), n_grid)

@@ -16,10 +16,7 @@
 
 from math import log
 
-import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import gammaln
-from scipy.stats import expon, gamma
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm

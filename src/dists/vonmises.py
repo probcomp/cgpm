@@ -95,6 +95,9 @@ class Vonmises(DistributionGpm):
     def get_hypers(self):
         return {'a' : self.a, 'b' : self.b, 'k' : self.k}
 
+    def get_params(self):
+        return {}
+
     def get_suffstats(self):
         return {'N': self.N, 'sum_sin_x' : self.sum_sin_x,
             'sum_cos_x' : self.sum_cos_x}
