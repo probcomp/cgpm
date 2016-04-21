@@ -15,8 +15,6 @@
 # limitations under the License.
 
 import math
-import warnings
-from math import log
 
 import numpy as np
 from scipy.special import gammaln
@@ -25,9 +23,6 @@ from scipy.stats import t
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
-LOG2 = log(2.0)
-LOGPI = log(math.pi)
-LOG2PI = log(2*math.pi)
 
 class Normal(DistributionGpm):
     """Normal distribution with normal prior on mean and gamma prior on
@@ -59,32 +54,35 @@ class Normal(DistributionGpm):
         self.nu = float(nu)
 
     def incorporate(self, x, y=None):
-        self.N += 1.0
+        x, y = self.preprocess(x, y)
+        self.N += 1.
         self.sum_x += x
         self.sum_x_sq += x*x
 
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        self.N -= 1.0
+        x, y = self.preprocess(x, y)
+        self.N -= 1.
         if self.N == 0:
-            self.sum_x = 0.0
-            self.sum_x_sq = 0.0
+            self.sum_x = 0.
+            self.sum_x_sq = 0.
         else:
             self.sum_x -= x
             self.sum_x_sq -= x*x
 
     def logpdf(self, x, y=None):
-        return Normal.calc_predictive_logp(x, self.N, self.sum_x,
-            self.sum_x_sq, self.m, self.r, self.s, self.nu)
+        return Normal.calc_predictive_logp(
+            x, self.N, self.sum_x, self.sum_x_sq, self.m, self.r,
+            self.s, self.nu)
 
     def logpdf_marginal(self):
-        return Normal.calc_logpdf_marginal(self.N, self.sum_x, self.sum_x_sq,
-            self.m, self.r, self.s, self.nu)
+        return Normal.calc_logpdf_marginal(
+            self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
 
     def simulate(self, y=None):
-        mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_x,
-            self.sum_x_sq, self.m, self.r, self.s, self.nu)
+        mn, rn, sn, nun = Normal.posterior_hypers(
+            self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
         return self.rng.normal(loc=mu, scale=rho**-.5)
 
@@ -108,6 +106,9 @@ class Normal(DistributionGpm):
 
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
+
+    def get_distargs():
+        return {}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -154,7 +155,7 @@ class Normal(DistributionGpm):
             N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
-        return -.5 * LOG2PI + ZM - ZN
+        return -.5 * np.log(2*np.pi) + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -162,7 +163,7 @@ class Normal(DistributionGpm):
             N, sum_x, sum_x_sq, m, r, s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
-        return -(N/2.) * LOG2PI + ZN - Z0
+        return -(N/2.) * np.log(2*np.pi) + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -175,14 +176,18 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def calc_log_Z(r, s, nu):
-        return ((nu + 1.) / 2.) * LOG2 + .5 * LOGPI - .5 * log(r) \
-                - (nu / 2.) * log(s) + gammaln(nu/2.0)
+        return (
+            ((nu + 1.) / 2.) * np.log(2)
+            + .5 * np.log(np.pi)
+            - .5 * np.log(r)
+            - (nu/2.) * np.log(s)
+            + gammaln(nu/2.0))
 
     @staticmethod
     def posterior_logcdf(x, N, sum_x, sum_x_sq, m, r, s, nu):
         mn, rn, sn, nun = Normal.posterior_hypers(
             N, sum_x, sum_x_sq, m, r, s, nu)
-        scalesq = sn/2.*(rn+1)/(nun/2.*rn)
+        scalesq = sn/2.*(rn+1) / (nun/2.*rn)
         return t.logcdf(x, 2*nun/2., loc=mn, scale=np.sqrt(scalesq))
 
     @staticmethod
@@ -190,3 +195,7 @@ class Normal(DistributionGpm):
         rho = rng.gamma(nu/2., scale=2./s)
         mu = rng.normal(loc=m, scale=1./(rho*r)**.5)
         return mu, rho
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        return x, y

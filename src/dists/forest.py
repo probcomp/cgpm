@@ -44,16 +44,14 @@ class RandomForest(DistributionGpm):
         self.regressor = regressor
 
     def incorporate(self, x, y=None):
-        assert RandomForest.validate(x, self.k)
-        assert len(y) == self.p
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.Y.append(y)
         self.x.append(x)
         self.counts[x] += 1
         self.N += 1
 
     def unincorporate(self, x, y=None):
-        assert RandomForest.validate(x, self.k)
-        assert len(y) == self.p
+        x, y = self.preprocess(x, y, self.get_distargs())
         for i in xrange(len(self.Y)):
             if np.allclose(self.Y[i], y) and self.x[i] == x:
                 del self.x[i], self.Y[i]
@@ -64,12 +62,16 @@ class RandomForest(DistributionGpm):
             raise ValueError('Observation %s not incorporated.' % str((x, y)))
 
     def logpdf(self, x, y=None):
+        try:
+            x, y = RandomForest.preprocess(x, y, self.get_distargs())
+        except ValueError:
+            return -float('inf')
         return RandomForest.calc_predictive_logp(
-            x, y, self.regressor, self.counts, self.alpha, self.k)
+            x, y, self.regressor, self.counts, self.alpha)
 
     def logpdf_marginal(self):
         return RandomForest.calc_log_likelihood(
-            self.x, self.Y, self.regressor, self.counts, self.alpha, self.k)
+            self.x, self.Y, self.regressor, self.counts, self.alpha)
 
     def simulate(self, y=None):
         logps = [self.logpdf(x, y=y) for x in xrange(self.k)]
@@ -79,7 +81,7 @@ class RandomForest(DistributionGpm):
         # Transition noise parameter.
         alphas = np.linspace(0.01, 0.99, 30)
         alpha_logps = [RandomForest.calc_log_likelihood(self.x, self.Y,
-            self.regressor, self.counts, a, self.k) for a in alphas]
+            self.regressor, self.counts, a) for a in alphas]
         index = gu.log_pflip(alpha_logps, rng=self.rng)
         self.alpha = alphas[index]
         # Transition forest.
@@ -97,6 +99,9 @@ class RandomForest(DistributionGpm):
 
     def get_suffstats(self):
         return {}
+
+    def get_distargs(self):
+        return {'k': self.k, 'p': self.p}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -133,15 +138,13 @@ class RandomForest(DistributionGpm):
         return int(x) == float(x) and 0 <= x < K
 
     @staticmethod
-    def calc_log_likelihood(X, Y, regressor, counts, alpha, k):
-        return np.sum([RandomForest.calc_predictive_logp(x, y, regressor,
-                counts, alpha, k) for x, y in zip(X,Y)])
+    def calc_log_likelihood(X, Y, regressor, counts, alpha):
+        return np.sum([RandomForest.calc_predictive_logp(
+            x, y, regressor, counts, alpha) for x, y in zip(X,Y)])
 
     @staticmethod
-    def calc_predictive_logp(x, y, regressor, counts, alpha, k):
-        if not RandomForest.validate(x, len(counts)):
-            return float('-inf')
-        logp_uniform = -np.log(k)
+    def calc_predictive_logp(x, y, regressor, counts, alpha):
+        logp_uniform = -np.log(len(counts))
         if not hasattr(regressor, 'classes_'):
             return logp_uniform
         elif x not in regressor.classes_:
@@ -152,3 +155,14 @@ class RandomForest(DistributionGpm):
             return logsumexp([
                 np.log(alpha) + logp_uniform,
                 np.log(1-alpha) + logp_rf])
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        p, k = distargs['p'], distargs['k']
+        if len(y) != p:
+            raise TypeError(
+                'RandomForest requires input length {}: {}'.format(p, y))
+        if (int(x) != float(x)) or not (0 <= x < distargs['k']):
+            raise ValueError(
+                'RandomForest requires output in [0..{}): {}'.format(k, x))
+        return int(x), y

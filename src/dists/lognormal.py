@@ -53,8 +53,7 @@ class Lognormal(DistributionGpm):
         self.nu = nu
 
     def incorporate(self, x, y=None):
-        if x <= 0:
-            raise ValueError('Lognormal requires positive observations.')
+        x, y = self.preprocess(x, y)
         self.N += 1.0
         self.sum_log_x += log(x)
         self.sum_log_x_sq += log(x) * log(x)
@@ -62,30 +61,32 @@ class Lognormal(DistributionGpm):
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        if x <= 0:
-            raise ValueError('Lognormal requires positive observations.')
+        x, y = self.preprocess(x, y)
         self.N -= 1.0
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
 
     def logpdf(self, x, y=None):
-        if x < 0:
-            return float('-inf')
-        return -log(x) + \
-            Normal.calc_predictive_logp(log(x), self.N, self.sum_log_x,
-                self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
+        try:
+            x, y = self.preprocess(x, y)
+        except:
+            return -float('inf')
+        return -log(x) + Normal.calc_predictive_logp(
+                    log(x), self.N, self.sum_log_x, self.sum_log_x_sq, self.m,
+                    self.r, self.s, self.nu)
 
     def logpdf_marginal(self):
-        return -self.sum_log_x + \
-            Normal.calc_logpdf_marginal(self.N, self.sum_log_x,
-                self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
+        return -self.sum_log_x + Normal.calc_logpdf_marginal(
+                    self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
+                    self.s, self.nu)
 
     def simulate(self, y=None):
         # XXX This implementation is not verified but will be covered in
         # future univariate simulate tests, see Github issue #14.
         # Simulate normal parameters
-        mn, rn, sn, nun = Normal.posterior_hypers(self.N, self.sum_log_x,
-            self.sum_log_x_sq, self.m, self.r, self.s, self.nu)
+        mn, rn, sn, nun = Normal.posterior_hypers(
+            self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
+            self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
         x = self.rng.normal(loc=mu, scale=rho**-.5)
         return np.exp(x)
@@ -111,6 +112,9 @@ class Lognormal(DistributionGpm):
     def get_suffstats(self):
         return {'N': self.N, 'sum_log_x': self.sum_log_x,
             'sum_log_x_sq': self.sum_log_x_sq}
+
+    def get_distargs(self):
+        return {}
 
     @staticmethod
     def construct_hyper_grids(X,n_grid=30):
@@ -141,3 +145,10 @@ class Lognormal(DistributionGpm):
     @staticmethod
     def is_numeric():
         return True
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if x <= 0:
+            raise ValueError('Lognormal requires [0,inf): {}'.format(x))
+        return x, y
+

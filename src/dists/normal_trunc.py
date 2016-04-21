@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import log
-
 import numpy as np
 from scipy.stats import norm, gamma
 
@@ -23,9 +21,6 @@ from gpmcc.dists.distribution import DistributionGpm
 from gpmcc.utils import general as gu
 from gpmcc.utils import sampling as su
 
-LOG2 = log(2.0)
-LOGPI = log(np.pi)
-LOG2PI = log(2*np.pi)
 
 class NormalTrunc(DistributionGpm):
     """Normal distribution with normal prior on mean and gamma prior on
@@ -52,13 +47,13 @@ class NormalTrunc(DistributionGpm):
                 self.l, self.h, self.rng)
 
     def incorporate(self, x, y=None):
-        assert self.l<=x<=self.h
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1.0
         self.sum_x += x
         self.sum_x_sq += x*x
 
     def unincorporate(self, x, y=None):
-        assert self.l<=x<=self.h
+        x, y = self.preprocess(x, y, self.get_distargs())
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
@@ -70,9 +65,8 @@ class NormalTrunc(DistributionGpm):
             self.sum_x_sq -= x*x
 
     def logpdf(self, x, y=None):
-        if not self.l<=x<=self.h:
-            return float('-inf')
-        logpdf_unorm = NormalTrunc.calc_predictive_logp(x, self.mu, self.sigma)
+        logpdf_unorm = NormalTrunc.calc_predictive_logp(
+            x, self.mu, self.sigma, self.l, self.h)
         logcdf_norm = NormalTrunc.calc_log_normalizer(
             self.mu, self.sigma, self.l, self.h)
         return logpdf_unorm - logcdf_norm
@@ -126,6 +120,9 @@ class NormalTrunc(DistributionGpm):
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x, 'sum_x_sq': self.sum_x_sq}
 
+    def get_distargs(self):
+        return {'l':self.l, 'h':self.h}
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         return dict()
@@ -160,13 +157,20 @@ class NormalTrunc(DistributionGpm):
             - norm.cdf(l, loc=mu, scale=sigma))
 
     @staticmethod
-    def calc_predictive_logp(x, mu, sigma):
+    def calc_predictive_logp(x, mu, sigma, l, h):
+        try:
+            x, y = NormalTrunc.preprocess(x, None, {'l':l, 'h':h})
+        except ValueError:
+            return -float('inf')
         return norm.logpdf(x, loc=mu, scale=sigma)
 
     @staticmethod
     def calc_log_likelihood(N, sum_x, sum_x_sq, sigma, mu):
-        return -(N/2.)*LOG2PI - N*log(sigma) \
-            - 1/(2*sigma*sigma) * (N*mu**2 - 2*mu*sum_x + sum_x_sq)
+        return (
+            - N/2. * np.log(2*np.pi)
+            - N * np.log(sigma)
+            - 1 / (2*sigma*sigma)
+            * (N*mu**2 - 2*mu*sum_x + sum_x_sq))
 
     @staticmethod
     def calc_log_prior(mu, sigma, l, h):
@@ -179,3 +183,11 @@ class NormalTrunc(DistributionGpm):
         sigma = rng.gamma(1, scale=.5)
         mu = rng.uniform(low=l, high=h)
         return mu, sigma
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        l, h = distargs['l'], distargs['h']
+        if not l <= x <= h:
+            raise ValueError('NormalTrunc requires [{},{}]: {}'.format(l, h, x))
+        return x, y
+

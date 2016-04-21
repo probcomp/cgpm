@@ -48,20 +48,22 @@ class Categorical(DistributionGpm):
         self.alpha = alpha
 
     def incorporate(self, x, y=None):
-        if not Categorical.validate(x, self.k):
-            raise ValueError('Invalid categorical observation %s.' % str(x))
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N += 1
-        self.counts[int(x)] += 1
+        self.counts[x] += 1
 
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        if not Categorical.validate(x, self.k):
-            raise ValueError('Invalid categorical observation removed.')
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.N -= 1
-        self.counts[int(x)] -= 1
+        self.counts[x] -= 1
 
     def logpdf(self, x, y=None):
+        try:
+            x, y = self.preprocess(x, None, self.get_distargs())
+        except ValueError:
+            return -float('inf')
         return Categorical.calc_predictive_logp(
             x, self.N, self.counts, self.alpha)
 
@@ -87,6 +89,9 @@ class Categorical(DistributionGpm):
 
     def get_suffstats(self):
         return {'N' : self.N, 'counts' : list(self.counts)}
+
+    def get_distargs(self):
+        return {'k': self.k}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -124,9 +129,6 @@ class Categorical(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, counts, alpha):
-        if not Categorical.validate(x, len(counts)):
-            return float('-inf')
-        x = int(x)
         numer = log(alpha + counts[x])
         denom = log(np.sum(counts) + alpha * len(counts))
         return numer - denom
@@ -137,3 +139,10 @@ class Categorical(DistributionGpm):
         A = K * alpha
         lg = sum(gammaln(counts[k] + alpha) for k in xrange(K))
         return gammaln(A) - gammaln(A+N) + lg - K * gammaln(alpha)
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        k = distargs['k']
+        if (int(x) != float(x)) or not (0 <= x < k):
+            raise ValueError('Categorical requires [0..{}): {}'.format(k, x))
+        return int(x), y

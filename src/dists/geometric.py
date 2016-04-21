@@ -46,14 +46,14 @@ class Geometric(DistributionGpm):
         self.b = b
 
     def incorporate(self, x, y=None):
-        assert float(x) == int(x) and 0 <= x
+        x, y = self.preprocess(x, y)
         self.N += 1.0
         self.sum_x += x
 
     def unincorporate(self, x, y=None):
-        assert float(x) == int(x) and 0 <= x
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
+        x, y = self.preprocess(x, y)
         self.N -= 1.0
         self.sum_x -= x
 
@@ -89,6 +89,9 @@ class Geometric(DistributionGpm):
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x}
 
+    def get_distargs(self):
+        return {}
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
@@ -122,8 +125,10 @@ class Geometric(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
-        if float(x) != int(x) or x < 0:
-            return float('-inf')
+        try:
+            x, y = Geometric.preprocess(x, None)
+        except ValueError:
+            return -float('inf')
         an, bn = Geometric.posterior_hypers(N, sum_x, a, b)
         am, bm = Geometric.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Geometric.calc_log_Z(an, bn)
@@ -146,3 +151,9 @@ class Geometric(DistributionGpm):
     @staticmethod
     def calc_log_Z(a, b):
         return betaln(a, b)
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if float(x) != int(x) or x < 0:
+            raise ValueError('Geometric requires [0,1,..): {}'.format(x))
+        return int(x), y

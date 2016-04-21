@@ -133,6 +133,10 @@ class DistributionGpm(object):
         """Return a dictionary of sufficient statistics."""
         raise NotImplementedError
 
+    def get_distargs(self):
+        """Return a dictionary of distribution arguments."""
+        raise NotImplementedError
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=20):
         """Return a dict<str,list>, where grids['hyper'] is a list of

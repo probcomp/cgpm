@@ -54,7 +54,7 @@ class BetaUC(DistributionGpm):
             assert self.strength > 0 and 0 < self.balance < 1
 
     def incorporate(self, x, y=None):
-        assert x > 0 and x < 1
+        x, y = self.preprocess(x, y)
         self.N += 1.
         self.sum_log_x += log(x)
         self.sum_minus_log_x += log(1.-x)
@@ -62,7 +62,7 @@ class BetaUC(DistributionGpm):
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        assert x > 0 and x < 1
+        x, y = self.preprocess(x, y)
         self.N -= 1.
         if self.N <= 0:
             self.sum_log_x = 0
@@ -127,6 +127,9 @@ class BetaUC(DistributionGpm):
         return {'N': self.N, 'sum_log_x': self.sum_log_x,
             'sum_minus_log_x': self.sum_minus_log_x}
 
+    def get_distargs(self):
+        return {}
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
@@ -165,8 +168,10 @@ class BetaUC(DistributionGpm):
     @staticmethod
     def calc_predictive_logp(x, strength, balance):
         assert strength > 0 and balance > 0 and balance < 1
-        if not 0 < x < 1:
-            return float('-inf')
+        try:
+            x, y = BetaUC.preprocess(x, None)
+        except ValueError:
+            return -float('inf')
         alpha = strength * balance
         beta = strength * (1.-balance)
         return scipy.stats.beta.logpdf(x, alpha, beta)
@@ -190,3 +195,9 @@ class BetaUC(DistributionGpm):
         log_strength = scipy.stats.expon.logpdf(strength, scale=1./mu)
         log_balance = scipy.stats.beta.logpdf(balance, alpha, beta)
         return log_strength + log_balance
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if not 0 < x < 1:
+            raise ValueError('Beta requires (0,1): %s' % str(x))
+        return x, y
