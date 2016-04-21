@@ -41,14 +41,14 @@ class Bernoulli(DistributionGpm):
         self.beta = beta
 
     def incorporate(self, x, y=None):
-        assert x == 1.0 or x == 0.0
+        x, y = self.preprocess(x, y)
         self.N += 1
         self.x_sum += x
 
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        assert x == 1. or x == 0.
+        x, y = self.preprocess(x, y)
         self.N -= 1
         self.x_sum -= x
 
@@ -85,13 +85,16 @@ class Bernoulli(DistributionGpm):
     def get_suffstats(self):
         return {'N':self.N, 'x_sum':self.x_sum}
 
+    def get_distargs(self):
+        return {'k': 2}
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['alpha'] = gu.log_linspace(1./float(len(X)), float(len(X)),
-            n_grid)
-        grids['beta'] = gu.log_linspace(1./float(len(X)), float(len(X)),
-            n_grid)
+        grids['alpha'] = gu.log_linspace(
+            1./float(len(X)), float(len(X)), n_grid)
+        grids['beta'] = gu.log_linspace(
+            1./float(len(X)), float(len(X)),n_grid)
         return grids
 
     @staticmethod
@@ -120,10 +123,12 @@ class Bernoulli(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, x_sum, alpha, beta):
-        if int(x) not in [0, 1]:
-            return float('-inf')
+        try:
+            x, y = Bernoulli.preprocess(x, None)
+        except ValueError:
+            return -float('inf')
         log_denom = log(N + alpha + beta)
-        if x == 1.0:
+        if x == 1:
             return log(x_sum + alpha) - log_denom
         else:
             return log(N - x_sum + beta) - log_denom
@@ -131,3 +136,9 @@ class Bernoulli(DistributionGpm):
     @staticmethod
     def calc_logpdf_marginal(N, x_sum, alpha, beta):
         return betaln(x_sum + alpha, N - x_sum + beta) - betaln(alpha, beta)
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if x not in [0, 1]:
+            raise ValueError('Bernoulli requires [0..1]: %s' % str(x))
+        return int(x), y

@@ -43,12 +43,14 @@ class Exponential(DistributionGpm):
         self.b = b
 
     def incorporate(self, x, y=None):
+        x, y = self.preprocess(x, y)
         self.N += 1.0
         self.sum_x += x
 
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
+        x, y = self.preprocess(x, y)
         self.N -= 1.0
         self.sum_x -= x
 
@@ -83,6 +85,9 @@ class Exponential(DistributionGpm):
     def get_suffstats(self):
         return {'N': self.N, 'sum_x': self.sum_x}
 
+    def get_distargs(self):
+        return {}
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
@@ -116,8 +121,10 @@ class Exponential(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
-        if x < 0:
-            return float('-inf')
+        try:
+            x, y = Exponential.preprocess(x, None)
+        except ValueError:
+            return -float('inf')
         an,bn = Exponential.posterior_hypers(N, sum_x, a, b)
         am,bm = Exponential.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Exponential.calc_log_Z(an, bn)
@@ -141,3 +148,9 @@ class Exponential(DistributionGpm):
     def calc_log_Z(a, b):
         Z =  gammaln(a) - a*log(b)
         return Z
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if x < 0:
+            raise ValueError('Exponential requires [0,inf): {}'.format(x))
+        return x, y

@@ -14,17 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import atan2, cos, log, pi, sin
+from math import atan2, cos, pi, sin
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import i0 as bessel_0, i1 as bessel_1
 
 import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
-TWOPI = 2*pi
-LOG2PI = log(2*pi)
 
 class Vonmises(DistributionGpm):
     """Von Mises distribution on [0, 2pi] with Vonmises prior on the mean
@@ -34,13 +31,11 @@ class Vonmises(DistributionGpm):
     x ~ Vonmises(mean=mu, concentration=k)
     """
 
-    cctype = 'vonmises'
-
     def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, a=1, b=pi, k=1.5,
             distargs=None, rng=None):
         assert N >= 0
         assert a > 0
-        assert 0 <= b <= TWOPI
+        assert 0 <= b <= 2*pi
         assert k > 0
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
@@ -53,7 +48,7 @@ class Vonmises(DistributionGpm):
         self.k = k    # Vonmises kappa.
 
     def incorporate(self, x, y=None):
-        assert 0 <= x <= 2*pi
+        x, y = self.preprocess(x, y)
         self.N += 1.0
         self.sum_sin_x += sin(x)
         self.sum_cos_x += cos(x)
@@ -61,7 +56,7 @@ class Vonmises(DistributionGpm):
     def unincorporate(self, x, y=None):
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
-        assert 0 <= x and x <= 2*pi
+        x, y = self.preprocess(x, y)
         self.N -= 1.0
         self.sum_sin_x -= sin(x)
         self.sum_cos_x -= cos(x)
@@ -90,7 +85,7 @@ class Vonmises(DistributionGpm):
     def set_hypers(self, hypers):
         assert hypers['a'] > 0
         assert hypers['b'] > 0
-        assert 0 <= hypers['b'] and hypers['b'] <= TWOPI
+        assert 0 <= hypers['b'] and hypers['b'] <= 2*pi
         self.a = hypers['a']
         self.b = hypers['b']
         self.k = hypers['k']
@@ -102,6 +97,9 @@ class Vonmises(DistributionGpm):
         return {'N': self.N, 'sum_sin_x' : self.sum_sin_x,
             'sum_cos_x' : self.sum_cos_x}
 
+    def get_distargs(self):
+        return {}
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
@@ -110,7 +108,7 @@ class Vonmises(DistributionGpm):
         scx = np.sum(np.cos(X))
         k = Vonmises.estimate_kappa(N, ssx, scx)
         grids['a'] = gu.log_linspace(1./N, N, n_grid)
-        grids['b'] = np.linspace(TWOPI/n_grid, TWOPI, n_grid)
+        grids['b'] = np.linspace(2*pi/n_grid, 2*pi, n_grid)
         grids['k'] = np.linspace(k, N*k, n_grid)
         return grids
 
@@ -140,19 +138,19 @@ class Vonmises(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_sin_x, sum_cos_x, a, b, k):
-        assert 0 <= x and x <= 2*pi
+        try:
+            x, y = Vonmises.preprocess(x, None)
+        except ValueError:
+            return -float('inf')
         assert N >= 0
         assert a > 0
-        assert 0 <= b and b <= 2*pi
         assert k > 0
-        if x < 0 or x > 2*pi:
-            return float('-inf')
         an, _ = Vonmises.posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k)
         am, _ = Vonmises.posterior_hypers(N + 1., sum_sin_x + sin(x),
             sum_cos_x + cos(x), a, b, k)
         ZN = Vonmises.calc_log_Z(an)
         ZM = Vonmises.calc_log_Z(am)
-        return - LOG2PI - gu.log_bessel_0(k) + ZM - ZN
+        return - np.log(2*pi) - gu.log_bessel_0(k) + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, sum_sin_x, sum_cos_x, a, b, k):
@@ -163,7 +161,7 @@ class Vonmises(DistributionGpm):
         an, _ = Vonmises.posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k)
         Z0 = Vonmises.calc_log_Z(a)
         ZN = Vonmises.calc_log_Z(an)
-        lp = float(-N) * (LOG2PI + gu.log_bessel_0(k)) + ZN - Z0
+        lp = float(-N) * (np.log(2*pi) + gu.log_bessel_0(k)) + ZN - Z0
         if np.isnan(lp) or np.isinf(lp):
             import ipdb; ipdb.set_trace()
         return lp
@@ -211,3 +209,9 @@ class Vonmises(DistributionGpm):
             return 10.**-6
         else:
             return np.abs(kappa)
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if not 0 <= x <= 2*pi:
+            raise ValueError('Vonmises requires in [0,2pi): {}'.format(x))
+        return x, y

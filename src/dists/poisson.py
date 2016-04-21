@@ -36,19 +36,21 @@ class Poisson(DistributionGpm):
         assert b > 0
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
-        self.N = N
         self.sum_x = sum_x
+        self.N = N
         self.sum_log_fact_x = sum_log_fact_x
         # Hyperparameters.
         self.a = a
         self.b = b
 
     def incorporate(self, x, y=None):
+        x, y = self.preprocess(x, y)
         self.N += 1.0
         self.sum_x += x
         self.sum_log_fact_x += gammaln(x+1)
 
     def unincorporate(self, x, y=None):
+        x, y = self.preprocess(x, y)
         if self.N == 0:
             raise ValueError('Cannot unincorporate without observations.')
         self.N -= 1.0
@@ -87,6 +89,9 @@ class Poisson(DistributionGpm):
         return {'N': self.N, 'sum_x' : self.sum_x,
             'sum_log_fact_x': self.sum_log_fact_x}
 
+    def get_distargs(self):
+        return {}
+
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
@@ -122,8 +127,10 @@ class Poisson(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
-        if float(x) != x or x < 0:
-            return float('-inf')
+        try:
+            x, y = Poisson.preprocess(x, None)
+        except ValueError:
+            return -float('inf')
         an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
         am, bm = Poisson.posterior_hypers(N+1, sum_x+x, a, b)
         ZN = Poisson.calc_log_Z(an, bn)
@@ -147,3 +154,9 @@ class Poisson(DistributionGpm):
     def calc_log_Z(a, b):
         Z =  gammaln(a) - a*log(b)
         return Z
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if float(x) != int(x) or x < 0:
+            raise ValueError('Poisson requires [0,1,..): {}'.format(x))
+        return int(x), y
