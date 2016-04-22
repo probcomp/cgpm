@@ -57,6 +57,9 @@ class LinearRegressionDirectTest(unittest.TestCase):
         # Unincorporating row 0 should raise.
         with self.assertRaises(ValueError):
             linreg.unincorporate(self.D[0,0], y=self.D[0,1:])
+        # Incorporating with wrong covariate dimensions should raise.
+        with self.assertRaises(TypeError):
+            linreg.incorporate(self.D[0,0], y=self.D[0,:])
         # Incorporate some more rows.
         for row in self.D[:10]:
             linreg.incorporate(row[0], y=row[1:])
@@ -108,36 +111,5 @@ class LinearRegressionDirectTest(unittest.TestCase):
         ax.scatter(range(len(xtrue)), xtrue, color='r')
         # plt.close('all')
 
-# if __name__ == '__main__':
-#     unittest.main()
-
-import warnings
-warnings.filterwarnings("ignore")
-
-def _compute_y(x):
-    noise = [.5, 1]
-    slopes = [2, 5]
-    model = x > 5
-    return slopes[model] * x  + rng.normal(scale=noise[model])
-
-rng = gu.gen_rng(1)
-X = rng.uniform(low=0, high=10, size=50)
-Y = map(_compute_y, X)
-
-D = np.column_stack((X,Y))
-
-state = State(D, ['normal','normal'], Zv=[0,0], rng=gu.gen_rng(0))
-state.update_cctype(1, 'linear_regression')
-state.transition(N=100, kernels=['rows','column_params','column_hypers'])
-view = state.view_for(1)
-
-samples = view._simulate_hypothetical([0,1], [], 100, cluster=True)
-
-
-# fig, ax = plt.subplots()
-# clusters = set(samples[:,2])
-# colors = iter(cm.gist_rainbow(np.linspace(0, 1, len(clusters)+2)))
-# ax.scatter(D[:,0], D[:,1])
-# for c in clusters:
-#     sc = samples[samples[:,2] == c][:,[0,1]]
-#     ax.scatter(sc[:,0], sc[:,1], alpha=.5, color=next(colors))
+if __name__ == '__main__':
+    unittest.main()
