@@ -119,7 +119,7 @@ def dummy_code(x, discretes):
     Returns
     -------
     xd : list
-        Dummy coded version of x.
+        Dummy coded version of x as list.
 
     Example
     -------
@@ -128,15 +128,17 @@ def dummy_code(x, discretes):
     # Note only 4 dummy codes since all 0s indicates cateogry 4.
     """
     if len(discretes) == 0:
-        return x
-    xp = []
-    for i, val in enumerate(x):
-        add = [val]
-        if i in discretes:
-            assert float(val) == int(val)
-            assert 0 <= val < discretes[i]
-            add = [0]*(discretes[i]-1)
-            if val < discretes[i]-1:
-                add[int(val)] = 1
-        xp.extend(add)
-    return xp
+        return list(x)
+    def as_code(i, val):
+        if i not in discretes:
+            return [val]
+        if float(val) != int(val):
+            raise TypeError('Discrete value must be integer: {},{}'.format(x,i))
+        k = discretes[i]
+        assert 0 <= val < k
+        r = [0]*(k-1)
+        if val < k-1:
+            r[int(val)] = 1
+        return r
+    xp = [as_code(i, val) for i, val in enumerate(x)]
+    return [v for x in xp for v in x]

@@ -32,7 +32,6 @@ class Bernoulli(DistributionGpm):
         assert alpha > 0
         assert beta > 0
         self.rng = gu.gen_rng() if rng is None else rng
-        self.distargs = {'k':2}
         # Sufficent statistics.
         self.N = N
         self.x_sum = x_sum
