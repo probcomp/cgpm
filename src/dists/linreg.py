@@ -15,8 +15,8 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import norm
-from sklearn.linear_model import Ridge
+from scipy.stats import invgamma
+from scipy.special import gammaln
 
 import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
@@ -24,88 +24,100 @@ import gpmcc.utils.general as gu
 from gpmcc.dists.distribution import DistributionGpm
 
 class LinearRegression(DistributionGpm):
-    """Linear regression conditional distribution with L2 regularization."""
+    """Bayesian linear model with normal prior on regression parameters and
+    inverse-gamma prior on both observation and regression variance.
 
-    def __init__(self, distargs=None, rng=None):
+    \sigma2 ~ Inverse-Gamma(a, b)
+    w ~ Normal(\mu, \sigma2*I)
+    y ~ Normal(x'w, \sigma2)
+    """
+
+    def __init__(self, a=None, b=None, mu=None, V=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
-        p = 0
-        self.discrete_covariates = {}
-        for i, (cct, cca) in \
-                enumerate(zip(distargs['cctypes'], distargs['ccargs'])):
-            if cu.cctype_class(cct).is_numeric():
-                p += 1
-            elif cca is not None and 'k' in cca: # XXX HACK
-                self.discrete_covariates[i] = int(cca['k'])
-                p += cca['k'] - 1
+        # Covariates.
+        p, counts = zip(
+            *[self._predictor_count(cctype, ccarg)
+            for cctype, ccarg in zip(distargs['cctypes'], distargs['ccargs'])])
+        self.discrete_covariates = {i:c for i, c in enumerate(counts) if c}
+        self.p = sum(p)+1
+        # Sufficient statistics.
+        self.N = 0
         self.x = []
         self.Y = []
-        self.p = p
-        self.alpha = 1.0
-        self.sigma = 0
-        self.regressor = Ridge(alpha=self.alpha)
+        # Hyper parameters.
+        self.a = 1. if a is None else a
+        self.b = 1. if b is None else b
+        self.mu = np.zeros(self.p) if mu is None else mu
+        self.V = np.eye(self.p) if V is None else V
 
     def incorporate(self, x, y=None):
-        y = du.dummy_code(y, self.discrete_covariates)
-        assert len(y) == self.p
+        x, y = self.preprocess(x, y, self.get_distargs())
         self.Y.append(y)
         self.x.append(x)
-        self.transition_params()
+        self.N += 1
 
     def unincorporate(self, x, y=None):
-        y = du.dummy_code(y, self.discrete_covariates)
-        assert len(y) == self.p
-        for i in xrange(len(self.Y)):
-            if np.allclose(self.Y[i], y) and self.x[i] == x:
-                del self.x[i], self.Y[i]
-                break
+        if self.N == 0:
+            raise ValueError('Cannot unincorporate without observations.')
+        x, y = self.preprocess(x, y, self.get_distargs())
+        match = lambda i: self.x[i] == x and np.allclose(self.Y[i], y)
+        delete = [i for i in xrange(self.N) if match(i)]
+        if delete:
+            del self.x[delete[0]]
+            del self.Y[delete[0]]
+            self.N -= 1
         else:
             raise ValueError('Observation %s not incorporated.' % str((x, y)))
-        self.transition_params()
 
     def logpdf(self, x, y=None):
-        # XXX We need to be sampling \beta_i from N(0,alpha) to compute a
-        # singleton predictive, but the \beta_i are deep in linear_model.Ridge.
-        if len(self.Y) == 0:
-            return 0
-        y = du.dummy_code(y, self.discrete_covariates)
-        xhat = self.regressor.predict(y)
-        error = x - xhat
-        return norm.logpdf(error, scale=self.sigma)[0]
+        x, y = self.preprocess(x, y, self.get_distargs())
+        return LinearRegression.calc_predictive_logp(
+            x, y, self.N, self.Y, self.x, self.a, self.b, self.mu,
+            self.V)
 
     def logpdf_marginal(self):
-        if len(self.Y) == 0:
-            return 0
-        error = self.regressor.predict(self.Y) - self.x
-        return np.sum(norm.logpdf(error, scale=self.sigma))
+        return LinearRegression.calc_logpdf_marginal(
+            self.N, self.Y, self.x, self.a, self.b, self.mu, self.V)
 
     def simulate(self, y=None):
-        y = du.dummy_code(y, self.discrete_covariates)
-        assert len(y) == self.p
-        return self.regressor.predict(y)[0] + \
-            self.rng.normal(loc=0, scale=self.sigma)
+        x, y = self.preprocess(None, y, self.get_distargs())
+        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+            self.N, self.Y, self.x, self.a, self.b, self.mu, self.V)
+        sigma2, b = LinearRegression.sample_parameters(
+            an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
+        return self.rng.normal(np.dot(y, b), np.sqrt(sigma2))
 
     def transition_params(self):
-        if len(self.Y) > 0:
-            self.regressor.fit(self.Y, self.x)
-            self.sigma = np.sqrt(np.sum(
-                (self.regressor.predict(self.Y) - self.x)**2 / len(self.x)))
-
-    def set_hypers(self, hypers):
         return
 
+    def set_hypers(self, hypers):
+        assert hypers['a'] > 0.
+        assert hypers['b'] > 0.
+        self.a = hypers['a']
+        self.b = hypers['b']
+
     def get_hypers(self):
-        return {}
+        return {'a': self.a, 'b':self.b}
 
     def get_params(self):
-        """Return a dictionary of parameters."""
         return {}
 
     def get_suffstats(self):
         return {}
 
+    def get_distargs(self):
+        return {'discrete_covariates': self.discrete_covariates, 'p': self.p}
+
     @staticmethod
-    def construct_hyper_grids(X, n_grid=20):
-        return {}
+    def construct_hyper_grids(X, n_grid=300):
+        grids = dict()
+        # Plus 1 for single observation case.
+        N = len(X) + 1.
+        ssqdev = np.var(X) * len(X) + 1.
+        # Data dependent heuristics.
+        grids['a'] = gu.log_linspace(1./(10*N), 10*N, n_grid)
+        grids['b'] = gu.log_linspace(ssqdev/100., ssqdev, n_grid)
+        return grids
 
     @staticmethod
     def name():
@@ -113,7 +125,7 @@ class LinearRegression(DistributionGpm):
 
     @staticmethod
     def is_collapsed():
-        return False
+        return True
 
     @staticmethod
     def is_continuous():
@@ -127,7 +139,78 @@ class LinearRegression(DistributionGpm):
     def is_numeric():
         return True
 
-    # XXX Disabled.
+    ##################
+    # HELPER METHODS #
+    ##################
+
     @staticmethod
-    def calc_log_prior(beta, alpha):
-        return np.sum(norm.logpdf(beta), scale=np.sqrt(alpha)**-1)
+    def _predictor_count(cct, cca):
+        if cu.cctype_class(cct).is_numeric():
+            p, counts = 1, None
+        elif cca is not None and 'k' in cca: # XXX HACK
+            p, counts = cca['k']-1, int(cca['k'])
+        return int(p), counts
+
+    @staticmethod
+    def calc_predictive_logp(xs, ys, N, Y, x, a, b, mu, V):
+        # Equation 19.
+        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+            N, Y, x, a, b, mu, V)
+        am, bm, mum, Vm_inv = LinearRegression.posterior_hypers(
+            N+1, Y+[ys], x+[xs], a, b, mu, V)
+        ZN = LinearRegression.calc_log_Z(an, bn)
+        ZM = LinearRegression.calc_log_Z(am, bm)
+        return -(1/2.)*np.log(2*np.pi) + ZM - ZN
+
+    @staticmethod
+    def calc_logpdf_marginal(N, Y, x, a, b, mu, V):
+        # Equation 19.
+        an, bn, mun, Vn = LinearRegression.posterior_hypers(
+            N, Y, x, a, b, mu, V)
+        Z0 = LinearRegression.calc_log_Z(a, b)
+        ZN = LinearRegression.calc_log_Z(an, bn)
+        return -(N/2.)*np.log(2*np.pi) + ZN - Z0
+
+    @staticmethod
+    def posterior_hypers(N, Y, x, a, b, mu, V):
+        if N == 0:
+            assert len(x) == len(Y) == 0
+            return a, b, mu, np.linalg.inv(V)
+        # Equation 6.
+        X, y = np.asarray(Y), np.asarray(x)
+        assert X.shape == (N,len(mu))
+        assert y.shape == (N,)
+        V_inv = np.linalg.inv(V)
+        XT = np.transpose(X)
+        XTX = np.dot(XT, X)
+        mun = np.dot(
+            np.linalg.inv(V_inv + XTX),
+            np.dot(V_inv, mu) + np.dot(XT, y))
+        Vn_inv = V_inv + XTX
+        an = a + N/2.
+        bn = b + .5 * (
+            np.dot(np.transpose(mu), np.dot(V_inv, mu))
+            + np.dot(np.transpose(x), x)
+            - np.dot(
+                np.transpose(mun),
+                np.dot(Vn_inv, mun)))
+        return an, bn, mun, Vn_inv
+
+    @staticmethod
+    def calc_log_Z(a, b):
+        return gammaln(a) - a*np.log(b)
+
+    @staticmethod
+    def sample_parameters(a, b, mu, V, rng):
+        sigma2 = invgamma.rvs(a, scale=b, random_state=rng)
+        b = rng.multivariate_normal(mu, sigma2 * V)
+        return sigma2, b
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        discrete_covariates, p = distargs['discrete_covariates'], distargs['p']
+        y = du.dummy_code(y, discrete_covariates)
+        if len(y) != p-1:
+            raise TypeError(
+                'LinearRegression requires input length {}: {}'.format(p, y))
+        return x, [1] + y

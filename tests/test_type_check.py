@@ -30,7 +30,10 @@ cctypes_distargs_good_bad = {
     'normal_trunc'      : ({'l':-1,'h':10}, [0, 4, 9], [44,-1.02]),
     'poisson'           : (None, [0, 5, 11], [-1, .5, -4]),
     'random_forest'     : ({'k':1, 'cctypes':[0,1]}, [(0,[1,2])], [(-1,[1,2])]),
-    'vonmises'          : (None, [0.1, 3.14, 6.2], [-1, 7, 12])
+    'vonmises'          : (None, [0.1, 3.14, 6.2], [-1, 7, 12]),
+    'linear_regression' : (
+        {'cctypes': ['normal','bernoulli'], 'ccargs':[None, {'k':2}]},
+        [(0,[1,0])], []),
 }
 
 
