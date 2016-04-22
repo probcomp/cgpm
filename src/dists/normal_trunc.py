@@ -30,7 +30,7 @@ class NormalTrunc(DistributionGpm):
     X ~ Normal(mu, sigma)
     """
 
-    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, sigma=None,
+    def __init__(self, N=0, sum_x=0, sum_x_sq=0, a=1, b=1, mu=None, sigma=None,
             distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Distargs
@@ -40,11 +40,14 @@ class NormalTrunc(DistributionGpm):
         self.N = N
         self.sum_x = sum_x
         self.sum_x_sq = sum_x_sq
+        # Hyper parameters.
+        self.a = float(a)
+        self.b = float(b)
         # Uncollapsed mean and precision parameters.
         self.mu, self.sigma = mu, sigma
         if mu is None or sigma is None:
             self.mu, self.sigma = NormalTrunc.sample_parameters(
-                self.l, self.h, self.rng)
+                self.a, self.b, self.l, self.h, self.rng)
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())
@@ -67,20 +70,17 @@ class NormalTrunc(DistributionGpm):
     def logpdf(self, x, y=None):
         try: x, y = self.preprocess(x, y, self.get_distargs())
         except ValueError: return -float('inf')
-        logpdf_unorm = NormalTrunc.calc_predictive_logp(
+        return NormalTrunc.calc_predictive_logp(
             x, self.mu, self.sigma, self.l, self.h)
-        logcdf_norm = NormalTrunc.calc_log_normalizer(
-            self.mu, self.sigma, self.l, self.h)
-        return logpdf_unorm - logcdf_norm
+
 
     def logpdf_marginal(self):
         data_logp = NormalTrunc.calc_log_likelihood(
-            self.N, self.sum_x, self.sum_x_sq, self.sigma, self.mu)
+            self.N, self.sum_x, self.sum_x_sq, self.sigma, self.mu,
+            self.l, self.h)
         prior_logp = NormalTrunc.calc_log_prior(
-            self.mu, self.sigma, self.l, self.sigma)
-        normalizer_logp = NormalTrunc.calc_log_normalizer(
-            self.mu, self.sigma, self.l, self.h)
-        return data_logp + prior_logp - self.N * normalizer_logp
+            self.a, self.b, self.mu, self.sigma, self.l, self.h)
+        return data_logp + prior_logp
 
     def simulate(self, y=None):
         max_iters = 1000
@@ -95,8 +95,8 @@ class NormalTrunc(DistributionGpm):
         n_samples = 30
 
         # Transition mu.
-        fn_logpdf_mu = lambda mu :NormalTrunc.calc_log_likelihood(
-            self.N, self.sum_x, self.sum_x_sq, self.sigma, mu)
+        fn_logpdf_mu = lambda mu : NormalTrunc.calc_log_likelihood(
+            self.N, self.sum_x, self.sum_x_sq, self.sigma, mu, self.l, self.h)
 
         self.mu = su.mh_sample(
             self.mu, fn_logpdf_mu, 1, [self.l, self.h],
@@ -104,7 +104,7 @@ class NormalTrunc(DistributionGpm):
 
         # Transition sigma.
         fn_logpdf_sigma = lambda sigma : NormalTrunc.calc_log_likelihood(
-            self.N, self.sum_x, self.sum_x_sq, sigma, self.mu)
+            self.N, self.sum_x, self.sum_x_sq, sigma, self.mu, self.l, self.h)
 
         self.sigma = su.mh_sample(
             self.sigma, fn_logpdf_sigma, 1, [0, float('inf')], burn=n_samples,
@@ -126,8 +126,13 @@ class NormalTrunc(DistributionGpm):
         return {'l':self.l, 'h':self.h}
 
     @staticmethod
-    def construct_hyper_grids(X, n_grid=30):
-        return dict()
+    def construct_hyper_grids(X, n_grid=300):
+        grids = dict()
+        N = len(X) + 1.
+        ssqdev = np.var(X) * len(X) + 1.
+        grids['a'] = gu.log_linspace(1./(10*N), 10*N, n_grid)
+        grids['b'] = gu.log_linspace(ssqdev/100., ssqdev, n_grid)
+        return grids
 
     @staticmethod
     def name():
@@ -160,25 +165,28 @@ class NormalTrunc(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, mu, sigma, l, h):
-        return norm.logpdf(x, loc=mu, scale=sigma)
+        normalizer_logp = NormalTrunc.calc_log_normalizer(mu, sigma, l, h)
+        return norm.logpdf(x, loc=mu, scale=sigma) - normalizer_logp
 
     @staticmethod
-    def calc_log_likelihood(N, sum_x, sum_x_sq, sigma, mu):
+    def calc_log_likelihood(N, sum_x, sum_x_sq, sigma, mu, l, h):
+        normalizer_logp = NormalTrunc.calc_log_normalizer(mu, sigma, l, h)
         return (
             - N/2. * np.log(2*np.pi)
             - N * np.log(sigma)
             - 1 / (2*sigma*sigma)
-            * (N*mu**2 - 2*mu*sum_x + sum_x_sq))
+            * (N*mu**2 - 2*mu*sum_x + sum_x_sq)
+            - N * normalizer_logp)
 
     @staticmethod
-    def calc_log_prior(mu, sigma, l, h):
-        log_sigma = gamma.logpdf(sigma, 1, scale=.5)
+    def calc_log_prior(a, b, mu, sigma, l, h):
+        log_sigma = gamma.logpdf(sigma, a, scale=b)
         log_mu = -np.log(h-l)
         return log_mu + log_sigma
 
     @staticmethod
-    def sample_parameters(l, h, rng):
-        sigma = rng.gamma(1, scale=.5)
+    def sample_parameters(a, b, l, h, rng):
+        sigma = rng.gamma(a, scale=b)
         mu = rng.uniform(low=l, high=h)
         return mu, sigma
 
@@ -188,4 +196,3 @@ class NormalTrunc(DistributionGpm):
         if not l <= x <= h:
             raise ValueError('NormalTrunc requires [{},{}]: {}'.format(l, h, x))
         return x, y
-
