@@ -19,7 +19,9 @@ from math import log
 from scipy.special import betaln
 
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
+
 
 class Bernoulli(DistributionGpm):
     """Bernoulli distribution with beta prior on bias theta.

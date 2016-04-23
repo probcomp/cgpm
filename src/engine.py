@@ -19,10 +19,12 @@ import multiprocessing
 import pickle
 
 import numpy as np
+
 from scipy.misc import logsumexp
 
 from gpmcc.state import State
 from gpmcc.utils import general as gu
+
 
 # Multiprocessing functions.
 

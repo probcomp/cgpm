@@ -14,15 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import log
+import numpy as np
+
 from scipy.misc import logsumexp
 
-import numpy as np
 import gpmcc.utils.general as gu
 
 from gpmcc.dim import Dim
-from gpmcc.utils.general import logmeanexp
 from gpmcc.utils.config import cctype_class
+from gpmcc.utils.general import logmeanexp
+
 
 class View(object):
     """View, a collection of Dim and their row mixtures."""

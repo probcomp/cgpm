@@ -15,13 +15,16 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import invgamma
+
 from scipy.special import gammaln
+from scipy.stats import invgamma
 
 import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
+
 
 class LinearRegression(DistributionGpm):
     """Bayesian linear model with normal prior on regression parameters and

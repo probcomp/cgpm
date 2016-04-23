@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Crash and sanity tests for queries using likelihood weighting inference
+with a RandomForest component model. Not an inference quality test suite."""
+
 import unittest
 
 from gpmcc.state import State
@@ -21,8 +24,6 @@ from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
-"""Crash and sanity tests for queries using likelihood weighting inference with
-a RandomForest component model. Not an inference quality test suite."""
 
 class LikelihoodWeightSanityTest(unittest.TestCase):
 

@@ -19,6 +19,7 @@ import pandas as pd
 
 from gpmcc.utils import config as cu
 
+
 def parse_schema(schema, dataframe):
     """Apply a schema to a dataframe, and return variables to construct State.
 

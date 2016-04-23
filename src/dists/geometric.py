@@ -17,7 +17,9 @@
 from scipy.special import betaln
 
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
+
 
 class Geometric(DistributionGpm):
     """Geometric distribution data with beta prior on mu. Distirbution

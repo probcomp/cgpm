@@ -15,10 +15,12 @@
 # limitations under the License.
 
 import numpy as np
+
 from scipy.special import gammaln
 from scipy.stats import t
 
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
 
 

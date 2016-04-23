@@ -17,10 +17,13 @@
 from math import log
 
 import numpy as np
+
 from scipy.special import gammaln
 
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
+
 
 class Categorical(DistributionGpm):
     """Categorical distribution with symmetric dirichlet prior on

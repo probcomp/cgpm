@@ -16,6 +16,7 @@
 
 from gpmcc.utils.general import gen_rng
 
+
 class SyntheticXyGpm(object):
     """Interface synthetic, two-dimensional GPMs that take arbitrary noise
     parameter in (0,1).

@@ -15,7 +15,9 @@
 # limitations under the License.
 
 import itertools as it
+
 import numpy as np
+
 
 def validate_crp_constrained_partition(Zv, Cd, Ci, Rd, Ri):
     """Only tests the outer CRP partition Zv."""

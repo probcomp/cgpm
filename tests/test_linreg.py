@@ -16,16 +16,14 @@
 
 import unittest
 
-import numpy as np
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+import numpy as np
 
 from gpmcc.dists.linreg import LinearRegression
-
-from gpmcc.state import State
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
+
 
 class LinearRegressionDirectTest(unittest.TestCase):
 

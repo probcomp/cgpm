@@ -22,6 +22,7 @@ import unittest
 from gpmcc.utils import validation as vu
 from gpmcc.utils import general as gu
 
+
 class TestValidateCrpConsrainedInput(unittest.TestCase):
 
     def test_duplicate_Cd(self):

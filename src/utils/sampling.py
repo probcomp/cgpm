@@ -14,12 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import fabs, log
+from math import fabs
+from math import log
 
 import numpy as np
+
 from scipy.stats import norm
 
 import gpmcc.utils.general as gu
+
 
 def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1,
         rng=None):

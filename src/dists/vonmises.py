@@ -14,12 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import atan2, cos, pi, sin
+from math import atan2
+from math import cos
+from math import pi
+from math import sin
 
 import numpy as np
-from scipy.special import i0 as bessel_0, i1 as bessel_1
+
+from scipy.special import i0 as bessel_0
+from scipy.special import i1 as bessel_1
 
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
 
 

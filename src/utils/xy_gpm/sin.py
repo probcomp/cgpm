@@ -15,9 +15,12 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.integrate import dblquad, quad
+
+from scipy.integrate import dblquad
+from scipy.integrate import quad
 
 from gpmcc.utils.xy_gpm import synthetic
+
 
 class SinGpm(synthetic.SyntheticXyGpm):
     """Y = cos(X) + Noise."""

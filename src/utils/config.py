@@ -15,9 +15,11 @@
 # limitations under the License.
 
 import re
+
 from datetime import datetime
 
 import importlib
+
 
 cctype_class_lookup = {
     'bernoulli'         : ('gpmcc.dists.bernoulli', 'Bernoulli'),

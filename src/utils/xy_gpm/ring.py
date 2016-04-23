@@ -18,6 +18,7 @@ import numpy as np
 
 from gpmcc.utils.xy_gpm import synthetic
 
+
 class RingGpm(synthetic.SyntheticXyGpm):
     """(X,Y) ~ Ring + Noise."""
 

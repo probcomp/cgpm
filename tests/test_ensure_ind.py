@@ -23,6 +23,7 @@ from gpmcc.state import State
 from gpmcc.utils import general as gu
 from gpmcc.utils import validation as vu
 
+
 class EnsureIndependentTest(unittest.TestCase):
 
     def test_naive_bayes(self):

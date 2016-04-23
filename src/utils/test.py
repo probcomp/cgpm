@@ -17,10 +17,14 @@
 import math
 
 import numpy as np
-from scipy.stats import geom, norm
+
+from scipy.stats import geom
+from scipy.stats import norm
 
 import gpmcc.utils.general as gu
+
 from gpmcc import dim
+
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
         separation, rng=None):

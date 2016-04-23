@@ -16,15 +16,17 @@
 
 import math
 import warnings
-import sys
+
 from math import log
 
 import numpy as np
-from scipy.special import i0 as bessel_0
+
 from scipy.misc import logsumexp
 from scipy.special import gammaln
+from scipy.special import i0 as bessel_0
 
 from gpmcc.utils import validation as vu
+
 
 colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
     'black']
@@ -35,7 +37,7 @@ def gen_rng(seed=None):
     return np.random.RandomState(seed)
 
 def curve_color(k):
-    return (colors[k], .7) if k < len(colors) else ('white', .3)
+    return (colors[k], .7) if k < len(colors) else ('gray', .3)
 
 def log_bessel_0(x):
     besa = bessel_0(x)
@@ -114,7 +116,7 @@ def logmeanexp(array):
     if len(array) == 0:
         return -float('inf')
     noninfs = [a for a in array if not a == -float('inf')]
-    return logsumexp(noninfs) - math.log(len(array))
+    return logsumexp(noninfs) - log(len(array))
 
 def log_linspace(a, b, n):
     """linspace from a to b with n entries over log scale."""
@@ -127,9 +129,7 @@ def log_nCk(n, k):
     return log(n) + gammaln(n) - log(k) - gammaln(k) - log(n-k) - gammaln(n-k)
 
 def simulate_crp(N, alpha, rng=None):
-    """Generates a random, N-length partition from the CRP with parameter
-    alpha.
-    """
+    """Generates random N-length partition from the CRP with parameter alpha."""
     if rng is None:
         rng = gen_rng()
 

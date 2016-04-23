@@ -15,9 +15,12 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import multivariate_normal, norm
+
+from scipy.stats import multivariate_normal
+from scipy.stats import norm
 
 from gpmcc.utils.xy_gpm import synthetic
+
 
 class LinearGpm(synthetic.SyntheticXyGpm):
     """Y = X + N(0,noise)."""
