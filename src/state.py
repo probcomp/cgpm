@@ -14,20 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cPickle as pickle
 import copy
 import sys
 import time
-import cPickle as pickle
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
 import gpmcc.utils.validation as vu
 
-from gpmcc.view import View
 from gpmcc.dim import Dim
+from gpmcc.view import View
+
 
 class State(object):
     """The outer most GPM in gpmcc."""
@@ -626,9 +627,10 @@ class State(object):
     def plot(self):
         """Plots observation histogram and posterior distirbution of dims."""
         layout = pu.get_state_plot_layout(self.n_cols())
-        fig = plt.figure(num=None, figsize=(layout['plot_inches_y'],
-            layout['plot_inches_x']), dpi=75, facecolor='w',
-            edgecolor='k', frameon=False, tight_layout=True)
+        fig = plt.figure(
+            num=None,
+            figsize=(layout['plot_inches_y'], layout['plot_inches_x']), dpi=75,
+            facecolor='w', edgecolor='k', frameon=False, tight_layout=True)
         self._do_plot(fig, layout)
         plt.show()
 
@@ -780,12 +782,9 @@ class State(object):
         for dim in self.dims():
             index = dim.index
             ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index+1)
-            if self.Zv[index] >= len(layout['border_color']):
-                border_color = 'gray'
-            else:
-                border_color = layout['border_color'][self.Zv[index]]
             dim.plot_dist(self.X[:,dim.index], ax=ax)
-            ax.text(1,1, "K: %i " % len(dim.clusters),
+            ax.text(
+                1,1, "K: %i " % len(dim.clusters),
                 transform=ax.transAxes, fontsize=12, weight='bold',
                 color='blue', horizontalalignment='right',
                 verticalalignment='top')

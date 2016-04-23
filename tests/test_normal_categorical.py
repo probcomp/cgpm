@@ -24,7 +24,7 @@ The three simulations are:
     - Data conditioned on the indicator Z|X.
     - Indicator conditioned on the data X|Z.
 
-Simulations are compared to synthetic data at various indicator subpopulations.
+Simulations are compared to synthetic data at indicator subpopulations.
 """
 
 import unittest
@@ -36,7 +36,9 @@ from scipy.stats import ks_2samp
 
 import gpmcc.utils.general as gu
 import gpmcc.utils.test as tu
+
 from gpmcc.engine import Engine
+
 
 class SimulateIndicatorTest(unittest.TestCase):
 

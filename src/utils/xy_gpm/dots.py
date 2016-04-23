@@ -15,10 +15,12 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import norm
+
 from scipy.misc import logsumexp
+from scipy.stats import norm
 
 from gpmcc.utils.xy_gpm import synthetic
+
 
 class DotsGpm(synthetic.SyntheticXyGpm):
     """(X,Y) ~ Four Dots"""

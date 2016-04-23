@@ -14,39 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import matplotlib.pyplot as plt
-import numpy as np
 from math import log
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 import gpmcc.utils.general as gu
+
 from gpmcc.utils.config import colors
 
-_plot_layout = {
-    1: (1,1),
-    2: (2,1),
-    3: (3,1),
-    4: (2,2),
-    5: (3,2),
-    6: (3,2),
-    7: (4,2),
-    8: (4,2),
-    9: (3,3),
-    10: (5,2),
-    11: (4,3),
-    12: (4,3),
-    13: (5,3),
-    14: (5,3),
-    15: (5,3),
-    16: (4,4),
-    17: (6,3),
-    18: (6,3),
-    19: (5,4),
-    20: (5,4),
-    21: (7,3),
-    22: (6,4),
-    23: (6,4),
-    24: (6,4),
-}
+
+_plot_layout = {1: (1,1), 2: (2,1), 3: (3,1), 4: (2,2), 5: (3,2), 6: (3,2),
+    7: (4,2), 8: (4,2), 9: (3,3), 10: (5,2), 11: (4,3), 12: (4,3), 13: (5,3),
+    14: (5,3), 15: (5,3), 16: (4,4), 17: (6,3), 18: (6,3),  19: (5,4),
+    20: (5,4), 21: (7,3), 22: (6,4), 23: (6,4), 24: (6,4),
+    }
 
 def get_state_plot_layout(n_cols):
     layout = dict()
@@ -80,8 +62,8 @@ def plot_dist_continuous(X, clusters, ax=None, Y=None, hist=True):
     # Plot the samples.
     if hist:
         nbins = min([len(X), 50])
-        ax.hist(X, nbins, normed=True, color='black', alpha=.5,
-            edgecolor='none')
+        ax.hist(
+            X, nbins, normed=True, color='black', alpha=.5, edgecolor='none')
     else:
         y_max = ax.get_ylim()[1]
         for x in X:

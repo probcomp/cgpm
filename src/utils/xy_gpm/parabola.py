@@ -15,9 +15,9 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.misc import logsumexp
 
 from gpmcc.utils.xy_gpm import synthetic
+
 
 class ParabolaGpm(synthetic.SyntheticXyGpm):
     """Y = (+/- w.p .5) X^2 + U(0,noise)."""

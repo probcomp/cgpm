@@ -19,7 +19,9 @@ from math import log
 from scipy.special import gammaln
 
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
+
 
 class Exponential(DistributionGpm):
     """Exponential distribution with gamma prior on mu. Collapsed.

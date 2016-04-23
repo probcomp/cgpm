@@ -20,6 +20,7 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
 
+
 class Dim(object):
     """Dim holds sufficient statistics, DistributionGpm type, clusters, and
     shared hyperparameters and grids. Technically not GPM, but easily becomes

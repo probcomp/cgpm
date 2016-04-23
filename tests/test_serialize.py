@@ -16,14 +16,16 @@
 
 """Crash test for serialization of state and engine."""
 
-import unittest
 import tempfile
+import unittest
 
 import numpy as np
 
-import gpmcc.state
 import gpmcc.engine
+import gpmcc.state
+
 from gpmcc.utils import general as gu
+
 
 class TestSerialize(unittest.TestCase):
 

@@ -21,6 +21,7 @@ import numpy as np
 from gpmcc.state import State
 from gpmcc.utils.general import gen_rng
 
+
 class TestMutualInformation(unittest.TestCase):
 
     def test_entropy_bernoulli__ci_(self):

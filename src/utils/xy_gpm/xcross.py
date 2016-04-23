@@ -15,10 +15,13 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import multivariate_normal, norm
+
 from scipy.misc import logsumexp
+from scipy.stats import multivariate_normal
+from scipy.stats import norm
 
 from gpmcc.utils.xy_gpm import synthetic
+
 
 class XCrossGpm(synthetic.SyntheticXyGpm):
     """Y = (+/- w.p .5) X + N(0,noise)."""

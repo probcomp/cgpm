@@ -15,7 +15,9 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import norm, gamma
+
+from scipy.stats import gamma
+from scipy.stats import norm
 
 from gpmcc.dists.distribution import DistributionGpm
 from gpmcc.utils import general as gu

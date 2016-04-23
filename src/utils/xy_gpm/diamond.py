@@ -15,10 +15,9 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import multivariate_normal, norm
-from scipy.misc import logsumexp
 
 from gpmcc.utils.xy_gpm import synthetic
+
 
 class DiamondGpm(synthetic.SyntheticXyGpm):
     """Y = (+/- w.p .5) X + N(0,noise)."""

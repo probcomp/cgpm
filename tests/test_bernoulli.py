@@ -17,10 +17,13 @@
 import unittest
 
 import numpy as np
+
 from scipy.misc import logsumexp
 
 import gpmcc.engine
+
 from gpmcc.utils.general import gen_rng
+
 
 DATA_NUM_0 = 100
 DATA_NUM_1 = 200

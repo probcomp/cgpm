@@ -14,20 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import numpy as np
-
-from gpmcc.utils import config as cu
-from gpmcc.utils import test as tu
-from gpmcc import engine
-
 """This test suite ensures that results returned from Engine.logpdf,
-Engine.logpdf_bulk, Engine.simulate, and Engine.simulate_bulk are of the correct
-dimensions, based on the number of states and type of query.
+Engine.logpdf_bulk, Engine.simulate, and Engine.simulate_bulk are of the
+correct dimensions, based on the number of states and type of query.
 
-Every results from these queries should be a list of length Engine.num_states.
-The elemnts of the returned list differ based on the method, where we use
+Every results from these queries should be a list of length
+Engine.num_states. The elements of the returned list differ based on the
+method, where we use
 
     - logpdf[s] = logpdf of query from state s.
 
@@ -40,7 +33,15 @@ The elemnts of the returned list differ based on the method, where we use
 This test suite is slow because many simulate/logpdf queries are invoked.
 """
 
+import unittest
+
+import numpy as np
+
+from gpmcc import engine
+from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
+from gpmcc.utils import test as tu
+
 
 class EngineDimensionsTest(unittest.TestCase):
 

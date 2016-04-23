@@ -21,6 +21,7 @@ from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
+
 class UpdateCctypeTest(unittest.TestCase):
 
     @classmethod

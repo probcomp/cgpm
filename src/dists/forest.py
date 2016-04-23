@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import numpy as np
+
 from sklearn.ensemble import RandomForestClassifier
 from scipy.misc import logsumexp
 
