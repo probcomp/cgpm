@@ -24,30 +24,41 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from scipy.stats import chisquare, ks_2samp
+from scipy.stats import chisquare
+from scipy.stats import ks_2samp
 
-from gpmcc.state import State
 import gpmcc.utils.config as cu
+import gpmcc.utils.general as gu
 import gpmcc.utils.test as tu
 
-NUM_SECONDS = 120
+from gpmcc.engine import Engine
+from gpmcc.state import State
+
+NUM_ITERS = 1000
+NUM_SECONDS = 180
 
 VIEW_WEIGHTS = [1]
 CLUSTER_WEIGHTS = [[.3, .5, .2]]
-SEPARATION = [.9]
+SEPARATION = [.95]
 
-NUM_TRAIN = 500
-NUM_TEST = 5000
+NUM_TRAIN = 250
+NUM_TEST = 450
+
 
 def simulate_synthetic(n_samples, cctype, distargs):
-    D, Zv, Zc = tu.gen_data_table(n_samples, VIEW_WEIGHTS, CLUSTER_WEIGHTS,
-        [cctype], [distargs], SEPARATION)
+    rng = gu.gen_rng(12)
+    D, Zv, Zc = tu.gen_data_table(
+        n_samples, VIEW_WEIGHTS, CLUSTER_WEIGHTS, [cctype], [distargs],
+        SEPARATION, rng=rng)
+    rng.shuffle(D[0])
     return np.asarray(D).T
+
 
 def aligned_bincount(arrays):
     bincounts = [np.bincount(a.astype(int)) for a in arrays]
     longest = max(len(b) for b in bincounts)
     return [np.append(b, np.zeros(longest-len(b))) for b in bincounts]
+
 
 def two_sample_test(cctype, X, Y):
     model = cu.cctype_class(cctype)
@@ -62,6 +73,7 @@ def two_sample_test(cctype, X, Y):
         _, pval = chisquare(Yb, f_exp=Xb)
     return pval
 
+
 def plot_simulations(cctype, D_train, D_test, D_posterior):
     model = cu.cctype_class(cctype)
     if model.is_continuous():
@@ -70,7 +82,9 @@ def plot_simulations(cctype, D_train, D_test, D_posterior):
         fig, ax = _plot_simulations_discrete(D_train, D_test, D_posterior)
     fig.suptitle(cctype, fontsize=16, fontweight='bold')
     fig.set_size_inches(8, 6)
-    fig.savefig(cctype, dpi=100)
+    fig.savefig('resources/%s-%s' % (cu.timestamp(), cctype), dpi=100)
+    plt.close('all')
+
 
 def _plot_simulations_continuous(D_train, D_test, D_posterior):
     fig, ax = plt.subplots()
@@ -94,6 +108,7 @@ def _plot_simulations_continuous(D_train, D_test, D_posterior):
     ax.grid()
     ax.legend(framealpha=0)
     return fig, ax
+
 
 def _plot_simulations_discrete(D_train, D_test, D_posterior):
 
@@ -127,56 +142,70 @@ def _plot_simulations_discrete(D_train, D_test, D_posterior):
 
     return fig, axes
 
+
 def launch_2samp_sanity_same(cctype, distargs):
     """Ensure that 2-sample tests on same population does not reject H0."""
     # Training and test samples
     D = simulate_synthetic(NUM_TRAIN+NUM_TEST, cctype, distargs)
-    D_train, D_test = D[:NUM_TRAIN].ravel(), D[NUM_TRAIN:].ravel()
+    D_train, D_test = np.ravel(D[:NUM_TRAIN]), np.ravel(D[NUM_TRAIN:])
     pval = two_sample_test(cctype, D_test, D_train)
-    if pval < .05:
-        print 'cctype, pval: {}, {}'.format(cctype, pval)
+    print 'cctype, pval: {}, {}'.format(cctype, pval)
+    assert pval > 0.05
+
 
 def launch_2samp_sanity_diff(cctype, distargs):
     """Ensure that 2-sample tests on different population rejects H0."""
     # Training and test samples
     D = simulate_synthetic(NUM_TRAIN+NUM_TEST, cctype, distargs)
-    D_train, D_test = D[:NUM_TRAIN], D[NUM_TRAIN:]
+    D_train = D[:NUM_TRAIN]
+    D_posteriors = generate_gpmcc_posteriors(
+        cctype, distargs, D_train, None, 0.01)
+    pvals = [two_sample_test(cctype, np.ravel(D_train), np.ravel(Dp))
+        for Dp in D_posteriors]
+    print 'cctype, pvals: {}, {}'.format(cctype, pvals)
+    assert all(p < 0.01 for p in pvals)
 
-    # Posterior samples
-    D_posterior = generate_gpmcc_posterior(cctype, distargs, D_train, 0.01)
-
-    pval = two_sample_test(cctype, D_test.ravel(), D_posterior.ravel())
-    if 0.01 < pval:
-        print 'cctype, pval: {}, {}'.format(cctype, pval)
 
 def launch_2samp_inference_quality(cctype, distargs):
     """Performs check of posterior predictive on gpmcc simulations."""
     # Training and test samples
     D = simulate_synthetic(NUM_TRAIN+NUM_TEST, cctype, distargs)
     D_train, D_test = D[:NUM_TRAIN], D[NUM_TRAIN:]
+    D_posteriors = generate_gpmcc_posteriors(
+        cctype, distargs, D_train, NUM_ITERS, NUM_SECONDS)
+    for Dp in D_posteriors:
+        plot_simulations(
+            cctype, np.ravel(D_train), np.ravel(D_test[:NUM_TRAIN]),
+            np.ravel(Dp))
+    pvals = [two_sample_test(cctype, np.ravel(D_test), np.ravel(Dp))
+        for Dp in D_posteriors]
+    print 'cctype, pvals: {}, {}'.format(cctype, pvals)
+    assert any([p > 0.05 for p in pvals])
 
-    # Posterior samples
-    D_posterior = generate_gpmcc_posterior(cctype, distargs, D_train,
-        NUM_SECONDS)
 
-    # plot_simulations(cctype, D_train.ravel(), D_test[:NUM_TRAIN].ravel(),
-    #     D_posterior[:NUM_TRAIN].ravel())
-
-    pval = two_sample_test(cctype, D_test.ravel(), D_posterior.ravel())
-    if pval < .05:
-        print 'cctype, pval: {}, {}'.format(cctype, pval)
-
-def generate_gpmcc_posterior(cctype, distargs, D_train, seconds):
+def generate_gpmcc_posteriors(cctype, distargs, D_train, iters, seconds):
     """Learns gpmcc on D_train for seconds and simulates NUM_TEST times."""
     # Learning and posterior simulation.
-    state = State(D_train, [cctype], distargs=[distargs])
-    state.transition(S=seconds, do_progress=0)
-    return state.simulate(-1, [0], N=NUM_TEST)
+    engine = Engine(
+        D_train, [cctype], distargs=[distargs],
+        num_states=64, rng=gu.gen_rng(1))
+    engine.transition(N=iters, S=seconds, do_progress=0)
+    if iters:
+        kernel = 'column_params' if cu.cctype_class(cctype).is_conditional()\
+            else 'column_hypers'
+        engine.transition(N=100, kernels=[kernel], do_progress=0)
+    samples = engine.simulate(-1, [0], N=NUM_TEST)
+    marginals = engine.logpdf_marginal()
+    ranking = np.argsort(marginals)[::-1]
+    for r in ranking[:5]:
+        engine.get_state(r).plot()
+    return [samples[i] for i in ranking[:5]]
+
 
 cctypes_distargs = {
     'bernoulli'         : None,
     'beta_uc'           : None,
-    'categorical'       : {'k':5},
+    'categorical'       : {'k':12},
     'exponential'       : None,
     'geometric'         : None,
     'lognormal'         : None,
@@ -186,14 +215,17 @@ cctypes_distargs = {
     'vonmises'          : None,
 }
 
+
 @pytest.mark.parametrize('cctype', cctypes_distargs.keys())
-def test_2samp_sanity_same(cctype):
+def disabled_test_2samp_sanity_same(cctype):
     launch_2samp_sanity_same(cctype, cctypes_distargs[cctype])
 
-@pytest.mark.parametrize('cctype', cctypes_distargs.keys())
-def test_2samp_sanity_diff(cctype):
-    launch_2samp_sanity_diff(cctype, cctypes_distargs[cctype])
 
 @pytest.mark.parametrize('cctype', cctypes_distargs.keys())
-def test_2samp_inference_quality(cctype):
+def disabled_test_2samp_sanity_diff(cctype):
+    launch_2samp_sanity_diff(cctype, cctypes_distargs[cctype])
+
+
+@pytest.mark.parametrize('cctype', cctypes_distargs.keys())
+def disabled_test_2samp_inference_quality__ci_(cctype):
     launch_2samp_inference_quality(cctype, cctypes_distargs[cctype])
