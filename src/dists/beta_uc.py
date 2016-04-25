@@ -44,16 +44,15 @@ class BetaUC(DistributionGpm):
         self.N = N
         self.sum_log_x = sum_log_x
         self.sum_minus_log_x = sum_minus_log_x
-        # Hyperparameters.
-        self.mu = mu
-        self.alpha = alpha
-        self.beta = beta
+        # Hyperparameters (fixed).
+        self.mu = 5
+        self.alpha = 1
+        self.beta = 1
         # Parameters.
         self.strength, self.balance = strength, balance
         if strength is None or balance is None:
-            self.strength = self.rng.exponential(scale=1./mu)
-            self.balance = self.rng.beta(alpha, beta)
-            assert self.strength > 0 and 0 < self.balance < 1
+            self.strength, self.balance = BetaUC.sample_parameters(
+                self.mu, self.alpha, self.beta, self.rng)
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())
@@ -92,16 +91,19 @@ class BetaUC(DistributionGpm):
         return self.rng.beta(alpha, beta)
 
     def transition_params(self):
-        n_samples = 25
+        n_samples = 100
+
         # Transition strength.
         log_pdf_fun_str = lambda strength :\
             BetaUC.calc_log_likelihood(
-                self.N, self.sum_log_x, self.sum_minus_log_x, strength,
-                self.balance) \
+                self.N, self.sum_log_x, self.sum_minus_log_x,
+                strength, self.balance) \
             + BetaUC.calc_log_prior(
                 strength, self.balance, self.mu, self.alpha, self.beta)
+
         self.strength = su.mh_sample(self.strength, log_pdf_fun_str,
             .5, [.0, float('Inf')], burn=n_samples, rng=self.rng)
+
         # Transition balance.
         log_pdf_fun_bal = lambda balance : \
             BetaUC.calc_log_likelihood(
@@ -109,16 +111,12 @@ class BetaUC(DistributionGpm):
                 balance) \
             + BetaUC.calc_log_prior(
                 self.strength, balance, self.mu, self.alpha, self.beta)
+
         self.balance = su.mh_sample(self.balance, log_pdf_fun_bal,
             .25, [0, 1], burn=n_samples, rng=self.rng)
 
     def set_hypers(self, hypers):
-        assert hypers['mu'] > 0
-        assert hypers['alpha'] > 0
-        assert hypers['beta'] > 0
-        self.mu = hypers['mu']
-        self.alpha = hypers['alpha']
-        self.beta = hypers['beta']
+        return
 
     def get_hypers(self):
         return {'mu': self.mu, 'alpha': self.alpha, 'beta':
@@ -136,14 +134,7 @@ class BetaUC(DistributionGpm):
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        N = float(len(X))
-        Sx = np.sum(X)
-        Mx = np.sum(1-X)
-        grids['mu'] = gu.log_linspace(1./N, N, n_grid)
-        grids['alpha'] = gu.log_linspace(Sx/N, Sx, n_grid)
-        grids['beta'] = gu.log_linspace(Mx/N, Mx, n_grid)
-        return grids
+        return {}
 
     @staticmethod
     def name():
@@ -192,9 +183,15 @@ class BetaUC(DistributionGpm):
     @staticmethod
     def calc_log_prior(strength, balance, mu, alpha, beta):
         assert strength > 0 and balance > 0 and balance < 1
-        log_strength = scipy.stats.expon.logpdf(strength, scale=1./mu)
+        log_strength = scipy.stats.expon.logpdf(strength, scale=mu)
         log_balance = scipy.stats.beta.logpdf(balance, alpha, beta)
         return log_strength + log_balance
+
+    @staticmethod
+    def sample_parameters(mu, alpha, beta, rng):
+        strength = rng.exponential(scale=mu)
+        balance = rng.beta(alpha, beta)
+        return strength, balance
 
     @staticmethod
     def preprocess(x, y, distargs=None):

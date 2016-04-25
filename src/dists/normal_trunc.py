@@ -15,7 +15,10 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.stats import norm, gamma
+
+from scipy.stats import gamma
+from scipy.stats import norm
+from scipy.stats import uniform
 
 from gpmcc.dists.distribution import DistributionGpm
 from gpmcc.utils import general as gu
@@ -25,7 +28,7 @@ from gpmcc.utils import sampling as su
 class NormalTrunc(DistributionGpm):
     """Normal distribution with normal prior on mean and gamma prior on
     precision. Uncollapsed.
-    sigma ~ Gamma(shape=1, scale=.5)
+    sigma ~ Gamma(shape=alpha, scale=beta)
     mu ~ Uniform(low, high)
     X ~ Normal(mu, sigma)
     """
@@ -40,11 +43,14 @@ class NormalTrunc(DistributionGpm):
         self.N = N
         self.sum_x = sum_x
         self.sum_x_sq = sum_x_sq
+        # Hyperparameters (fixed).
+        self.alpha = 2
+        self.beta = 2
         # Uncollapsed mean and precision parameters.
         self.mu, self.sigma = mu, sigma
         if mu is None or sigma is None:
             self.mu, self.sigma = NormalTrunc.sample_parameters(
-                self.l, self.h, self.rng)
+                self.alpha, self.beta, self.l, self.h, self.rng)
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())
@@ -77,7 +83,7 @@ class NormalTrunc(DistributionGpm):
         data_logp = NormalTrunc.calc_log_likelihood(
             self.N, self.sum_x, self.sum_x_sq, self.sigma, self.mu)
         prior_logp = NormalTrunc.calc_log_prior(
-            self.mu, self.sigma, self.l, self.sigma)
+            self.mu, self.sigma, self.alpha, self.beta, self.l, self.h)
         normalizer_logp = NormalTrunc.calc_log_normalizer(
             self.mu, self.sigma, self.l, self.h)
         return data_logp + prior_logp - self.N * normalizer_logp
@@ -92,10 +98,10 @@ class NormalTrunc(DistributionGpm):
             raise RuntimeError('NormalTrunc failed to rejection sample.')
 
     def transition_params(self):
-        n_samples = 30
+        n_samples = 100
 
         # Transition mu.
-        fn_logpdf_mu = lambda mu :NormalTrunc.calc_log_likelihood(
+        fn_logpdf_mu = lambda mu : NormalTrunc.calc_log_likelihood(
             self.N, self.sum_x, self.sum_x_sq, self.sigma, mu)
 
         self.mu = su.mh_sample(
@@ -104,7 +110,8 @@ class NormalTrunc(DistributionGpm):
 
         # Transition sigma.
         fn_logpdf_sigma = lambda sigma : NormalTrunc.calc_log_likelihood(
-            self.N, self.sum_x, self.sum_x_sq, sigma, self.mu)
+            self.N, self.sum_x, self.sum_x_sq, sigma, self.mu) + \
+            NormalTrunc.calc_log_normalizer(self.mu, sigma, self.l, self.h)
 
         self.sigma = su.mh_sample(
             self.sigma, fn_logpdf_sigma, 1, [0, float('inf')], burn=n_samples,
@@ -155,7 +162,8 @@ class NormalTrunc(DistributionGpm):
 
     @staticmethod
     def calc_log_normalizer(mu, sigma, l, h):
-        return np.log(norm.cdf(h, loc=mu, scale=sigma)
+        return np.log(
+            norm.cdf(h, loc=mu, scale=sigma)
             - norm.cdf(l, loc=mu, scale=sigma))
 
     @staticmethod
@@ -167,18 +175,18 @@ class NormalTrunc(DistributionGpm):
         return (
             - N/2. * np.log(2*np.pi)
             - N * np.log(sigma)
-            - 1 / (2*sigma*sigma)
+            - 1 / (2 * sigma * sigma)
             * (N*mu**2 - 2*mu*sum_x + sum_x_sq))
 
     @staticmethod
-    def calc_log_prior(mu, sigma, l, h):
-        log_sigma = gamma.logpdf(sigma, 1, scale=.5)
-        log_mu = -np.log(h-l)
+    def calc_log_prior(mu, sigma, alpha, beta, l, h):
+        log_sigma = gamma.logpdf(sigma, alpha, scale=beta)
+        log_mu = uniform.logpdf(mu, loc=l, scale=l+h)
         return log_mu + log_sigma
 
     @staticmethod
-    def sample_parameters(l, h, rng):
-        sigma = rng.gamma(1, scale=.5)
+    def sample_parameters(alpha, beta, l, h, rng):
+        sigma = rng.gamma(alpha, scale=beta)
         mu = rng.uniform(low=l, high=h)
         return mu, sigma
 
