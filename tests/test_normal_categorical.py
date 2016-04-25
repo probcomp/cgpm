@@ -60,10 +60,12 @@ class SimulateIndicatorTest(unittest.TestCase):
             counts[k] += 1
         # Create an engine.
         state = Engine(
-            cls.data, ['normal', 'categorical'], [None, {'k':6}], num_states=1,
-            rng=gu.gen_rng(100))
+            cls.data, ['normal', 'categorical'], [None, {'k':6}], num_states=4,
+            rng=gu.gen_rng(0))
         state.transition(N=15)
-        cls.model = state.get_state(0)
+        marginals = state.logpdf_marginal()
+        ranking = np.argsort(marginals)[::-1]
+        cls.model = state.get_state(ranking[0])
 
     def test_joint(self):
         # Simulate from the joint distribution of (x,i).
