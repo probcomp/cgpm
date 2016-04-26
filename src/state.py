@@ -166,7 +166,7 @@ class State(object):
         X : np.array
             An array of data with length self.n_rows().
         cctype : str
-            DistributionGpm name, see `gpmcc.utils.config`.
+            DistributionGpm name, see `gpmcc.utils.config`, unconditional only.
         distargs : dict, optional.
             Distargs appropriate for the cctype.
         v : int, optional
