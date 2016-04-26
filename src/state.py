@@ -327,9 +327,8 @@ class State(object):
 
         logpdf = 0
         queries, evidences = self._get_view_qe(query, evidence)
-        for v in queries:
-            logpdf += self.views[v].logpdf(
-                rowid, queries[v], evidences.get(v,[]))
+        logpdf = sum([self.views[v].logpdf(
+            rowid, queries[v], evidences.get(v,[])) for v in queries])
 
         return logpdf
 
@@ -382,10 +381,9 @@ class State(object):
         samples = np.zeros((N, len(query)))
         queries, evidences = self._get_view_qe(query, evidence)
         for v in queries:
-            v_query = queries[v]
-            v_evidence = evidences.get(v, [])
-            draws = self.views[v].simulate(rowid, v_query, v_evidence, N=N)
-            for i, c in enumerate(v_query):
+            draws = self.views[v].simulate(
+                rowid, queries[v], evidence=evidences.get(v,[]), N=N)
+            for i, c in enumerate(queries[v]):
                 samples[:,query.index(c)] = draws[:,i]
 
         return samples
