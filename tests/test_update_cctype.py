@@ -77,10 +77,17 @@ class UpdateCctypeTest(unittest.TestCase):
 
     def test_categorical_forest(self):
         state = State(
-            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
+            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(1))
         state.transition(N=1)
         cat_id = self.cctypes.index('categorical')
         cat_distargs = self.distargs[cat_id]
+
+        # If cat_id is singleton migrate first.
+        if len(state.view_for(cat_id).dims) == 1:
+            state.unincorporate_dim(cat_id)
+            state.incorporate_dim(
+                self.T[:,cat_id], 'categorical', cat_distargs, v=0)
+            cat_id = state.n_cols()-1
         state.update_cctype(cat_id, 'random_forest', distargs=cat_distargs)
 
         bernoulli_id = self.cctypes.index('bernoulli')
