@@ -94,26 +94,30 @@ class BetaUC(DistributionGpm):
         n_samples = 100
 
         # Transition strength.
-        log_pdf_fun_str = lambda strength :\
-            BetaUC.calc_log_likelihood(
-                self.N, self.sum_log_x, self.sum_minus_log_x,
-                strength, self.balance) \
-            + BetaUC.calc_log_prior(
-                strength, self.balance, self.mu, self.alpha, self.beta)
+        def log_pdf_fun_str(strength):
+            return (
+                BetaUC.calc_log_likelihood(
+                    self.N, self.sum_log_x, self.sum_minus_log_x,
+                    strength, self.balance)
+                + BetaUC.calc_log_prior(
+                    strength, self.balance, self.mu, self.alpha, self.beta))
 
-        self.strength = su.mh_sample(self.strength, log_pdf_fun_str,
-            .5, [.0, float('Inf')], burn=n_samples, rng=self.rng)
+        self.strength = su.mh_sample(
+            self.strength, log_pdf_fun_str, .5, [.0, float('Inf')],
+            burn=n_samples, rng=self.rng)
 
         # Transition balance.
-        log_pdf_fun_bal = lambda balance : \
-            BetaUC.calc_log_likelihood(
-                self.N, self.sum_log_x, self.sum_minus_log_x, self.strength,
-                balance) \
-            + BetaUC.calc_log_prior(
-                self.strength, balance, self.mu, self.alpha, self.beta)
+        def log_pdf_fun_bal(balance):
+            return (
+                BetaUC.calc_log_likelihood(
+                    self.N, self.sum_log_x, self.sum_minus_log_x,
+                    self.strength, balance)
+                + BetaUC.calc_log_prior(
+                    self.strength, balance, self.mu, self.alpha, self.beta))
 
-        self.balance = su.mh_sample(self.balance, log_pdf_fun_bal,
-            .25, [0, 1], burn=n_samples, rng=self.rng)
+        self.balance = su.mh_sample(
+            self.balance, log_pdf_fun_bal, .25, [0, 1], burn=n_samples,
+            rng=self.rng)
 
     def set_hypers(self, hypers):
         return
