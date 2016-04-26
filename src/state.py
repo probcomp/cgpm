@@ -87,47 +87,66 @@ class State(object):
         if distargs is None:
             distargs = [None] * len(cctypes)
 
+        # Hypers.
+        if hypers is None:
+            hypers = [None] * len(cctypes)
+
+        # View CRP alphas.
+        if view_alphas is None:
+            view_alphas = [None] * len(cctypes)
+
+        # State CRP alpha grid.
+        self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(), 30)
+
+        # State CRP alpha.
+        if alpha is None:
+            self.alpha = self.rng.choice(self.alpha_grid)
+        else:
+            self.alpha = alpha
+
+        # Row partitions.
+        if Zrv is None:
+            Zrv = [None] * len(cctypes)
+        else:
+            assert len(Zrv) == len(set(Zv))
+            Zrv = np.asarray(Zrv)
+
         # Constraints.
         self.Cd = [] if Cd is None else Cd
         self.Ci = [] if Ci is None else Ci
         self.Rd = {} if Rd is None else Rd
         self.Ri = {} if Ri is None else Ri
+
+        # XXX TEMPORARY.
         if len(self.Cd) > 0:
             raise ValueError('Dependency constraints not yet implemented.')
 
-        # Generate dimensions.
+        # View partition.
+        if Zv is None:
+            if self.Cd or self.Ci:
+                Zv = gu.simulate_crp_constrained(
+                    self.n_cols(), self.alpha, self.Cd, self.Ci, self.Rd,
+                    self.Ri, rng=self.rng)
+            else:
+                Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
+        self.Zv = Zv
+
+        # Dimensions.
         dims = []
         for col in xrange(self.n_cols()):
-            dim_hypers = None if hypers is None else hypers[col]
-            D = Dim(cctypes[col], col, hypers=dim_hypers,
+            D = Dim(
+                cctypes[col], col, hypers=hypers[col],
                 distargs=distargs[col], rng=self.rng)
             D.transition_hyper_grids(self.X[:,col])
             dims.append(D)
 
-        # Generate CRP alpha.
-        self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(), 30)
-        if alpha is None:
-            alpha = self.rng.choice(self.alpha_grid)
-        self.alpha = alpha
-
-        # Generate view partition.
-        if Zv is None:
-            if len(self.Cd) + len(self.Ci) == 0:
-                Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
-            else:
-                Zv = gu.simulate_crp_constrained(self.n_cols(), self.alpha,
-                    self.Cd, self.Ci, self.Rd, self.Ri, rng=self.rng)
-        elif Zrv is not None:
-            assert len(Zrv) == len(set(Zv))
-        self.Zv = list(Zv)
-
-        # Generate views.
+        # Views.
         self.views = []
         for v in sorted(set(self.Zv)):
             view_dims = [dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
-            Zr = None if Zrv is None else np.asarray(Zrv[v])
-            alpha = None if view_alphas is None else view_alphas[v]
-            view = View(self.X, view_dims, Zr=Zr, alpha=alpha, rng=self.rng)
+            view = View(
+                self.X, view_dims, Zr=Zrv[v], alpha=view_alphas[v],
+                rng=self.rng)
             self.views.append(view)
 
         # Iteration metadata.
@@ -270,11 +289,9 @@ class State(object):
         """
         self.view_for(col).update_cctype(
             col, cctype, hypers=hypers, distargs=distargs)
-        # Run transitions.
         self.transition_column_hyper_grids(cols=[col])
         self.transition_column_params(cols=[col])
         self.transition_column_hypers(cols=[col])
-        # Confirm OK.
         self._check_partitions()
 
     # --------------------------------------------------------------------------
