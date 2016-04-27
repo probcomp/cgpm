@@ -889,7 +889,7 @@ class State(object):
         return cls(
             np.asarray(metadata['X']),
             metadata['cctypes'],
-            metadata['distargs'],
+            distargs=metadata.get('distargs',None),
             Zv=metadata.get('Zv', None),
             Zrv=metadata.get('Zrv', None),
             alpha=metadata.get('alpha', None),
