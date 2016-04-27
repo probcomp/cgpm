@@ -109,7 +109,6 @@ class State(object):
             Zrv = [None] * len(cctypes)
         else:
             assert len(Zrv) == len(set(Zv))
-            Zrv = np.asarray(Zrv)
 
         # Constraints.
         self.Cd = [] if Cd is None else Cd
@@ -129,7 +128,7 @@ class State(object):
                     self.Ri, rng=self.rng)
             else:
                 Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
-        self.Zv = Zv
+        self.Zv = list(Zv)
 
         # Dimensions.
         dims = []
