@@ -136,7 +136,7 @@ def simulate_crp(N, alpha, rng=None):
     assert N > 0 and alpha > 0.
     alpha = float(alpha)
 
-    partition = np.zeros(N, dtype=int)
+    partition = [0]*N
     Nk = [1]
     for i in xrange(1,N):
         K = len(Nk)
@@ -161,7 +161,7 @@ def simulate_crp(N, alpha, rng=None):
     K = len(Nk)
     if K > 1:
         rng.shuffle(partition)
-    return np.array(partition)
+    return partition
 
 def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     """Simulates a CRP with N customers and concentration alpha. Cd is a list,
@@ -174,7 +174,7 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     assert N > 0 and alpha > 0.
 
     # Initial partition.
-    Z = -1 * np.ones(N, dtype=int)
+    Z = [-1]*N
 
     # Friends dictionary from Cd.
     friends = {col:block for block in Cd for col in block}

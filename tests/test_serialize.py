@@ -16,56 +16,49 @@
 
 """Crash test for serialization of state and engine."""
 
+import json
 import tempfile
 import unittest
 
 import numpy as np
 
-import gpmcc.engine
-import gpmcc.state
+from gpmcc.engine import Engine
+from gpmcc.state import State
 
 from gpmcc.utils import general as gu
 
 
 class TestSerialize(unittest.TestCase):
 
-    def test_state_serialize(self):
+    def serialize_generic(self, Model):
+        """Model is either State or Engine class."""
         # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
         data = np.random.normal(size=(100,5))
         data[:,0] = 0
         # Run a single chain for a few iterations.
-        state = gpmcc.state.State(
+        model = Model(
             data, ['bernoulli','normal','normal','normal','normal'],
             rng=gu.gen_rng(0))
-        state.transition(N=1)
+        model.transition(N=1)
+        # To metadata.
+        metadata = model.to_metadata()
+        Model.from_metadata(metadata)
         # To JSON.
-        metadata = state.to_metadata()
-        state_clone = gpmcc.engine.State.from_metadata(metadata)
+        json_metadata = json.dumps(model.to_metadata())
+        Model.from_metadata(json.loads(json_metadata))
         # To pickle.
-        with tempfile.NamedTemporaryFile(prefix='gpmcc-state') as temp:
+        with tempfile.NamedTemporaryFile(prefix='gpmcc-serialize') as temp:
             with open(temp.name, 'w') as f:
-                state.to_pickle(f)
+                model.to_pickle(f)
             with open(temp.name, 'r') as f:
-                state_clone = state.from_pickle(f, rng=gu.gen_rng(10))
+                Model.from_pickle(f, rng=gu.gen_rng(10))
+
+    def test_state_serialize(self):
+        self.serialize_generic(State)
 
     def test_engine_serialize(self):
-        # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
-        data = np.random.normal(size=(100,5))
-        data[:,0] = 0
-        # Run a single chain for a few iterations.
-        engine = gpmcc.engine.Engine(
-            data, ['bernoulli','normal','normal','normal','normal'],
-            num_states=4, rng=gu.gen_rng(0))
-        engine.transition(N=1)
-        # To JSON.
-        metadata = engine.to_metadata()
-        engine_clone = gpmcc.engine.Engine.from_metadata(metadata)
-        # To pickle.
-        with tempfile.NamedTemporaryFile(prefix='gpmcc-engine') as temp:
-            with open(temp.name, 'w') as f:
-                engine.to_pickle(f)
-            with open(temp.name, 'r') as f:
-                engine_clone = engine.from_pickle(f)
+        self.serialize_generic(Engine)
+
 
 if __name__ == '__main__':
     unittest.main()
