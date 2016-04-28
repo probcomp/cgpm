@@ -27,7 +27,7 @@ from gpmcc import dim
 
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
-        separation, rng=None):
+        separation, view_partition=None, rng=None):
     """Generates data, partitions, and Dim.
 
      Parameters
@@ -80,12 +80,15 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
 
     n_cols = len(cctypes)
 
-    Zv = gen_partition(n_cols, view_weights, rng)
+    if view_partition:
+        Zv = list(view_partition)
+    else:
+        Zv = gen_partition(n_cols, view_weights, rng)
+
     Zc = [gen_partition(n_rows, cw, rng) for cw in cluster_weights]
 
-    n_views = len(view_weights)
     assert len(Zv) == n_cols
-    assert len(Zc) == n_views
+    assert len(Zc) == len(set(Zv))
     assert len(Zc[0]) == n_rows
 
     T = np.zeros((n_cols, n_rows))
