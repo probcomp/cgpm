@@ -375,19 +375,18 @@ class View(object):
     def _logpdf_row_gibbs(self, rowid, m):
         """Internal use only for Gibbs transition."""
         m_aux = m-1 if self.Nk[self.Zr[rowid]]==1 else m
-        return [sum([self._logpdf_gibbs(dim, rowid, k) for dim in
+        return [sum([self._logpdf_cell_gibbs(dim, rowid, k) for dim in
             self.dims.values()]) for k in xrange(len(self.Nk) + m_aux)]
 
-    def _logpdf_gibbs(self, dim, rowid, k):
+    def _logpdf_cell_gibbs(self, dim, rowid, k):
         x = self.X[rowid, dim.index]
         y = self._get_conditions(dim, rowid)
-        return self._logpdf_gibbs_current(dim, x, y, k) if self.Zr[rowid] == k \
-            else dim.logpdf(x, k, y=y)
-
-    def _logpdf_gibbs_current(self, dim, x, y, k):
-        dim.unincorporate(x, k, y=y)
-        logp = dim.logpdf(x, k, y=y)
-        dim.incorporate(x, k, y=y)
+        if self.Zr[rowid] == k:
+            dim.unincorporate(x, k, y=y)
+            logp = dim.logpdf(x, k, y=y)
+            dim.incorporate(x, k, y=y)
+        else:
+            logp = dim.logpdf(x, k, y=y)
         return logp
 
     # --------------------------------------------------------------------------
@@ -403,7 +402,7 @@ class View(object):
         ccols = self._conditional_dims()
         uvals = self._unconditional_values([rowid])[0]
         cvals = self._conditional_values([rowid])[0]
-        qcols = query if isinstance(query[0],int) else [q[0] for q in query]
+        qcols = query if isinstance(query[0], int) else [q[0] for q in query]
         qrts = [q for q in qcols if q in ucols]
         qlfs = [q for q in qcols if q in ccols]
         ev_c = filter(lambda e: e[0] not in qrts, zip(ucols, uvals))
