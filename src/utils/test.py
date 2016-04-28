@@ -79,16 +79,23 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
         rng = gu.gen_rng()
 
     n_cols = len(cctypes)
-    Zv, Zc = gen_partition_from_weights(
-        n_rows, n_cols, view_weights, cluster_weights, rng)
+
+    Zv = gen_partition(n_cols, view_weights, rng)
+    Zc = [gen_partition(n_rows, cw, rng) for cw in cluster_weights]
+
+    n_views = len(view_weights)
+    assert len(Zv) == n_cols
+    assert len(Zc) == n_views
+    assert len(Zc[0]) == n_rows
+
     T = np.zeros((n_cols, n_rows))
 
     for col in xrange(n_cols):
         cctype = cctypes[col]
         args = distargs[col]
         view = Zv[col]
-        Tc = _gen_data[cctype](Zc[view], rng, separation=separation[col],
-            distargs=args)
+        Tc = _gen_data[cctype](
+            Zc[view], rng, separation=separation[col], distargs=args)
         T[col] = Tc
 
     return T, Zv, Zc
@@ -265,32 +272,15 @@ def _gen_categorical_data(Z, rng, separation=.9, distargs=None):
         Tc[r] = int(x)
     return Tc
 
-def gen_partition_from_weights(n_rows, n_cols, view_weights, clusters_weights,
-        rng):
-    n_views = len(view_weights)
-    Zv = [v for v in range(n_views)]
-    for _ in xrange(n_cols - n_views):
-        v = gu.pflip(view_weights, rng=rng)
-        Zv.append(int(v))
-
-    rng.shuffle(Zv)
-    assert len(Zv) == n_cols
-
-    Zc = []
-    for v in xrange(n_views):
-        n_clusters = len(clusters_weights[v])
-        Z = [c for c in xrange(n_clusters)]
-        for _ in xrange(n_rows - n_clusters):
-            c_weights = np.copy(clusters_weights[v])
-            c = gu.pflip(c_weights, rng=rng)
-            Z.append(int(c))
-        rng.shuffle(Z)
-        Zc.append(Z)
-
-    assert len(Zc) == n_views
-    assert len(Zc[0]) == n_rows
-
-    return Zv, Zc
+def gen_partition(N, weights, rng):
+    assert all(w != 0 for w in weights)
+    assert np.allclose(sum(weights), 1)
+    K = len(weights)
+    assert K <= N    # XXX FIXME
+    Z = range(K)
+    Z.extend(int(gu.pflip(weights, rng=rng)) for _ in xrange(N-K))
+    rng.shuffle(Z)
+    return Z
 
 def column_average_ari(Zv, Zc, cc_state_object):
     from sklearn.metrics import adjusted_rand_score
