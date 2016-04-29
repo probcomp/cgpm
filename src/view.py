@@ -279,19 +279,25 @@ class View(object):
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
 
+    def no_leafs(self, query, evidence):
+        roots = self._unconditional_dims()
+        if query and isinstance(query[0], tuple): query = [q[0] for q in query]
+        clean_evidence = all(e[0] in roots for e in evidence)
+        clean_query = all(q in roots for q in query)
+        return clean_evidence and clean_query
+
     def _simulate_joint(self, query, evidence, k, N=1):
-        r = self._unconditional_dims()
-        if all (e[0] in r for e in evidence) and all(q in r for q in query):
+        if self.no_leafs(query, evidence):
             return self._simulate_unconditional(query, k, N=N)
         else:
             # XXX Should we resample ACCURACY times from the prior for 1 sample?
-            ACCURACY = N if all(q in r for q in query) else 20*N
+            roots = self._unconditional_dims()
+            ACCURACY = N if all(q in roots for q in query) else 20*N
             samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
             return self._importance_resample(query, samples, weights, N=N)
 
     def _logpdf_joint(self, query, evidence, k):
-        r = self._unconditional_dims()
-        if all (e[0] in r for e in evidence) and all(q[0] in r for q in query):
+        if self.no_leafs(query, evidence):
             logp_evidence = self._logpdf_unconditional(evidence, k)
             logp_query = self._logpdf_unconditional(query, k)
         else:
