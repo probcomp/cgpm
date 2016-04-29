@@ -14,28 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import unittest
 
-import numpy as np
-
-from gpmcc.state import State
-from gpmcc.utils import general as gu
 from gpmcc.utils import validation as vu
 
 
-class TestGetViewQueryEvidence(unittest.TestCase):
+class TestPartitionQueryEvidence(unittest.TestCase):
 
-    def test_query_evidence(self):
-        D = np.random.normal(size=(10,1))
-        T = np.repeat(D, 10, axis=1)
+    def test_partition_query_evidence(self):
+
         Zv = [0,0,0,1,1,1,2,2,2,3]
-
-        state = State(T, ['normal']*10, Zv=Zv, rng=gu.gen_rng(0))
-
         query = [(9,1), (0,0), (1,1), (4,2), (5,7), (7,0)]
         evidence = [(3,1), (9,1), (6,-1)]
-        queries, evidences = state._get_view_qe(query, evidence)
+        queries, evidences = vu.partition_query_evidence(Zv, query, evidence)
 
         # All 4 views have query.
         self.assertEqual(len(queries), 4)

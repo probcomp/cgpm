@@ -212,6 +212,15 @@ class View(object):
             self._transition_row(rowid)
 
     # --------------------------------------------------------------------------
+    # Github issue #65.
+
+    def logpdf_marginal(self):
+        """Compute the marginal logpdf CRP assignment and data."""
+        logp_crp = gu.logp_crp(len(self.Zr), self.Nk, self.alpha)
+        logp_dims = [sum(dim.logpdf_marginal()) for dim in self.dims.values()]
+        return logp_crp + sum(logp_dims)
+
+    # --------------------------------------------------------------------------
     # logpdf
 
     def logpdf(self, rowid, query, evidence):
@@ -239,12 +248,6 @@ class View(object):
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
         logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
         return logsumexp(np.add(logp_cluster, logp_query))
-
-    def logpdf_marginal(self):
-        """Compute the marginal logpdf CRP assignment and data."""
-        logp_crp = gu.logp_crp(len(self.Zr), self.Nk, self.alpha)
-        logp_dims = [sum(dim.logpdf_marginal()) for dim in self.dims.values()]
-        return logp_crp + sum(logp_dims)
 
     # --------------------------------------------------------------------------
     # simulate

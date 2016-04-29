@@ -294,6 +294,14 @@ class State(object):
         self._check_partitions()
 
     # --------------------------------------------------------------------------
+    # Github issue #65.
+
+    def logpdf_marginal(self):
+        """Evaluate multiple queries at once, used by Engine."""
+        return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
+            sum(v.logpdf_marginal() for v in self.views)
+
+    # --------------------------------------------------------------------------
     # logpdf
 
     def logpdf(self, rowid, query, evidence=None):
@@ -323,9 +331,9 @@ class State(object):
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
+        queries, evidences = vu.partition_query_evidence(
+            self.Zv, query, evidence)
 
-        logpdf = 0
-        queries, evidences = self._get_view_qe(query, evidence)
         logpdf = sum([self.views[v].logpdf(
             rowid, queries[v], evidences.get(v,[])) for v in queries])
 
@@ -337,11 +345,6 @@ class State(object):
         assert len(rowids) == len(queries) == len(evidences)
         return np.asarray([self.logpdf(r, q, e)
             for (r, q, e) in zip(rowids, queries, evidences)])
-
-    def logpdf_marginal(self):
-        """Evaluate multiple queries at once, used by Engine."""
-        return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
-            sum(v.logpdf_marginal() for v in self.views)
 
     # --------------------------------------------------------------------------
     # Simulate
@@ -376,9 +379,10 @@ class State(object):
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
+        queries, evidences = vu.partition_query_evidence(
+            self.Zv, query, evidence)
 
         samples = np.zeros((N, len(query)))
-        queries, evidences = self._get_view_qe(query, evidence)
         for v in queries:
             draws = self.views[v].simulate(
                 rowid, queries[v], evidence=evidences.get(v,[]), N=N)
@@ -770,23 +774,6 @@ class State(object):
 
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
-
-    def _get_view_qe(self, query, evidence):
-        """queries[v], evidences[v] are the queries, evidences for view v."""
-        queries, evidences = {}, {}
-        for q in query:
-            col = q if isinstance(q, int) else q[0]
-            if self.Zv[col] in queries:
-                queries[self.Zv[col]].append(q)
-            else:
-                queries[self.Zv[col]] = [q]
-        for e in evidence:
-            col = e[0]
-            if self.Zv[col] in evidences:
-                evidences[self.Zv[col]].append(e)
-            else:
-                evidences[self.Zv[col]] = [e]
-        return queries, evidences
 
     def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.

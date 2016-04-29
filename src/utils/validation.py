@@ -124,3 +124,20 @@ def validate_query_evidence(X, rowid, hypothetical, query, evidence=None):
     # Disallow query of observed cell. It is already observed so Dirac.
     # if any(not np.isnan(X[rowid,ec]) for ec in ecols):
     #     raise ValueError('Cannot query a non-nan observed cell.')
+
+def partition_query_evidence(Z, query, evidence):
+    """queries[v], evidences[v] are the queries, evidences for view v."""
+    queries, evidences = {}, {}
+    for q in query:
+        col = q if isinstance(q, int) else q[0]
+        if Z[col] in queries:
+            queries[Z[col]].append(q)
+        else:
+            queries[Z[col]] = [q]
+    for e in evidence:
+        col = e[0]
+        if Z[col] in evidences:
+            evidences[Z[col]].append(e)
+        else:
+            evidences[Z[col]] = [e]
+    return queries, evidences
