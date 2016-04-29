@@ -124,6 +124,16 @@ class Dim(object):
                 cluster.transition_params()
 
     # --------------------------------------------------------------------------
+    # Github issue #65.
+
+    def logpdf_marginal(self, k=None):
+        """If k is not None, returns the marginal log_p of clusters[k].
+        Otherwise returns the sum of marginal log_p over all clusters."""
+        if k is not None:
+            return self.clusters[k].logpdf_marginal()
+        return [cluster.logpdf_marginal() for cluster in self.clusters]
+
+    # --------------------------------------------------------------------------
     # logpdf
 
     def logpdf(self, x, k, y=None):
@@ -138,13 +148,6 @@ class Dim(object):
             return cluster.logpdf(x, y=y)
         else:
             return 0
-
-    def logpdf_marginal(self, k=None):
-        """If k is not None, returns the marginal log_p of clusters[k].
-        Otherwise returns the sum of marginal log_p over all clusters."""
-        if k is not None:
-            return self.clusters[k].logpdf_marginal()
-        return [cluster.logpdf_marginal() for cluster in self.clusters]
 
     # --------------------------------------------------------------------------
     # Simulate
