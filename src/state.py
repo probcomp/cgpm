@@ -293,6 +293,15 @@ class State(object):
         self.transition_column_hypers(cols=[col])
         self._check_partitions()
 
+    def update_foreign_predictor(self, predictor, parents):
+        # Foreign predictors indexed from -1, -2, ...
+        index = -len(self.predictors) - 1
+        # No cycles.
+        assert all(index not in self.parents[p] for p in self.predictors)
+        self.predictors[index] = predictor
+        self.parents[index] = parents
+        return index
+
     # --------------------------------------------------------------------------
     # Github issue #65.
 
@@ -325,19 +334,11 @@ class State(object):
         logpdf : float
             The logpdf(query|rowid, evidence).
         """
-        if evidence is None:
-            evidence = []
-
+        if evidence is None: evidence = []
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
-        queries, evidences = vu.partition_query_evidence(
-            self.Zv, query, evidence)
-
-        logpdf = sum([self.views[v].logpdf(
-            rowid, queries[v], evidences.get(v,[])) for v in queries])
-
-        return logpdf
+        return self._logpdf_roots(rowid, query, evidence)
 
     def logpdf_bulk(self, rowids, queries, evidences=None):
         """Evaluate multiple queries at once, used by Engine."""
@@ -345,6 +346,19 @@ class State(object):
         assert len(rowids) == len(queries) == len(evidences)
         return np.asarray([self.logpdf(r, q, e)
             for (r, q, e) in zip(rowids, queries, evidences)])
+
+    def _logpdf_roots(self, rowid, query, evidence):
+        queries, evidences = vu.partition_query_evidence(
+            self.Zv, query, evidence)
+        return sum([self.views[v].logpdf(
+            rowid, queries[v], evidences.get(v,[])) for v in queries])
+
+    def _logpdf_leafs(self, rowid, query, evidence):
+        assert all(c in self.predictors for c, x in query)
+        ev_set, ev_lookup = set(evidence), dict(evidence)
+        assert all(set.issubset(set(self.parents[c]), ev_set) for c, x in query)
+        ys = [[ev_lookup[p] for p in self.parents[c]] for c, x in query]
+        return sum([self.predictor[c].logpdf(rowid, x, ys[c]) for c,x in query])
 
     # --------------------------------------------------------------------------
     # Simulate
@@ -373,23 +387,11 @@ class State(object):
         samples : np.array
             A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
         """
-        if evidence is None:
-            evidence = []
-
+        if evidence is None: evidence = []
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid), query,
             evidence=evidence)
-        queries, evidences = vu.partition_query_evidence(
-            self.Zv, query, evidence)
-
-        samples = np.zeros((N, len(query)))
-        for v in queries:
-            draws = self.views[v].simulate(
-                rowid, queries[v], evidence=evidences.get(v,[]), N=N)
-            for i, c in enumerate(queries[v]):
-                samples[:,query.index(c)] = draws[:,i]
-
-        return samples
+        return self._simulate_roots(rowid, query, evidence, N)
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
@@ -398,6 +400,24 @@ class State(object):
         assert len(rowids) == len(queries) == len(evidences) == len(Ns)
         return np.asarray([self.simulate(r, q, e, n)
             for (r, q, e, n) in zip(rowids, queries, evidences, Ns)])
+
+    def _simulate_roots(self, rowid, query, evidence, N):
+        queries, evidences = vu.partition_query_evidence(
+            self.Zv, query, evidence)
+        samples = np.zeros((N, len(query)))
+        for v in queries:
+            draws = self.views[v].simulate(
+                rowid, queries[v], evidence=evidences.get(v,[]), N=N)
+            for i, c in enumerate(queries[v]):
+                samples[:,query.index(c)] = draws[:,i]
+        return samples
+
+    def _simulate_leafs(self, rowid, query, evidence):
+        assert all(c in self.predictors for c, x in query)
+        ev_set, ev_lookup = set(evidence), dict(evidence)
+        assert all(set.issubset(set(self.parents[c]), ev_set) for c, x in query)
+        ys = [[ev_lookup[p] for p in self.parents[c]] for c, x in query]
+        return sum([self.predictor[c].logpdf(rowid, ys[c]) for c in query])
 
     # --------------------------------------------------------------------------
     # Mutual information
