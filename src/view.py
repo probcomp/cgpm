@@ -231,7 +231,7 @@ class View(object):
 
     def _logpdf_observed(self, rowid, query, evidence):
         evidence = self._evidence_for_observed_query(rowid, query, evidence)
-        return self._logpdf_joint(query, evidence, self.Zr[rowid])[1]
+        return self._logpdf_joint(query, evidence, self.Zr[rowid])
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
@@ -243,10 +243,10 @@ class View(object):
         # p(z|xE)   logp_cluster
         # p(xQ|z)   logp_query
         K = range(len(self.Nk)+1)
-        logp_evidence, logp_query = zip(
-            *[self._logpdf_joint(query, evidence, k) for k in K])
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        logp_evidence = [self._logpdf_joint(evidence, [], k) for k in K]
         logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
+        logp_query = [self._logpdf_joint(query, evidence, k) for k in K]
         return logsumexp(np.add(logp_cluster, logp_query))
 
     # --------------------------------------------------------------------------
@@ -267,7 +267,7 @@ class View(object):
         """cluster=True exposes latent cluster of each sample as extra col."""
         K = range(len(self.Nk)+1)
         logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = [self._logpdf_joint(evidence, [], k)[1] for k in K]
+        logp_evidence = [self._logpdf_joint(evidence, [], k) for k in K]
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
         counts = {k:n for k,n in enumerate(np.bincount(ks)) if n > 0}
@@ -292,24 +292,23 @@ class View(object):
     def _simulate_joint(self, query, evidence, k, N=1):
         if self.no_leafs(query, evidence):
             return self._simulate_unconditional(query, k, N=N)
-        else:
-            # XXX Should we resample ACCURACY times from the prior for 1 sample?
-            roots = self._unconditional_dims()
-            ACCURACY = N if all(q in roots for q in query) else 20*N
-            samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
-            return self._importance_resample(query, samples, weights, N=N)
+        # XXX Should we resample ACCURACY times from the prior for 1 sample?
+        roots = self._unconditional_dims()
+        ACCURACY = N if all(q in roots for q in query) else 20*N
+        samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
+        return self._importance_resample(query, samples, weights, N=N)
 
     def _logpdf_joint(self, query, evidence, k):
         if self.no_leafs(query, evidence):
-            logp_evidence = self._logpdf_unconditional(evidence, k)
-            logp_query = self._logpdf_unconditional(query, k)
-        else:
-            ACCURACY = 20
-            _, weights_eq = self._weighted_samples(evidence+query, k, ACCURACY)
-            _, weights_e = self._weighted_samples(evidence, k, ACCURACY)
+            return self._logpdf_unconditional(query, k)
+        ACCURACY = 20
+        sq, weights_eq = self._weighted_samples(evidence+query, k, ACCURACY)
+        logp_evidence = 0.
+        if evidence:
+            se, weights_e = self._weighted_samples(evidence, k, ACCURACY)
             logp_evidence = logmeanexp(weights_e)
-            logp_query = logmeanexp(weights_eq) - logp_evidence
-        return logp_evidence, logp_query
+        logp_query = logmeanexp(weights_eq) - logp_evidence
+        return logp_query
 
     def _importance_resample(self, query, samples, weights, N=1):
         indices = gu.log_pflip(weights, size=N, rng=self.rng)
