@@ -39,6 +39,8 @@ class LikelihoodWeightSanityTest(unittest.TestCase):
         state = State(T.T, cctypes, distargs=distargs, Zv=[0]*len(cctypes),
             rng=gu.gen_rng(0))
         state.update_cctype(0, 'random_forest', distargs={'k':5})
+        # XXX Uncomment me for a bug!
+        # state.update_cctype(1, 'linear_regression')
         state.transition(N=10, kernels=['rows','view_alphas','alpha',
             'column_params','column_hypers'])
         cls.state = state
