@@ -90,8 +90,7 @@ class View(object):
         if cctype_class(cctype).is_conditional():
             Y = self._unconditional_values(range(len(self.Zr)))
             if Y.shape[1] == 0:
-                raise ValueError(
-                    'Cannot incorporate conditional dim in singleton View.')
+                raise ValueError('Cannot incorporate singleton conditional dim.')
             distargs['cctypes'] = self._unconditional_cctypes()
             distargs['ccargs'] = self._unconditional_ccargs()
         return Y, distargs
@@ -152,8 +151,14 @@ class View(object):
 
     def update_cctype(self, col, cctype, hypers=None, distargs=None):
         """Update the distribution type of self.dims[col] to cctype."""
-        if distargs is None: distargs = {}
-        distargs.update(self._prepare_incorporate(cctype)[1])
+        if distargs is None:
+            distargs = {}
+        local_distargs = self._prepare_incorporate(cctype)[1]
+        if col in self._unconditional_dims() and local_distargs:
+            index = self._unconditional_dims().index(col)
+            del local_distargs['cctypes'][index]
+            del local_distargs['ccargs'][index]
+        distargs.update(local_distargs)
         D_old = self.dims[col]
         D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
@@ -449,11 +454,11 @@ class View(object):
 
     def _unconditional_ccargs(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.distargs for d in dims]
+        return [d.get_distargs() for d in dims]
 
     def _conditional_ccargs(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.distargs for d in dims]
+        return [d.get_distargs() for d in dims]
 
     def _check_partitions(self):
         # For debugging only.

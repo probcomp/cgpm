@@ -206,6 +206,9 @@ class Dim(object):
     def is_numeric(self):
         return self.model.is_numeric()
 
+    def get_distargs(self):
+        return self.aux_model.get_distargs()
+
     def plot_dist(self, X, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
         plotter = pu.plot_dist_continuous if self.model.is_continuous() else \
