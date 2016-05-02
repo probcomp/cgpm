@@ -260,7 +260,7 @@ class View(object):
 
     def _simulate_observed(self, rowid, query, evidence, N):
         evidence = self._evidence_for_observed_query(rowid, query, evidence)
-        samples = self._simulate_joint(query, evidence, self.Zr[rowid], N=N)
+        samples = self._simulate_joint(query, evidence, self.Zr[rowid], N)
         return np.asarray(samples)
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
@@ -271,7 +271,7 @@ class View(object):
         logp_cluster = np.add(logp_crp, logp_evidence)
         ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
         counts = {k:n for k,n in enumerate(np.bincount(ks)) if n > 0}
-        samples = [self._simulate_joint(query, evidence, k, N=counts[k])
+        samples = [self._simulate_joint(query, evidence, k, counts[k])
             for k in counts]
         samples = np.asarray([s for samples_k in samples for s in samples_k])
         if cluster:
@@ -289,14 +289,13 @@ class View(object):
         clean_query = all(q in roots for q in query)
         return clean_evidence and clean_query
 
-    def _simulate_joint(self, query, evidence, k, N=1):
+    def _simulate_joint(self, query, evidence, k, N):
         if self.no_leafs(query, evidence):
-            return self._simulate_unconditional(query, k, N=N)
+            return self._simulate_unconditional(query, k, N)
         # XXX Should we resample ACCURACY times from the prior for 1 sample?
-        roots = self._unconditional_dims()
-        ACCURACY = N if all(q in roots for q in query) else 20*N
-        samples, weights = self._weighted_samples(evidence, k, N=ACCURACY)
-        return self._importance_resample(query, samples, weights, N=N)
+        ACCURACY = N if self.no_leafs(evidence, []) else 20*N
+        samples, weights = self._weighted_samples(evidence, k, ACCURACY)
+        return self._importance_resample(query, samples, weights, N)
 
     def _logpdf_joint(self, query, evidence, k):
         if self.no_leafs(query, evidence):
@@ -310,7 +309,7 @@ class View(object):
         logp_query = logmeanexp(weights_eq) - logp_evidence
         return logp_query
 
-    def _importance_resample(self, query, samples, weights, N=1):
+    def _importance_resample(self, query, samples, weights, N):
         indices = gu.log_pflip(weights, size=N, rng=self.rng)
         return [[samples[i][q] for q in query] for i in indices]
 
