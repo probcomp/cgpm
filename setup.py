@@ -65,6 +65,7 @@ setup(
     packages=[
         'gpmcc',
         'gpmcc.dists',
+        'gpmcc.doc',
         'gpmcc.utils'
     ],
     package_dir={

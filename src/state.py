@@ -38,47 +38,7 @@ class State(object):
     def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
             view_alphas=None, hypers=None, Cd=None, Ci=None, Rd=None, Ri=None,
             iterations=None, rng=None):
-        """Construct a State.
-
-        Parameters
-        ----------
-        X : np.ndarray
-            Data matrix, each row is an observation and each column a variable.
-        cctypes : list<str>
-            Data type of each column, see `utils.config` for valid cctypes.
-        distargs : list<dict>, optional
-            Distargs appropriate for each cctype in cctypes. For details on
-            distargs see the documentation for each DistributionGpm.
-        Zv : list<int>, optional
-            Assignmet of columns to views. If unspecified, sampled from CRP.
-        Zrv : list(list<int>), optional
-            Assignment of rows to clusters in each view, where Zrv[k] is
-            the Zr for View k. If unspecified, sampled from CRP. If specified,
-            then Zv must also be specified.
-        Cd : list(list<int>), optional
-            List of marginal dependence constraints for columns. Each element in
-            the list is a list of columns which are to be in the same view. Each
-            column can only be in one such list i.e. [[1,2,5],[1,5]] is not
-            allowed.
-        Ci : list(tuple<int>), optional
-            List of marginal independence constraints for columns.
-            Each element in the list is a 2-tuple of columns that must be
-            independent, i.e. [(1,2),(1,3)].
-        Rd : dict(int:Cd), optional
-            Dictionary of dependence constraints for rows, wrt.
-            Each entry is (col: Cd), where col is a column number and Cd is a
-            list of dependence constraints for the rows with respect to that
-            column (see doc for Cd).
-        Ri : dict(int:Cid), optional
-            Dictionary of independence constraints for rows, wrt.
-            Each entry is (col: Ci), where col is a column number and Ci is a
-            list of independence constraints for the rows with respect to that
-            column (see doc for Ci).
-        iterations : dict(str:int), optional
-            Metadata holding the number of iters each kernel has been run.
-        rng : np.random.RandomState, optional.
-            Source of entropy.
-        """
+        """Construct State GPM with initial conditions and constraints."""
         # Seed.
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -166,22 +126,7 @@ class State(object):
     # Observe
 
     def incorporate_dim(self, X, cctype, distargs=None, v=None):
-        """Incorporate a new Dim into this State.
-
-        Parameters
-        ----------
-        X : np.array
-            An array of data with length self.n_rows().
-        cctype : str
-            DistributionGpm name, see `gpmcc.utils.config`, unconditional only.
-        distargs : dict, optional.
-            Distargs appropriate for the cctype.
-        v : int, optional
-            Index of the view to assign the data. If unspecified, will be
-            sampled. If 0 <= v < len(state.views) then insert into an existing
-            View. If v = len(state.views) then singleton view will be created
-            with a partition from the CRP prior.
-        """
+        """Incorporate a new Dim into this State."""
         assert len(X) == self.n_rows()
         self.X = np.column_stack((self.X, X))
 
@@ -210,7 +155,7 @@ class State(object):
         self._check_partitions()
 
     def unincorporate_dim(self, col):
-        """Unincorporate the existing dim with index col."""
+        """Unincorporate the Dim at self.dims[col]."""
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
 
@@ -236,21 +181,7 @@ class State(object):
         self._check_partitions()
 
     def incorporate_rows(self, X, k=None):
-        """Incorporate list of new rows.
-
-        Parameters
-        ----------
-        X : np.array
-            A (r x self.n_cols) list of data, where r is number of
-            new rows to incorporate.
-        k : list(list<int>), optional
-            A (r x self.n_views()) list of integers, where r is the number of
-            new rows to incorporate, and k[r][i] is the cluster to insert row r
-            in view i. If k[r][i] is greater than the number of
-            clusters in view[i] an error will be thrown. To specify cluster
-            assignments for only some views, use None in all other locations
-            i.e. k=[[None,2,None],[[0,None,1]]].
-        """
+        """Incorporate list of new rows with data X and clusters k."""
         rowids = xrange(self.n_rows(), self.n_rows() + len(X))
         self.X = np.vstack((self.X, X))
 
@@ -265,7 +196,7 @@ class State(object):
         self._check_partitions()
 
     def unincorporate_rows(self, rowids):
-        """Unincorporate a list of rowids, must be in range(0, State.n_rows)."""
+        """Unincorporate list of rowids from population X."""
         if self.n_rows() == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
 
@@ -283,17 +214,7 @@ class State(object):
     # Schema updates.
 
     def update_cctype(self, col, cctype, hypers=None, distargs=None):
-        """Update the distribution type of self.dims[col] to cctype.
-
-        Parameters
-        ----------
-        col : int
-            Index of column to update.
-        cctype : str
-            DistributionGpm name see `gpmcc.utils.config`.
-        distargs : dict, optional.
-            Distargs appropriate for the cctype.
-        """
+        """Update the distribution type of self.dims[col] to cctype."""
         self.view_for(col).update_cctype(
             col, cctype, hypers=hypers, distargs=distargs)
         self.transition_column_hyper_grids(cols=[col])
@@ -302,6 +223,7 @@ class State(object):
         self._check_partitions()
 
     def update_foreign_predictor(self, predictor, parents):
+        """DOCUMENT ME."""
         # Foreign predictors indexed from -1, -2, ... no cycles.
         index = -next(self.counter)
         if any(p in self.predictors for p in parents):
@@ -311,6 +233,7 @@ class State(object):
         return index
 
     def remove_foreign_predictor(self, index):
+        """DOCUMENT ME."""
         if index not in self.predictors:
             raise ValueError('Predictor %s never hooked.' % str(index))
         del self.predictors[index]
@@ -319,7 +242,7 @@ class State(object):
     # Github issue #65.
 
     def logpdf_marginal(self):
-        """Evaluate multiple queries at once, used by Engine."""
+        """Compute the joint density of latents and data p(theta,Z,X|CC)."""
         return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
             sum(v.logpdf_marginal() for v in self.views)
 
@@ -327,26 +250,7 @@ class State(object):
     # logpdf
 
     def logpdf(self, rowid, query, evidence=None):
-        """Compute density of query under the posterior predictive distirbution.
-
-        Parameters
-        ----------
-        rowid : int
-            The rowid of the member of the population to simulate from.
-            If 0 <= rowid < state.n_rows then the latent variables of member
-            rowid will be taken as conditioning variables.
-            Otherwise logpdf for a hypothetical member is computed,
-            marginalizing over latent variables.
-        query : list(tuple<int>)
-            List of pairs (col, val) at which to query the logpdf.
-        evidence : list(tuple<int>), optional
-            List of pairs (col, val) of conditioning values in the row.
-
-        Returns
-        -------
-        logpdf : float
-            The logpdf(query|rowid, evidence).
-        """
+        """Compute density of query under posterior predictive distirbution."""
         if evidence is None: evidence = []
         vu.validate_query_evidence(self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
@@ -356,29 +260,7 @@ class State(object):
     # Simulate
 
     def simulate(self, rowid, query, evidence=None, N=1):
-        """Simulate from the posterior predictive distirbution.
-
-        Parameters
-        ----------
-        rowid : int
-            The rowid of the member of the population to simulate from.
-            If 0 <= rowid < state.n_rows then the latent variables of member
-            rowid will be taken as conditioning variables.
-            Otherwise a hypothetical member is simulated, marginalizing over
-            latent variables.
-        query : list<int>
-            A list of col numbers to simulate from.
-        evidence : list(tuple<int>), optional
-            A list of pairs (col, val) of observed values in the row to
-            condition on.
-        N : int, optional.
-            Number of samples to return.
-
-        Returns
-        -------
-        samples : np.array
-            A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
-        """
+        """Simulate from the posterior predictive distirbution."""
         if evidence is None: evidence = []
         vu.validate_query_evidence(self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
@@ -387,22 +269,22 @@ class State(object):
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
 
-    def no_leafs(self, query, evidence):
+    def _no_leafs(self, query, evidence):
         if query and isinstance(query[0], tuple): query = [q[0] for q in query]
         clean_evidence = all(e[0] >= 0 for e in evidence)
         clean_query = all(q >= 0 for q in query)
         return clean_evidence and clean_query
 
     def _simulate_joint(self, rowid, query, evidence, N):
-        if self.no_leafs(query, evidence):
+        if self._no_leafs(query, evidence):
             return self._simulate_roots(rowid, query, evidence, N)
         # XXX Should we resample ACCURACY times from the prior for 1 sample?
-        ACC = N if self.no_leafs(evidence, []) else self.accuracy*N
+        ACC = N if self._no_leafs(evidence, []) else self.accuracy*N
         samples, weights = self._weighted_samples(rowid, query, evidence, ACC)
         return self._importance_resample(samples, weights, N)
 
     def _logpdf_joint(self, rowid, query, evidence):
-        if self.no_leafs(query, evidence):
+        if self._no_leafs(query, evidence):
             return self._logpdf_roots(rowid, query, evidence)
         ACC = self.accuracy
         _, w_joint = self._weighted_samples(rowid, [], evidence+query, ACC)
@@ -517,30 +399,7 @@ class State(object):
     # Mutual information
 
     def mutual_information(self, col0, col1, evidence=None, N=None):
-        """Computes the mutual information MI(col0:col1|evidence).
-
-        Mutual information with conditioning variables can be interpreted in two
-        forms
-            - MI(X:Y|Z=z): point-wise CMI, (this function).
-            - MI(X:Y|Z): expected pointwise CMI E_Z[MI(X:Y|Z)] under Z.
-
-        The rowid is hypothetical. For any observed member, the rowid is
-        sufficient and decouples all columns.
-
-        Parameters
-        ----------
-        col0, col1 : int
-            Columns to comptue MI. If col0 = col1 then entropy is returned.
-        evidence : list(tuple<int>), optional
-            A list of pairs (col, val) of observed values to condition on.
-        N : int, optional.
-            Number of samples to use in the Monte Carlo estimate.
-
-        Returns
-        -------
-        mi : float
-            A point estimate of the mutual information.
-        """
+        """Computes the mutual information MI(col0:col1|evidence)."""
         if N is None:
             N = 1000
 
@@ -565,33 +424,7 @@ class State(object):
 
     def conditional_mutual_information(self, col0, col1, evidence, T=None,
             N=None):
-        """Computes conditional mutual information MI(col0:col1|evidence).
-
-        Mutual information with conditioning variables can be interpreted in two
-        forms
-            - MI(X:Y|Z=z): point-wise CMI.
-            - MI(X:Y|Z): expected pointwise CMI E_z[MI(X:Y|Z=z)] under Z
-            (this function).
-
-        The rowid is hypothetical. For any observed member, the rowid is
-        sufficient and decouples all columns.
-
-        Parameters
-        ----------
-        col0, col1 : int
-            Columns to comptue MI. If col0 = col1 then entropy is returned.
-        evidence : list<int>
-            A list of columns to condition on.
-        T : int, optional.
-            Number of samples to use in external Monte Carlo estimate (z~Z).
-        N : int, optional.
-            Number of samples to use in internal Monte Carlo estimate.
-
-        Returns
-        -------
-        mi : float
-            A point estimate of the mutual information.
-        """
+        """Computes conditional mutual information MI(col0:col1|evidence)."""
         if T is None:
             T = 100
         samples = self.simulate(-1, evidence, N=T)
@@ -605,24 +438,7 @@ class State(object):
     def transition(self, N=None, S=None, kernels=None, target_rows=None,
             target_cols=None, target_views=None, do_plot=False,
             do_progress=True):
-        """Run targeted inference kernels.
-
-        Parameters
-        ----------
-        N : int, optional
-            Number of iterations to transition. Default 1.
-        S : float, optional
-            Number of seconds to transition. If both N and S set then min used.
-        kernels : list<{'alpha', 'view_alphas', 'column_params', 'column_hypers'
-            'rows', 'columns'}>, optional
-            List of inference kernels to run in this transition. Default all.
-        target_views, target_rows, target_cols : list<int>, optional
-            Views, rows and columns to apply the kernels. Default all.
-        do_plot : boolean, optional
-            Plot the state of the sampler (real-time), 24 columns max. Unstable.
-        do_progress : boolean, optional
-            Show a progress bar for number of target iterations or elapsed time.
-        """
+        """Run targeted inference kernels."""
         if N is None and S is None:
             N = 1
 
@@ -686,36 +502,42 @@ class State(object):
                 (iters, time.time()-start)
 
     def transition_alpha(self):
+        """Transition CRP concentration of State."""
         logps = [gu.logp_crp_unorm(self.n_cols(), self.n_views(), alpha)
             for alpha in self.alpha_grid]
         index = gu.log_pflip(logps, rng=self.rng)
         self.alpha = self.alpha_grid[index]
 
     def transition_view_alphas(self, views=None):
+        """Transition CRP concentration of the Views."""
         if views is None:
             views = xrange(self.n_views())
         for v in views:
             self.views[v].transition_alpha()
 
     def transition_column_params(self, cols=None):
+        """Transition uncollapsed Dim parmaters."""
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
             self.dim_for(c).transition_params()
 
     def transition_column_hypers(self, cols=None):
+        """Transition Dim hyperparmaters."""
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
             self.dim_for(c).transition_hypers()
 
     def transition_column_hyper_grids(self, cols=None):
+        """Transition Dim hyperparameter grids."""
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
             self.dim_for(c).transition_hyper_grids(self.X[:,c])
 
     def transition_rows(self, views=None, rows=None):
+        """Transition row CRP assignments in Views."""
         if self.n_rows() == 1:
             return
         if views is None:
@@ -724,6 +546,7 @@ class State(object):
             self.views[v].transition_rows(rows=rows)
 
     def transition_columns(self, cols=None, m=2):
+        """Transition Dim CRP assignments in State."""
         if self.n_cols() == 1:
             return
         if cols is None:
@@ -736,22 +559,26 @@ class State(object):
     # Helpers
 
     def n_rows(self):
+        """Number of incorporated rows."""
         return np.shape(self.X)[0]
 
     def n_cols(self):
+        """Number of incorporated columns."""
         return np.shape(self.X)[1]
 
     def cctypes(self):
+        """DistributionGpm name of each Dim."""
         return [d.get_name() for d in self.dims()]
 
     def distargs(self):
+        """DistributionGpm distargs of each Dim."""
         return [d.get_distargs() for d in self.dims()]
 
     # --------------------------------------------------------------------------
     # Plotting
 
     def plot(self):
-        """Plots observation histogram and posterior distirbution of dims."""
+        """Plots observation histogram and posterior distirbution of Dims."""
         layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(
             num=None,
@@ -761,19 +588,43 @@ class State(object):
         plt.ion(); plt.show()
         return fig, layout
 
+    def _do_plot(self, fig, layout):
+        # Do not plot more than 6 by 4.
+        if self.n_cols() > 24:
+            return
+        fig.clear()
+        for dim in self.dims():
+            index = dim.index
+            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index+1)
+            dim.plot_dist(self.X[:,dim.index], ax=ax)
+            ax.text(
+                1,1, "K: %i " % len(dim.clusters),
+                transform=ax.transAxes, fontsize=12, weight='bold',
+                color='blue', horizontalalignment='right',
+                verticalalignment='top')
+            ax.grid()
+        plt.draw()
+
+    def _do_progress(self, percentage):
+        progress = ' ' * 30
+        fill = int(percentage * len(progress))
+        progress = '[' + '=' * fill + progress[fill:] + ']'
+        print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
+        sys.stdout.flush()
+
     # --------------------------------------------------------------------------
-    # Internal
+    # Accessors
 
     def dim_for(self, c):
-        """Dim object for column c."""
+        """Dim for column c."""
         return self.view_for(c).dims[c]
 
     def dims(self):
-        """All Dim objects."""
+        """All Dims."""
         return [self.view_for(d).dims[d] for d in xrange(self.n_cols())]
 
     def view_for(self, d):
-        """View object from Dim d."""
+        """View from Dim d."""
         return self.views[self.Zv[d]]
 
     def n_views(self):
@@ -781,10 +632,13 @@ class State(object):
         return len(self.views)
 
     def Nv(self, v=None):
-        """Number of Dim in View v."""
+        """Number of Dims in View v."""
         if v is not None:
             return len(self.views[v].dims)
         return [len(view.dims) for view in self.views]
+
+    # --------------------------------------------------------------------------
+    # Inference helpers.
 
     def _transition_column(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
@@ -884,29 +738,8 @@ class State(object):
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
 
-    def _do_plot(self, fig, layout):
-        # Do not plot more than 6 by 4.
-        if self.n_cols() > 24:
-            return
-        fig.clear()
-        for dim in self.dims():
-            index = dim.index
-            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index+1)
-            dim.plot_dist(self.X[:,dim.index], ax=ax)
-            ax.text(
-                1,1, "K: %i " % len(dim.clusters),
-                transform=ax.transAxes, fontsize=12, weight='bold',
-                color='blue', horizontalalignment='right',
-                verticalalignment='top')
-            ax.grid()
-        plt.draw()
-
-    def _do_progress(self, percentage):
-        progress = ' ' * 30
-        fill = int(percentage * len(progress))
-        progress = '[' + '=' * fill + progress[fill:] + ']'
-        print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
-        sys.stdout.flush()
+    # --------------------------------------------------------------------------
+    # Data structure invariants.
 
     def _check_partitions(self):
         # For debugging only.
@@ -997,3 +830,7 @@ class State(object):
     def from_pickle(cls, fileptr, rng=None):
         metadata = pickle.load(fileptr)
         return cls.from_metadata(metadata, rng=rng)
+
+
+from gpmcc.doc import statedoc
+statedoc.load_docstrings(sys.modules[__name__])
