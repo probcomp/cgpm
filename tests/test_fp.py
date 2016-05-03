@@ -40,15 +40,16 @@ class FourWayPredictor(object):
             [.1, .05, .1, .75]]
 
     def simulate(self, rowid, y):
-        regime = self._lookup(y)
+        regime = self.lookup_quadrant(y)
         return gu.pflip(self.probabilities[regime], rng=self.rng)
 
     def logpdf(self, rowid, x, y):
         if not (0 <= x <= 3): return -float('inf')
-        regime = self._lookup(y)
+        regime = self.lookup_quadrant(y)
         return np.log(self.probabilities[regime][x])
 
-    def _lookup(self, y):
+    @staticmethod
+    def lookup_quadrant(y):
         y0, y1 = y
         if y0 > 0 and y1 > 0: return 0
         if y0 < 0 and y1 > 0: return 1
@@ -101,6 +102,13 @@ def generate_quadrants(rows, rng):
     plt.close('all')
     return np.row_stack((Q0, Q1, Q2, Q3))
 
+
+def compute_quadrant_counts(T):
+    c0 = sum(np.logical_and(T[:,0] > 0, T[:,1] > 0))
+    c1 = sum(np.logical_and(T[:,0] < 0, T[:,1] > 0))
+    c2 = sum(np.logical_and(T[:,0] > 0, T[:,1] < 0))
+    c3 = sum(np.logical_and(T[:,0] < 0, T[:,1] < 0))
+    return [c0, c1, c2, c3]
 
 class Dummy(object):
     def __init__(self): pass
@@ -191,7 +199,15 @@ class ForeignPredictorInferenceTest(unittest.TestCase):
                 simulate_fourway_constrain[:,0],
                 simulate_fourway_constrain[:,1])
 
-        # Simulate four_index varying parent constraints.
+            x0, x1 = FourWayPredictor.retrieve_y_for_x(v)
+            simulate_ideal = np.asarray([[x0, x1]])
+
+            counts_ideal = compute_quadrant_counts(simulate_ideal)
+            counts_actual = compute_quadrant_counts(simulate_fourway_constrain)
+
+            self.assertEqual(np.argmax(counts_ideal), np.argmax(counts_actual))
+
+        # logpdf four_index varying parent constraints.
         for v in [0, 1, 2, 3]:
             x0, x1 = FourWayPredictor.retrieve_y_for_x(v)
 
