@@ -84,10 +84,7 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
     p_other = lambda t : Nk[t]
     p_table = lambda t: p_current() if t == Z[i] else p_other(t)
 
-    logp_tables = [log(p_table(t)) for t in xrange(len(Nk))]
-    logp_aux = [log(p_table_aux) for _ in xrange(m_aux)]
-
-    return logp_tables + logp_aux
+    return [log(p_table(t)) for t in xrange(len(Nk))] + [log(p_table_aux)]*m_aux
 
 def logp_crp_fresh(Nk, Z, alpha, m=1):
     """Compute the CRP probabilities for a fresh customer i=len(Z), with

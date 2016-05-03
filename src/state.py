@@ -659,13 +659,7 @@ class State(object):
             return max(p_iters, p_seconds)
 
         if do_plot:
-            plt.ion(); plt.show()
-            layout = pu.get_state_plot_layout(self.n_cols())
-            fig = plt.figure(
-                figsize=(layout['plot_inches_y'], layout['plot_inches_x']),
-                dpi=75, facecolor='w', edgecolor='k', frameon=False,
-                tight_layout=True)
-            self._do_plot(fig, layout)
+            fig, layout = self.plot()
 
         iters = 0
         start = time.time()
@@ -748,10 +742,10 @@ class State(object):
         return np.shape(self.X)[1]
 
     def cctypes(self):
-        return [d.cctype for d in self.dims()]
+        return [d.get_name() for d in self.dims()]
 
     def distargs(self):
-        return [d.distargs for d in self.dims()]
+        return [d.get_distargs() for d in self.dims()]
 
     # --------------------------------------------------------------------------
     # Plotting
@@ -764,7 +758,8 @@ class State(object):
             figsize=(layout['plot_inches_y'], layout['plot_inches_x']), dpi=75,
             facecolor='w', edgecolor='k', frameon=False, tight_layout=True)
         self._do_plot(fig, layout)
-        plt.show()
+        plt.ion(); plt.show()
+        return fig, layout
 
     # --------------------------------------------------------------------------
     # Internal
@@ -774,11 +769,11 @@ class State(object):
         return self.view_for(c).dims[c]
 
     def dims(self):
-        """Dim d."""
+        """All Dim objects."""
         return [self.view_for(d).dims[d] for d in xrange(self.n_cols())]
 
     def view_for(self, d):
-        """View object for Dim d."""
+        """View object from Dim d."""
         return self.views[self.Zv[d]]
 
     def n_views(self):
@@ -786,7 +781,7 @@ class State(object):
         return len(self.views)
 
     def Nv(self, v=None):
-        """Number of dims in View v."""
+        """Number of Dim in View v."""
         if v is not None:
             return len(self.views[v].dims)
         return [len(view.dims) for view in self.views]
