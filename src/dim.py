@@ -209,6 +209,9 @@ class Dim(object):
     def get_distargs(self):
         return self.aux_model.get_distargs()
 
+    def name(self):
+        return self.aux_model.get_name()
+
     def plot_dist(self, X, Y=None, ax=None):
         """Plots the predictive distribution and histogram of X."""
         plotter = pu.plot_dist_continuous if self.model.is_continuous() else \
