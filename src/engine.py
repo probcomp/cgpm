@@ -46,7 +46,7 @@ class Engine(object):
 
     def __init__(self, X, cctypes, distargs=None, num_states=1, rng=None,
             states=None, multithread=1):
-        self.rng = gu.gen_rng() if rng is None else rng
+        self.rng = gu.gen_rng(1) if rng is None else rng
         if states:
             self.states = states
             self.num_states = len(states)
