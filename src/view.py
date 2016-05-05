@@ -235,7 +235,7 @@ class View(object):
             return self._logpdf_observed(rowid, query, evidence)
 
     def _logpdf_observed(self, rowid, query, evidence):
-        evidence = self._evidence_for_observed_query(rowid, query, evidence)
+        evidence = self._populate_evidence(rowid, query, evidence)
         return self._logpdf_joint(query, evidence, self.Zr[rowid])
 
     def _logpdf_hypothetical(self, query, evidence):
@@ -264,7 +264,7 @@ class View(object):
             return self._simulate_observed(rowid, query, evidence, N)
 
     def _simulate_observed(self, rowid, query, evidence, N):
-        evidence = self._evidence_for_observed_query(rowid, query, evidence)
+        evidence = self._populate_evidence(rowid, query, evidence)
         samples = self._simulate_joint(query, evidence, self.Zr[rowid], N)
         return np.asarray(samples)
 
@@ -407,7 +407,7 @@ class View(object):
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
 
-    def _evidence_for_observed_query(self, rowid, query, evidence):
+    def _populate_evidence(self, rowid, query, evidence):
         """Builds the evidence for an observed simulate/logpdb query."""
         ecols = [e[0] for e in evidence]
         ucols = self._unconditional_dims()

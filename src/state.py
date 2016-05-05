@@ -254,6 +254,7 @@ class State(object):
         if evidence is None: evidence = []
         vu.validate_query_evidence(self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
+        evidence = self._populate_evidence(rowid, query, evidence)
         return self._logpdf_joint(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
@@ -264,10 +265,21 @@ class State(object):
         if evidence is None: evidence = []
         vu.validate_query_evidence(self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
+        evidence = self._populate_evidence(rowid, query, evidence)
         return self._simulate_joint(rowid, query, evidence, N)
 
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
+
+    def _populate_evidence(self, rowid, query, evidence):
+        """Builds the evidence for an observed simulate/logpdb query."""
+        # XXX Should poll foreign predictors for their rowid observations??
+        if self._is_hypothetical(rowid): return evidence
+        if isinstance(query[0], tuple): query = [q[0] for q in query]
+        ec = [e[0] for e in evidence]
+        em = [r for r in xrange(self.n_cols()) if r not in ec+query]
+        ev = [(c, x) for c, x in zip(em, self.X[rowid,em]) if not np.isnan(x)]
+        return ev + evidence
 
     def _no_leafs(self, query, evidence):
         if query and isinstance(query[0], tuple): query = [q[0] for q in query]
