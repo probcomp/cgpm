@@ -30,16 +30,17 @@ class Bernoulli(DistributionGpm):
     x ~ Bernoulli(theta)
     """
 
-    def __init__(self, N=0, x_sum=0, alpha=1, beta=1, distargs=None, rng=None):
-        assert alpha > 0
-        assert beta > 0
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficent statistics.
-        self.N = N
-        self.x_sum = x_sum
+        self.N = 0
+        self.x_sum = 0
         # Hyperparameters.
-        self.alpha = alpha
-        self.beta = beta
+        if hypers is None: hypers = {}
+        self.alpha = hypers.get('alpha', 1.)
+        self.beta = hypers.get('beta', 1.)
+        assert self.alpha > 0
+        assert self.beta > 0
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

@@ -34,25 +34,26 @@ class BetaUC(DistributionGpm):
     x ~ Beta(s*b, s*(1-b))
     """
 
-    def __init__(self, N=0, sum_log_x=0, sum_minus_log_x=0, strength=None,
-            balance=None, mu=1, alpha=.5, beta=.5, distargs=None, rng=None):
-        assert mu > 0
-        assert alpha > 0
-        assert beta > 0
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
-        self.N = N
-        self.sum_log_x = sum_log_x
-        self.sum_minus_log_x = sum_minus_log_x
+        self.N = 0
+        self.sum_log_x = 0
+        self.sum_minus_log_x = 0
         # Hyperparameters (fixed).
-        self.mu = 5
-        self.alpha = 1
-        self.beta = 1
+        self.mu = 5.
+        self.alpha = 1.
+        self.beta = 1.
         # Parameters.
-        self.strength, self.balance = strength, balance
-        if strength is None or balance is None:
+        if params is None: params = {}
+        self.strength = params.get('strength', None)
+        self.balance = params.get('balance', 1)
+        if not self.strength or not self.balance:
             self.strength, self.balance = BetaUC.sample_parameters(
                 self.mu, self.alpha, self.beta, self.rng)
+        assert self.mu > 0
+        assert self.alpha > 0
+        assert self.beta > 0
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

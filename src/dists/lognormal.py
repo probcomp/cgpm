@@ -32,21 +32,21 @@ class Lognormal(DistributionGpm):
     x ~ Lognormal(mu, rho)
     """
 
-    def __init__(self, N=0, sum_log_x=0, sum_log_x_sq=0, m=1, r=1, s=1,
-            nu=1, distargs=None, rng=None):
-        assert r > 0.
-        assert s > 0.
-        assert nu > 0.
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
-        self.N = N
-        self.sum_log_x_sq = sum_log_x_sq
-        self.sum_log_x = sum_log_x
+        self.N = 0
+        self.sum_log_x_sq = 0
+        self.sum_log_x = 0
         # Hyperparameters.
-        self.m = m
-        self.r = r
-        self.s = s
-        self.nu = nu
+        if hypers is None: hypers = {}
+        self.m = hypers.get('m', 1.)
+        self.r = hypers.get('r', 1.)
+        self.s = hypers.get('s', 1.)
+        self.nu = hypers.get('nu', 1.)
+        assert self.r > 0.
+        assert self.s > 0.
+        assert self.nu > 0.
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

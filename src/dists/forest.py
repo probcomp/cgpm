@@ -26,23 +26,22 @@ from gpmcc.dists.distribution import DistributionGpm
 class RandomForest(DistributionGpm):
     """RandomForest conditional distribution p(x|y) where x is categorical."""
 
-    def __init__(self, alpha=.1, regressor=None, distargs=None, rng=None):
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
-        # Number of categories.
+        # Number of output categories and input dimension.
         self.k = int(distargs['k'])
-        # Number of conditions.
         self.p = len(distargs['cctypes'])
-        # Outlier hyperparam.
-        self.alpha = alpha
         # Sufficient statistics.
         self.N = 0
         self.x = []
         self.Y = []
         self.counts = np.zeros(self.k)
-        # Random forest parameters.
-        if regressor is None:
-            regressor = RandomForestClassifier(random_state=self.rng)
-        self.regressor = regressor
+        # Outlier and random forest parameters.
+        if params is None: params = {}
+        self.alpha = params.get('alpha', .1)
+        self.regressor = params.get('regressor', None)
+        if self.regressor is None:
+            self.regressor = RandomForestClassifier(random_state=self.rng)
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

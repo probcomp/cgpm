@@ -35,9 +35,9 @@ class LinearRegression(DistributionGpm):
     y ~ Normal(x'w, \sigma2)
     """
 
-    def __init__(self, a=None, b=None, mu=None, V=None, distargs=None, rng=None):
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
-        # Covariates.
+        # Covariates distargs..
         p, counts = zip(
             *[self._predictor_count(cctype, ccarg)
             for cctype, ccarg in zip(distargs['cctypes'], distargs['ccargs'])])
@@ -48,10 +48,11 @@ class LinearRegression(DistributionGpm):
         self.x = []
         self.Y = []
         # Hyper parameters.
-        self.a = 1. if a is None else a
-        self.b = 1. if b is None else b
-        self.mu = np.zeros(self.p) if mu is None else mu
-        self.V = np.eye(self.p) if V is None else V
+        if hypers is None: hypers = {}
+        self.a = hypers.get('a', 1.)
+        self.b = hypers.get('b', 1.)
+        self.mu = hypers.get('mu', np.zeros(self.p))
+        self.V = hypers.get('V', np.eye(self.p))
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

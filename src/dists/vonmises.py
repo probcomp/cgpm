@@ -37,21 +37,21 @@ class Vonmises(DistributionGpm):
     x ~ Vonmises(mean=mu, concentration=k)
     """
 
-    def __init__(self, N=0, sum_sin_x=0, sum_cos_x=0, a=1, b=pi, k=1.5,
-            distargs=None, rng=None):
-        assert N >= 0
-        assert a > 0
-        assert 0 <= b <= 2*pi
-        assert k > 0
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
-        self.N = N
-        self.sum_sin_x = sum_sin_x
-        self.sum_cos_x = sum_cos_x
+        self.N = 0
+        self.sum_sin_x = 0
+        self.sum_cos_x = 0
         # Hyperparameters.
-        self.a = a    # Prior concentration of mean parameter.
-        self.b = b    # Prior mean of mean parameter.
-        self.k = k    # Vonmises kappa.
+        # Prior concentration of mean, mean of mean, and Vonmises kappa
+        if hypers is None: hypers = {}
+        self.a = hypers.get('a', 1.)
+        self.b = hypers.get('b', pi)
+        self.k = hypers.get('k', 1.5)
+        assert self.a > 0
+        assert 0 <= self.b <= 2*pi
+        assert self.k > 0
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

@@ -37,21 +37,21 @@ class Normal(DistributionGpm):
     gamma distribution.
     """
 
-    def __init__(self, N=0, sum_x=0, sum_x_sq=0, m=0., r=1., s=1., nu=1.,
-            distargs=None, rng=None):
-        assert s > 0.
-        assert r > 0.
-        assert nu > 0.
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
-        self.N = N
-        self.sum_x = sum_x
-        self.sum_x_sq = sum_x_sq
+        self.N = 0
+        self.sum_x = 0
+        self.sum_x_sq = 0
         # Hyper parameters.
-        self.m = float(m)
-        self.r = float(r)
-        self.s = float(s)
-        self.nu = float(nu)
+        if hypers is None: hypers = {}
+        self.m = hypers.get('m', 0.)
+        self.r = hypers.get('r', 1.)
+        self.s = hypers.get('s', 1.)
+        self.nu = hypers.get('nu', 1.)
+        assert self.s > 0.
+        assert self.r > 0.
+        assert self.nu > 0.
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

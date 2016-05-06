@@ -35,7 +35,7 @@ class DistributionGpm(object):
     recovered in the limit n \to \infty.
     """
 
-    def __init__(self, suffstats, params, hypers, distargs, rng):
+    def __init__(self, inputs, outputs, hypers, params, distargs, rng):
         """Initialize the Gpm.
 
         This constructor signature is abstract. `suffstats`, `params`, and

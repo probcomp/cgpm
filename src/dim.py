@@ -26,7 +26,8 @@ class Dim(object):
     shared hyperparameters and grids. Technically not GPM, but easily becomes
     one by placing creating a View with a single Dim."""
 
-    def __init__(self, cctype, index, distargs=None, hypers=None, rng=None):
+    def __init__(self, cctype, index, hypers=None, params=None, distargs=None,
+            rng=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -59,7 +60,7 @@ class Dim(object):
 
         # Auxiliary singleton model.
         self.aux_model = self.model(
-            distargs=self.distargs, rng=self.rng, **self.hypers)
+            hypers=self.hypers, distargs=self.distargs, rng=self.rng)
 
     # --------------------------------------------------------------------------
     # Observe
@@ -74,7 +75,7 @@ class Dim(object):
         if k == len(self.clusters):
             self.clusters.append(self.aux_model)
             self.aux_model = self.model(
-                distargs=self.distargs, rng=self.rng, **self.hypers)
+                hypers=self.hypers, distargs=self.distargs, rng=self.rng)
         if self._valid_xy(x, y):
             self.clusters[k].incorporate(x, y=y)
 
@@ -110,7 +111,7 @@ class Dim(object):
         # Create clusters.
         for k in xrange(K):
             cluster = self.model(
-                distargs=self.distargs, rng=self.rng, **self.hypers)
+                hypers=self.hypers, distargs=self.distargs, rng=self.rng)
             self.clusters.append(cluster)
 
         # Populate clusters.
@@ -189,7 +190,7 @@ class Dim(object):
             for h in self.hyper_grids:
                 self.hypers[h] = self.rng.choice(self.hyper_grids[h])
         self.aux_model = self.model(
-            distargs=self.distargs, rng=self.rng, **self.hypers)
+            hypers=self.hypers, distargs=self.distargs, rng=self.rng)
 
     # --------------------------------------------------------------------------
     # Helpers
