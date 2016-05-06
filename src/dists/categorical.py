@@ -35,20 +35,16 @@ class Categorical(DistributionGpm):
     http://www.cs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
     """
 
-    def __init__(self, N=0, counts=None, alpha=1, distargs=None, rng=None):
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
-        # Number of categories.
-        assert float(distargs['k']) == int(distargs['k'])
+        # Distargs.
         self.k = int(distargs['k'])
         # Sufficient statistics.
-        self.N = N
-        if counts is None:
-            self.counts = np.zeros(self.k)
-        else:
-            assert self.k == len(counts)
-            self.counts = np.asarray(counts)
-        # Hyperparameter.
-        self.alpha = alpha
+        self.N = 0
+        self.counts = np.zeros(self.k)
+        # Hyperparameters.
+        if hypers is None: hypers = {}
+        self.alpha = hypers.get('alpha', 1.)
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())

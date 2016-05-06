@@ -33,22 +33,23 @@ class NormalTrunc(DistributionGpm):
     X ~ Normal(mu, sigma)
     """
 
-    def __init__(self, N=0, sum_x=0, sum_x_sq=0, mu=None, sigma=None,
-            distargs=None, rng=None):
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Distargs
         self.l = distargs['l']
         self.h = distargs['h']
         # Sufficient statistics.
-        self.N = N
-        self.sum_x = sum_x
-        self.sum_x_sq = sum_x_sq
+        self.N = 0
+        self.sum_x = 0
+        self.sum_x_sq = 0
         # Hyperparameters (fixed).
-        self.alpha = 2
-        self.beta = 2
+        self.alpha = 2.
+        self.beta = 2.
         # Uncollapsed mean and precision parameters.
-        self.mu, self.sigma = mu, sigma
-        if mu is None or sigma is None:
+        if params is None: params = {}
+        self.mu = params.get('mu', None)
+        self.sigma = params.get('sigma', 1)
+        if not self.mu or not self.sigma:
             self.mu, self.sigma = NormalTrunc.sample_parameters(
                 self.alpha, self.beta, self.l, self.h, self.rng)
 

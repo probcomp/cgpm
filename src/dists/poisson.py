@@ -32,18 +32,18 @@ class Poisson(DistributionGpm):
     x ~ Poisson(mu)
     """
 
-    def __init__(self, N=0, sum_x=0, sum_log_fact_x=0, a=1, b=1,
-            distargs=None, rng=None):
-        assert a > 0
-        assert b > 0
+    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         # Sufficient statistics.
-        self.sum_x = sum_x
-        self.N = N
-        self.sum_log_fact_x = sum_log_fact_x
+        self.N = 0
+        self.sum_x = 0
+        self.sum_log_fact_x = 0
         # Hyperparameters.
-        self.a = a
-        self.b = b
+        if hypers is None: hypers = {}
+        self.a = hypers.get('a', 1)
+        self.b = hypers.get('b', 1)
+        assert self.a > 0
+        assert self.b > 0
 
     def incorporate(self, x, y=None):
         x, y = self.preprocess(x, y, self.get_distargs())
