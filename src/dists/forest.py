@@ -67,7 +67,7 @@ class RandomForest(DistributionGpm):
         return RandomForest.calc_predictive_logp(
             x, y, self.regressor, self.counts, self.alpha)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         return RandomForest.calc_log_likelihood(
             self.x, self.Y, self.regressor, self.counts, self.alpha)
 

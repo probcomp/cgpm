@@ -93,12 +93,12 @@ class RandomForestDirectTest(unittest.TestCase):
         forest = train_on([0,1])
         test_on(forest, [0,1])
 
-    def test_logpdf_marginal(self):
+    def test_logpdf_score(self):
         forest = RandomForest(distargs=self.rf_distargs, rng=gu.gen_rng(0))
         for row in self.D[:25]:
             forest.incorporate(row[0], y=row[1:])
         forest.transition_params()
-        self.assertLess(forest.logpdf_marginal(), 0)
+        self.assertLess(forest.logpdf_score(), 0)
 
     def test_transition_hypers(self):
         forest = Dim(

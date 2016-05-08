@@ -61,7 +61,7 @@ class Geometric(DistributionGpm):
         return Geometric.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         return Geometric.calc_logpdf_marginal(
             self.N, self.sum_x, self.a, self.b)
 

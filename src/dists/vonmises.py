@@ -73,7 +73,7 @@ class Vonmises(DistributionGpm):
         return Vonmises.calc_predictive_logp(
             x, self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         return Vonmises.calc_logpdf_marginal(
             self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 

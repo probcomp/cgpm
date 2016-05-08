@@ -76,7 +76,7 @@ class Normal(DistributionGpm):
             x, self.N, self.sum_x, self.sum_x_sq, self.m, self.r,
             self.s, self.nu)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         return Normal.calc_logpdf_marginal(
             self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
 

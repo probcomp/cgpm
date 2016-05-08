@@ -60,7 +60,7 @@ class Bernoulli(DistributionGpm):
         return Bernoulli.calc_predictive_logp(
             x, self.N, self.x_sum, self.alpha, self.beta)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         return Bernoulli.calc_logpdf_marginal(
             self.N, self.x_sum, self.alpha, self.beta)
 

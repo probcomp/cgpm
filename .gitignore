@@ -67,6 +67,7 @@ docs/_build/
 *.fls
 *.synctex.gz
 *_minted-*
+*.pdf
 
 # specific directories
 src/utils/xy_gpm/images
@@ -79,3 +80,5 @@ experiments/resources/
 experiments/*/resources/
 gpmcc
 src/debug
+notes/gpm/vs/vsgpm.pdf
+
