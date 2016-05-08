@@ -15,7 +15,9 @@
 # limitations under the License.
 
 class DistributionGpm(object):
-    """Interface for generative population models representing a
+    """XXX TODO: UPDATE ME XXX
+
+    Interface for generative population models representing a
     probability distribution over a single dimension, possibly conditioned
     on other dimensions.
 
@@ -78,7 +80,7 @@ class DistributionGpm(object):
         """
         raise NotImplementedError
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         """Compute an estimate of the probability of all incorporated
         observations X|Y, conditioned on the current GPM state.
 

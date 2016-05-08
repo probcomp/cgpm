@@ -78,7 +78,7 @@ class BetaUC(DistributionGpm):
         except ValueError: return -float('inf')
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         data_logp = BetaUC.calc_log_likelihood(
             self.N, self.sum_log_x, self.sum_minus_log_x, self.strength,
             self.balance)

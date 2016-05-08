@@ -127,12 +127,12 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # Github issue #65.
 
-    def logpdf_marginal(self, k=None):
+    def logpdf_score(self, k=None):
         """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
         if k is not None:
-            return self.clusters[k].logpdf_marginal()
-        return [cluster.logpdf_marginal() for cluster in self.clusters]
+            return self.clusters[k].logpdf_score()
+        return [cluster.logpdf_score() for cluster in self.clusters]
 
     # --------------------------------------------------------------------------
     # logpdf
@@ -237,7 +237,7 @@ class Dim(object):
             logp = 0
             for cluster in self.clusters:
                 cluster.set_hypers(hypers)
-                logp += cluster.logpdf_marginal()
+                logp += cluster.logpdf_score()
                 cluster.set_hypers(self.hypers)
             logps.append(logp)
         return logps

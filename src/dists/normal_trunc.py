@@ -80,7 +80,7 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma, self.l, self.h)
         return logpdf_unorm - logcdf_norm
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         data_logp = NormalTrunc.calc_log_likelihood(
             self.N, self.sum_x, self.sum_x_sq, self.sigma, self.mu)
         prior_logp = NormalTrunc.calc_log_prior(

@@ -64,7 +64,7 @@ class Categorical(DistributionGpm):
         return Categorical.calc_predictive_logp(
             x, self.N, self.counts, self.alpha)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         return Categorical.calc_logpdf_marginal(
             self.N, self.counts, self.alpha)
 

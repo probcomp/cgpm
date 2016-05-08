@@ -119,13 +119,13 @@ class Engine(object):
         self._close_mapper(pool)
         return np.asarray(logpdfs)
 
-    def logpdf_marginal(self, multithread=1):
+    def logpdf_score(self, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('logpdf_marginal', self.states[i], ()) for i in
+        args = [('logpdf_score', self.states[i], ()) for i in
             xrange(self.num_states)]
-        logpdf_marginals = mapper(_evaluate, args)
+        logpdf_scores = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(logpdf_marginals)
+        return np.asarray(logpdf_scores)
 
     def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
         pool, mapper = self._get_mapper(multithread)

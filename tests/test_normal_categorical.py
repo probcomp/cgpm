@@ -63,7 +63,7 @@ class SimulateIndicatorTest(unittest.TestCase):
             cls.data, ['normal', 'categorical'], [None, {'k':6}], num_states=4,
             rng=gu.gen_rng(0))
         state.transition(N=15)
-        marginals = state.logpdf_marginal()
+        marginals = state.logpdf_score()
         ranking = np.argsort(marginals)[::-1]
         cls.model = state.get_state(ranking[0])
 

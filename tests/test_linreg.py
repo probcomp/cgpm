@@ -62,13 +62,13 @@ class LinearRegressionDirectTest(unittest.TestCase):
         for row in self.D[:10]:
             linreg.incorporate(row[0], y=row[1:])
 
-    def test_logpdf_marginal(self):
+    def test_logpdf_score(self):
         linreg = LinearRegression(
             distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
             rng=gu.gen_rng(0))
         for row in self.D[:25]:
             linreg.incorporate(row[0], y=row[1:])
-        self.assertLess(linreg.logpdf_marginal(), 0)
+        self.assertLess(linreg.logpdf_score(), 0)
 
     def test_logpdf_predictive(self):
         linreg = LinearRegression(

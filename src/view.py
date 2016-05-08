@@ -83,7 +83,7 @@ class View(object):
             dim.distargs.update(distargs)
             dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
         self.dims[dim.index] = dim
-        return sum(dim.logpdf_marginal())
+        return sum(dim.logpdf_score())
 
     def _prepare_incorporate(self, cctype):
         Y, distargs = None, {}
@@ -98,7 +98,7 @@ class View(object):
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify dim)."""
         del self.dims[dim.index]
-        return sum(dim.logpdf_marginal())
+        return sum(dim.logpdf_score())
 
     def incorporate_row(self, rowid, k=None):
         """Incorporate rowid from the global dataset X into the view. Use
@@ -217,12 +217,12 @@ class View(object):
             self._transition_row(rowid)
 
     # --------------------------------------------------------------------------
-    # Github issue #65.
+    # logscore.
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         """Compute the marginal logpdf CRP assignment and data."""
         logp_crp = gu.logp_crp(len(self.Zr), self.Nk, self.alpha)
-        logp_dims = [sum(dim.logpdf_marginal()) for dim in self.dims.values()]
+        logp_dims = [sum(dim.logpdf_score()) for dim in self.dims.values()]
         return logp_crp + sum(logp_dims)
 
     # --------------------------------------------------------------------------

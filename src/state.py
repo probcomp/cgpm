@@ -239,12 +239,12 @@ class State(object):
         del self.predictors[index]
 
     # --------------------------------------------------------------------------
-    # Github issue #65.
+    # logscore.
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         """Compute the joint density of latents and data p(theta,Z,X|CC)."""
         return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
-            sum(v.logpdf_marginal() for v in self.views)
+            sum(v.logpdf_score() for v in self.views)
 
     # --------------------------------------------------------------------------
     # logpdf

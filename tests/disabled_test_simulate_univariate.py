@@ -195,7 +195,7 @@ def generate_gpmcc_posteriors(cctype, distargs, D_train, iters, seconds):
             else 'column_hypers'
         engine.transition(N=100, kernels=[kernel], do_progress=0)
     samples = engine.simulate(-1, [0], N=NUM_TEST)
-    marginals = engine.logpdf_marginal()
+    marginals = engine.logpdf_score()
     ranking = np.argsort(marginals)[::-1]
     for r in ranking[:5]:
         engine.get_state(r).plot()

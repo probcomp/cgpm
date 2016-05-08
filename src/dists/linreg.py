@@ -79,7 +79,7 @@ class LinearRegression(DistributionGpm):
             x, y, self.N, self.Y, self.x, self.a, self.b, self.mu,
             self.V)
 
-    def logpdf_marginal(self):
+    def logpdf_score(self):
         return LinearRegression.calc_logpdf_marginal(
             self.N, self.Y, self.x, self.a, self.b, self.mu, self.V)
 
