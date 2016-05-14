@@ -30,8 +30,10 @@ class Exponential(DistributionGpm):
     x ~ Exponential(mu)
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficient statistics.
         self.N = 0
         self.sum_x = 0
@@ -42,32 +44,44 @@ class Exponential(DistributionGpm):
         assert self.a > 0
         assert self.b > 0
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N += 1.0
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if x < 0:
+            raise ValueError('Invalid Exponential: %s' % str(x))
+        self.N += 1
         self.sum_x += x
+        self.data[rowid] = x
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N -= 1.0
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
+        self.N -= 1
         self.sum_x -= x
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if x < 0:
+            return -float('inf')
         return Exponential.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
+
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
+        an, bn = Exponential.posterior_hypers(
+            self.N, self.sum_x, self.a, self.b)
+        mu = self.rng.gamma(an, scale=1./bn)
+        return self.rng.exponential(scale=1./mu)
 
     def logpdf_score(self):
         return Exponential.calc_logpdf_marginal(
             self.N, self.sum_x, self.a, self.b)
 
-    def simulate(self, y=None):
-        an, bn = Exponential.posterior_hypers(self.N, self.sum_x, self.a, self.b)
-        mu = self.rng.gamma(an, scale=1./bn)
-        return self.rng.exponential(scale=1./mu)
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return
@@ -146,9 +160,3 @@ class Exponential(DistributionGpm):
     def calc_log_Z(a, b):
         Z =  gammaln(a) - a*log(b)
         return Z
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        if x < 0:
-            raise ValueError('Exponential requires [0,inf): {}'.format(x))
-        return x, y

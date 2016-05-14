@@ -35,41 +35,52 @@ class Categorical(DistributionGpm):
     http://www.cs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Distargs.
         self.k = int(distargs['k'])
-        # Sufficient statistics.
         self.N = 0
         self.counts = np.zeros(self.k)
         # Hyperparameters.
         if hypers is None: hypers = {}
         self.alpha = hypers.get('alpha', 1.)
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (x % 1 and 0 <= x < self.k):
+            raise ValueError('Invalid Categorical(%d): %s') % (self.k, x)
         self.N += 1
         self.counts[x] += 1
+        self.data[rowid] = int(x)
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
         self.N -= 1
         self.counts[x] -= 1
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (x % 1 and 0 <= x < self.k):
+            return -float('inf')
         return Categorical.calc_predictive_logp(
             x, self.N, self.counts, self.alpha)
 
-    def logpdf_score(self):
-        return Categorical.calc_logpdf_marginal(
-            self.N, self.counts, self.alpha)
-
-    def simulate(self, y=None):
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
         return gu.pflip(self.counts + self.alpha, rng=self.rng)
+
+    def logpdf_score(self):
+        return Categorical.calc_logpdf_marginal(self.N, self.counts, self.alpha)
+
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return
@@ -136,10 +147,3 @@ class Categorical(DistributionGpm):
         A = K * alpha
         lg = sum(gammaln(counts[k] + alpha) for k in xrange(K))
         return gammaln(A) - gammaln(A+N) + lg - K * gammaln(alpha)
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        k = distargs['k']
-        if (int(x) != float(x)) or not (0 <= x < k):
-            raise ValueError('Categorical requires [0..{}): {}'.format(k, x))
-        return int(x), y
