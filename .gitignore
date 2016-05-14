@@ -80,5 +80,5 @@ experiments/resources/
 experiments/*/resources/
 gpmcc
 src/debug
-notes/gpm/vs/vsgpm.pdf
+src/examples
 
