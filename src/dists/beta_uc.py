@@ -34,8 +34,10 @@ class BetaUC(DistributionGpm):
     x ~ Beta(s*b, s*(1-b))
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficient statistics.
         self.N = 0
         self.sum_log_x = 0
@@ -55,28 +57,35 @@ class BetaUC(DistributionGpm):
         assert self.alpha > 0
         assert self.beta > 0
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N += 1.
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not 0 < x < 1:
+            raise ValueError('Invalid Beta: %s' % str(x))
+        self.N += 1
         self.sum_log_x += log(x)
         self.sum_minus_log_x += log(1.-x)
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N -= 1.
-        if self.N <= 0:
-            self.sum_log_x = 0
-            self.sum_minus_log_x = 0
-        else:
-            self.sum_log_x -= log(x)
-            self.sum_minus_log_x -= log(1.-x)
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
+        self.N -= 1
+        self.sum_log_x -= log(x)
+        self.sum_minus_log_x -= log(1.-x)
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not 0 < x < 1:
+            return -float('inf')
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
+
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
+        alpha = self.strength * self.balance
+        beta = self.strength * (1. - self.balance)
+        return self.rng.beta(alpha, beta)
 
     def logpdf_score(self):
         data_logp = BetaUC.calc_log_likelihood(
@@ -86,10 +95,9 @@ class BetaUC(DistributionGpm):
             self.strength, self.balance, self.mu, self.alpha, self.beta)
         return data_logp + prior_logp
 
-    def simulate(self, y=None):
-        alpha = self.strength * self.balance
-        beta = self.strength * (1. - self.balance)
-        return self.rng.beta(alpha, beta)
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         n_samples = 100
@@ -197,9 +205,3 @@ class BetaUC(DistributionGpm):
         strength = rng.exponential(scale=mu)
         balance = rng.beta(alpha, beta)
         return strength, balance
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        if not 0 < x < 1:
-            raise ValueError('Beta requires (0,1): %s' % str(x))
-        return x, y

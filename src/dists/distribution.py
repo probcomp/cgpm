@@ -14,12 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-class DistributionGpm(object):
-    """XXX TODO: UPDATE ME XXX
+from gpmcc.utils import general as gu
 
-    Interface for generative population models representing a
-    probability distribution over a single dimension, possibly conditioned
-    on other dimensions.
+
+class DistributionGpm(object):
+    """Interface for generative population models representing univariate
+    probability distribution.
 
     A typical DistributionGpm will have:
     - Sufficient statistics T, for the observed data X.
@@ -37,82 +37,30 @@ class DistributionGpm(object):
     recovered in the limit n \to \infty.
     """
 
-    def __init__(self, inputs, outputs, hypers, params, distargs, rng):
-        """Initialize the Gpm.
+    def __init__(self, outputs, inputs, hypers, params, distargs, rng):
+        assert len(outputs) == 1
+        assert not inputs
+        self.outputs = list(outputs)
+        self.data = dict()
+        self.rng = gu.gen_rng() if rng is None else rng
 
-        This constructor signature is abstract. `suffstats`, `params`, and
-        `hypers` will be unrolled into actual names by each GPM, but the
-        order of arguments must be as above. The idea is that
-        a user who has suffstats, params, and hypers in named dicts
-        can successfully invoke the consructor with
-            __init__(N, **suffstats, **params, **hypers) should work.
+    def incorporate(self, rowid, query, evidence):
+        assert rowid not in self.data
+        assert not evidence
+        assert query.keys() == self.outputs
 
-        Parameters
-        ----------
-        suffstats : **kwargs
-            Initial values of suffstats.
-        params : **kwargs
-            Initial values of params.
-        hypers : **kwargs
-            Initial values of hyperparams.
-        distargs : dict
-            Any other arguments.
-        rng : np.random.RandomState, optional.
-            Source of entropy.
-        """
-        raise NotImplementedError
+    def logpdf(self, rowid, query, evidence):
+        assert rowid not in self.data
+        assert not evidence
+        assert query.keys() == self.outputs
 
-    def incorporate(self, x, y=None):
-        """Record a single observation x|y. Increments suffstats."""
-        raise NotImplementedError
+    def simulate(self, rowid, query, evidence):
+        assert not evidence
+        assert query == self.outputs
 
-    def unincorporate(self, x, y=None):
-        """Remove a single observation x|y. Decrements any suffstats.
-        An error will be thrown if `self.N` drops below zero or other
-        distribution-specific invariants are violated.
-        """
-        raise NotImplementedError
-
-    def logpdf(self, x, y=None):
-        """Compute the probability of a new observation x|y, conditioned on
-        the sufficient statistics, parameters (if uncollapsed), and
-        hyperparameters, ie P(x|T,Q,H).
-        """
-        raise NotImplementedError
-
-    def logpdf_score(self):
-        """Compute an estimate of the probability of all incorporated
-        observations X|Y, conditioned on the current GPM state.
-
-        A collapsed model can compute P(X|H) exactly by integrating over Q.
-
-        An uncollapsed model might approximate this marginal by
-            Qi ~ P(Qi|H) i = 1 .. N
-            P(X|H) \appx avg{P(X|Qi)P(Qi|H) for i = 1 .. N}
-
-        While this probability is necessarily a function of the data only
-        through the sufficient statistics, the probability is **not the
-        probability of the sufficient statistics**. It is the probablility of
-        an exchangeable sequence of observations that are summarized by the
-        sufficient statistics. Implemented as an optimization, and can be
-        recovered by unincorporating all data, and can be recovered by invoking
-        `logpdf` after each incorporate and taking the sum.
-        """
-        raise NotImplementedError
-
-    def simulate(self, y=None):
-        """Simulate from the distribution p(x|T,Q,H,Y=y). The sample returned
-        by this method must necessarily be from the same distribution that
-        `predictive_logp` evaluates.
-
-        A collapsed sampler will typically simulate by marginalizing over
-        parameters Q.
-
-        An uncollapsed sampler will typically require a call to
-        `transition_params` for observations to have an effect on the
-        simulation of the next sample.
-        """
-        raise NotImplementedError
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         """Resample the parameters Q conditioned on all observations X

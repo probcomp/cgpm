@@ -37,8 +37,10 @@ class Normal(DistributionGpm):
     gamma distribution.
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficient statistics.
         self.N = 0
         self.sum_x = 0
@@ -53,38 +55,43 @@ class Normal(DistributionGpm):
         assert self.r > 0.
         assert self.nu > 0.
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
         self.N += 1.
         self.sum_x += x
         self.sum_x_sq += x*x
+        self.data[rowid] = x
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N -= 1.
-        if self.N == 0:
-            self.sum_x = 0.
-            self.sum_x_sq = 0.
-        else:
-            self.sum_x -= x
-            self.sum_x_sq -= x*x
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
+        self.N -= 1
+        self.sum_x -= x
+        self.sum_x_sq -= x*x
 
-    def logpdf(self, x, y=None):
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
         return Normal.calc_predictive_logp(
             x, self.N, self.sum_x, self.sum_x_sq, self.m, self.r,
             self.s, self.nu)
+
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
+        mn, rn, sn, nun = Normal.posterior_hypers(
+            self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
+        mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
+        return self.rng.normal(loc=mu, scale=rho**-.5)
 
     def logpdf_score(self):
         return Normal.calc_logpdf_marginal(
             self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
 
-    def simulate(self, y=None):
-        mn, rn, sn, nun = Normal.posterior_hypers(
-            self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
-        mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
-        return self.rng.normal(loc=mu, scale=rho**-.5)
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return
@@ -195,7 +202,3 @@ class Normal(DistributionGpm):
         rho = rng.gamma(nu/2., scale=2./s)
         mu = rng.normal(loc=m, scale=1./(rho*r)**.5)
         return mu, rho
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        return x, y

@@ -33,8 +33,10 @@ class NormalTrunc(DistributionGpm):
     X ~ Normal(mu, sigma)
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Distargs
         self.l = distargs['l']
         self.h = distargs['h']
@@ -53,32 +55,45 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma = NormalTrunc.sample_parameters(
                 self.alpha, self.beta, self.l, self.h, self.rng)
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N += 1.0
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (self.l <= x <= self.h):
+            raise ValueError(
+                'Invalid NormalTrunc(%f,%f): %s' % (self.l, self.h, str(x)))
+        self.N += 1
         self.sum_x += x
         self.sum_x_sq += x*x
+        self.data[rowid] = x
 
-    def unincorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        self.N -= 1.0
-        if self.N == 0:
-            self.sum_x = 0.0
-            self.sum_x_sq = 0.0
-        else:
-            self.sum_x -= x
-            self.sum_x_sq -= x*x
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
+        self.N -= 1
+        self.sum_x -= x
+        self.sum_x_sq -= x*x
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (self.l <= x <= self.h):
+            return -float('inf')
         logpdf_unorm = NormalTrunc.calc_predictive_logp(
             x, self.mu, self.sigma, self.l, self.h)
         logcdf_norm = NormalTrunc.calc_log_normalizer(
             self.mu, self.sigma, self.l, self.h)
         return logpdf_unorm - logcdf_norm
+
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
+        max_iters = 1000
+        for i in xrange(max_iters):
+            x = self.rng.normal(loc=self.mu, scale=self.sigma)
+            if self.l <= x <= self.h:
+                return x
+        else:
+            raise RuntimeError('NormalTrunc failed to rejection sample.')
 
     def logpdf_score(self):
         data_logp = NormalTrunc.calc_log_likelihood(
@@ -89,14 +104,9 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma, self.l, self.h)
         return data_logp + prior_logp - self.N * normalizer_logp
 
-    def simulate(self, y=None):
-        max_iters = 1000
-        for _ in xrange(max_iters):
-            x = self.rng.normal(loc=self.mu, scale=self.sigma)
-            if self.l <= x <= self.h:
-                return x
-        else:
-            raise RuntimeError('NormalTrunc failed to rejection sample.')
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         n_samples = 100

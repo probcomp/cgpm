@@ -19,6 +19,7 @@ from math import log
 import numpy as np
 
 import gpmcc.utils.general as gu
+
 from gpmcc.dists.distribution import DistributionGpm
 from gpmcc.dists.normal import Normal
 
@@ -32,8 +33,10 @@ class Lognormal(DistributionGpm):
     x ~ Lognormal(mu, rho)
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficient statistics.
         self.N = 0
         self.sum_log_x_sq = 0
@@ -48,42 +51,55 @@ class Lognormal(DistributionGpm):
         assert self.s > 0.
         assert self.nu > 0.
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N += 1.0
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if x <= 0:
+            raise ValueError('Invalid Lognormal: %s' % str(x))
+        self.N += 1
         self.sum_log_x += log(x)
         self.sum_log_x_sq += log(x) * log(x)
+        self.data[rowid] = x
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N -= 1.0
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
+        self.N -= 1
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
-        return -log(x) + Normal.calc_predictive_logp(
-                    log(x), self.N, self.sum_log_x, self.sum_log_x_sq, self.m,
-                    self.r, self.s, self.nu)
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if x <= 0:
+            return -float('inf')
+        return - log(x) + \
+            Normal.calc_predictive_logp(
+                log(x), self.N, self.sum_log_x, self.sum_log_x_sq, self.m,
+                self.r, self.s, self.nu)
 
-    def logpdf_score(self):
-        return -self.sum_log_x + Normal.calc_logpdf_marginal(
-                    self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
-                    self.s, self.nu)
-
-    def simulate(self, y=None):
+    def simulate(self, rowid, query, evidence):
         # XXX This implementation is not verified but will be covered in
         # future univariate simulate tests, see Github issue #14.
-        # Simulate normal parameters
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
+        # Simulate normal parameters.
         mn, rn, sn, nun = Normal.posterior_hypers(
             self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
             self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
         x = self.rng.normal(loc=mu, scale=rho**-.5)
         return np.exp(x)
+
+    def logpdf_score(self):
+        return -self.sum_log_x + \
+            Normal.calc_logpdf_marginal(
+                self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
+                self.s, self.nu)
+
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return
@@ -111,7 +127,7 @@ class Lognormal(DistributionGpm):
         return {}
 
     @staticmethod
-    def construct_hyper_grids(X,n_grid=30):
+    def construct_hyper_grids(X, n_grid=30):
         grids = dict()
         grids['m'] = gu.log_linspace(1e-4, max(X), n_grid)
         grids['r'] = gu.log_linspace(.1, float(len(X)), n_grid)

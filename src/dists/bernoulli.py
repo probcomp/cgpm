@@ -30,8 +30,10 @@ class Bernoulli(DistributionGpm):
     x ~ Bernoulli(theta)
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficent statistics.
         self.N = 0
         self.x_sum = 0
@@ -42,34 +44,45 @@ class Bernoulli(DistributionGpm):
         assert self.alpha > 0
         assert self.beta > 0
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if x not in [0, 1]:
+            raise ValueError('Invalid Bernoulli: %s' % str(x))
         self.N += 1
         self.x_sum += x
+        self.data[rowid] = x
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
         self.N -= 1
         self.x_sum -= x
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if x not in [0, 1]:
+            return -float('inf')
         return Bernoulli.calc_predictive_logp(
             x, self.N, self.x_sum, self.alpha, self.beta)
 
-    def logpdf_score(self):
-        return Bernoulli.calc_logpdf_marginal(
-            self.N, self.x_sum, self.alpha, self.beta)
-
-    def simulate(self, y=None):
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
         p0 = Bernoulli.calc_predictive_logp(
             0, self.N, self.x_sum, self.alpha, self.beta)
         p1 = Bernoulli.calc_predictive_logp(
             1, self.N, self.x_sum, self.alpha, self.beta)
         return gu.log_pflip([p0, p1], rng=self.rng)
+
+    def logpdf_score(self):
+        return Bernoulli.calc_logpdf_marginal(
+            self.N, self.x_sum, self.alpha, self.beta)
+
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return
@@ -136,9 +149,3 @@ class Bernoulli(DistributionGpm):
     @staticmethod
     def calc_logpdf_marginal(N, x_sum, alpha, beta):
         return betaln(x_sum + alpha, N - x_sum + beta) - betaln(alpha, beta)
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        if x not in [0, 1]:
-            raise ValueError('Bernoulli requires [0..1]: %s' % str(x))
-        return int(x), y

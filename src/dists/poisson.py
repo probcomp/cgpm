@@ -32,8 +32,10 @@ class Poisson(DistributionGpm):
     x ~ Poisson(mu)
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficient statistics.
         self.N = 0
         self.sum_x = 0
@@ -45,34 +47,45 @@ class Poisson(DistributionGpm):
         assert self.a > 0
         assert self.b > 0
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N += 1.0
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (x % 1 and x > 0):
+            raise ValueError('Invalid Poisson: %s' % str(x))
+        self.N += 1
         self.sum_x += x
         self.sum_log_fact_x += gammaln(x+1)
+        self.data[rowid] = x
 
-    def unincorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        self.N -= 1.0
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
+        self.N -= 1
         self.sum_x -= x
         self.sum_log_fact_x -= gammaln(x+1)
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (x % 1 and x > 0):
+            return -float('inf')
         return Poisson.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
+
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
+        an, bn = Poisson.posterior_hypers(
+            self.N, self.sum_x, self.a, self.b)
+        return self.rng.negative_binomial(an, bn/(bn+1.))
 
     def logpdf_score(self):
         return Poisson.calc_logpdf_marginal(
             self.N, self.sum_x, self.sum_log_fact_x, self.a, self.b)
 
-    def simulate(self, y=None):
-        an, bn = Poisson.posterior_hypers(
-            self.N, self.sum_x, self.a, self.b)
-        return self.rng.negative_binomial(an, bn/(bn+1.))
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return

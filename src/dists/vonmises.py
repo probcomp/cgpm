@@ -37,8 +37,10 @@ class Vonmises(DistributionGpm):
     x ~ Vonmises(mean=mu, concentration=k)
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
-        self.rng = gu.gen_rng() if rng is None else rng
+    def __init__(self, outputs, inputs, hypers=None, params=None,
+            distargs=None, rng=None):
+        DistributionGpm.__init__(
+            self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficient statistics.
         self.N = 0
         self.sum_sin_x = 0
@@ -53,31 +55,33 @@ class Vonmises(DistributionGpm):
         assert 0 <= self.b <= 2*pi
         assert self.k > 0
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N += 1.0
+    def incorporate(self, rowid, query, evidence):
+        DistributionGpm.incorporate(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (0 <= x <= 2*pi):
+            raise ValueError('Invalid Vonmises: %s' % str(x))
+        self.N += 1
         self.sum_sin_x += sin(x)
         self.sum_cos_x += cos(x)
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.N -= 1.0
+    def unincorporate(self, rowid):
+        x = self.data.pop(rowid)
+        self.N -= 1
         self.sum_sin_x -= sin(x)
         self.sum_cos_x -= cos(x)
 
-    def logpdf(self, x, y=None):
-        try: x, y = self.preprocess(x, y, self.get_distargs())
-        except ValueError: return -float('inf')
+    def logpdf(self, rowid, query, evidence):
+        DistributionGpm.logpdf(self, rowid, query, evidence)
+        x = query[self.outputs[0]]
+        if not (0 <= x <= 2*pi):
+            raise ValueError('Invalid Vonmises: %s' % str(x))
         return Vonmises.calc_predictive_logp(
             x, self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 
-    def logpdf_score(self):
-        return Vonmises.calc_logpdf_marginal(
-            self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
-
-    def simulate(self, y=None):
+    def simulate(self, rowid, query, evidence):
+        DistributionGpm.simulate(self, rowid, query, evidence)
+        if rowid in self.data:
+            return self.data[rowid]
         an, bn = Vonmises.posterior_hypers(
             self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
         # if not 0 <= bn <= 2*pi:
@@ -86,6 +90,14 @@ class Vonmises(DistributionGpm):
         x = self.rng.vonmises(mu-pi, self.k) + pi
         assert 0 <= x <= 2*pi
         return x
+
+    def logpdf_score(self):
+        return Vonmises.calc_logpdf_marginal(
+            self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
+
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return
@@ -216,9 +228,3 @@ class Vonmises(DistributionGpm):
             return 10.**-6
         else:
             return np.abs(kappa)
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        if not 0 <= x <= 2*pi:
-            raise ValueError('Vonmises requires in [0,2pi): {}'.format(x))
-        return x, y
