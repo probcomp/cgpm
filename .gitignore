@@ -67,7 +67,7 @@ docs/_build/
 *.fls
 *.synctex.gz
 *_minted-*
-*.pdf
+
 
 # specific directories
 src/utils/xy_gpm/images
