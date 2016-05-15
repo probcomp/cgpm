@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
+
 import numpy as np
 
 from scipy.special import gammaln
@@ -23,10 +25,10 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
 import gpmcc.utils.general as gu
 
-from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.dists.gpm import Gpm
 
 
-class LinearRegression(DistributionGpm):
+class LinearRegression(Gpm):
     """Bayesian linear model with normal prior on regression parameters and
     inverse-gamma prior on both observation and regression variance.
 
@@ -35,18 +37,26 @@ class LinearRegression(DistributionGpm):
     y ~ Normal(x'w, \sigma2)
     """
 
-    def __init__(self, hypers=None, params=None, distargs=None, rng=None):
+    def __init__(self, outputs, inputs, hypers=None, params=None, distargs=None,
+            rng=None):
+        # io data.
+        self.outputs = outputs
+        self.inputs = inputs
         self.rng = gu.gen_rng() if rng is None else rng
-        # Covariates distargs..
+        assert len(self.outputs) == 1
+        assert len(self.inputs) >= 1
+        assert self.outputs[0] not in self.inputs
+        assert len(distargs['cctypes']) == len(self.inputs)
+        # Input distargs.
         p, counts = zip(
             *[self._predictor_count(cctype, ccarg)
             for cctype, ccarg in zip(distargs['cctypes'], distargs['ccargs'])])
-        self.discrete_covariates = {i:c for i, c in enumerate(counts) if c}
+        self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
         self.p = sum(p)+1
-        # Sufficient statistics.
+        # Dataset.
         self.N = 0
-        self.x = []
-        self.Y = []
+        self.x = OrderedDict()
+        self.Y = OrderedDict()
         # Hyper parameters.
         if hypers is None: hypers = {}
         self.a = hypers.get('a', 1.)
@@ -54,42 +64,45 @@ class LinearRegression(DistributionGpm):
         self.mu = hypers.get('mu', np.zeros(self.p))
         self.V = hypers.get('V', np.eye(self.p))
 
-    def incorporate(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
-        self.Y.append(y)
-        self.x.append(x)
+    def incorporate(self, rowid, query, evidence):
+        assert rowid not in self.x
+        assert rowid not in self.Y
+        x, y = self.preprocess(query, evidence)
         self.N += 1
+        self.x[rowid] = x
+        self.Y[rowid] = y
 
-    def unincorporate(self, x, y=None):
-        if self.N == 0:
-            raise ValueError('Cannot unincorporate without observations.')
-        x, y = self.preprocess(x, y, self.get_distargs())
-        match = lambda i: self.x[i] == x and np.allclose(self.Y[i], y)
-        delete = [i for i in xrange(self.N) if match(i)]
-        if delete:
-            del self.x[delete[0]]
-            del self.Y[delete[0]]
-            self.N -= 1
-        else:
-            raise ValueError('Observation %s not incorporated.' % str((x, y)))
+    def unincorporate(self, rowid):
+        del self.x[rowid]
+        del self.Y[rowid]
+        self.N -= 1
 
-    def logpdf(self, x, y=None):
-        x, y = self.preprocess(x, y, self.get_distargs())
+    def logpdf(self, rowid, query, evidence):
+        xt, yt = self.preprocess(query, evidence)
         return LinearRegression.calc_predictive_logp(
-            x, y, self.N, self.Y, self.x, self.a, self.b, self.mu,
-            self.V)
+            xt, yt, self.N, self.Y.values(), self.x.values(), self.a,
+            self.b, self.mu, self.V)
+
+    def simulate(self, rowid, query, evidence):
+        assert query == self.outputs
+        if rowid in self.x:
+            return self.x[rowid]
+        xt, yt = self.preprocess(None, evidence)
+        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+            self.N, self.Y.values(), self.x.values(), self.a, self.b,
+            self.mu, self.V)
+        sigma2, b = LinearRegression.sample_parameters(
+            an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
+        return self.rng.normal(np.dot(yt, b), np.sqrt(sigma2))
 
     def logpdf_score(self):
         return LinearRegression.calc_logpdf_marginal(
-            self.N, self.Y, self.x, self.a, self.b, self.mu, self.V)
+            self.N, self.Y.values(), self.x.values(),
+            self.a, self.b, self.mu, self.V)
 
-    def simulate(self, y=None):
-        x, y = self.preprocess(None, y, self.get_distargs())
-        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
-            self.N, self.Y, self.x, self.a, self.b, self.mu, self.V)
-        sigma2, b = LinearRegression.sample_parameters(
-            an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
-        return self.rng.normal(np.dot(y, b), np.sqrt(sigma2))
+    ##################
+    # NON-GPM METHOD #
+    ##################
 
     def transition_params(self):
         return
@@ -110,7 +123,7 @@ class LinearRegression(DistributionGpm):
         return {}
 
     def get_distargs(self):
-        return {'discrete_covariates': self.discrete_covariates, 'p': self.p}
+        return {'inputs_discrete': self.inputs_discrete, 'p': self.p}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=300):
@@ -146,6 +159,16 @@ class LinearRegression(DistributionGpm):
     ##################
     # HELPER METHODS #
     ##################
+
+    def preprocess(self, query, evidence):
+        x = query[self.outputs[0]] if query else query
+        y = [evidence[c] for c in sorted(evidence)]
+        inputs, p = self.distargs['inputs_discrete'], self.distargs['p']
+        y = du.dummy_code(y, inputs)
+        if len(y) != p-1:
+            raise TypeError(
+                'LinearRegression requires input length {}: {}'.format(p, y))
+        return x, [1] + y
 
     @staticmethod
     def _predictor_count(cct, cca):
@@ -209,12 +232,3 @@ class LinearRegression(DistributionGpm):
         sigma2 = invgamma.rvs(a, scale=b, random_state=rng)
         b = rng.multivariate_normal(mu, sigma2 * V)
         return sigma2, b
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        discrete_covariates, p = distargs['discrete_covariates'], distargs['p']
-        y = du.dummy_code(y, discrete_covariates)
-        if len(y) != p-1:
-            raise TypeError(
-                'LinearRegression requires input length {}: {}'.format(p, y))
-        return x, [1] + y
