@@ -79,6 +79,7 @@ class LinearRegression(Gpm):
 
     def logpdf(self, rowid, query, evidence):
         xt, yt = self.preprocess(query, evidence)
+        assert rowid not in self.x
         return LinearRegression.calc_predictive_logp(
             xt, yt, self.N, self.Y.values(), self.x.values(), self.a,
             self.b, self.mu, self.V)
