@@ -162,9 +162,13 @@ class LinearRegression(Gpm):
     ##################
 
     def preprocess(self, query, evidence):
+        if set(evidence.keys()) != set(self.inputs):
+            raise TypeError(
+                'LinearRegression requires inputs {}: {}'.format(
+                    self.inputs, evidence.keys()))
         distargs = self.get_distargs()
         x = query[self.outputs[0]] if query else query
-        y = [evidence[c] for c in sorted(evidence)]
+        y = [evidence[c] for c in self.inputs]
         inputs_discrete, p = distargs['inputs_discrete'], distargs['p']
         y = du.dummy_code(y, inputs_discrete)
         if len(y) != p-1:
