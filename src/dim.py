@@ -26,8 +26,8 @@ class Dim(object):
     shared hyperparameters and grids. Technically not GPM, but easily becomes
     one by placing creating a View with a single Dim."""
 
-    def __init__(self, cctype, index, hypers=None, params=None, distargs=None,
-            rng=None):
+    def __init__(self, cctype, index, inputs=None, hypers=None, params=None,
+            distargs=None, rng=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -45,6 +45,7 @@ class Dim(object):
 
         # Identifier.
         self.index = index
+        self.inputs = inputs
 
         # Model type.
         self.model = cu.cctype_class(cctype)
@@ -59,9 +60,7 @@ class Dim(object):
         self.clusters = []
 
         # Auxiliary singleton model.
-        self.aux_model = self.model(
-            outputs=[self.index], inputs=[], hypers=self.hypers,
-            distargs=self.distargs, rng=self.rng)
+        self.aux_model = self.create_aux_model()
 
     # --------------------------------------------------------------------------
     # Observe
@@ -75,9 +74,7 @@ class Dim(object):
         assert k <= len(self.clusters)
         if k == len(self.clusters):
             self.clusters.append(self.aux_model)
-            self.aux_model = self.model(
-                outputs=[self.index], inputs=[], hypers=self.hypers,
-                distargs=self.distargs, rng=self.rng)
+            self.aux_model = self.create_aux_model()
         if self._valid_xy(x, y):
             query = {self.index: x}
             evidence = {}
@@ -114,16 +111,14 @@ class Dim(object):
 
         # Create clusters.
         for k in xrange(K):
-            cluster = self.model(
-                outputs=[self.index], inputs=[], hypers=self.hypers,
-                distargs=self.distargs, rng=self.rng)
+            cluster = self.create_aux_model()
             self.clusters.append(cluster)
 
         # Populate clusters.
         for (rowid, (x, k, y)) in enumerate(zip(X, Zr, Y)):
             if self._valid_xy(x, y):
                 query = {self.index: x}
-                evidence = {}
+                evidence = y
                 self.clusters[k].incorporate(rowid, query, evidence)
 
         # Transition uncollapsed params if necessary.
@@ -153,8 +148,8 @@ class Dim(object):
         else:
             cluster = self.clusters[k]
         if self._valid_xy(x, y):
-            query = {self.index:x}
-            evidence = {}
+            query = {self.index: x}
+            evidence = y
             return cluster.logpdf(rowid, query, evidence)
         else:
             return 0
@@ -169,7 +164,7 @@ class Dim(object):
         else:
             cluster = self.clusters[k]
         query = [self.index]
-        evidence = {}
+        evidence = y
         return cluster.simulate(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
@@ -200,9 +195,7 @@ class Dim(object):
         if not self.hypers:
             for h in self.hyper_grids:
                 self.hypers[h] = self.rng.choice(self.hyper_grids[h])
-        self.aux_model = self.model(
-            outputs=[self.index], inputs=[], hypers=self.hypers,
-            distargs=self.distargs, rng=self.rng)
+        self.aux_model = self.create_aux_model()
 
     # --------------------------------------------------------------------------
     # Helpers
@@ -234,6 +227,11 @@ class Dim(object):
 
     # --------------------------------------------------------------------------
     # Internal
+
+    def create_aux_model(self):
+        return self.model(
+            outputs=[self.index], inputs=self.inputs, hypers=self.hypers,
+            distargs=self.distargs, rng=self.rng)
 
     def _valid_xy(self, x, y):
         return not (np.isnan(x) or (y is not None and np.isnan(y).any()))
