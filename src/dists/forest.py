@@ -151,6 +151,10 @@ class RandomForest(DistributionGpm):
     ##################
 
     def preprocess(self, query, evidence):
+        if set(evidence.keys()) != set(self.inputs):
+            raise TypeError(
+                'RandomForest requires inputs {}: {}'.format(
+                    self.inputs, evidence.keys()))
         x = query[self.outputs[0]]
         y = [evidence[c] for c in sorted(evidence)]
         distargs = self.get_distargs()
