@@ -65,6 +65,7 @@ class BetaUC(DistributionGpm):
         self.N += 1
         self.sum_log_x += log(x)
         self.sum_minus_log_x += log(1.-x)
+        self.data[rowid] = x
 
     def unincorporate(self, rowid):
         x = self.data.pop(rowid)

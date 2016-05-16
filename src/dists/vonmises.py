@@ -63,6 +63,7 @@ class Vonmises(DistributionGpm):
         self.N += 1
         self.sum_sin_x += sin(x)
         self.sum_cos_x += cos(x)
+        self.data[rowid] = x
 
     def unincorporate(self, rowid):
         x = self.data.pop(rowid)
