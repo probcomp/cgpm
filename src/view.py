@@ -119,7 +119,8 @@ class View(object):
         # Incorporate into dims.
         for dim in self.dims.values():
             dim.incorporate(
-                self.X[rowid, dim.index], k, y=self._get_conditions(dim, rowid))
+                rowid, self.X[rowid, dim.index], k,
+                y=self._get_conditions(dim, rowid))
         # Account.
         if k == len(self.Nk):
             self.Nk.append(0)
@@ -134,7 +135,7 @@ class View(object):
         # Unincorporate from dims.
         for dim in self.dims.values():
             dim.unincorporate(
-                self.X[rowid, dim.index], self.Zr[rowid],
+                rowid, self.X[rowid, dim.index], self.Zr[rowid],
                 y=self._get_conditions(dim, rowid))
         # Account.
         k = self.Zr[rowid]
@@ -348,24 +349,24 @@ class View(object):
     def _simulate_unconditional(self, query, k, N):
         """Simulate query from cluster k, N times."""
         assert not any(self.dims[c].is_conditional() for c in query)
-        return [[self.dims[c].simulate(k) for c in query] for _ in xrange(N)]
+        return [[self.dims[c].simulate(-1, k) for c in query] for _ in xrange(N)]
 
     def _simulate_conditional(self, query, evidence, k):
         """Simulate query from cluster k, N times."""
         assert all(self.dims[c].is_conditional() for c in query)
         assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
         y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
-        return [self.dims[c].simulate(k, y=y) for c in query]
+        return [self.dims[c].simulate(-1, k, y=y) for c in query]
 
     def _logpdf_unconditional(self, query, k):
         assert not any(self.dims[c].is_conditional() for c, x in query)
-        return np.sum([self.dims[c].logpdf(x, k) for c, x in query])
+        return np.sum([self.dims[c].logpdf(-1, x, k) for c, x in query])
 
     def _logpdf_conditional(self, query, evidence, k):
         assert all(self.dims[c].is_conditional() for c, x in query)
         assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
         y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
-        return np.sum([self.dims[c].logpdf(x, k, y=y) for c, x in query])
+        return np.sum([self.dims[c].logpdf(-1, x, k, y=y) for c, x in query])
 
     # --------------------------------------------------------------------------
     # Internal row transition.
@@ -394,11 +395,11 @@ class View(object):
         x = self.X[rowid, dim.index]
         y = self._get_conditions(dim, rowid)
         if self.Zr[rowid] == k:
-            dim.unincorporate(x, k, y=y)
-            logp = dim.logpdf(x, k, y=y)
-            dim.incorporate(x, k, y=y)
+            dim.unincorporate(rowid, x, k, y=y)
+            logp = dim.logpdf(rowid, x, k, y=y)
+            dim.incorporate(rowid, x, k, y=y)
         else:
-            logp = dim.logpdf(x, k, y=y)
+            logp = dim.logpdf(rowid, x, k, y=y)
         return logp
 
     # --------------------------------------------------------------------------

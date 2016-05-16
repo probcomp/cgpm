@@ -60,12 +60,13 @@ class Dim(object):
 
         # Auxiliary singleton model.
         self.aux_model = self.model(
-            hypers=self.hypers, distargs=self.distargs, rng=self.rng)
+            outputs=[self.index], inputs=[], hypers=self.hypers,
+            distargs=self.distargs, rng=self.rng)
 
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate(self, x, k, y=None):
+    def incorporate(self, rowid, x, k, y=None):
         """Record an observation x in clusters[k].
         If k < len(self.clusters) then x will be incorporated to cluster k.
         If k == len(self.clusters) a new cluster will be created.
@@ -75,17 +76,20 @@ class Dim(object):
         if k == len(self.clusters):
             self.clusters.append(self.aux_model)
             self.aux_model = self.model(
-                hypers=self.hypers, distargs=self.distargs, rng=self.rng)
+                outputs=[self.index], inputs=[], hypers=self.hypers,
+                distargs=self.distargs, rng=self.rng)
         if self._valid_xy(x, y):
-            self.clusters[k].incorporate(x, y=y)
+            query = {self.index: x}
+            evidence = {}
+            self.clusters[k].incorporate(rowid, query, evidence)
 
-    def unincorporate(self, x, k, y=None):
+    def unincorporate(self, rowid, x, k, y=None):
         """Remove observation x from clusters[k]. Bad things will happen if x
         was not incorporated into cluster k before calling this method.
         """
         assert k < len(self.clusters)
         if self._valid_xy(x, y):
-            self.clusters[k].unincorporate(x, y=y)
+            self.clusters[k].unincorporate(rowid)
 
     # Bulk operations for effeciency.
 
@@ -111,13 +115,16 @@ class Dim(object):
         # Create clusters.
         for k in xrange(K):
             cluster = self.model(
-                hypers=self.hypers, distargs=self.distargs, rng=self.rng)
+                outputs=[self.index], inputs=[], hypers=self.hypers,
+                distargs=self.distargs, rng=self.rng)
             self.clusters.append(cluster)
 
         # Populate clusters.
-        for x, k, y in zip(X, Zr, Y):
+        for (rowid, (x, k, y)) in enumerate(zip(X, Zr, Y)):
             if self._valid_xy(x, y):
-                self.clusters[k].incorporate(x, y=y)
+                query = {self.index: x}
+                evidence = {}
+                self.clusters[k].incorporate(rowid, query, evidence)
 
         # Transition uncollapsed params if necessary.
         if not self.is_collapsed():
@@ -137,7 +144,7 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, x, k, y=None):
+    def logpdf(self, rowid, x, k, y=None):
         """Returns the predictive logp of x in clusters[k]. If x has been
         assigned to clusters[k], then use the unincorporate/incorporate
         interface to compute the true predictive logp."""
@@ -146,20 +153,24 @@ class Dim(object):
         else:
             cluster = self.clusters[k]
         if self._valid_xy(x, y):
-            return cluster.logpdf(x, y=y)
+            query = {self.index:x}
+            evidence = {}
+            return cluster.logpdf(rowid, query, evidence)
         else:
             return 0
 
     # --------------------------------------------------------------------------
     # Simulate
-    def simulate(self, k, y=None):
+    def simulate(self, rowid, k, y=None):
         """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
         if k == len(self.clusters):
             cluster = self.aux_model
         else:
             cluster = self.clusters[k]
-        return cluster.simulate(y=y)
+        query = [self.index]
+        evidence = {}
+        return cluster.simulate(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
     # Inferece
@@ -190,7 +201,8 @@ class Dim(object):
             for h in self.hyper_grids:
                 self.hypers[h] = self.rng.choice(self.hyper_grids[h])
         self.aux_model = self.model(
-            hypers=self.hypers, distargs=self.distargs, rng=self.rng)
+            outputs=[self.index], inputs=[], hypers=self.hypers,
+            distargs=self.distargs, rng=self.rng)
 
     # --------------------------------------------------------------------------
     # Helpers

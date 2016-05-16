@@ -48,7 +48,7 @@ class Geometric(DistributionGpm):
     def incorporate(self, rowid, query, evidence):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if not (x % 1 and x > 0):
+        if not (x % 1 == 0 and x >= 0):
             raise ValueError('Invalid Geometric: %s') % str(x)
         self.N += 1
         self.sum_x += x
@@ -62,7 +62,7 @@ class Geometric(DistributionGpm):
     def logpdf(self, rowid, query, evidence):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if not (x % 1 and x > 0):
+        if not (x % 1 == 0 and x >= 0):
             return -float('inf')
         return Geometric.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
