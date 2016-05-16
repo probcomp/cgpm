@@ -36,70 +36,92 @@ class LinearRegressionDirectTest(unittest.TestCase):
             cls.distargs, [.8]*len(cls.cctypes), rng=gu.gen_rng(0))
         cls.cctypes = cls.cctypes[1:]
         cls.ccargs = cls.distargs[1:]
+        cls.outputs = [0]
+        cls.inputs = range(1, len(cls.cctypes)+1)
         cls.ccargs[cls.cctypes.index('bernoulli')] = {'k':2}
         cls.D = D.T
 
     def test_incorporate(self):
         linreg = LinearRegression(
+            self.outputs, self.inputs,
             distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
             rng=gu.gen_rng(0))
         # Incorporate first 20 rows.
-        for row in self.D[:20]:
-            linreg.incorporate(row[0], y=row[1:])
+        for rowid, row in enumerate(self.D[:20]):
+            query = {0: row[0]}
+            evidence = {i:row[i] for i in linreg.inputs}
+            linreg.incorporate(rowid, query, evidence)
         # Unincorporating row 20 should raise.
-        with self.assertRaises(ValueError):
-            linreg.unincorporate(self.D[20,0], y=self.D[20,1:])
+        with self.assertRaises(KeyError):
+            linreg.unincorporate(20)
         # Unincorporate all rows.
-        for row in self.D[:20]:
-            linreg.unincorporate(row[0], y=row[1:])
+        for rowid in xrange(20):
+            linreg.unincorporate(rowid)
         # Unincorporating row 0 should raise.
-        with self.assertRaises(ValueError):
-            linreg.unincorporate(self.D[0,0], y=self.D[0,1:])
+        with self.assertRaises(KeyError):
+            linreg.unincorporate(0)
         # Incorporating with wrong covariate dimensions should raise.
         with self.assertRaises(TypeError):
-            linreg.incorporate(self.D[0,0], y=self.D[0,:])
+            query = {0: self.D[0,0]}
+            evidence = {i:v for (i, v) in enumerate(self.D[0])}
+            linreg.incorporate(0, query, evidence)
         # Incorporate some more rows.
-        for row in self.D[:10]:
-            linreg.incorporate(row[0], y=row[1:])
+        for rowid, row in enumerate(self.D[:10]):
+            query = {0: row[0]}
+            evidence = {i:row[i] for i in linreg.inputs}
+            linreg.incorporate(rowid, query, evidence)
 
     def test_logpdf_score(self):
         linreg = LinearRegression(
+            self.outputs, self.inputs,
             distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
             rng=gu.gen_rng(0))
-        for row in self.D[:25]:
-            linreg.incorporate(row[0], y=row[1:])
+        for rowid, row in enumerate(self.D[:10]):
+            query = {0: row[0]}
+            evidence = {i:row[i] for i in linreg.inputs}
+            linreg.incorporate(rowid, query, evidence)
         self.assertLess(linreg.logpdf_score(), 0)
 
     def test_logpdf_predictive(self):
         linreg = LinearRegression(
+            self.outputs, self.inputs,
             distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
             rng=gu.gen_rng(0))
         Dx0 = self.D[self.D[:,1]==0]
         Dx1 = self.D[self.D[:,1]==1]
         Dx2 = self.D[self.D[:,1]==2]
         Dx3 = self.D[self.D[:,1]==3]
-        for row in Dx0[:-1]:
-            linreg.incorporate(row[0], y=row[1:])
+        for i, row in enumerate(Dx0[1:]):
+            linreg.incorporate(
+                i, {0: row[0]}, {i:row[i] for i in linreg.inputs})
         # Ensure can compute predictive for seen class 0.
-        linreg.logpdf(Dx0[-1,0], y=Dx0[-1,1:])
+        linreg.logpdf(
+            -1, {0: Dx0[0,0]}, {i:Dx0[0,i] for i in linreg.inputs})
         # Ensure can compute predictive for unseen class 1.
-        linreg.logpdf(Dx1[0,0], y=Dx1[0,1:])
+        linreg.logpdf(
+            -1, {0: Dx1[0,0]}, {i:Dx1[0,i] for i in linreg.inputs})
         # Ensure can compute predictive for unseen class 2.
-        linreg.logpdf(Dx2[0,0], y=Dx2[0,1:])
+        linreg.logpdf(
+            -1, {0: Dx2[0,0]}, {i:Dx2[0,i] for i in linreg.inputs})
         # Ensure can compute predictive for unseen class 3.
-        linreg.logpdf(Dx3[0,0], y=Dx3[0,1:])
+        linreg.logpdf(-1, {0: Dx3[0,0]}, {i:Dx3[0,i] for i in linreg.inputs})
 
     def test_simulate(self):
         linreg = LinearRegression(
+            self.outputs, self.inputs,
             distargs={'cctypes':self.cctypes, 'ccargs':self.ccargs},
             rng=gu.gen_rng(0))
-        for row in self.D[:25]:
-            linreg.incorporate(row[0], y=row[1:])
+        for rowid, row in enumerate(self.D[:25]):
+            query = {0: row[0]}
+            evidence = {i:row[i] for i in linreg.inputs}
+            linreg.incorporate(rowid, query, evidence)
         _, ax = plt.subplots()
         xpred, xtrue = [], []
         for row in self.D[25:]:
             xtrue.append(row[0])
-            xpred.append([linreg.simulate(y=row[1:]) for _ in xrange(100)])
+            xpred.append(
+                [linreg.simulate(-1, [0], {i:row[i] for i in linreg.inputs})
+                for _ in xrange(100)])
         xpred = np.asarray(xpred)
         xmeans = np.mean(xpred, axis=1)
         xlow = np.percentile(xpred, 25, axis=1)
