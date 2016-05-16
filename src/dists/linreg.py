@@ -161,10 +161,11 @@ class LinearRegression(Gpm):
     ##################
 
     def preprocess(self, query, evidence):
+        distargs = self.get_distargs()
         x = query[self.outputs[0]] if query else query
         y = [evidence[c] for c in sorted(evidence)]
-        inputs, p = self.distargs['inputs_discrete'], self.distargs['p']
-        y = du.dummy_code(y, inputs)
+        inputs_discrete, p = distargs['inputs_discrete'], distargs['p']
+        y = du.dummy_code(y, inputs_discrete)
         if len(y) != p-1:
             raise TypeError(
                 'LinearRegression requires input length {}: {}'.format(p, y))
