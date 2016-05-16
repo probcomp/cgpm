@@ -50,7 +50,8 @@ class Categorical(DistributionGpm):
     def incorporate(self, rowid, query, evidence):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if not (x % 1 and 0 <= x < self.k):
+        if not (x % 1 == 0 and 0 <= x < self.k):
+            import ipdb; ipdb.set_trace()
             raise ValueError('Invalid Categorical(%d): %s') % (self.k, x)
         self.N += 1
         self.counts[x] += 1
@@ -64,7 +65,7 @@ class Categorical(DistributionGpm):
     def logpdf(self, rowid, query, evidence):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if not (x % 1 and 0 <= x < self.k):
+        if not (x % 1 == 0 and 0 <= x < self.k):
             return -float('inf')
         return Categorical.calc_predictive_logp(
             x, self.N, self.counts, self.alpha)
