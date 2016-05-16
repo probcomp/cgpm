@@ -229,7 +229,8 @@ class Dim(object):
         """Plots the predictive distribution and histogram of X."""
         plotter = pu.plot_dist_continuous if self.model.is_continuous() else \
             pu.plot_dist_discrete
-        return plotter(X[~np.isnan(X)], self.clusters, ax=ax, Y=Y, hist=False)
+        return plotter(
+            X[~np.isnan(X)], self.index, self.clusters, ax=ax, Y=Y, hist=False)
 
     # --------------------------------------------------------------------------
     # Internal

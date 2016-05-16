@@ -53,9 +53,10 @@ class Categorical(DistributionGpm):
         if not (x % 1 == 0 and 0 <= x < self.k):
             import ipdb; ipdb.set_trace()
             raise ValueError('Invalid Categorical(%d): %s') % (self.k, x)
+        x = int(x)
         self.N += 1
         self.counts[x] += 1
-        self.data[rowid] = int(x)
+        self.data[rowid] = x
 
     def unincorporate(self, rowid):
         x = self.data.pop(rowid)
@@ -68,7 +69,7 @@ class Categorical(DistributionGpm):
         if not (x % 1 == 0 and 0 <= x < self.k):
             return -float('inf')
         return Categorical.calc_predictive_logp(
-            x, self.N, self.counts, self.alpha)
+            int(x), self.N, self.counts, self.alpha)
 
     def simulate(self, rowid, query, evidence):
         DistributionGpm.simulate(self, rowid, query, evidence)

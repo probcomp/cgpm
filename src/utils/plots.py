@@ -39,7 +39,7 @@ def get_state_plot_layout(n_cols):
     layout['border_color'] = colors()
     return layout
 
-def plot_dist_continuous(X, clusters, ax=None, Y=None, hist=True):
+def plot_dist_continuous(X, output, clusters, ax=None, Y=None, hist=True):
     # Create a new axis?
     if ax is None:
         _, ax = plt.subplots()
@@ -53,7 +53,7 @@ def plot_dist_continuous(X, clusters, ax=None, Y=None, hist=True):
     pdf = np.zeros((K, len(Y)))
     W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
     for k in xrange(K):
-        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(y)
+        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(-1, {output:y}, [])
                 for y in Y])
         color, alpha = gu.curve_color(k)
         ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
@@ -72,7 +72,7 @@ def plot_dist_continuous(X, clusters, ax=None, Y=None, hist=True):
     ax.set_title(clusters[0].name())
     return ax
 
-def plot_dist_discrete(X, clusters, ax=None, Y=None, hist=True):
+def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
     # Create a new axis?
     if ax is None:
         _, ax = plt.subplots()
@@ -86,7 +86,7 @@ def plot_dist_discrete(X, clusters, ax=None, Y=None, hist=True):
     pdf = np.zeros((K, len(Y)))
     W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
     for k in xrange(K):
-        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(y)
+        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(-1, {output:y}, [])
                 for y in Y])
         color, alpha = gu.curve_color(k)
         ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
