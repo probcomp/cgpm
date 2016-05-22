@@ -58,6 +58,7 @@ class Dim(object):
 
         # Clusters.
         self.clusters = []
+        self.clusters_inverse = {}
 
         # Auxiliary singleton model.
         self.aux_model = self.create_aux_model()
@@ -79,21 +80,13 @@ class Dim(object):
             query = {self.index: x}
             evidence = y
             self.clusters[k].incorporate(rowid, query, evidence)
+            self.clusters_inverse[rowid] = self.clusters[k]
 
-    def unincorporate(self, rowid, x, k, y=None):
-        """Remove observation x from clusters[k]. Bad things will happen if x
-        was not incorporated into cluster k before calling this method.
-        """
-        assert k < len(self.clusters)
-        if self._valid_xy(x, y):
-            self.clusters[k].unincorporate(rowid)
-
-    # Bulk operations for effeciency.
-
-    def bulk_unincorporate(self, k):
-        """Destroy cluster k, and all its incorporated data (if any)."""
-        assert k < len(self.clusters)
-        del self.clusters[k]
+    def unincorporate(self, rowid):
+        """Remove observation rowid."""
+        cluster = self.clusters_inverse[rowid]
+        cluster.unincorporate(rowid)
+        del self.clusters_inverse[rowid]
 
     def bulk_incorporate(self, X, Zr, Y=None):
         """Reassigns data X to new clusters according to partitioning Zr.
@@ -107,6 +100,7 @@ class Dim(object):
             Y = [None] * len(Zr)
 
         self.clusters = []
+        self.clusters_inverse = {}
         K = max(Zr) + 1
 
         # Create clusters.
@@ -119,7 +113,9 @@ class Dim(object):
             if self._valid_xy(x, y):
                 query = {self.index: x}
                 evidence = y
+                # XXX Use self.incorporate
                 self.clusters[k].incorporate(rowid, query, evidence)
+                self.clusters_inverse[rowid] = self.clusters[k]
 
         # Transition uncollapsed params if necessary.
         if not self.is_collapsed():

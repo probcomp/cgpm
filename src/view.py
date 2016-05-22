@@ -134,9 +134,7 @@ class View(object):
         """Remove rowid from the global datset X from this view."""
         # Unincorporate from dims.
         for dim in self.dims.values():
-            dim.unincorporate(
-                rowid, self.X[rowid, dim.index], self.Zr[rowid],
-                y=self._get_conditions(dim, rowid))
+            dim.unincorporate(rowid)
         # Account.
         k = self.Zr[rowid]
         self.Nk[k] -= 1
@@ -144,7 +142,8 @@ class View(object):
             self.Zr = [i-1 if i>k else i for i in self.Zr]
             del self.Nk[k]
             for dim in self.dims.values():
-                dim.bulk_unincorporate(k)
+                # XXX Abstract in a batter way
+                del dim.clusters[k]
         self.Zr[rowid] = np.nan
 
     # --------------------------------------------------------------------------
@@ -395,7 +394,7 @@ class View(object):
         x = self.X[rowid, dim.index]
         y = self._get_conditions(dim, rowid)
         if self.Zr[rowid] == k:
-            dim.unincorporate(rowid, x, k, y=y)
+            dim.unincorporate(rowid)
             logp = dim.logpdf(rowid, x, k, y=y)
             dim.incorporate(rowid, x, k, y=y)
         else:
