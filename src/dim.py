@@ -77,7 +77,7 @@ class Dim(object):
             self.aux_model = self.create_aux_model()
         if self._valid_xy(x, y):
             query = {self.index: x}
-            evidence = {}
+            evidence = y
             self.clusters[k].incorporate(rowid, query, evidence)
 
     def unincorporate(self, rowid, x, k, y=None):
@@ -234,6 +234,9 @@ class Dim(object):
             distargs=self.distargs, rng=self.rng)
 
     def _valid_xy(self, x, y):
+        # XXX Update when dim takes proper query/evidence.
+        if isinstance(y, dict):
+            y = y.values()
         return not (np.isnan(x) or (y is not None and np.isnan(y).any()))
 
     def _calc_hyper_proposal_logps(self, target):
