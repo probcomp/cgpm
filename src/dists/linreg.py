@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from collections import namedtuple
 
 import numpy as np
 
@@ -26,6 +27,9 @@ import gpmcc.utils.data as du
 import gpmcc.utils.general as gu
 
 from gpmcc.dists.gpm import Gpm
+
+
+Data = namedtuple('Data', ['x', 'Y'])
 
 
 class LinearRegression(Gpm):
@@ -55,8 +59,7 @@ class LinearRegression(Gpm):
         self.p = sum(p)+1
         # Dataset.
         self.N = 0
-        self.x = OrderedDict()
-        self.Y = OrderedDict()
+        self.data = Data(x=OrderedDict(), Y=OrderedDict())
         # Hyper parameters.
         if hypers is None: hypers = {}
         self.a = hypers.get('a', 1.)
@@ -65,32 +68,32 @@ class LinearRegression(Gpm):
         self.V = hypers.get('V', np.eye(self.p))
 
     def incorporate(self, rowid, query, evidence):
-        assert rowid not in self.x
-        assert rowid not in self.Y
+        assert rowid not in self.data.x
+        assert rowid not in self.data.Y
         x, y = self.preprocess(query, evidence)
         self.N += 1
-        self.x[rowid] = x
-        self.Y[rowid] = y
+        self.data.x[rowid] = x
+        self.data.Y[rowid] = y
 
     def unincorporate(self, rowid):
-        del self.x[rowid]
-        del self.Y[rowid]
+        del self.data.x[rowid]
+        del self.data.Y[rowid]
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence):
         xt, yt = self.preprocess(query, evidence)
-        assert rowid not in self.x
+        assert rowid not in self.data.x
         return LinearRegression.calc_predictive_logp(
-            xt, yt, self.N, self.Y.values(), self.x.values(), self.a,
+            xt, yt, self.N, self.data.Y.values(), self.data.x.values(), self.a,
             self.b, self.mu, self.V)
 
     def simulate(self, rowid, query, evidence):
         assert query == self.outputs
-        if rowid in self.x:
-            return self.x[rowid]
+        if rowid in self.data.x:
+            return self.data.x[rowid]
         xt, yt = self.preprocess(None, evidence)
         an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
-            self.N, self.Y.values(), self.x.values(), self.a, self.b,
+            self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
             self.mu, self.V)
         sigma2, b = LinearRegression.sample_parameters(
             an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
@@ -98,7 +101,7 @@ class LinearRegression(Gpm):
 
     def logpdf_score(self):
         return LinearRegression.calc_logpdf_marginal(
-            self.N, self.Y.values(), self.x.values(),
+            self.N, self.data.Y.values(), self.data.x.values(),
             self.a, self.b, self.mu, self.V)
 
     ##################
