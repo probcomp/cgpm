@@ -126,38 +126,46 @@ class RandomForestDirectTest(unittest.TestCase):
         forest.transition_params()
         self.assertLess(forest.logpdf_score(), 0)
 
-    # def test_transition_hypers(self):
-    #     forest = Dim(
-    #         'random_forest', 0, inputs=rf_inputs,
-    #         distargs=self.rf_distargs, rng=gu.gen_rng(0))
-    #     forest.transition_hyper_grids(self.D[:,0])
-    #     # Create two clusters.
-    #     Zr = np.zeros(len(self.D), dtype=int)
-    #     Zr[len(self.D)/2:] = 1
-    #     forest.bulk_incorporate(self.D[:,0], Zr, Y=self.D[:,1:])
-    #     # Transitions.
-    #     forest.transition_params()
-    #     forest.transition_hypers()
+    def test_transition_hypers(self):
+        forest = Dim(
+            'random_forest', 0, inputs=self.rf_inputs,
+            distargs=self.rf_distargs, rng=gu.gen_rng(0))
+        forest.transition_hyper_grids(self.D[:,0])
+        # Create two clusters.
+        Zr = np.zeros(len(self.D), dtype=int)
+        Zr[len(self.D)/2:] = 1
+        for rowid, row in enumerate(self.D[:25]):
+            query = row[0] # XXX Update when dim takes proper query/evidence.
+            evidence = {i: row[i] for i in forest.inputs}
+            forest.incorporate(rowid, query, Zr[rowid], y=evidence)
+        # Transitions.
+        forest.transition_params()
+        forest.transition_hypers()
 
-    # def test_simulate(self):
-    #     forest = Dim(
-    #         'random_forest', 0, distargs=self.rf_distargs, rng=gu.gen_rng(0))
-    #     forest.transition_hyper_grids(self.D[:,0])
-    #     # Create 1 clusters.
-    #     Zr = np.zeros(len(self.D[:40]), dtype=int)
-    #     forest.bulk_incorporate(self.D[:40,0], Zr, Y=self.D[:40,1:])
-    #     # Transitions.
-    #     forest.transition_params()
-    #     for _ in xrange(2):
-    #         forest.transition_hypers()
-    #     correct, total = 0, 0.
-    #     for row in self.D[40:]:
-    #         s = [forest.simulate(0, y=row[1:]) for _ in xrange(10)]
-    #         s = np.argmax(np.bincount(s))
-    #         correct += (s==row[0])
-    #         total += 1.
-    #     # Classification should be better than random.
-    #     self.assertGreater(correct/total, 1./self.num_classes)
+    def test_simulate(self):
+        forest = Dim(
+            'random_forest', 0, inputs=self.rf_inputs,
+            distargs=self.rf_distargs, rng=gu.gen_rng(0))
+        forest.transition_hyper_grids(self.D[:,0])
+        # Incorporate data into 1 cluster.
+        for rowid, row in enumerate(self.D[:40]):
+            query = row[0] # XXX Update when dim takes proper query/evidence.
+            evidence = {i: row[i] for i in forest.inputs}
+            forest.incorporate(rowid, query, 0, y=evidence)
+        # Transitions.
+        forest.transition_params()
+        for _ in xrange(2):
+            forest.transition_hypers()
+        correct, total = 0, 0.
+        for row in self.D[40:]:
+            evidence = {i: row[i] for i in forest.inputs}
+            # XXX Update when dim takes proper query/evidence.
+            s = [forest.simulate(-1, 0, y=evidence) for _ in xrange(10)]
+            s = np.argmax(np.bincount(s))
+            correct += (s==row[0])
+            total += 1.
+        # Classification should be better than random.
+        self.assertGreater(correct/total, 1./self.num_classes)
 
 if __name__ == '__main__':
     unittest.main()
