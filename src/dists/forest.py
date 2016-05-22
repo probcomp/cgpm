@@ -32,7 +32,7 @@ Data = namedtuple('Data', ['x', 'Y'])
 class RandomForest(Gpm):
     """RandomForest conditional GPM over k variables, with uniform noise model.
 
-    p(x|Y;D) = \alpha*(1/k) + (1-\alpha)*RF(x|Y;D)
+    p(x|Y,D) = \alpha*(1/k) + (1-\alpha)*RF(x|Y,D)
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None,

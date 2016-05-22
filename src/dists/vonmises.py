@@ -75,7 +75,7 @@ class Vonmises(DistributionGpm):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not (0 <= x <= 2*pi):
-            raise ValueError('Invalid Vonmises: %s' % str(x))
+            return -float('inf')
         return Vonmises.calc_predictive_logp(
             x, self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 
