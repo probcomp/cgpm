@@ -88,7 +88,7 @@ class View(object):
         return dim.logpdf_score()
 
     def _bulk_incorporate(self, dim):
-        # XXX Major hack!
+        # XXX Major hack! We should really be creating new Dim objects
         dim.clusters = []
         dim.clusters_inverse = {}
         dim.ignored = set([])
@@ -103,7 +103,7 @@ class View(object):
             dim.clusters = dim.clusters[:K]
         assert len(dim.clusters) == K
         dim.transition_params()
-        # XXX Major hack!
+        # XXX Major hack end.
 
     def _prepare_incorporate(self, cctype):
         distargs = {}
