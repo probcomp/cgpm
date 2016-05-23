@@ -91,6 +91,7 @@ class View(object):
         # XXX Major hack!
         dim.clusters = []
         dim.clusters_inverse = {}
+        dim.ignored = set([])
         dim.aux_model = dim.create_aux_model()
         for rowid in np.argsort(self.Zr):
             query = {dim.index: self.X[rowid, dim.index]}

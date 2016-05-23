@@ -62,6 +62,7 @@ class Dim(object):
         # Clusters.
         self.clusters = []
         self.clusters_inverse = {}
+        self.ignored = set([])
 
         # Auxiliary singleton model.
         self.aux_model = self.create_aux_model()
@@ -70,7 +71,7 @@ class Dim(object):
     # Observe
 
     def incorporate(self, rowid, query, evidence):
-        """Record an observation x in clusters[k].
+        """Record an observation.
 
         If k < len(self.clusters) then x will be incorporated to cluster k.
         If k == len(self.clusters) then a new cluster will be created.
@@ -84,12 +85,17 @@ class Dim(object):
         if valid:
             self.clusters[k].incorporate(rowid, query, evidence)
             self.clusters_inverse[rowid] = self.clusters[k]
+        else:
+            self.ignored.add(rowid)
 
     def unincorporate(self, rowid):
         """Remove observation rowid."""
-        cluster = self.clusters_inverse[rowid]
-        cluster.unincorporate(rowid)
-        del self.clusters_inverse[rowid]
+        if rowid in self.ignored:
+            self.ignored.remove(rowid)
+        else:
+            cluster = self.clusters_inverse[rowid]
+            cluster.unincorporate(rowid)
+            del self.clusters_inverse[rowid]
 
     # --------------------------------------------------------------------------
     # Github issue #65.
