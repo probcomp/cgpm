@@ -162,10 +162,14 @@ class RandomForest(Gpm):
         y = [evidence[c] for c in sorted(evidence)]
         distargs = self.get_distargs()
         p, k = distargs['p'], distargs['k']
-        if set(evidence.keys()) != set(self.inputs):
+        if not set.issubset(set(self.inputs), set(evidence.keys())):
             raise TypeError(
                 'RandomForest requires inputs {}: {}'.format(
                     self.inputs, evidence.keys()))
+        if self.outputs[0] in evidence:
+            raise TypeError(
+                'RandomForest cannot condition on output {}: {}'.format(
+                    self.outputs, evidence.keys()))
         if len(y) != p:
             raise TypeError(
                 'RandomForest requires input length {}: {}'.format(p, y))
