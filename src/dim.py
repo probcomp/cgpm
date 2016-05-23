@@ -120,9 +120,7 @@ class Dim(object):
     def logpdf_score(self, k=None):
         """If k is not None, returns the marginal log_p of clusters[k].
         Otherwise returns the sum of marginal log_p over all clusters."""
-        if k is not None:
-            return self.clusters[k].logpdf_score()
-        return [cluster.logpdf_score() for cluster in self.clusters]
+        return sum(cluster.logpdf_score() for cluster in self.clusters)
 
     # --------------------------------------------------------------------------
     # logpdf
