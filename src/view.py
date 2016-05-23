@@ -171,14 +171,21 @@ class View(object):
         """Update the distribution type of self.dims[col] to cctype."""
         if distargs is None:
             distargs = {}
+        inputs = []
         local_distargs = self._prepare_incorporate(cctype)
-        if col in self._unconditional_dims() and local_distargs:
-            index = self._unconditional_dims().index(col)
-            del local_distargs['cctypes'][index]
-            del local_distargs['ccargs'][index]
+        if cctype_class(cctype).is_conditional():
+            inputs = self._unconditional_dims()
+            # Remove self-refrences when updating unconditional to conditional.
+            if col in inputs:
+                me = inputs.index(col)
+                del local_distargs['cctypes'][me]
+                del local_distargs['ccargs'][me]
+                del inputs[me]
         distargs.update(local_distargs)
         D_old = self.dims[col]
-        D_new = Dim(cctype, col, hypers=hypers, distargs=distargs, rng=self.rng)
+        D_new = Dim(
+            cctype, col, inputs=inputs, hypers=hypers, distargs=distargs,
+            rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
 
@@ -373,18 +380,18 @@ class View(object):
         """Simulate query from cluster k, N times."""
         assert all(self.dims[c].is_conditional() for c in query)
         assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
-        y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
-        return [self.dims[c].simulate(-1, k, y=y) for c in query]
+        evidence = gu.merge_dicts(evidence, {-1:k})
+        return [self.dims[c].simulate(-1, [c], evidence) for c in query]
 
     def _logpdf_unconditional(self, query, k):
-        assert not any(self.dims[c].is_conditional() for c, x in query)
-        return np.sum([self.dims[c].logpdf(-1, {c:x}, {-1:k}) for c,x in query])
+        assert not any(self.dims[c].is_conditional() for c,x in query)
+        return sum(self.dims[c].logpdf(-1, {c:x}, {-1:k}) for c,x in query)
 
     def _logpdf_conditional(self, query, evidence, k):
-        assert all(self.dims[c].is_conditional() for c, x in query)
+        assert all(self.dims[c].is_conditional() for c,x in query)
         assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
-        y = [e[1] for e in sorted(evidence, key=lambda e: e[0])]
-        return np.sum([self.dims[c].logpdf(-1, x, k, y=y) for c, x in query])
+        evidence = gu.merge_dicts(evidence, {-1:k})
+        return sum(self.dims[c].logpdf(-1, {c:x}, evidence) for c,x in query)
 
     # --------------------------------------------------------------------------
     # Internal row transition.
