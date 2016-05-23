@@ -103,8 +103,10 @@ class RandomForest(Gpm):
     def transition_params(self):
         # Transition noise parameter.
         alphas = np.linspace(0.01, 0.99, 30)
-        alpha_logps = [RandomForest.calc_log_likelihood(
-            self.data.x, self.data.Y, self.regressor, self.counts, a)
+        alpha_logps = [
+            RandomForest.calc_log_likelihood(
+                self.data.x.values(), self.data.Y.values(), self.regressor,
+                self.counts, a)
             for a in alphas]
         index = gu.log_pflip(alpha_logps, rng=self.rng)
         self.alpha = alphas[index]
@@ -184,8 +186,9 @@ class RandomForest(Gpm):
 
     @staticmethod
     def calc_log_likelihood(X, Y, regressor, counts, alpha):
-        return np.sum([RandomForest.calc_predictive_logp(
-            x, y, regressor, counts, alpha) for x, y in zip(X,Y)])
+        return sum(
+            RandomForest.calc_predictive_logp(x, y, regressor, counts, alpha)
+            for x, y in zip(X,Y))
 
     @staticmethod
     def calc_predictive_logp(x, y, regressor, counts, alpha):
