@@ -94,8 +94,7 @@ class View(object):
         dim.aux_model = dim.create_aux_model()
         for rowid in np.argsort(self.Zr):
             query = {dim.index: self.X[rowid, dim.index]}
-            evidence = gu.merge_dicts(
-                self._get_evidence(rowid, dim), {-1: self.Zr[rowid]})
+            evidence = self._get_evidence(rowid, dim, self.Zr[rowid])
             dim.incorporate(rowid, query, evidence)
         # XXX Clear out empty clusters.
         K = max(self.Zr)+1
@@ -145,8 +144,7 @@ class View(object):
         # Incorporate into dims.
         for dim in self.dims.values():
             query = {dim.index: self.X[rowid,dim.index]}
-            evidence = gu.merge_dicts(
-                self._get_evidence(rowid, dim), {-1: self.Zr[rowid]})
+            evidence = self._get_evidence(rowid, dim, k)
             dim.incorporate(rowid, query, evidence)
         self.transition_rows(rows=transition)
 
@@ -418,7 +416,7 @@ class View(object):
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         query = {dim.index: self.X[rowid,dim.index]}
-        evidence = gu.merge_dicts(self._get_evidence(rowid, dim), {-1: k})
+        evidence = self._get_evidence(rowid, dim, k)
         if self.Zr[rowid] == k:
             dim.unincorporate(rowid)
             logp = dim.logpdf(rowid, query, evidence)
@@ -448,8 +446,8 @@ class View(object):
         ev_new = filter(lambda e: e[0] not in ecols, ev_c + ev_u)
         return ev_new + evidence
 
-    def _get_evidence(self, rowid, dim):
-        return {i: self.X[rowid,i] for i in dim.inputs}
+    def _get_evidence(self, rowid, dim, k):
+        return gu.merge_dicts({i:self.X[rowid,i] for i in dim.inputs}, {-1:k})
 
     def _conditional_dims(self):
         """Return conditional dims in sorted order."""
