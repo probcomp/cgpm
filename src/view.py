@@ -81,12 +81,29 @@ class View(object):
         if reassign:
             Y, distargs = self._prepare_incorporate(dim.cctype)
             dim.distargs.update(distargs)
-            dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
+            # dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
+            self._bulk_incorporate(dim, Y)
         self.dims[dim.index] = dim
         return sum(dim.logpdf_score())
 
+    def _bulk_incorporate(self, dim, Y):
+        # XXX Major hack!
+        dim.clusters = []
+        dim.clusters_inverse = {}
+        dim.aux_model = dim.create_aux_model()
+        for rowid in np.argsort(self.Zr):
+            dim.incorporate(
+                rowid, self.X[rowid,dim.index], self.Zr[rowid], Y[rowid])
+        # XXX Clear out empty clusters.
+        K = max(self.Zr)+1
+        if K < len(dim.clusters):
+            dim.clusters = dim.clusters[:K]
+        assert len(dim.clusters) == K
+        dim.transition_params()
+        # XXX Major hack!
+
     def _prepare_incorporate(self, cctype):
-        Y, distargs = None, {}
+        Y, distargs = [None] * len(self.Zr), {}
         if cctype_class(cctype).is_conditional():
             Y = self._unconditional_values(range(len(self.Zr)))
             if Y.shape[1] == 0:
