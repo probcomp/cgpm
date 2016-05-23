@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import pytest
 
 from gpmcc.state import State
 from gpmcc.utils import config as cu
@@ -22,95 +22,93 @@ from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
 
-class UpdateCctypeTest(unittest.TestCase):
+cctypes, distargs = cu.parse_distargs(
+    ['normal','poisson','categorical(k=2)','bernoulli','lognormal',
+    'exponential','geometric','vonmises'])
+T, Zv, Zc = tu.gen_data_table(
+    20, [1], [[.33, .33, .34]], cctypes, distargs,
+    [.95]*len(cctypes), rng=gu.gen_rng(0))
+T = T.T
 
-    @classmethod
-    def setUpClass(cls):
-        cls.cctypes, cls.distargs = cu.parse_distargs(
-            ['normal','poisson','categorical(k=2)','bernoulli','lognormal',
-            'exponential','geometric','vonmises'])
-        T, Zv, Zc = tu.gen_data_table(
-            20, [1], [[.33, .33, .34]], cls.cctypes, cls.distargs,
-            [.95]*len(cls.cctypes), rng=gu.gen_rng(0))
-        cls.T = T.T
 
-    def test_categorical_bernoulli(self):
-        state = State(
-            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
-        state.transition(N=1)
-        state.update_cctype(self.cctypes.index('categorical'), 'bernoulli')
-        state.transition(N=1)
-        state.update_cctype(self.cctypes.index('categorical'), 'categorical',
-            distargs={'k':2})
+def test_categorical_bernoulli():
+    state = State(
+        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+    state.transition(N=1)
+    state.update_cctype(cctypes.index('categorical'), 'bernoulli')
+    state.transition(N=1)
+    state.update_cctype(cctypes.index('categorical'), 'categorical',
+        distargs={'k':2})
 
-    def test_poisson_categorical(self):
-        state = State(
-            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
-        state.transition(N=1)
-        state.update_cctype(self.cctypes.index('categorical'), 'poisson')
-        state.transition(N=1)
-        state.update_cctype(self.cctypes.index('categorical'), 'categorical',
-            distargs={'k':2})
 
-    def test_vonmises_normal(self):
-        state = State(
-            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
-        state.transition(N=1)
-        state.update_cctype(self.cctypes.index('vonmises'), 'normal')
-        state.transition(N=1)
-        state.update_cctype(self.cctypes.index('vonmises'), 'vonmises')
+def test_poisson_categorical():
+    state = State(
+        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+    state.transition(N=1)
+    state.update_cctype(cctypes.index('categorical'), 'poisson')
+    state.transition(N=1)
+    state.update_cctype(cctypes.index('categorical'), 'categorical',
+        distargs={'k':2})
 
-        # Incompatible numeric conversion.
-        with self.assertRaises(Exception):
-            state.update_cctype(self.cctypes.index('normal'), 'vonmises')
 
-    def test_geometric_exponential(self):
-        state = State(
-            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(0))
-        state.transition(N=1)
-        state.update_cctype(self.cctypes.index('geometric'), 'exponential')
-        state.transition(N=1)
+def test_vonmises_normal():
+    state = State(
+        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+    state.transition(N=1)
+    state.update_cctype(cctypes.index('vonmises'), 'normal')
+    state.transition(N=1)
+    state.update_cctype(cctypes.index('vonmises'), 'vonmises')
 
-        # Incompatible numeric conversion.
-        with self.assertRaises(Exception):
-            state.update_cctype(self.cctypes.index('exponential'), 'geometric')
+    # Incompatible numeric conversion.
+    with pytest.raises(Exception):
+        state.update_cctype(cctypes.index('normal'), 'vonmises')
 
-    def test_categorical_forest(self):
-        state = State(
-            self.T, self.cctypes, distargs=self.distargs, rng=gu.gen_rng(1))
-        state.transition(N=1)
-        cat_id = self.cctypes.index('categorical')
-        cat_distargs = self.distargs[cat_id]
 
-        # If cat_id is singleton migrate first.
-        if len(state.view_for(cat_id).dims) == 1:
-            state.unincorporate_dim(cat_id)
-            state.incorporate_dim(
-                self.T[:,cat_id], 'categorical', cat_distargs, v=0)
-            cat_id = state.n_cols()-1
-        state.update_cctype(cat_id, 'random_forest', distargs=cat_distargs)
+def test_geometric_exponential():
+    state = State(
+        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+    state.transition(N=1)
+    state.update_cctype(cctypes.index('geometric'), 'exponential')
+    state.transition(N=1)
 
-        bernoulli_id = self.cctypes.index('bernoulli')
+    # Incompatible numeric conversion.
+    with pytest.raises(Exception):
+        state.update_cctype(cctypes.index('exponential'), 'geometric')
+
+
+def test_categorical_forest():
+    state = State(
+        T, cctypes, distargs=distargs, rng=gu.gen_rng(1))
+    state.transition(N=1)
+    cat_id = cctypes.index('categorical')
+    cat_distargs = distargs[cat_id]
+
+    # If cat_id is singleton migrate first.
+    if len(state.view_for(cat_id).dims) == 1:
+        state.unincorporate_dim(cat_id)
         state.incorporate_dim(
-            self.T[:,bernoulli_id], 'bernoulli', v=state.Zv[cat_id])
+            T[:,cat_id], 'categorical', cat_distargs, v=0)
+        cat_id = state.n_cols()-1
+    state.update_cctype(cat_id, 'random_forest', distargs=cat_distargs)
+
+    bernoulli_id = cctypes.index('bernoulli')
+    state.incorporate_dim(
+        T[:,bernoulli_id], 'bernoulli', v=state.Zv[cat_id])
+    state.update_cctype(
+        len(state.dims())-1, 'random_forest', distargs={'k':2})
+
+    # Run valid transitions.
+    state.transition(
+        N=2, kernels=['rows','column_params','column_hypers'],
+        target_views=[state.Zv[cat_id]])
+
+    # Running column transition should raise.
+    with pytest.raises(ValueError):
+        state.transition(N=1, kernels=['columns'])
+
+    # Updating cctype in singleton View should raise.
+    state.incorporate_dim(
+        T[:,cat_id], 'categorical', cat_distargs, v=len(state.views))
+    with pytest.raises(Exception):
         state.update_cctype(
-            len(state.dims())-1, 'random_forest', distargs={'k':2})
-
-        # Run valid transitions.
-        state.transition(
-            N=2, kernels=['rows','column_params','column_hypers'],
-            target_views=[state.Zv[cat_id]])
-
-        # Running column transition should raise.
-        with self.assertRaises(ValueError):
-            state.transition(N=1, kernels=['columns'])
-
-        # Updating cctype in singleton View should raise.
-        state.incorporate_dim(
-            self.T[:,cat_id], 'categorical', cat_distargs, v=len(state.views))
-        with self.assertRaises(ValueError):
-            state.update_cctype(
-                len(state.dims())-1, 'random_forest', distargs=cat_distargs)
-
-if __name__ == '__main__':
-    unittest.main()
+            len(state.dims())-1, 'random_forest', distargs=cat_distargs)

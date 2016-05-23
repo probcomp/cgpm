@@ -106,11 +106,7 @@ class Dim(object):
         """Write me!"""
         k, evidence, valid = self.preprocess(query, evidence)
         cluster = self.aux_model if k==len(self.clusters) else self.clusters[k]
-        try:
-            return cluster.logpdf(rowid, query, evidence) if valid else 0
-        except:
-            import ipdb; ipdb.set_trace()
-            print 'hi'
+        return cluster.logpdf(rowid, query, evidence) if valid else 0
 
     # --------------------------------------------------------------------------
     # Simulate
