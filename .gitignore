@@ -65,6 +65,9 @@ docs/_build/
 *.blg
 *.fdb_latexmk
 *.fls
+*.loc
+*.toc
+*.out
 *.synctex.gz
 *_minted-*
 
