@@ -94,28 +94,20 @@ class Dim(object):
         transitioned but hyperparameters are not transitioned. The partition
         is only for reassigning, and not stored internally.
         """
-        assert len(X) == len(Zr)
-
         if Y is None:
             Y = [None] * len(Zr)
 
+        assert len(X) == len(Zr) == len(Y)
+
+        # Clear existing structure.
         self.clusters = []
         self.clusters_inverse = {}
-        K = max(Zr) + 1
+        self.aux_model = self.create_aux_model()
 
-        # Create clusters.
-        for k in xrange(K):
-            cluster = self.create_aux_model()
-            self.clusters.append(cluster)
-
-        # Populate clusters.
-        for (rowid, (x, k, y)) in enumerate(zip(X, Zr, Y)):
-            if self._valid_xy(x, y):
-                query = {self.index: x}
-                evidence = y
-                # XXX Use self.incorporate
-                self.clusters[k].incorporate(rowid, query, evidence)
-                self.clusters_inverse[rowid] = self.clusters[k]
+        # Create new clusters.
+        for rowid in np.argsort(Zr):
+            x, k, y = X[rowid], Zr[rowid], Y[rowid]
+            self.incorporate(rowid, x, k, y=y)
 
         # Transition uncollapsed params if necessary.
         if not self.is_collapsed():

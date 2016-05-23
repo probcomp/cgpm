@@ -60,8 +60,8 @@ class SimulateIndicatorTest(unittest.TestCase):
             counts[k] += 1
         # Create an engine.
         state = Engine(
-            cls.data, ['normal', 'categorical'], [None, {'k':6}], num_states=4,
-            rng=gu.gen_rng(0))
+            cls.data, ['normal', 'categorical'], [None, {'k':6}],
+            num_states=4, rng=gu.gen_rng(2))
         state.transition(N=15)
         marginals = state.logpdf_score()
         ranking = np.argsort(marginals)[::-1]
