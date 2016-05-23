@@ -331,10 +331,10 @@ class View(object):
         if self.no_leafs(query, evidence):
             return self._logpdf_unconditional(query, k)
         ACCURACY = 20
-        sq, weights_eq = self._weighted_samples(evidence+query, k, ACCURACY)
+        _, weights_eq = self._weighted_samples(evidence+query, k, ACCURACY)
         logp_evidence = 0.
         if evidence:
-            se, weights_e = self._weighted_samples(evidence, k, ACCURACY)
+            _, weights_e = self._weighted_samples(evidence, k, ACCURACY)
             logp_evidence = logmeanexp(weights_e)
         logp_query = logmeanexp(weights_eq) - logp_evidence
         return logp_query
