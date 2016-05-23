@@ -405,10 +405,7 @@ class View(object):
         logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
         p_cluster = np.add(logp_data, logp_crp)
-        try:
-            z_b = gu.log_pflip(p_cluster, rng=self.rng)
-        except:
-            import ipdb; ipdb.set_trace()
+        z_b = gu.log_pflip(p_cluster, rng=self.rng)
         if z_b != self.Zr[rowid]:
             self.unincorporate_row(rowid)
             self.incorporate_row(rowid, z_b)
@@ -444,8 +441,8 @@ class View(object):
         ecols = [e[0] for e in evidence]
         ucols = self._unconditional_dims()
         ccols = self._conditional_dims()
-        uvals = self._unconditional_values([rowid])[0]
-        cvals = self._conditional_values([rowid])[0]
+        uvals = self._unconditional_values(rowid)
+        cvals = self._conditional_values(rowid)
         qcols = query if isinstance(query[0], int) else [q[0] for q in query]
         qrts = [q for q in qcols if q in ucols]
         qlfs = [q for q in qcols if q in ccols]
@@ -455,7 +452,10 @@ class View(object):
         return ev_new + evidence
 
     def _get_evidence(self, rowid, dim, k):
-        return gu.merge_dicts({i:self.X[rowid,i] for i in dim.inputs}, {-1:k})
+        """Prepare the evidence for a Dim logpdf/simulate query."""
+        inputs = {i:self.X[rowid,i] for i in dim.inputs}
+        cluster = {-1: k}
+        return gu.merge_dicts(inputs, cluster)
 
     def _conditional_dims(self):
         """Return conditional dims in sorted order."""
@@ -467,13 +467,11 @@ class View(object):
         return filter(lambda d: not self.dims[d].is_conditional(),
             sorted(self.dims))
 
-    def _unconditional_values(self, rowids):
-        unconditionals = self._unconditional_dims()
-        return self.X[rowids,:][:,unconditionals]
+    def _unconditional_values(self, rowid):
+        return self.X[rowid,self._unconditional_dims()]
 
-    def _conditional_values(self, rowids):
-        conditionals = self._conditional_dims()
-        return self.X[rowids,:][:,conditionals]
+    def _conditional_values(self, rowid):
+        return self.X[rowid,self._conditional_dims()]
 
     def _unconditional_cctypes(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
