@@ -101,15 +101,14 @@ class Dim(object):
     # Github issue #65.
 
     def logpdf_score(self, k=None):
-        """If k is not None, returns the marginal log_p of clusters[k].
-        Otherwise returns the sum of marginal log_p over all clusters."""
+        """Return log score summed over all clusters."""
         return sum(cluster.logpdf_score() for cluster in self.clusters)
 
     # --------------------------------------------------------------------------
     # logpdf
 
     def logpdf(self, rowid, query, evidence):
-        """Write me!"""
+        """Evaluate the log density of the query given evidence."""
         k, evidence, valid = self.preprocess(query, evidence)
         cluster = self.aux_model if k==len(self.clusters) else self.clusters[k]
         return cluster.logpdf(rowid, query, evidence) if valid else 0
@@ -118,7 +117,7 @@ class Dim(object):
     # Simulate
 
     def simulate(self, rowid, query, evidence):
-        """Write me!"""
+        """Simulate the query given evidence."""
         k, evidence, valid = self.preprocess(query, evidence)
         if not valid:
             raise ValueError('Bad simulate args: %s, %s.') % (query, evidence)
@@ -205,7 +204,7 @@ class Dim(object):
         return k, evidence, valid_x and valid_y
 
     def _calc_hyper_proposal_logps(self, target):
-        """Computes the log score  for each value in self.hyper_grids[target].
+        """Computes the log score for each value in self.hyper_grids[target].
 
         p(h|X) \\prop p(X,h).
         """
