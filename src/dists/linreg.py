@@ -170,10 +170,14 @@ class LinearRegression(Gpm):
         y = [evidence[c] for c in self.inputs]
         inputs_discrete, p = distargs['inputs_discrete'], distargs['p']
         y = du.dummy_code(y, inputs_discrete)
-        if set(evidence.keys()) != set(self.inputs):
+        if not set.issubset(set(self.inputs), set(evidence.keys())):
             raise TypeError(
                 'LinearRegression requires inputs {}: {}'.format(
                     self.inputs, evidence.keys()))
+        if self.outputs[0] in evidence:
+            raise TypeError(
+                'LinearRegression cannot condition on output {}: {}'.format(
+                    self.outputs, evidence.keys()))
         if len(y) != p-1:
             raise TypeError(
                 'LinearRegression requires input length {}: {}'.format(p, y))
