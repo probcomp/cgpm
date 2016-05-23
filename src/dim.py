@@ -45,7 +45,7 @@ class Dim(object):
 
         # Identifier.
         self.index = index
-        self.inputs = inputs
+        self.inputs = inputs if inputs else []
 
         # Model type.
         self.model = cu.cctype_class(cctype)
