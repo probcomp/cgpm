@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import gpmcc.utils.general as gu
+import gpmcc.utils.config as cu
 import gpmcc.utils.plots as pu
 import gpmcc.utils.validation as vu
 
@@ -92,23 +93,22 @@ class State(object):
                 Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
         self.Zv = list(Zv)
 
-        # Dimensions.
-        dims = []
-        for col in xrange(self.n_cols()):
+        # Dims.
+        def create_dim(c):
             D = Dim(
-                cctypes[col], col, hypers=hypers[col],
-                distargs=distargs[col], rng=self.rng)
-            D.transition_hyper_grids(self.X[:,col])
-            dims.append(D)
+                cctypes[c], c, hypers=hypers[c],
+                distargs=distargs[c], rng=self.rng)
+            D.transition_hyper_grids(self.X[:,c])
+            return D
+        dims = [create_dim(c) for c in xrange(self.n_cols())]
 
         # Views.
-        self.views = []
-        for v in sorted(set(self.Zv)):
+        def create_view(v):
             view_dims = [dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
-            view = View(
-                self.X, view_dims, Zr=Zrv[v], alpha=view_alphas[v],
-                rng=self.rng)
-            self.views.append(view)
+            return View(
+                self.X, view_dims, Zr=Zrv[v],
+                alpha=view_alphas[v], rng=self.rng)
+        self.views = [create_view(v) for v in sorted(set(self.Zv))]
 
         # Iteration metadata.
         self.iterations = iterations if iterations is not None else {}
