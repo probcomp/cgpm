@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import isnan
+
 import numpy as np
 
 from scipy.misc import logsumexp
@@ -79,21 +81,22 @@ class View(object):
         """Incorporate the dim into this View. If reassign is False, the row
         partition of dim should match self.Zr already."""
         if reassign:
-            Y, distargs = self._prepare_incorporate(dim.cctype)
+            distargs = self._prepare_incorporate(dim.cctype)
             dim.distargs.update(distargs)
-            # dim.bulk_incorporate(self.X[:, dim.index], self.Zr, Y=Y)
-            self._bulk_incorporate(dim, Y)
+            self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
         return dim.logpdf_score()
 
-    def _bulk_incorporate(self, dim, Y):
+    def _bulk_incorporate(self, dim):
         # XXX Major hack!
         dim.clusters = []
         dim.clusters_inverse = {}
         dim.aux_model = dim.create_aux_model()
         for rowid in np.argsort(self.Zr):
-            dim.incorporate(
-                rowid, self.X[rowid,dim.index], self.Zr[rowid], Y[rowid])
+            query = {dim.index: self.X[rowid, dim.index]}
+            evidence = gu.merge_dicts(
+                self._get_evidence(rowid, dim), {-1: self.Zr[rowid]})
+            dim.incorporate(rowid, query, evidence)
         # XXX Clear out empty clusters.
         K = max(self.Zr)+1
         if K < len(dim.clusters):
@@ -103,14 +106,13 @@ class View(object):
         # XXX Major hack!
 
     def _prepare_incorporate(self, cctype):
-        Y, distargs = [None] * len(self.Zr), {}
+        distargs = {}
         if cctype_class(cctype).is_conditional():
-            Y = self._unconditional_values(range(len(self.Zr)))
-            if Y.shape[1] == 0:
-                raise ValueError('Cannot incorporate singleton conditional dim.')
+            if len(self.dims) == 0:
+                raise ValueError('Cannot incorporate single conditional dim.')
             distargs['cctypes'] = self._unconditional_cctypes()
             distargs['ccargs'] = self._unconditional_ccargs()
-        return Y, distargs
+        return distargs
 
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify dim)."""
@@ -133,11 +135,6 @@ class View(object):
         # If k unspecified, transition the new rowid.
         k = 0 if k is None else k
         transition = [rowid] if k is None else []
-        # Incorporate into dims.
-        for dim in self.dims.values():
-            dim.incorporate(
-                rowid, self.X[rowid, dim.index], k,
-                y=self._get_conditions(dim, rowid))
         # Account.
         if k == len(self.Nk):
             self.Nk.append(0)
@@ -145,6 +142,12 @@ class View(object):
         if rowid == len(self.Zr):
             self.Zr.append(0)
         self.Zr[rowid] = k
+        # Incorporate into dims.
+        for dim in self.dims.values():
+            query = {dim.index: self.X[rowid,dim.index]}
+            evidence = gu.merge_dicts(
+                self._get_evidence(rowid, dim), {-1: self.Zr[rowid]})
+            dim.incorporate(rowid, query, evidence)
         self.transition_rows(rows=transition)
 
     def unincorporate_row(self, rowid):
@@ -170,7 +173,7 @@ class View(object):
         """Update the distribution type of self.dims[col] to cctype."""
         if distargs is None:
             distargs = {}
-        local_distargs = self._prepare_incorporate(cctype)[1]
+        local_distargs = self._prepare_incorporate(cctype)
         if col in self._unconditional_dims() and local_distargs:
             index = self._unconditional_dims().index(col)
             del local_distargs['cctypes'][index]
@@ -198,7 +201,7 @@ class View(object):
     def reindex_rows(self):
         """Update row partition by deleting nans. Invoke when rowids in
         unincorporate_row are deleted from the global dataset X."""
-        self.Zr = [z for z in self.Zr if not np.isnan(z)]
+        self.Zr = [z for z in self.Zr if not isnan(z)]
         assert len(self.Zr) == len(self.X)
 
     # --------------------------------------------------------------------------
@@ -365,7 +368,8 @@ class View(object):
     def _simulate_unconditional(self, query, k, N):
         """Simulate query from cluster k, N times."""
         assert not any(self.dims[c].is_conditional() for c in query)
-        return [[self.dims[c].simulate(-1, k) for c in query] for _ in xrange(N)]
+        return [[self.dims[c].simulate(-1, [c], {-1:k}) for c in query]
+            for _ in xrange(N)]
 
     def _simulate_conditional(self, query, evidence, k):
         """Simulate query from cluster k, N times."""
@@ -376,7 +380,7 @@ class View(object):
 
     def _logpdf_unconditional(self, query, k):
         assert not any(self.dims[c].is_conditional() for c, x in query)
-        return np.sum([self.dims[c].logpdf(-1, x, k) for c, x in query])
+        return np.sum([self.dims[c].logpdf(-1, {c:x}, {-1:k}) for c,x in query])
 
     def _logpdf_conditional(self, query, evidence, k):
         assert all(self.dims[c].is_conditional() for c, x in query)
@@ -389,13 +393,16 @@ class View(object):
 
     def _transition_row(self, rowid):
         # Skip unincorporated rows.
-        if self.Zr[rowid] == np.nan:
+        if isnan(self.Zr[rowid]):
             return
         logp_data = self._logpdf_row_gibbs(rowid, 1)
         logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
         p_cluster = np.add(logp_data, logp_crp)
-        z_b = gu.log_pflip(p_cluster, rng=self.rng)
+        try:
+            z_b = gu.log_pflip(p_cluster, rng=self.rng)
+        except:
+            import ipdb; ipdb.set_trace()
         if z_b != self.Zr[rowid]:
             self.unincorporate_row(rowid)
             self.incorporate_row(rowid, z_b)
@@ -404,18 +411,20 @@ class View(object):
     def _logpdf_row_gibbs(self, rowid, m):
         """Internal use only for Gibbs transition."""
         m_aux = m-1 if self.Nk[self.Zr[rowid]]==1 else m
-        return [sum([self._logpdf_cell_gibbs(dim, rowid, k) for dim in
-            self.dims.values()]) for k in xrange(len(self.Nk) + m_aux)]
+        return [
+            sum([self._logpdf_cell_gibbs(rowid, dim, k)
+                for dim in self.dims.values()])
+            for k in xrange(len(self.Nk) + m_aux)]
 
-    def _logpdf_cell_gibbs(self, dim, rowid, k):
-        x = self.X[rowid, dim.index]
-        y = self._get_conditions(dim, rowid)
+    def _logpdf_cell_gibbs(self, rowid, dim, k):
+        query = {dim.index: self.X[rowid,dim.index]}
+        evidence = gu.merge_dicts(self._get_evidence(rowid, dim), {-1: k})
         if self.Zr[rowid] == k:
             dim.unincorporate(rowid)
-            logp = dim.logpdf(rowid, x, k, y=y)
-            dim.incorporate(rowid, x, k, y=y)
+            logp = dim.logpdf(rowid, query, evidence)
+            dim.incorporate(rowid, query, evidence)
         else:
-            logp = dim.logpdf(rowid, x, k, y=y)
+            logp = dim.logpdf(rowid, query, evidence)
         return logp
 
     # --------------------------------------------------------------------------
@@ -439,9 +448,8 @@ class View(object):
         ev_new = filter(lambda e: e[0] not in ecols, ev_c + ev_u)
         return ev_new + evidence
 
-    def _get_conditions(self, dim, rowid):
-        return None if dim.index in self._unconditional_dims() else\
-            self._unconditional_values(rowids=[rowid])[0]
+    def _get_evidence(self, rowid, dim):
+        return {i: self.X[rowid,i] for i in dim.inputs}
 
     def _conditional_dims(self):
         """Return conditional dims in sorted order."""

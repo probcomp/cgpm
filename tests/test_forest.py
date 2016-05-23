@@ -135,9 +135,10 @@ class RandomForestDirectTest(unittest.TestCase):
         Zr = np.zeros(len(self.D), dtype=int)
         Zr[len(self.D)/2:] = 1
         for rowid, row in enumerate(self.D[:25]):
-            query = row[0] # XXX Update when dim takes proper query/evidence.
-            evidence = {i: row[i] for i in forest.inputs}
-            forest.incorporate(rowid, query, Zr[rowid], y=evidence)
+            query = {0: row[0]}
+            evidence = gu.merge_dicts(
+                {i: row[i] for i in forest.inputs}, {-1: Zr[rowid]})
+            forest.incorporate(rowid, query, evidence)
         # Transitions.
         forest.transition_params()
         forest.transition_hypers()
@@ -149,18 +150,17 @@ class RandomForestDirectTest(unittest.TestCase):
         forest.transition_hyper_grids(self.D[:,0])
         # Incorporate data into 1 cluster.
         for rowid, row in enumerate(self.D[:40]):
-            query = row[0] # XXX Update when dim takes proper query/evidence.
-            evidence = {i: row[i] for i in forest.inputs}
-            forest.incorporate(rowid, query, 0, y=evidence)
+            query = {0: row[0]}
+            evidence = gu.merge_dicts({i:row[i] for i in forest.inputs}, {-1:0})
+            forest.incorporate(rowid, query, evidence)
         # Transitions.
         forest.transition_params()
         for _ in xrange(2):
             forest.transition_hypers()
         correct, total = 0, 0.
         for row in self.D[40:]:
-            evidence = {i: row[i] for i in forest.inputs}
-            # XXX Update when dim takes proper query/evidence.
-            s = [forest.simulate(-1, 0, y=evidence) for _ in xrange(10)]
+            evidence = gu.merge_dicts({i:row[i] for i in forest.inputs}, {-1:0})
+            s = [forest.simulate(-1, [0], evidence) for _ in xrange(10)]
             s = np.argmax(np.bincount(s))
             correct += (s==row[0])
             total += 1.

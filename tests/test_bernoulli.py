@@ -34,12 +34,13 @@ class TestBinomial(unittest.TestCase):
 
     def test_binomial(self):
         # Switch for multithread (0 is faster).
-        multithread = 1
+        multithread = 0
         # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
         data = np.transpose(np.array([[0] * DATA_NUM_0 + [1] * DATA_NUM_1]))
         # Run a single chain for a few iterations.
         engine = gpmcc.engine.Engine(
-            data, ['categorical'], distargs=[{'k': 2}], rng=gen_rng(0))
+            data, ['categorical'], distargs=[{'k': 2}], rng=gen_rng(0),
+            multithread=0)
         engine.transition(NUM_ITER, multithread=multithread)
         # Simulate from hypothetical row and compute the proportion of ones.
         sample = engine.simulate(-1, [0], N=NUM_SIM, multithread=multithread)[0]

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import numpy as np
 
 import gpmcc.utils.config as cu
@@ -45,6 +47,7 @@ class Dim(object):
 
         # Identifier.
         self.index = index
+        self.outputs = [self.index]
         self.inputs = inputs if inputs else []
 
         # Model type.
@@ -66,19 +69,19 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate(self, rowid, x, k, y=None):
+    def incorporate(self, rowid, query, evidence):
         """Record an observation x in clusters[k].
+
         If k < len(self.clusters) then x will be incorporated to cluster k.
-        If k == len(self.clusters) a new cluster will be created.
-        If k > len(self.clusters) an error will be thrown.
+        If k == len(self.clusters) then a new cluster will be created.
+        If k > len(self.clusters) then an error will be thrown.
         """
+        k, evidence, valid = self.preprocess(query, evidence)
         assert k <= len(self.clusters)
         if k == len(self.clusters):
             self.clusters.append(self.aux_model)
             self.aux_model = self.create_aux_model()
-        if self._valid_xy(x, y):
-            query = {self.index: x}
-            evidence = y
+        if valid:
             self.clusters[k].incorporate(rowid, query, evidence)
             self.clusters_inverse[rowid] = self.clusters[k]
 
@@ -87,32 +90,6 @@ class Dim(object):
         cluster = self.clusters_inverse[rowid]
         cluster.unincorporate(rowid)
         del self.clusters_inverse[rowid]
-
-    def bulk_incorporate(self, X, Zr, Y=None):
-        """Reassigns data X to new clusters according to partitioning Zr.
-        Destroys and recreates all clusters. Uncollapsed parameters are
-        transitioned but hyperparameters are not transitioned. The partition
-        is only for reassigning, and not stored internally.
-        """
-        if Y is None:
-            Y = [None] * len(Zr)
-
-        assert len(X) == len(Zr) == len(Y)
-
-        # Clear existing structure.
-        self.clusters = []
-        self.clusters_inverse = {}
-        self.aux_model = self.create_aux_model()
-
-        # Create new clusters.
-        for rowid in np.argsort(Zr):
-            x, k, y = X[rowid], Zr[rowid], Y[rowid]
-            self.incorporate(rowid, x, k, y=y)
-
-        # Transition uncollapsed params if necessary.
-        if not self.is_collapsed():
-            for cluster in self.clusters:
-                cluster.transition_params()
 
     # --------------------------------------------------------------------------
     # Github issue #65.
@@ -125,32 +102,25 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, x, k, y=None):
-        """Returns the predictive logp of x in clusters[k]. If x has been
-        assigned to clusters[k], then use the unincorporate/incorporate
-        interface to compute the true predictive logp."""
-        if k == len(self.clusters):
-            cluster = self.aux_model
-        else:
-            cluster = self.clusters[k]
-        if self._valid_xy(x, y):
-            query = {self.index: x}
-            evidence = y
-            return cluster.logpdf(rowid, query, evidence)
-        else:
-            return 0
+    def logpdf(self, rowid, query, evidence):
+        """Write me!"""
+        k, evidence, valid = self.preprocess(query, evidence)
+        cluster = self.aux_model if k==len(self.clusters) else self.clusters[k]
+        try:
+            return cluster.logpdf(rowid, query, evidence) if valid else 0
+        except:
+            import ipdb; ipdb.set_trace()
+            print 'hi'
 
     # --------------------------------------------------------------------------
     # Simulate
-    def simulate(self, rowid, k, y=None):
-        """If k is not None, returns the marginal log_p of clusters[k].
-        Otherwise returns the sum of marginal log_p over all clusters."""
-        if k == len(self.clusters):
-            cluster = self.aux_model
-        else:
-            cluster = self.clusters[k]
-        query = [self.index]
-        evidence = y
+
+    def simulate(self, rowid, query, evidence):
+        """Write me!"""
+        k, evidence, valid = self.preprocess(query, evidence)
+        if not valid:
+            raise ValueError('Bad simulate args: %s, %s.') % (query, evidence)
+        cluster = self.aux_model if k==len(self.clusters) else self.clusters[k]
         return cluster.simulate(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
@@ -219,16 +189,23 @@ class Dim(object):
             outputs=[self.index], inputs=self.inputs, hypers=self.hypers,
             distargs=self.distargs, rng=self.rng)
 
-    def _valid_xy(self, x, y):
-        # XXX Update when dim takes proper query/evidence.
-        if isinstance(y, dict):
-            y = y.values()
-        return not (np.isnan(x) or (y is not None and np.isnan(y).any()))
+    def preprocess(self, query, evidence):
+        evidence = evidence.copy()
+        try:
+            k = evidence.pop(-1)
+        except KeyError:
+            raise ValueError('Dim needs cluster -1 in evidence: %s' % evidence)
+        valid_x, valid_y = True, True
+        if isinstance(query, dict):
+            valid_x = not math.isnan(query[self.index])
+        if evidence:
+            valid_y = not any(np.isnan(evidence.values()))
+        return k, evidence, valid_x and valid_y
 
     def _calc_hyper_proposal_logps(self, target):
-        """Computes the marginal likelihood (over all clusters) for each
-        hyperparameter value in self.hyper_grids[target].
-        p(h|X) \prop p(h)p(X|h)
+        """Computes the log score  for each value in self.hyper_grids[target].
+
+        p(h|X) \\prop p(X,h).
         """
         logps = []
         hypers = self.hypers.copy()

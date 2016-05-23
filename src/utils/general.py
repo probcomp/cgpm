@@ -39,6 +39,12 @@ def gen_rng(seed=None):
 def curve_color(k):
     return (colors[k], .7) if k < len(colors) else ('gray', .3)
 
+def merge_dicts(*dicts):
+    result = {}
+    for d in dicts:
+        result.update(d)
+    return result
+
 def log_bessel_0(x):
     besa = bessel_0(x)
     # If bessel_0(a) is inf, then use the exponential approximation to
