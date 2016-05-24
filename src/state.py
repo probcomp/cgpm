@@ -63,6 +63,10 @@ class State(object):
         self.outputs = outputs
         self.X = OrderedDict([(c, X[:,c].tolist()) for c in self.outputs])
 
+        # Cctypes.
+        if cctypes is None:
+            cctypes = [None] * len(self.outputs)
+
         # Distargs.
         if distargs is None:
             distargs = [None] * len(cctypes)
@@ -146,22 +150,26 @@ class State(object):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate_dim(self, X, cctype, distargs=None, v=None):
+    def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
+            distargs=None, v=None):
         """Incorporate a new Dim into this State."""
-        assert len(X) == self.n_rows()
-        self.X = np.column_stack((self.X, X))
+        assert len(T) == self.n_rows()
+        assert len(outputs) == 1
+        assert outputs[0] not in self.outputs
+        assert not inputs
+
+        col = outputs[0]
+        self.X[col] = T
+        self.outputs.append(col)
 
         # XXX Handle conditional models; consider moving to View?
-        col = self.n_cols() - 1
-        D = Dim(cctype, col, distargs=distargs, rng=self.rng)
-        D.transition_hyper_grids(self.X[:,col])
-
-        for view in self.views:
-            view.set_dataset(self.X)
+        D = Dim(
+            outputs=outputs, inputs=inputs, cctype=cctype,
+            distargs=distargs, rng=self.rng)
+        D.transition_hyper_grids(self.X[col])
 
         transition = [col] if v is None else []
         v = 0 if v is None else v
-
         if 0 <= v < self.n_views():
             view = self.views[v]
         elif v == self.n_views():
@@ -169,14 +177,14 @@ class State(object):
             self._append_view(view)
 
         view.incorporate_dim(D)
-        self.Zv.append(v)
+        self.Zv[col] = v
 
         self.transition_columns(cols=transition)
         self.transition_column_hypers(cols=[col])
         self._check_partitions()
 
     def unincorporate_dim(self, col):
-        """Unincorporate the Dim at self.dims[col]."""
+        """Unincorporate the Dim whose output is col."""
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
 
@@ -191,13 +199,7 @@ class State(object):
         if self.Nv(v) == 0:
             self._delete_view(v)
 
-        for i, dim in enumerate(D_all):
-            dim.index = i
-
-        self.X = np.delete(self.X, col, 1)
-        for view in self.views:
-            view.set_dataset(self.X)
-            view.reindex_dims()
+        del self.X[col]
 
         self._check_partitions()
 
@@ -234,10 +236,11 @@ class State(object):
     # --------------------------------------------------------------------------
     # Schema updates.
 
-    def update_cctype(self, col, cctype, hypers=None, distargs=None):
+    def update_cctype(self, col, cctype, distargs=None):
         """Update the distribution type of self.dims[col] to cctype."""
+        assert col in self.outputs
         self.view_for(col).update_cctype(
-            col, cctype, hypers=hypers, distargs=distargs)
+            col, cctype, distargs=distargs)
         self.transition_column_hyper_grids(cols=[col])
         self.transition_column_params(cols=[col])
         self.transition_column_hypers(cols=[col])

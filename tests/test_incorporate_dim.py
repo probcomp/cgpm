@@ -25,13 +25,14 @@ from gpmcc.utils import test as tu
 
 
 CCTYPES, DISTARGS = cu.parse_distargs([
-    'normal',
-    'poisson',
-    'bernoulli',
-    'lognormal',
-    'exponential',
-    'geometric',
-    'vonmises'])
+    'normal',        # 0
+    'poisson',       # 1
+    'bernoulli',     # 2
+    'lognormal',     # 3
+    'exponential',   # 4
+    'geometric',     # 5
+    'vonmises'])     # 6
+
 
 T, Zv, Zc = tu.gen_data_table(
     200, [1], [[.33, .33, .34]], CCTYPES, DISTARGS,
@@ -45,43 +46,57 @@ def test_incorporate():
     state.transition(N=5)
 
     # Incorporate a new dim into view[0].
-    state.incorporate_dim(T[:,2], CCTYPES[2], DISTARGS[2], v=0)
+    state.incorporate_dim(
+        T[:,2], outputs=[2], cctype=CCTYPES[2], distargs=DISTARGS[2], v=0)
     assert state.Zv[2] == 0
 
-    # Incorporate a new dim into a newly created singleton view.
-    state.incorporate_dim(T[:,3], CCTYPES[3], DISTARGS[3], v=len(state.views))
-    assert state.Zv[3] == len(state.views)-1
+    # Incorporate a new dim into view[0] with a non-continuous output.
+    state.incorporate_dim(
+        T[:,2], outputs=[10], cctype=CCTYPES[2], distargs=DISTARGS[2], v=0)
+    assert state.Zv[10] == 0
+    state.transition(N=10)
 
-    # Incorporate dim without specifying a view.
-    state.incorporate_dim(T[:,4], CCTYPES[4], DISTARGS[4])
+    # Incorporate a new dim into view[0] with a non-continiguous .
+    # state.incorporate_dim(
+    #     T[:,2], outputs=[2], cctype=CCTYPES[2], distargs=DISTARGS[2], v=0)
+    # assert state.Zv[2] == 0
 
-    # Unincorporate first dim.
-    previous = len(state.Zv)
-    state.unincorporate_dim(0)
-    assert len(state.Zv) == previous-1
+    # # Incorporate a new dim into a newly created singleton view.
+    # state.incorporate_dim(
+    #     T[:,3], outputs=[3], cctype=CCTYPES[3],
+    #     distargs=DISTARGS[3], v=len(state.views))
+    # assert state.Zv[3] == len(state.views)-1
 
-    # Reincorporate dim without specifying a view.
-    state.incorporate_dim(T[:,0], CCTYPES[0], DISTARGS[0])
+    # # Incorporate dim without specifying a view.
+    # state.incorporate_dim(T[:,4], CCTYPES[4], DISTARGS[4])
 
-    # Incorporate dim into singleton view, remove it, assert destroyed.
-    state.incorporate_dim(T[:,5], CCTYPES[5],DISTARGS[5], v=len(state.views))
-    previous = len(state.views)
-    state.unincorporate_dim(5)
-    assert len(state.views) == previous-1
+    # # Unincorporate first dim.
+    # previous = len(state.Zv)
+    # state.unincorporate_dim(0)
+    # assert len(state.Zv) == previous-1
 
-    # Reincorporate dim into a singleton view.
-    state.incorporate_dim(T[:,5], CCTYPES[4], DISTARGS[4], v=len(state.views))
+    # # Reincorporate dim without specifying a view.
+    # state.incorporate_dim(T[:,0], CCTYPES[0], DISTARGS[0])
 
-    # Incorporate the rest of the dims in the default way.
-    for i in xrange(6, len(CCTYPES)):
-        state.incorporate_dim(T[:,i], CCTYPES[i], DISTARGS[i])
-    assert state.n_cols() == T.shape[1]
+    # # Incorporate dim into singleton view, remove it, assert destroyed.
+    # state.incorporate_dim(T[:,5], CCTYPES[5],DISTARGS[5], v=len(state.views))
+    # previous = len(state.views)
+    # state.unincorporate_dim(5)
+    # assert len(state.views) == previous-1
 
-    # Unincorporate all the dims, except the last one.
-    for i in xrange(state.n_cols()-1, 0, -1):
-        state.unincorporate_dim(i)
-    assert state.n_cols() == 1
+    # # Reincorporate dim into a singleton view.
+    # state.incorporate_dim(T[:,5], CCTYPES[4], DISTARGS[4], v=len(state.views))
 
-    # Unincorporating last dim should raise.
-    with pytest.raises(ValueError):
-        state.unincorporate_dim(0)
+    # # Incorporate the rest of the dims in the default way.
+    # for i in xrange(6, len(CCTYPES)):
+    #     state.incorporate_dim(T[:,i], CCTYPES[i], DISTARGS[i])
+    # assert state.n_cols() == T.shape[1]
+
+    # # Unincorporate all the dims, except the last one.
+    # for i in xrange(state.n_cols()-1, 0, -1):
+    #     state.unincorporate_dim(i)
+    # assert state.n_cols() == 1
+
+    # # Unincorporating last dim should raise.
+    # with pytest.raises(ValueError):
+    #     state.unincorporate_dim(0)
