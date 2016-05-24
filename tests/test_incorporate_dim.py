@@ -41,7 +41,7 @@ T = T.T
 
 def test_incorporate():
     state = State(
-        T[:,:2], CCTYPES[:2], distargs=DISTARGS[:2], rng=gu.gen_rng(0))
+        T[:,:2], cctypes=CCTYPES[:2], distargs=DISTARGS[:2], rng=gu.gen_rng(0))
     state.transition(N=5)
 
     # Incorporate a new dim into view[0].

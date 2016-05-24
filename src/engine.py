@@ -29,7 +29,7 @@ from gpmcc.utils import general as gu
 # Multiprocessing functions.
 
 def _intialize((X, cctypes, distargs, rng)):
-    state = State(X, cctypes, distargs=distargs, rng=rng)
+    state = State(X, cctypes=cctypes, distargs=distargs, rng=rng)
     return state.to_metadata()
 
 def _modify((name, metadata, args)):

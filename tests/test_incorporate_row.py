@@ -30,7 +30,8 @@ def test_incorporate():
     T, Zv, Zc = tu.gen_data_table(200, [1], [[.33, .33, .34]], cctypes,
         distargs, [.95]*len(cctypes), rng=gu.gen_rng(0))
     T = T.T
-    state = State(T[:10,:], cctypes, distargs=distargs, rng=gu.gen_rng(0))
+    state = State(
+        T[:10,:], cctypes=cctypes, distargs=distargs, rng=gu.gen_rng(0))
     state.transition(N=5)
 
     # Incorporate row into cluster 0 for all views.

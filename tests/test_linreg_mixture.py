@@ -37,14 +37,14 @@ D = np.column_stack((X,Y))
 
 
 def generate_gaussian_samples():
-    state = State(D, ['normal','normal'], Zv=[0,0], rng=gu.gen_rng(0))
+    state = State(D, cctypes=['normal','normal'], Zv=[0,0], rng=gu.gen_rng(0))
     view = state.view_for(1)
     state.transition(S=15, kernels=['rows','column_params','column_hypers'])
     return view._simulate_hypothetical([0,1], [], 100, cluster=True)
 
 
 def generate_regression_samples():
-    state = State(D, ['normal','normal'], Zv=[0,0], rng=gu.gen_rng(4))
+    state = State(D, cctypes=['normal','normal'], Zv=[0,0], rng=gu.gen_rng(4))
     view = state.view_for(1)
     state.update_cctype(1, 'linear_regression')
     state.transition(S=30, kernels=['rows','column_params','column_hypers'])

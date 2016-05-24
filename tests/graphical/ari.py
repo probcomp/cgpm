@@ -45,7 +45,7 @@ for kernel in range(n_kernels):
     ARI_cols = np.zeros((n_data_sets, n_transitions))
 
     for r in range(n_data_sets):
-        S = state.State(Ts, cctypes, distargs=distargs)
+        S = state.State(Ts, cctypes=cctypes, distargs=distargs)
         for c in range(n_transitions):
             S.transition(N=1)
 
