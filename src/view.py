@@ -122,7 +122,7 @@ class View(object):
         del self.dims[dim.index]
         return dim.logpdf_score()
 
-    def incorporate_row(self, rowid, k=None):
+    def incorporate(self, rowid, query, evidence):
         """Incorporate rowid from the global dataset X into the view. Use
         set_dataset to update X if it has new rowids.
 
@@ -136,7 +136,7 @@ class View(object):
             cluster. If k = len(state.Nv) a singleton cluster will be created.
         """
         # If k unspecified, transition the new rowid.
-        k = 0 if k is None else k
+        k = evidence.get(-1, 0)
         transition = [rowid] if k is None else []
         # Account.
         if k == len(self.Nk):
@@ -147,12 +147,13 @@ class View(object):
         self.Zr[rowid] = k
         # Incorporate into dims.
         for dim in self.dims.values():
-            query = {dim.index: self.X[dim.index][rowid]}
-            evidence = self._get_evidence(rowid, dim, k)
-            dim.incorporate(rowid, query, evidence)
+            dim.incorporate(
+                rowid,
+                query={dim.index: query[dim.index]},
+                evidence=self._get_evidence(rowid, dim, k))
         self.transition_rows(rows=transition)
 
-    def unincorporate_row(self, rowid):
+    def unincorporate(self, rowid):
         """Remove rowid from the global datset X from this view."""
         # Unincorporate from dims.
         for dim in self.dims.values():
@@ -393,8 +394,11 @@ class View(object):
         p_cluster = np.add(logp_data, logp_crp)
         z_b = gu.log_pflip(p_cluster, rng=self.rng)
         if z_b != self.Zr[rowid]:
-            self.unincorporate_row(rowid)
-            self.incorporate_row(rowid, z_b)
+            self.unincorporate(rowid)
+            self.incorporate(
+                rowid,
+                query={d: self.X[d][rowid] for d in self.dims},
+                evidence={-1: z_b})
         self._check_partitions()
 
     def _logpdf_row_gibbs(self, rowid, m):
@@ -423,8 +427,7 @@ class View(object):
         return len(self.X[self.X.keys()[0]])
 
     def _reindex_rows(self):
-        """Update row partition by deleting nans. Invoke when rowids in
-        unincorporate_row are deleted from the global dataset X."""
+        """TODO WRITE ME."""
         self.Zr = [z for z in self.Zr if not isnan(z)]
         assert len(self.Zr) == self.n_rows()
 
