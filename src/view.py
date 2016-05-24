@@ -288,7 +288,7 @@ class View(object):
         return np.asarray(samples)
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
-        """cluster=True exposes latent cluster of each sample as extra col."""
+        """cluster exposes latent cluster of each sample in extra column."""
         K = range(len(self.Nk)+1)
         lp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
         lp_evidence = [self._logpdf_joint(evidence, [], k) for k in K]
@@ -299,6 +299,7 @@ class View(object):
         samples = [self._simulate_joint(query, evidence, k, counts[k])
             for k in counts]
         samples = np.asarray([s for samples_k in samples for s in samples_k])
+        # XXX HACK! Shoud use a flag in evidence, not kwarg.
         if cluster:
             ks = [k for i in counts for k in [i for _ in xrange(counts[i])]]
             samples = np.column_stack((samples, ks))
