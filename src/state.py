@@ -188,18 +188,16 @@ class State(object):
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
 
-        D_all = self.dims()
-        D_del = D_all[col]
-        del D_all[col]
+        v_del = self.Zv[col]
+        d_del = self.dim_for(col)
+        self.views[v_del].unincorporate_dim(d_del)
 
-        v = self.Zv[col]
-        self.views[v].unincorporate_dim(D_del)
-        del self.Zv[col]
-
-        if self.Nv(v) == 0:
-            self._delete_view(v)
+        if self.Nv(v_del) == 0:
+            self._delete_view(v_del)
 
         del self.X[col]
+        del self.outputs[self.outputs.index(col)]
+        del self.Zv[col]
 
         self._check_partitions()
 
