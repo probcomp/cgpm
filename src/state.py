@@ -119,14 +119,14 @@ class State(object):
                 hypers=hypers[c], distargs=distargs[c], rng=self.rng)
             D.transition_hyper_grids(self.X[c])
             return D
-        dims = [create_dim(c) for c in xrange(self.n_cols())]
+        dims = [create_dim(o) for o in self.outputs]
 
         # Views.
         def create_view(v):
             V =  View(
                 self.X, outputs=None, inputs=None, Zr=Zrv[v],
                 alpha=view_alphas[v], rng=self.rng)
-            for c in [i for i in xrange(self.n_cols()) if Zv[i] == v]:
+            for c in [o for o in self.outputs if Zv[o] == v]:
                 V.incorporate_dim(dims[c])
             return V
         self.views = [create_view(v) for v in sorted(set(self.Zv.values()))]
@@ -552,21 +552,21 @@ class State(object):
     def transition_column_params(self, cols=None):
         """Transition uncollapsed Dim parmaters."""
         if cols is None:
-            cols = xrange(self.n_cols())
+            cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_params()
 
     def transition_column_hypers(self, cols=None):
         """Transition Dim hyperparmaters."""
         if cols is None:
-            cols = xrange(self.n_cols())
+            cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_hypers()
 
     def transition_column_hyper_grids(self, cols=None):
         """Transition Dim hyperparameter grids."""
         if cols is None:
-            cols = xrange(self.n_cols())
+            cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_hyper_grids(self.X[c])
 
@@ -584,8 +584,8 @@ class State(object):
         if self.n_cols() == 1:
             return
         if cols is None:
-            cols = range(self.n_cols())
-        self.rng.shuffle(cols)
+            cols = self.outputs
+        cols = self.rng.permutation(cols)
         for c in cols:
             self._transition_column(c, m)
 
@@ -655,11 +655,11 @@ class State(object):
 
     def dims(self):
         """All Dims."""
-        return [self.view_for(d).dims[d] for d in xrange(self.n_cols())]
+        return [self.view_for(c).dims[c] for c in self.outputs]
 
-    def view_for(self, d):
-        """View from Dim d."""
-        return self.views[self.Zv[d]]
+    def view_for(self, c):
+        """View from Dim c."""
+        return self.views[self.Zv[c]]
 
     def n_views(self):
         """Number of Views."""
