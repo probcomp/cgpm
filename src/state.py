@@ -39,9 +39,10 @@ from gpmcc.view import View
 class State(object):
     """The outer most GPM in gpmcc."""
 
-    def __init__(self, X, cctypes, outputs=None, inputs=None, distargs=None,
-            Zv=None, Zrv=None, alpha=None, view_alphas=None, hypers=None,
-            Cd=None, Ci=None, Rd=None, Ri=None, iterations=None, rng=None):
+    def __init__(self, X, outputs=None, inputs=None, cctypes=None,
+            distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
+            hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, iterations=None,
+            rng=None):
         """Construct State GPM with initial conditions and constraints."""
         if inputs:
             raise ValueError('State cannot accept inputs.')
@@ -849,7 +850,7 @@ class State(object):
         if rng is None: rng = gu.gen_rng(0)
         return cls(
             np.asarray(metadata['X']),
-            metadata['cctypes'],
+            cctypes=metadata['cctypes'],
             distargs=metadata.get('distargs',None),
             Zv=metadata.get('Zv', None),
             Zrv=metadata.get('Zrv', None),

@@ -26,7 +26,7 @@ def state():
     X = [[1, np.nan, 2, -1, np.nan],
         [1, 3, 2, -1, -5],
         [1, np.nan, np.nan, np.nan, np.nan]]
-    s = State(X, ['normal']*5)
+    s = State(X, cctypes=['normal']*5)
     return s
 
 

@@ -37,7 +37,7 @@ class TestSerialize(unittest.TestCase):
         data[:,0] = 0
         # Run a single chain for a few iterations.
         model = Model(
-            data, ['bernoulli','normal','normal','normal','normal'],
+            data, cctypes=['bernoulli','normal','normal','normal','normal'],
             rng=gu.gen_rng(0))
         model.transition(N=1)
         # To metadata.

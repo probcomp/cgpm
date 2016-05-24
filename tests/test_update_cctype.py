@@ -41,7 +41,7 @@ T = T.T
 
 def test_categorical_bernoulli():
     state = State(
-        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
     state.update_cctype(CCTYPES.index('categorical'), 'bernoulli')
     state.transition(N=1)
@@ -51,7 +51,7 @@ def test_categorical_bernoulli():
 
 def test_poisson_categorical():
     state = State(
-        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
     state.update_cctype(CCTYPES.index('categorical'), 'poisson')
     state.transition(N=1)
@@ -61,7 +61,7 @@ def test_poisson_categorical():
 
 def test_vonmises_normal():
     state = State(
-        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
     state.update_cctype(CCTYPES.index('vonmises'), 'normal')
     state.transition(N=1)
@@ -74,7 +74,7 @@ def test_vonmises_normal():
 
 def test_geometric_exponential():
     state = State(
-        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
     state.update_cctype(CCTYPES.index('geometric'), 'exponential')
     state.transition(N=1)
@@ -86,7 +86,7 @@ def test_geometric_exponential():
 
 def test_categorical_forest():
     state = State(
-        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
     state.transition(N=1)
     cat_id = CCTYPES.index('categorical')
     cat_distargs = DISTARGS[cat_id]

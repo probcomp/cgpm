@@ -132,7 +132,7 @@ def state():
     B, Zv, Zrv = tu.gen_data_table(
         rows, [1], [[.5,.5]], ['bernoulli'], [None], [.95], rng=rng)
     T = np.column_stack((G, B.T))[:,[0,2,1]]
-    state = State(T, cctypes)
+    state = State(T, cctypes=cctypes)
     state.transition(N=50)
     return state
 

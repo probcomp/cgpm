@@ -24,7 +24,7 @@ from gpmcc.utils.general import gen_rng
 def test_entropy_bernoulli__ci_():
     rng = gen_rng(10)
     T = rng.choice([0,1], p=[.3,.7], size=250).reshape(-1,1)
-    state = State(T, ['bernoulli'], rng=rng)
+    state = State(T, cctypes=['bernoulli'], rng=rng)
     state.transition(N=30)
     # Exact computation.
     logp = state.logpdf_bulk([-1,-1], [[(0,0)], [(0,1)]])
@@ -41,7 +41,8 @@ def test_cmi_different_views__ci_():
     T[:,0] = rng.normal(loc=-5, scale=1, size=50)
     T[:,1] = rng.normal(loc=2, scale=2, size=50)
     T[:,2] = rng.normal(loc=12, scale=3, size=50)
-    state = State(T, ['normal','normal','normal'], Zv=[0, 1, 2], rng=rng)
+    state = State(
+        T, cctypes=['normal','normal','normal'], Zv=[0, 1, 2], rng=rng)
     state.transition(N=30, kernels=['alpha', 'view_alphas',
         'column_params', 'column_hypers','rows'])
 

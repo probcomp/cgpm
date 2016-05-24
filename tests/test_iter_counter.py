@@ -23,7 +23,7 @@ from gpmcc.utils import general as gu
 def test_all_kernels():
     rng = gu.gen_rng(0)
     X = rng.normal(size=(5,5))
-    state = State(X, ['normal']*5)
+    state = State(X, cctypes=['normal']*5)
     state.transition(N=5)
     for k, n in state.to_metadata()['iterations'].iteritems():
         assert n == 5
@@ -31,7 +31,7 @@ def test_all_kernels():
 def test_individual_kernels():
     rng = gu.gen_rng(0)
     X = rng.normal(size=(5,5))
-    state = State(X, ['normal']*5)
+    state = State(X, cctypes=['normal']*5)
     state.transition(N=3, kernels=['alpha', 'rows'])
     check_expected_counts(state.iterations, {'alpha':3, 'rows':3})
     state.transition(N=5, kernels=['view_alphas', 'column_params'])
