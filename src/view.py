@@ -185,8 +185,8 @@ class View(object):
         distargs.update(local_distargs)
         D_old = self.dims[col]
         D_new = Dim(
-            cctype, col, inputs=inputs, hypers=hypers, distargs=distargs,
-            rng=self.rng)
+            outputs=[col], inputs=inputs, cctype=cctype,
+            hypers=hypers, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
 

@@ -138,7 +138,7 @@ def test_logpdf_score():
 
 def test_transition_hypers():
     forest = Dim(
-        'random_forest', 0, inputs=RF_INPUTS,
+        outputs=RF_OUTPUTS, inputs=RF_INPUTS, cctype='random_forest',
         distargs=RF_DISTARGS, rng=gu.gen_rng(0))
     forest.transition_hyper_grids(D[:,0])
     # Create two clusters.
@@ -156,7 +156,7 @@ def test_transition_hypers():
 
 def test_simulate():
     forest = Dim(
-        'random_forest', 0, inputs=RF_INPUTS,
+        outputs=RF_OUTPUTS, inputs=RF_INPUTS, cctype='random_forest',
         distargs=RF_DISTARGS, rng=gu.gen_rng(0))
     forest.transition_hyper_grids(D[:,0])
     # Incorporate data into 1 cluster.

@@ -45,7 +45,8 @@ def colors():
         'black', 'pink']
 
 def cctype_class(cctype):
-    """Return a class object for initializing a named DistributionGpm."""
+    """Return class object for initializing a named GPM (default normal)."""
+    if not cctype: raise ValueError('Specify a cctype!')
     modulename, classname = cctype_class_lookup[cctype]
     mod = importlib.import_module(modulename)
     return getattr(mod, classname)
