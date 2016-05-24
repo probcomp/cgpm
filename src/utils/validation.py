@@ -118,7 +118,7 @@ def validate_query_evidence(X, rowid, hypothetical, query, evidence=None):
     if hypothetical:
         return
     # Disallow evidence overriding non-nan cells.
-    if any(not np.isnan(X[rowid,ec]) for ec in ecols):
+    if any(not np.isnan(X[ec][rowid]) for ec in ecols):
         raise ValueError('Cannot evidence a non-nan observed cell.')
     # XXX DISABLED
     # Disallow query of observed cell. It is already observed so Dirac.
