@@ -108,7 +108,9 @@ class State(object):
                     self.Ri, rng=self.rng)
             else:
                 Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
-        self.Zv = list(Zv)
+        # XXX Convert Zv to a dictionary.
+        assert len(Zv) == len(self.outputs)
+        self.Zv = {i:z for i, z in zip(self.outputs, Zv)}
 
         # Dims.
         def create_dim(c):
@@ -127,7 +129,7 @@ class State(object):
             for c in [i for i in xrange(self.n_cols()) if Zv[i] == v]:
                 V.incorporate_dim(dims[c])
             return V
-        self.views = [create_view(v) for v in sorted(set(self.Zv))]
+        self.views = [create_view(v) for v in sorted(set(self.Zv.values()))]
 
         # Iteration metadata.
         self.iterations = iterations if iterations is not None else {}
@@ -271,7 +273,8 @@ class State(object):
     def logpdf(self, rowid, query, evidence=None):
         """Compute density of query under posterior predictive distirbution."""
         if evidence is None: evidence = []
-        vu.validate_query_evidence(self.X, rowid, self._is_hypothetical(rowid),
+        vu.validate_query_evidence(
+            self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
         return self._logpdf_joint(rowid, query, evidence)
@@ -758,7 +761,9 @@ class State(object):
     def _delete_view(self, v):
         assert self.Nv(v) == 0
         del self.views[v]
-        self.Zv = [i-1 if i>v else i for i in self.Zv]
+        adjust = lambda i: i-1 if v < i else i
+        self.Zv = {c: adjust(self.Zv[c]) for c in self.outputs}
+        # [i-1 if i>v else i for i in self.Zv]
 
     def _append_view(self, view):
         """Append a view and return and its index."""
@@ -776,14 +781,15 @@ class State(object):
         # For debugging only.
         assert self.alpha > 0.
         # All outputs should be in the dataset keys.
-        assert [c in self.X.keys() for c in self.outputs]
+        assert all([c in self.X.keys() for c in self.outputs])
         # Zv and dims should match n_cols.
+        assert sorted(self.Zv.keys()) == sorted(self.outputs)
         assert len(self.Zv) == self.n_cols()
         assert len(self.dims()) == self.n_cols()
         # Nv should account for each column.
         assert sum(self.Nv()) == self.n_cols()
         # Nv should have an entry for each view.
-        assert len(self.Nv()) == max(self.Zv)+1
+        assert len(self.Nv()) == max(self.Zv.values())+1
         for v in xrange(len(self.Nv())):
             # Check that the number of dims actually assigned to the view
             # matches the count in Nv.
@@ -819,7 +825,7 @@ class State(object):
 
         # View partition data.
         metadata['alpha'] = self.alpha
-        metadata['Zv'] = self.Zv
+        metadata['Zv'] = [self.Zv[c] for c in self.outputs]
 
         # View data.
         metadata['Zrv'] = []
