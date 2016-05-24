@@ -33,101 +33,105 @@ method, where we use
 This test suite is slow because many simulate/logpdf queries are invoked.
 """
 
-import unittest
-
+import pytest
 import numpy as np
 
-from gpmcc import engine
+from gpmcc.engine import Engine
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
 
-class EngineDimensionsTest(unittest.TestCase):
+@pytest.fixture(scope='module')
+def engine():
+    # Set up the data generation
+    cctypes, distargs = cu.parse_distargs([
+        'normal',
+        'poisson',
+        'bernoulli',
+        'lognormal',
+        'beta_uc',
+        'vonmises'])
+    T, Zv, Zc = tu.gen_data_table(
+    100, [1], [[.25, .25, .5]], cctypes, distargs,
+    [.95]*len(cctypes),rng=gu.gen_rng(0))
+    T = T.T
+    # Make some nan cells for evidence.
+    T[5,2]=T[5,3]=T[5,0]=T[5,1]=np.nan
+    T[8,4]=np.nan
+    e = Engine(T, cctypes, distargs, num_states=6, rng=gu.gen_rng(0))
+    e.transition(N=2)
+    return e
 
-    @classmethod
-    def setUpClass(cls):
-        # Set up the data generation
-        cctypes, distargs = cu.parse_distargs(['normal','poisson','bernoulli',
-            'lognormal','beta_uc','vonmises'])
-        T, Zv, Zc = tu.gen_data_table(100, [1], [[.25, .25, .5]],
-            cctypes, distargs, [.95]*len(cctypes), rng=gu.gen_rng(0))
-        T = T.T
-        # Make some nan cells for evidence.
-        T[5,2]=T[5,3]=T[5,0]=T[5,1]=np.nan
-        T[8,4]=np.nan
-        cls.engine = engine.Engine(T, cctypes, distargs, num_states=6,
-            rng=gu.gen_rng(0))
-        cls.engine.transition(N=2)
 
-    def test_logpdf__ci_(self):
-        for rowid in [-1, 5]:
-            query1, evidence1 = [(0,1)], [(2,1), (3,.5)]
-            query2, evidence2 = [(2,0), (5,3)], [(0,4), (1,5)]
+def test_logpdf__ci_(engine):
+    for rowid in [-1, 5]:
+        query1, evidence1 = [(0,1)], [(2,1), (3,.5)]
+        query2, evidence2 = [(2,0), (5,3)], [(0,4), (1,5)]
+        for Q, E in [(query1, evidence1), (query2, evidence2)]:
+            # logpdfs should be a list of floats.
+            logpdfs = engine.logpdf(rowid, Q, evidence=E)
+            assert np.allclose(len(logpdfs), engine.num_states)
+            for state_logpdfs in logpdfs:
+                # Each element in logpdfs should be a single float.
+                assert isinstance(state_logpdfs, float)
+            lp = engine._process_logpdfs(logpdfs, rowid, evidence=E)
+            assert isinstance(lp, float)
+
+
+def test_simulate__ci_(engine):
+    for rowid in [-1, 5]:
+        for N in [1, 8]:
+            query1, evidence1 = [0], [(2,0), (3,6)]
+            query2, evidence2 = [1,2,5], [(0,3), (3,.8)]
             for Q, E in [(query1, evidence1), (query2, evidence2)]:
-                # logpdfs should be a list of floats.
-                logpdfs = self.engine.logpdf(rowid, Q, evidence=E)
-                self.assertEqual(len(logpdfs), self.engine.num_states)
-                for state_logpdfs in logpdfs:
-                    # Each element in logpdfs should be a single float.
-                    self.assertTrue(isinstance(state_logpdfs, float))
-                lp = self.engine._process_logpdfs(logpdfs, rowid, evidence=E)
-                self.assertTrue(isinstance(lp, float))
+                # samples should be a list of samples, one for each state.
+                samples = engine.simulate(rowid, Q, evidence=E, N=N)
+                assert np.allclose(len(samples), engine.num_states)
+                for states_samples in samples:
+                    # Each element of samples should be a list of N samples.
+                    assert np.allclose(len(states_samples), N)
+                    for s in states_samples:
+                        # Each raw sample should be len(Q) dimensional.
+                        assert np.allclose(len(s), len(Q))
+                s = engine._process_samples(samples, rowid, evidence=E)
+                assert np.allclose(len(s), N)
 
-    def test_simulate__ci_(self):
-        for rowid in [-1, 5]:
-            for N in [1, 8]:
-                query1, evidence1 = [0], [(2,0), (3,6)]
-                query2, evidence2 = [1,2,5], [(0,3), (3,.8)]
-                for Q, E in [(query1, evidence1), (query2, evidence2)]:
-                    # samples should be a list of samples, one for each state.
-                    samples = self.engine.simulate(rowid, Q, evidence=E, N=N)
-                    self.assertEqual(len(samples), self.engine.num_states)
-                    for states_samples in samples:
-                        # Each element of samples should be a list of N samples.
-                        self.assertEqual(len(states_samples), N)
-                        for s in states_samples:
-                            # Each raw sample should be len(Q) dimensional.
-                            self.assertEqual(len(s), len(Q))
-                    s = self.engine._process_samples(samples, rowid, evidence=E)
-                    self.assertEqual(len(s), N)
 
-    def test_logpdf_bulk__ci_(self):
-        rowid1, query1, evidence1 = 5, [(0,0), (5,3)], [(2,1), (3,.5)]
-        rowid2, query2, evidence2 = -1, [(1,0), (4,.8)], [(5,.5)]
-        # Bulk.
-        rowids = [rowid1, rowid2]
-        queries = [query1, query2]
-        evidences = [evidence1, evidence2]
-        # Invoke
-        logpdfs = self.engine.logpdf_bulk(
-            rowids, queries, evidences=evidences)
-        self.assertEqual(len(logpdfs), self.engine.num_states)
-        for state_logpdfs in logpdfs:
-            # state_logpdfs should be a list of floats, one float per query.
-            self.assertEqual(len(state_logpdfs), len(rowids))
-            for l in state_logpdfs:
-                    self.assertTrue(isinstance(l, float))
+def test_logpdf_bulk__ci_(engine):
+    rowid1, query1, evidence1 = 5, [(0,0), (5,3)], [(2,1), (3,.5)]
+    rowid2, query2, evidence2 = -1, [(1,0), (4,.8)], [(5,.5)]
+    # Bulk.
+    rowids = [rowid1, rowid2]
+    queries = [query1, query2]
+    evidences = [evidence1, evidence2]
+    # Invoke
+    logpdfs = engine.logpdf_bulk(
+        rowids, queries, evidences=evidences)
+    assert np.allclose(len(logpdfs), engine.num_states)
+    for state_logpdfs in logpdfs:
+        # state_logpdfs should be a list of floats, one float per query.
+        assert np.allclose(len(state_logpdfs), len(rowids))
+        for l in state_logpdfs:
+                assert isinstance(l, float)
 
-    def test_simulate_bulk__ci_(self):
-        rowid1, query1, evidence1, N1, = -1, [0,2,4,5], [(3,1)], 7
-        rowid2, query2, evidence2, N2 = 5, [1,3], [(2,.8)], 3
-        rowid3, query3, evidence3, N3 = 8, [0], [(4,.8)], 3
-        # Bulk.
-        rowids = [rowid1, rowid2, rowid3]
-        queries = [query1, query2, query3]
-        evidences = [evidence1, evidence2, evidence3]
-        Ns = [N1, N2, N3]
-        # Invoke
-        samples = self.engine.simulate_bulk(
-            rowids, queries, evidences=evidences, Ns=Ns)
-        self.assertEqual(len(samples), self.engine.num_states)
-        for states_samples in samples:
-            self.assertEqual(len(states_samples), len(rowids))
-            for i, sample in enumerate(states_samples):
-                self.assertEqual(len(sample), Ns[i])
-                for s in sample:
-                    self.assertEqual(len(s), len(queries[i]))
 
-if __name__ == '__main__':
-    unittest.main()
+def test_simulate_bulk__ci_(engine):
+    rowid1, query1, evidence1, N1, = -1, [0,2,4,5], [(3,1)], 7
+    rowid2, query2, evidence2, N2 = 5, [1,3], [(2,.8)], 3
+    rowid3, query3, evidence3, N3 = 8, [0], [(4,.8)], 3
+    # Bulk.
+    rowids = [rowid1, rowid2, rowid3]
+    queries = [query1, query2, query3]
+    evidences = [evidence1, evidence2, evidence3]
+    Ns = [N1, N2, N3]
+    # Invoke
+    samples = engine.simulate_bulk(
+        rowids, queries, evidences=evidences, Ns=Ns)
+    assert np.allclose(len(samples), engine.num_states)
+    for states_samples in samples:
+        assert np.allclose(len(states_samples), len(rowids))
+        for i, sample in enumerate(states_samples):
+            assert np.allclose(len(sample), Ns[i])
+            for s in sample:
+                assert np.allclose(len(s), len(queries[i]))

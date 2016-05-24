@@ -19,44 +19,41 @@ import unittest
 from gpmcc.utils import validation as vu
 
 
-class TestPartitionQueryEvidence(unittest.TestCase):
+def test_partition_query_evidence():
+    Zv = [0,0,0,1,1,1,2,2,2,3]
+    query = [(9,1), (1,1), (4,2), (5,7), (7,0)]
+    evidence = [(2,4), (3,1), (9,1), (6,-1), (0,0)]
+    queries, evidences = vu.partition_query_evidence(Zv, query, evidence)
 
-    def test_partition_query_evidence(self):
+    # All 4 views have query.
+    assert len(queries) == 4
 
-        Zv = [0,0,0,1,1,1,2,2,2,3]
-        query = [(9,1), (0,0), (1,1), (4,2), (5,7), (7,0)]
-        evidence = [(3,1), (9,1), (6,-1)]
-        queries, evidences = vu.partition_query_evidence(Zv, query, evidence)
+    # View 0 has 2 queries.
+    assert len(queries[0]) == 1
+    assert (1,1) in queries[0]
+    # View 1 has 2 queries.
+    assert len(queries[1]) == 2
+    assert (4,2) in queries[1]
+    assert (5,7) in queries[1]
+    # View 2 has 1 queries.
+    assert len(queries[2]) == 1
+    assert (7,0) in queries[2]
+    # View 3 has 1 queries.
+    assert len(queries[3]) == 1
+    assert (9,1) in queries[3]
 
-        # All 4 views have query.
-        self.assertEqual(len(queries), 4)
-
-        # View 0 has 2 queries.
-        self.assertTrue(len(queries[0]), 2)
-        self.assertIn((0,0), queries[0])
-        self.assertIn((1,1), queries[0])
-        # View 1 has 2 queries.
-        self.assertTrue(len(queries[1]), 2)
-        self.assertIn((4,2), queries[1])
-        self.assertIn((5,7), queries[1])
-        # View 2 has 1 queries.
-        self.assertTrue(len(queries[2]), 1)
-        self.assertIn((7,0), queries[2])
-        # View 3 has 1 queries.
-        self.assertTrue(len(queries[3]), 1)
-        self.assertIn((9,1), queries[3])
-
-        # Views 1,2,3 have evidence.
-        self.assertEqual(len(evidences), 3)
-        # View 1 has 2 evidence.
-        self.assertTrue(len(evidences[1]), 2)
-        self.assertIn((3,1), evidences[1])
-        # View 2 has 1 evidence.
-        self.assertTrue(len(evidences[2]), 1)
-        self.assertIn((6,-1), evidences[2])
-        # View 3 has 1 evidence.
-        self.assertTrue(len(evidences[3]), 1)
-        self.assertIn((9,1), evidences[3])
-
-if __name__ == '__main__':
-    unittest.main()
+    # Views 0,1,2,3 have evidence.
+    assert len(evidences) == 4
+    # View 0 has 2 evidence.
+    assert len(evidences[0]) == 2
+    assert (0,0) in evidences[0]
+    assert (2,4) in evidences[0]
+    # View 1 has 1 evidence.
+    assert len(evidences[1]) == 1
+    assert (3,1) in evidences[1]
+    # View 2 has 1 evidence.
+    assert len(evidences[2]) == 1
+    assert (6,-1) in evidences[2]
+    # View 3 has 1 evidence.
+    assert len(evidences[3]) == 1
+    assert (9,1) in evidences[3]
