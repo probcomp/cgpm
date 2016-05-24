@@ -39,13 +39,13 @@ class Gpm(object):
 
         raise NotImplementedError
 
-    def incorporate(self, rowid, target, evidence):
+    def incorporate(self, rowid, query, evidence):
         """Record an observed cell for the rowid member.
 
         rowid : token
             A unique token identifying the member.
-        target : dict{int:value}
-            The keys of `target` must be a subet of the `output` variables.
+        query : dict{int:value}
+            The keys of `query` must be a subset of the `output` variables.
         evidence : dict{int:value}, optional
             Values of all `input` variables, if any.
         """

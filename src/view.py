@@ -118,7 +118,7 @@ class View(object):
         return distargs
 
     def unincorporate_dim(self, dim):
-        """Remove dim from this View (does not modify dim)."""
+        """Remove dim from this View (does not modify)."""
         del self.dims[dim.index]
         return dim.logpdf_score()
 
@@ -192,15 +192,6 @@ class View(object):
             distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
-
-    # --------------------------------------------------------------------------
-    # Accounting
-
-    def reindex_rows(self):
-        """Update row partition by deleting nans. Invoke when rowids in
-        unincorporate_row are deleted from the global dataset X."""
-        self.Zr = [z for z in self.Zr if not isnan(z)]
-        assert len(self.Zr) == self.n_rows()
 
     # --------------------------------------------------------------------------
     # Inference
@@ -430,6 +421,12 @@ class View(object):
 
     def n_rows(self):
         return len(self.X[self.X.keys()[0]])
+
+    def _reindex_rows(self):
+        """Update row partition by deleting nans. Invoke when rowids in
+        unincorporate_row are deleted from the global dataset X."""
+        self.Zr = [z for z in self.Zr if not isnan(z)]
+        assert len(self.Zr) == self.n_rows()
 
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))

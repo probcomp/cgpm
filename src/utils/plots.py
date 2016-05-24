@@ -77,9 +77,10 @@ def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
     if ax is None:
         _, ax = plt.subplots()
     # Set up x axis.
+    X = np.asarray(X, dtype=int)
     x_max = max(X)
     Y = range(int(x_max)+1)
-    X_hist = [np.sum(X==i) / float(len(X)) for i in Y]
+    X_hist = np.bincount(X) / float(len(X))
     ax.bar(Y, X_hist, color='gray', edgecolor='none')
     # Compute weighted pdfs
     K = len(clusters)
