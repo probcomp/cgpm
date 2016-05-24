@@ -17,7 +17,7 @@
 """Inference quality tests for the conditional GPM  (aka foreign predictor)
 features of State."""
 
-import unittest
+import pytest
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,6 +31,7 @@ from gpmcc.utils import test as tu
 
 class FourWayPredictor(object):
     """Foreign predictor on R2 valued input."""
+
     def __init__(self, rng):
         self.rng = rng
         self.probabilities =[
@@ -65,8 +66,10 @@ class FourWayPredictor(object):
         if x == 3: return [-2, -2]
         raise ValueError('Invalid value: %s' % str(x))
 
+
 class TwoWayPredictor(object):
     """Foreign predictor on binary valued input."""
+
     def __init__(self, rng):
         self.rng = rng
         self.probabilities =[
@@ -110,155 +113,156 @@ def compute_quadrant_counts(T):
     c3 = sum(np.logical_and(T[:,0] < 0, T[:,1] < 0))
     return [c0, c1, c2, c3]
 
+
 class Dummy(object):
-    def __init__(self): pass
+    def __init__(self):
+        pass
 
 
-class ForeignPredictorInferenceTest(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        rng = gu.gen_rng(1)
-        rows = 120
-        cctypes = ['normal', 'bernoulli', 'normal']
-        G = generate_quadrants(rows, rng)
-        B, Zv, Zrv = tu.gen_data_table(
-            rows, [1], [[.5,.5]], ['bernoulli'], [None], [.95], rng=rng)
-        T = np.column_stack((G, B.T))[:,[0,2,1]]
-        cls.state = State(T, cctypes)
-        cls.state.transition(N=50)
-
-        cls.four_way = FourWayPredictor(rng)
-        cls.two_way = TwoWayPredictor(rng)
-
-    def test_no_chained_predictors(self):
-        four_index = self.state.update_foreign_predictor(self.four_way, [0, 2])
-
-        with self.assertRaises(ValueError):
-            self.state.update_foreign_predictor(
-                self.two_way, [four_index, 1, 0])
-
-        self.state.remove_foreign_predictor(four_index)
-
-    def test_no_predictors_no_change(self):
-        # Get some logpdfs and samples before predictors.
-        logp_before_one = self.state.logpdf(2, [(0, 1), (1, 1)])
-        logp_before_two = self.state.logpdf(-1, [(0, 1), (1, 1)], [(2,1)])
-        simulate_before_one = self.state.simulate(2, [0,1,2], N=10)
-        simulate_before_two = self.state.simulate(-1, [1,2], [(0,1)])
-
-        # Hook the predictors.
-        four_index = self.state.update_foreign_predictor(
-            self.four_way, [0, 2])
-        two_index = self.state.update_foreign_predictor(
-            self.two_way, [1, 0])
-
-        # Should be identical logpdfs and similar samples after.
-        logp_after_one = self.state.logpdf(2, [(0, 1), (1, 1)])
-        logp_after_two = self.state.logpdf(-1, [(0, 1), (1, 1)], [(2,1)])
-        simulate_after_one = self.state.simulate(2, [0,1,2], N=10)
-        simulate_after_two = self.state.simulate(-1, [1,2], [(0,1)])
-
-        self.assertAlmostEqual(logp_before_one, logp_after_one)
-        self.assertAlmostEqual(logp_before_two, logp_after_two)
-
-        # Unhook the predictors.
-        self.state.remove_foreign_predictor(four_index)
-        self.state.remove_foreign_predictor(two_index)
-
-    def crash_test_simulate_logpdf(self):
-        # Incorporate the predictors.
-        four_index = self.state.update_foreign_predictor(self.four_way, [0, 2])
-        two_index = self.state.update_foreign_predictor(self.two_way, [1, 0])
-
-        self.state.simulate(
-            1, [0, 1, 2, four_index, two_index], N=100)
-        self.state.simulate(
-            -1, [0, 1, 2, four_index, two_index], N=100)
-
-        self.state.logpdf(
-            2, [(0,1), (1,0), (2,-1), (four_index, 3), (two_index, 0)])
-        self.state.logpdf(
-            -1, [(0,1), (1,0), (2,-1), (four_index, 3), (two_index, 0)])
-
-        # Unhook the predictors.
-        self.state.remove_foreign_predictor(four_index)
-        self.state.remove_foreign_predictor(two_index)
-
-    def test_inference_quality(self):
-        # Incorporate the predictors.
-        four_index = self.state.update_foreign_predictor(self.four_way, [0, 2])
-        two_index = self.state.update_foreign_predictor(self.two_way, [1, 0])
-
-        # Simulate parents (0, 2) constraining four_index.
-        for v in [0, 1, 2, 3]:
-            simulate_fourway_constrain = np.asarray(self.state.simulate(
-                -1, [0, 2], [(four_index, v)], N=100))
-            plt.figure()
-            plt.scatter(
-                simulate_fourway_constrain[:,0],
-                simulate_fourway_constrain[:,1])
-
-            x0, x1 = FourWayPredictor.retrieve_y_for_x(v)
-            simulate_ideal = np.asarray([[x0, x1]])
-
-            counts_ideal = compute_quadrant_counts(simulate_ideal)
-            counts_actual = compute_quadrant_counts(simulate_fourway_constrain)
-
-            self.assertEqual(np.argmax(counts_ideal), np.argmax(counts_actual))
-
-        # logpdf four_index varying parent constraints.
-        for v in [0, 1, 2, 3]:
-            x0, x1 = FourWayPredictor.retrieve_y_for_x(v)
-
-            lp_exact = self.four_way.logpdf(None, v, [x0, x1])
-            lp_fully_conditioned = self.state.logpdf(
-                -1, [(four_index, v)],
-                [(0, x0), (1, 1), (2, x1), (two_index, 0)])
-            lp_missing_one = self.state.logpdf(
-                -1, [(four_index, v)], [(0, x0), (1, 1)])
-            lp_missing_two = self.state.logpdf(
-                -1, [(four_index, v)])
-
-            self.assertAlmostEqual(lp_fully_conditioned, lp_exact)
-            self.assertLess(lp_missing_one, lp_fully_conditioned)
-            self.assertLess(lp_missing_two, lp_missing_one)
-            self.assertLess(lp_missing_two, lp_fully_conditioned)
-
-            # Invert the query conditioning on four_index.
-            lp_inverse_evidence = self.state.logpdf(
-                -1, [(0, x0), (2, x1)], [(four_index, v)])
-            lp_inverse_no_evidence = self.state.logpdf(
-                -1, [(0, x0), (2, x1)])
-
-            self.assertLess(lp_inverse_no_evidence, lp_inverse_evidence)
-
-        # Simulate two_index varying parent constraints.
-        for v in [0, 1]:
-            x0, x1 = TwoWayPredictor.retrieve_y_for_x(v)
-
-            lp_exact = self.two_way.logpdf(None, v, [x0, x1])
-            lp_fully_conditioned = self.state.logpdf(
-                -1, [(two_index, v)], [(1, x0), (0, x1), (2, x1)])
-            lp_missing_one = self.state.logpdf(
-                -1, [(two_index, v)], [(0, x1), (2, x1)])
-
-            self.assertAlmostEqual(lp_fully_conditioned, lp_exact)
-            self.assertLess(lp_missing_one, lp_fully_conditioned)
-
-            # Invert the query conditioning on two_index.
-            lp_inverse_evidence = self.state.logpdf(
-                -1, [(1, x0), (0, x1)], [(two_index, v)])
-            lp_inverse_no_evidence = self.state.logpdf(
-                -1, [(1, x0), (0, x1)])
-
-            self.assertLess(lp_inverse_no_evidence, lp_inverse_evidence)
-
-        # Unhook the predictors.
-        self.state.remove_foreign_predictor(four_index)
-        self.state.remove_foreign_predictor(two_index)
+FOURWAY = FourWayPredictor(gu.gen_rng(1))
+TWOWAY = TwoWayPredictor(gu.gen_rng(1))
 
 
-if __name__ == '__main__':
-    unittest.main()
+@pytest.fixture(scope='module')
+def state():
+    rng = gu.gen_rng(1)
+    rows = 120
+    cctypes = ['normal', 'bernoulli', 'normal']
+    G = generate_quadrants(rows, rng)
+    B, Zv, Zrv = tu.gen_data_table(
+        rows, [1], [[.5,.5]], ['bernoulli'], [None], [.95], rng=rng)
+    T = np.column_stack((G, B.T))[:,[0,2,1]]
+    state = State(T, cctypes)
+    state.transition(N=50)
+    return state
 
+
+def test_no_chained_predictors(state):
+    four_index = state.update_foreign_predictor(FOURWAY, [0, 2])
+
+    with pytest.raises(ValueError):
+        state.update_foreign_predictor(
+            TWOWAY, [four_index, 1, 0])
+
+    state.remove_foreign_predictor(four_index)
+
+
+def test_no_predictors_no_change(state):
+    # Get some logpdfs and samples before predictors.
+    logp_before_one = state.logpdf(2, [(0, 1), (1, 1)])
+    logp_before_two = state.logpdf(-1, [(0, 1), (1, 1)], [(2,1)])
+    simulate_before_one = state.simulate(2, [0,1,2], N=10)
+    simulate_before_two = state.simulate(-1, [1,2], [(0,1)])
+
+    # Hook the predictors.
+    four_index = state.update_foreign_predictor(
+        FOURWAY, [0, 2])
+    two_index = state.update_foreign_predictor(
+        TWOWAY, [1, 0])
+
+    # Should be identical logpdfs and similar samples after.
+    logp_after_one = state.logpdf(2, [(0, 1), (1, 1)])
+    logp_after_two = state.logpdf(-1, [(0, 1), (1, 1)], [(2,1)])
+    simulate_after_one = state.simulate(2, [0,1,2], N=10)
+    simulate_after_two = state.simulate(-1, [1,2], [(0,1)])
+
+    assert np.allclose(logp_before_one, logp_after_one)
+    assert np.allclose(logp_before_two, logp_after_two)
+
+    # Unhook the predictors.
+    state.remove_foreign_predictor(four_index)
+    state.remove_foreign_predictor(two_index)
+
+
+def crash_test_simulate_logpdf(state):
+    # Incorporate the predictors.
+    four_index = state.update_foreign_predictor(FOURWAY, [0, 2])
+    two_index = state.update_foreign_predictor(TWOWAY, [1, 0])
+
+    state.simulate(
+        1, [0, 1, 2, four_index, two_index], N=100)
+    state.simulate(
+        -1, [0, 1, 2, four_index, two_index], N=100)
+
+    state.logpdf(
+        2, [(0,1), (1,0), (2,-1), (four_index, 3), (two_index, 0)])
+    state.logpdf(
+        -1, [(0,1), (1,0), (2,-1), (four_index, 3), (two_index, 0)])
+
+    # Unhook the predictors.
+    state.remove_foreign_predictor(four_index)
+    state.remove_foreign_predictor(two_index)
+
+
+def test_inference_quality(state):
+    # Incorporate the predictors.
+    four_index = state.update_foreign_predictor(FOURWAY, [0, 2])
+    two_index = state.update_foreign_predictor(TWOWAY, [1, 0])
+
+    # Simulate parents (0, 2) constraining four_index.
+    for v in [0, 1, 2, 3]:
+        simulate_fourway_constrain = np.asarray(state.simulate(
+            -1, [0, 2], [(four_index, v)], N=100))
+        plt.figure()
+        plt.scatter(
+            simulate_fourway_constrain[:,0],
+            simulate_fourway_constrain[:,1])
+
+        x0, x1 = FourWayPredictor.retrieve_y_for_x(v)
+        simulate_ideal = np.asarray([[x0, x1]])
+
+        counts_ideal = compute_quadrant_counts(simulate_ideal)
+        counts_actual = compute_quadrant_counts(simulate_fourway_constrain)
+
+        assert np.argmax(counts_ideal) == np.argmax(counts_actual)
+
+    # logpdf four_index varying parent constraints.
+    for v in [0, 1, 2, 3]:
+        x0, x1 = FourWayPredictor.retrieve_y_for_x(v)
+
+        lp_exact = FOURWAY.logpdf(None, v, [x0, x1])
+        lp_fully_conditioned = state.logpdf(
+            -1, [(four_index, v)],
+            [(0, x0), (1, 1), (2, x1), (two_index, 0)])
+        lp_missing_one = state.logpdf(
+            -1, [(four_index, v)], [(0, x0), (1, 1)])
+        lp_missing_two = state.logpdf(
+            -1, [(four_index, v)])
+
+        assert np.allclose(lp_fully_conditioned, lp_exact)
+        assert lp_missing_one < lp_fully_conditioned
+        assert lp_missing_two < lp_missing_one
+        assert lp_missing_two < lp_fully_conditioned
+
+        # Invert the query conditioning on four_index.
+        lp_inverse_evidence = state.logpdf(
+            -1, [(0, x0), (2, x1)], [(four_index, v)])
+        lp_inverse_no_evidence = state.logpdf(
+            -1, [(0, x0), (2, x1)])
+
+        assert lp_inverse_no_evidence < lp_inverse_evidence
+
+    # Simulate two_index varying parent constraints.
+    for v in [0, 1]:
+        x0, x1 = TwoWayPredictor.retrieve_y_for_x(v)
+
+        lp_exact = TWOWAY.logpdf(None, v, [x0, x1])
+        lp_fully_conditioned = state.logpdf(
+            -1, [(two_index, v)], [(1, x0), (0, x1), (2, x1)])
+        lp_missing_one = state.logpdf(
+            -1, [(two_index, v)], [(0, x1), (2, x1)])
+
+        assert np.allclose(lp_fully_conditioned, lp_exact)
+        assert lp_missing_one < lp_fully_conditioned
+
+        # Invert the query conditioning on two_index.
+        lp_inverse_evidence = state.logpdf(
+            -1, [(1, x0), (0, x1)], [(two_index, v)])
+        lp_inverse_no_evidence = state.logpdf(
+            -1, [(1, x0), (0, x1)])
+
+        assert lp_inverse_no_evidence < lp_inverse_evidence
+
+    # Unhook the predictors.
+    state.remove_foreign_predictor(four_index)
+    state.remove_foreign_predictor(two_index)

@@ -22,66 +22,74 @@ from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
 
-cctypes, distargs = cu.parse_distargs(
-    ['normal','poisson','categorical(k=2)','bernoulli','lognormal',
-    'exponential','geometric','vonmises'])
+CCTYPES, DISTARGS = cu.parse_distargs([
+    'normal',
+    'poisson',
+    'categorical(k=2)',
+    'bernoulli',
+    'lognormal',
+    'exponential',
+    'geometric',
+    'vonmises'])
+
 T, Zv, Zc = tu.gen_data_table(
-    20, [1], [[.33, .33, .34]], cctypes, distargs,
-    [.95]*len(cctypes), rng=gu.gen_rng(0))
+    20, [1], [[.33, .33, .34]], CCTYPES, DISTARGS,
+    [.95]*len(CCTYPES), rng=gu.gen_rng(0))
+
 T = T.T
 
 
 def test_categorical_bernoulli():
     state = State(
-        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
-    state.update_cctype(cctypes.index('categorical'), 'bernoulli')
+    state.update_cctype(CCTYPES.index('categorical'), 'bernoulli')
     state.transition(N=1)
-    state.update_cctype(cctypes.index('categorical'), 'categorical',
+    state.update_cctype(CCTYPES.index('categorical'), 'categorical',
         distargs={'k':2})
 
 
 def test_poisson_categorical():
     state = State(
-        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
-    state.update_cctype(cctypes.index('categorical'), 'poisson')
+    state.update_cctype(CCTYPES.index('categorical'), 'poisson')
     state.transition(N=1)
-    state.update_cctype(cctypes.index('categorical'), 'categorical',
+    state.update_cctype(CCTYPES.index('categorical'), 'categorical',
         distargs={'k':2})
 
 
 def test_vonmises_normal():
     state = State(
-        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
-    state.update_cctype(cctypes.index('vonmises'), 'normal')
+    state.update_cctype(CCTYPES.index('vonmises'), 'normal')
     state.transition(N=1)
-    state.update_cctype(cctypes.index('vonmises'), 'vonmises')
+    state.update_cctype(CCTYPES.index('vonmises'), 'vonmises')
 
     # Incompatible numeric conversion.
     with pytest.raises(Exception):
-        state.update_cctype(cctypes.index('normal'), 'vonmises')
+        state.update_cctype(CCTYPES.index('normal'), 'vonmises')
 
 
 def test_geometric_exponential():
     state = State(
-        T, cctypes, distargs=distargs, rng=gu.gen_rng(0))
+        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
     state.transition(N=1)
-    state.update_cctype(cctypes.index('geometric'), 'exponential')
+    state.update_cctype(CCTYPES.index('geometric'), 'exponential')
     state.transition(N=1)
 
     # Incompatible numeric conversion.
     with pytest.raises(Exception):
-        state.update_cctype(cctypes.index('exponential'), 'geometric')
+        state.update_cctype(CCTYPES.index('exponential'), 'geometric')
 
 
 def test_categorical_forest():
     state = State(
-        T, cctypes, distargs=distargs, rng=gu.gen_rng(1))
+        T, CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
     state.transition(N=1)
-    cat_id = cctypes.index('categorical')
-    cat_distargs = distargs[cat_id]
+    cat_id = CCTYPES.index('categorical')
+    cat_distargs = DISTARGS[cat_id]
 
     # If cat_id is singleton migrate first.
     if len(state.view_for(cat_id).dims) == 1:
@@ -91,7 +99,7 @@ def test_categorical_forest():
         cat_id = state.n_cols()-1
     state.update_cctype(cat_id, 'random_forest', distargs=cat_distargs)
 
-    bernoulli_id = cctypes.index('bernoulli')
+    bernoulli_id = CCTYPES.index('bernoulli')
     state.incorporate_dim(
         T[:,bernoulli_id], 'bernoulli', v=state.Zv[cat_id])
     state.update_cctype(

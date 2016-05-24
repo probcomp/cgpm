@@ -24,23 +24,18 @@ from gpmcc.utils import general as gu
 from gpmcc.utils import validation as vu
 
 
-class EnsureIndependentTest(unittest.TestCase):
+def test_naive_bayes():
+    D = np.random.normal(size=(10,1))
+    T = np.repeat(D, 10, axis=1)
+    Ci = list(itertools.combinations(range(10), 2))
+    state = State(T, ['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
+    state.transition(N=10, do_progress=0)
+    vu.validate_crp_constrained_partition(state.Zv, [], Ci, {}, {})
 
-    def test_naive_bayes(self):
-        D = np.random.normal(size=(10,1))
-        T = np.repeat(D, 10, axis=1)
-        Ci = list(itertools.combinations(range(10), 2))
-        state = State(T, ['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
-        state.transition(N=10, do_progress=0)
-        vu.validate_crp_constrained_partition(state.Zv, [], Ci, {}, {})
-
-    def test_complex_relationships(self):
-        D = np.random.normal(size=(10,1))
-        T = np.repeat(D, 10, axis=1)
-        Ci = [(2,8), (0,3)]
-        state = State(T, ['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
-        state.transition(N=10, do_progress=0)
-        vu.validate_crp_constrained_partition(state.Zv, [], Ci, {}, {})
-
-if __name__ == '__main__':
-    unittest.main()
+def test_complex_relationships():
+    D = np.random.normal(size=(10,1))
+    T = np.repeat(D, 10, axis=1)
+    Ci = [(2,8), (0,3)]
+    state = State(T, ['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
+    state.transition(N=10, do_progress=0)
+    vu.validate_crp_constrained_partition(state.Zv, [], Ci, {}, {})

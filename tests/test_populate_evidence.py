@@ -20,14 +20,17 @@ import numpy as np
 
 from gpmcc.state import State
 
-X = [[1, np.nan, 2, -1, np.nan],
-    [1, 3, 2, -1, -5],
-    [1, np.nan, np.nan, np.nan, np.nan]]
 
-state = State(X, ['normal']*5)
+@pytest.fixture(scope='module')
+def state():
+    X = [[1, np.nan, 2, -1, np.nan],
+        [1, 3, 2, -1, -5],
+        [1, np.nan, np.nan, np.nan, np.nan]]
+    s = State(X, ['normal']*5)
+    return s
 
 
-def test_hypothetical_unchanged():
+def test_hypothetical_unchanged(state):
     rowid = -1
     qr1 = [(3,-1)]
     ev1 = [(1,1), (2,2)]
@@ -35,14 +38,14 @@ def test_hypothetical_unchanged():
     assert set(ev1) == set(ev2)
 
 
-def test_nothing_to_populate():
+def test_nothing_to_populate(state):
     rowid = 2
     qr1 = [(0,1)]
     ev2 = state._populate_evidence(rowid, qr1, [])
     assert set(ev2) == set([])
 
 
-def test_some_to_populate():
+def test_some_to_populate(state):
     rowid = 0
     qr1 = [(1,1)]
     ev1 = [(2,2)]
@@ -50,7 +53,7 @@ def test_some_to_populate():
     assert set(ev2) == set([(2,2), (0,1), (3,-1)])
 
 
-def test_everything_to_populate():
+def test_everything_to_populate(state):
     rowid = 1
     qr1 = [(1,1), (4,1)]
     ev2 = state._populate_evidence(rowid, qr1, [])
