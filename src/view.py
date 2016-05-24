@@ -170,7 +170,7 @@ class View(object):
     # --------------------------------------------------------------------------
     # Update schema.
 
-    def update_cctype(self, col, cctype, hypers=None, distargs=None):
+    def update_cctype(self, col, cctype, distargs=None):
         """Update the distribution type of self.dims[col] to cctype."""
         if distargs is None:
             distargs = {}
@@ -188,7 +188,7 @@ class View(object):
         D_old = self.dims[col]
         D_new = Dim(
             outputs=[col], inputs=inputs, cctype=cctype,
-            hypers=hypers, distargs=distargs, rng=self.rng)
+            distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
 

@@ -95,15 +95,16 @@ def test_categorical_forest():
     if len(state.view_for(cat_id).dims) == 1:
         state.unincorporate_dim(cat_id)
         state.incorporate_dim(
-            T[:,cat_id], 'categorical', cat_distargs, v=0)
-        cat_id = state.n_cols()-1
+            T[:,cat_id], outputs=[120], cctype='categorical',
+            distargs=cat_distargs, v=0)
+        cat_id = 120
     state.update_cctype(cat_id, 'random_forest', distargs=cat_distargs)
 
     bernoulli_id = CCTYPES.index('bernoulli')
     state.incorporate_dim(
-        T[:,bernoulli_id], 'bernoulli', v=state.Zv[cat_id])
-    state.update_cctype(
-        len(state.dims())-1, 'random_forest', distargs={'k':2})
+        T[:,bernoulli_id], outputs=[191], cctype='bernoulli',
+        v=state.Zv[cat_id])
+    state.update_cctype(191, 'random_forest', distargs={'k':2})
 
     # Run valid transitions.
     state.transition(
@@ -116,7 +117,7 @@ def test_categorical_forest():
 
     # Updating cctype in singleton View should raise.
     state.incorporate_dim(
-        T[:,cat_id], 'categorical', cat_distargs, v=len(state.views))
+        T[:,cat_id], outputs=[98],
+        cctype='categorical', distargs=cat_distargs, v=len(state.views))
     with pytest.raises(Exception):
-        state.update_cctype(
-            len(state.dims())-1, 'random_forest', distargs=cat_distargs)
+        state.update_cctype(98, 'random_forest', distargs=cat_distargs)
