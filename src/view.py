@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import isinf
 from math import isnan
 
 import numpy as np
@@ -265,11 +266,12 @@ class View(object):
         # p(z|xE)   logp_cluster
         # p(xQ|z)   logp_query
         K = range(len(self.Nk)+1)
-        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = [self._logpdf_joint(evidence, [], k) for k in K]
-        logp_cluster = gu.log_normalize(np.add(logp_crp, logp_evidence))
-        logp_query = [self._logpdf_joint(query, evidence, k) for k in K]
-        return logsumexp(np.add(logp_cluster, logp_query))
+        lp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        lp_evidence = [self._logpdf_joint(evidence, [], k) for k in K]
+        if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
+        lp_cluster = gu.log_normalize(np.add(lp_crp, lp_evidence))
+        lp_query = [self._logpdf_joint(query, evidence, k) for k in K]
+        return logsumexp(np.add(lp_cluster, lp_query))
 
     # --------------------------------------------------------------------------
     # simulate
@@ -288,10 +290,11 @@ class View(object):
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster=True exposes latent cluster of each sample as extra col."""
         K = range(len(self.Nk)+1)
-        logp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
-        logp_evidence = [self._logpdf_joint(evidence, [], k) for k in K]
-        logp_cluster = np.add(logp_crp, logp_evidence)
-        ks = gu.log_pflip(logp_cluster, size=N, rng=self.rng)
+        lp_crp = gu.logp_crp_fresh(self.Nk, self.Zr, self.alpha)
+        lp_evidence = [self._logpdf_joint(evidence, [], k) for k in K]
+        if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
+        lp_cluster = np.add(lp_crp, lp_evidence)
+        ks = gu.log_pflip(lp_cluster, size=N, rng=self.rng)
         counts = {k:n for k,n in enumerate(np.bincount(ks)) if n > 0}
         samples = [self._simulate_joint(query, evidence, k, counts[k])
             for k in counts]
