@@ -207,34 +207,41 @@ class State(object):
         # Validate.
         self._check_partitions()
 
-    def incorporate_rows(self, X, k=None):
-        """Incorporate list of new rows with data X and clusters k."""
-        rowids = xrange(self.n_rows(), self.n_rows() + len(X))
-        self.X = np.vstack((self.X, X))
-
-        if k is None:
-            k = [[None] * self.n_views()] * len(rowids)
-
-        for v, view in enumerate(self.views):
-            view.set_dataset(self.X)
-            for r, rowid in enumerate(rowids):
-                view.incorporate_row(rowid, k=k[r][v])
-
+    def incorporate_row(self, rowid, query, k=None):
+        # if not self._is_hypothetical(rowid):
+        #     raise ValueError('Already incorporated: %d' % rowid)
+        if not set.issubset(set(query), set(self.outputs)):
+            raise ValueError('Query must be subset of outputs: %s' % query)
+        # Default rowid and clusters.
+        if self._is_hypothetical(rowid):
+            rowid = self.n_rows()
+        clusters =  k if k else [None] * self.n_views()
+        assert len(clusters) == len(self.views)
+        # Append the observation,.
+        for c in self.outputs:
+            if c in query:
+                self.X[c].append(query[c])
+            else:
+                self.X[c].append(float('nan'))
+        for view, k in zip(self.views, clusters):
+            view.incorporate_row(rowid, k=k)
+        # Validate.
         self._check_partitions()
 
-    def unincorporate_rows(self, rowids):
-        """Unincorporate list of rowids from population X."""
+    def unincorporate_row(self, rowid):
+        """Unincorporate rowid."""
         if self.n_rows() == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
-
-        self.X = np.delete(self.X, rowids, 0)
-
+        if not 0 <= rowid < self.n_rows():
+            raise ValueError('No such rowid: %d' % rowid)
+        # Remove from dataset.
+        for c in self.outputs:
+            del self.X[c]
+        # Remove from Views.
         for view in self.views:
-            for rowid in rowids:
-                view.unincorporate_row(rowid)
-            view.set_dataset(self.X)
-            view.reindex_rows()
-
+            view.unincorporate_row(rowid)
+            view._reindex_rows()
+        # Validate.
         self._check_partitions()
 
     # --------------------------------------------------------------------------
