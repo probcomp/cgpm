@@ -43,6 +43,11 @@ class State(object):
             Zv=None, Zrv=None, alpha=None, view_alphas=None, hypers=None,
             Cd=None, Ci=None, Rd=None, Ri=None, iterations=None, rng=None):
         """Construct State GPM with initial conditions and constraints."""
+        if inputs:
+            raise ValueError('State cannot accept inputs.')
+        if outputs and len(outputs) < 1:
+            raise ValueError('State needs at least one output.')
+
         # Seed.
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -56,11 +61,6 @@ class State(object):
             pass
         self.outputs = outputs
         self.X = OrderedDict([(c, X[:,c].tolist()) for c in self.outputs])
-
-        if inputs:
-            raise ValueError('State cannot accept inputs.')
-        if len(self.outputs) < 1:
-            raise ValueError('State needs at least one output.')
 
         # Distargs.
         if distargs is None:
@@ -120,10 +120,12 @@ class State(object):
 
         # Views.
         def create_view(v):
-            view_dims = [dims[i] for i in xrange(self.n_cols()) if Zv[i] == v]
-            return View(
-                self.X, view_dims, Zr=Zrv[v],
+            V =  View(
+                self.X, outputs=None, inputs=None, Zr=Zrv[v],
                 alpha=view_alphas[v], rng=self.rng)
+            for c in [i for i in xrange(self.n_cols()) if Zv[i] == v]:
+                V.incorporate_dim(dims[c])
+            return V
         self.views = [create_view(v) for v in sorted(set(self.Zv))]
 
         # Iteration metadata.
@@ -160,7 +162,7 @@ class State(object):
         if 0 <= v < self.n_views():
             view = self.views[v]
         elif v == self.n_views():
-            view = View(self.X, [], rng=self.rng)
+            view = View(self.X, rng=self.rng)
             self._append_view(view)
 
         view.incorporate_dim(D)
@@ -712,7 +714,7 @@ class State(object):
         # Auxiliary views.
         m_aux = range(m-1) if self.Nv(self.Zv[col]) == 1 else range(m)
         dprops_aux = [get_prop_dim(None, self.dim_for(col)) for _ in m_aux]
-        vprops_aux = [View(self.X, [], rng=self.rng) for _ in m_aux]
+        vprops_aux = [View(self.X, rng=self.rng) for _ in m_aux]
 
         logp_data_aux = [get_data_logp(view, dim)
             for (view, dim) in zip(vprops_aux, dprops_aux)]

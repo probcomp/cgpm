@@ -30,7 +30,8 @@ from gpmcc.utils.general import logmeanexp
 class View(object):
     """View, a collection of Dim and their row mixtures."""
 
-    def __init__(self, X, dims, alpha=None, Zr=None, rng=None):
+    def __init__(self, X, outputs=None, inputs=None, alpha=None,
+            Zr=None, rng=None):
         """View constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -49,6 +50,9 @@ class View(object):
             Starting partiton of rows to categories where Zr[i] is the latent
             clsuter of row i. If None, is sampled from CRP(alpha).
         """
+        if outputs or inputs:
+            raise ValueError('View does not support explicit input or output.')
+
         # Entropy.
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -69,8 +73,6 @@ class View(object):
 
         # Incoroprate the dimensions.
         self.dims = dict()
-        for dim in sorted(dims, key=lambda d: d.is_conditional()):
-            self.incorporate_dim(dim)
 
         # self._check_partitions()
 
