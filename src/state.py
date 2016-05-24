@@ -300,7 +300,7 @@ class State(object):
         if self._is_hypothetical(rowid): return evidence
         if isinstance(query[0], tuple): query = [q[0] for q in query]
         ec = [e[0] for e in evidence]
-        em = [r for r in xrange(self.n_cols()) if r not in ec+query]
+        em = [r for r in self.outputs if r not in ec+query]
         ev = [(c, self.X[c][rowid]) for c in em if not isnan(self.X[c][rowid])]
         return ev + evidence
 
