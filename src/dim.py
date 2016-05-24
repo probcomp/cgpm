@@ -147,7 +147,7 @@ class Dim(object):
     def transition_hyper_grids(self, X, n_grid=30):
         """Resample the hyperparameter grids using empirical Bayes."""
         self.hyper_grids = self.model.construct_hyper_grids(
-            X[~np.isnan(X)], n_grid=n_grid)
+            [x for x in X if not math.isnan(x)], n_grid=n_grid)
         # Only transition the hypers if previously uninstantiated.
         if not self.hypers:
             for h in self.hyper_grids:
@@ -180,7 +180,8 @@ class Dim(object):
         plotter = pu.plot_dist_continuous if self.model.is_continuous() else \
             pu.plot_dist_discrete
         return plotter(
-            X[~np.isnan(X)], self.index, self.clusters, ax=ax, Y=Y, hist=False)
+            [x for x in X if not math.isnan(x)], self.index, self.clusters,
+            ax=ax, Y=Y, hist=False)
 
     # --------------------------------------------------------------------------
     # Internal

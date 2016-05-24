@@ -20,6 +20,9 @@ import itertools
 import sys
 import time
 
+from math import isnan
+from collections import OrderedDict
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -44,7 +47,10 @@ class State(object):
         self.rng = gu.gen_rng() if rng is None else rng
 
         # Dataset.
-        self.X = np.asarray(X)
+        # XXX FIXME XXX
+        X = np.asarray(X)
+        cols = X.shape[1]
+        self.X = OrderedDict([(c,X[:,c].tolist()) for c in xrange(cols)])
 
         # Distargs.
         if distargs is None:
@@ -98,7 +104,7 @@ class State(object):
             D = Dim(
                 cctypes[c], c, hypers=hypers[c],
                 distargs=distargs[c], rng=self.rng)
-            D.transition_hyper_grids(self.X[:,c])
+            D.transition_hyper_grids(self.X[c])
             return D
         dims = [create_dim(c) for c in xrange(self.n_cols())]
 
@@ -278,7 +284,7 @@ class State(object):
         if isinstance(query[0], tuple): query = [q[0] for q in query]
         ec = [e[0] for e in evidence]
         em = [r for r in xrange(self.n_cols()) if r not in ec+query]
-        ev = [(c, x) for c, x in zip(em, self.X[rowid,em]) if not np.isnan(x)]
+        ev = [(c, self.X[c][rowid]) for c in em if not isnan(self.X[c][rowid])]
         return ev + evidence
 
     def _no_leafs(self, query, evidence):
@@ -546,7 +552,7 @@ class State(object):
         if cols is None:
             cols = xrange(self.n_cols())
         for c in cols:
-            self.dim_for(c).transition_hyper_grids(self.X[:,c])
+            self.dim_for(c).transition_hyper_grids(self.X[c])
 
     def transition_rows(self, views=None, rows=None):
         """Transition row CRP assignments in Views."""
@@ -572,11 +578,11 @@ class State(object):
 
     def n_rows(self):
         """Number of incorporated rows."""
-        return np.shape(self.X)[0]
+        return len(self.X[0])
 
     def n_cols(self):
         """Number of incorporated columns."""
-        return np.shape(self.X)[1]
+        return len(self.X)
 
     def cctypes(self):
         """DistributionGpm name of each Dim."""
@@ -608,7 +614,7 @@ class State(object):
         for dim in self.dims():
             index = dim.index
             ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index+1)
-            dim.plot_dist(self.X[:,dim.index], ax=ax)
+            dim.plot_dist(self.X[dim.index], ax=ax)
             ax.text(
                 1,1, "K: %i " % len(dim.clusters),
                 transform=ax.transAxes, fontsize=12, weight='bold',
@@ -777,8 +783,8 @@ class State(object):
                 for k in xrange(len(dim.clusters)):
                     rowids = [r for (r, z) in enumerate(self.views[v].Zr)
                         if z == k]
-                    num_nans = np.sum(np.isnan(self.X[rowids,dim.index]))
-                    assert dim.clusters[k].N == Nk[k] - num_nans
+                    nans = np.isnan([self.X[dim.index][r] for r in rowids])
+                    assert dim.clusters[k].N == Nk[k] - np.sum(nans)
         # Dependence constraints.
         assert vu.validate_crp_constrained_partition(
             self.Zv, self.Cd, self.Ci, self.Rd, self.Ri)
@@ -790,7 +796,8 @@ class State(object):
         metadata = dict()
 
         # Dataset.
-        metadata['X'] = self.X.tolist()
+        # XXX FIXME XXX
+        metadata['X'] = np.asarray(self.X.values()).T.tolist()
 
         # Iteration counts.
         metadata['iterations'] = self.iterations

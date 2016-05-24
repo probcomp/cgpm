@@ -56,14 +56,14 @@ class View(object):
         self.X = X
 
         # Generate alpha.
-        self.alpha_grid = gu.log_linspace(1./len(self.X), len(self.X), 30)
+        self.alpha_grid = gu.log_linspace(1./len(self.X[0]), len(self.X[0]), 30)
         if alpha is None:
             alpha = self.rng.choice(self.alpha_grid)
         self.alpha = alpha
 
         # Generate row partition.
         if Zr is None:
-            Zr = gu.simulate_crp(len(self.X), alpha, rng=self.rng)
+            Zr = gu.simulate_crp(len(self.X[0]), alpha, rng=self.rng)
         self.Zr = list(Zr)
         self.Nk = list(np.bincount(Zr))
 
@@ -94,7 +94,7 @@ class View(object):
         dim.ignored = set([])
         dim.aux_model = dim.create_aux_model()
         for rowid in np.argsort(self.Zr):
-            query = {dim.index: self.X[rowid, dim.index]}
+            query = {dim.index: self.X[dim.index][rowid]}
             evidence = self._get_evidence(rowid, dim, self.Zr[rowid])
             dim.incorporate(rowid, query, evidence)
         # XXX Clear out empty clusters.
@@ -144,7 +144,7 @@ class View(object):
         self.Zr[rowid] = k
         # Incorporate into dims.
         for dim in self.dims.values():
-            query = {dim.index: self.X[rowid,dim.index]}
+            query = {dim.index: self.X[dim.index][rowid]}
             evidence = self._get_evidence(rowid, dim, k)
             dim.incorporate(rowid, query, evidence)
         self.transition_rows(rows=transition)
@@ -208,7 +208,7 @@ class View(object):
         """Update row partition by deleting nans. Invoke when rowids in
         unincorporate_row are deleted from the global dataset X."""
         self.Zr = [z for z in self.Zr if not isnan(z)]
-        assert len(self.Zr) == len(self.X)
+        assert len(self.Zr) == len(self.X[0])
 
     # --------------------------------------------------------------------------
     # Inference
@@ -420,7 +420,7 @@ class View(object):
             for k in xrange(len(self.Nk) + m_aux)]
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
-        query = {dim.index: self.X[rowid,dim.index]}
+        query = {dim.index: self.X[dim.index][rowid]}
         evidence = self._get_evidence(rowid, dim, k)
         if self.Zr[rowid] == k:
             dim.unincorporate(rowid)
@@ -453,7 +453,7 @@ class View(object):
 
     def _get_evidence(self, rowid, dim, k):
         """Prepare the evidence for a Dim logpdf/simulate query."""
-        inputs = {i:self.X[rowid,i] for i in dim.inputs}
+        inputs = {i: self.X[i][rowid] for i in dim.inputs}
         cluster = {-1: k}
         return gu.merge_dicts(inputs, cluster)
 
@@ -468,10 +468,10 @@ class View(object):
             sorted(self.dims))
 
     def _unconditional_values(self, rowid):
-        return self.X[rowid,self._unconditional_dims()]
+        return [self.X[i][rowid] for i in self._unconditional_dims()]
 
     def _conditional_values(self, rowid):
-        return self.X[rowid,self._conditional_dims()]
+        return [self.X[i][rowid] for i in self._conditional_dims()]
 
     def _unconditional_cctypes(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
