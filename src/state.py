@@ -152,53 +152,59 @@ class State(object):
 
     def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
             distargs=None, v=None):
-        """Incorporate a new Dim into this State."""
-        assert len(T) == self.n_rows()
-        assert len(outputs) == 1
-        assert outputs[0] not in self.outputs
-        assert not inputs
-
+        """Incorporate a new Dim into this State with data T."""
+        if len(T) != self.n_rows():
+            raise ValueError('%d rows required: %d' % (self.n_rows(), len(T)))
+        if len(outputs) != 1:
+            raise ValueError('Univariate outputs only: %s.' % outputs)
+        if outputs[0] in self.outputs:
+            raise ValueError('outputs exist: %s, %s.' % (outputs, self.outputs))
+        if inputs:
+            raise ValueError('inputs unsupported: %s.' % inputs)
+        # Append to outputs.
         col = outputs[0]
         self.X[col] = T
         self.outputs.append(col)
-
-        # XXX Handle conditional models; consider moving to View?
+        # XXX Does not handle conditional models; consider moving to view?
         D = Dim(
             outputs=outputs, inputs=inputs, cctype=cctype,
             distargs=distargs, rng=self.rng)
         D.transition_hyper_grids(self.X[col])
-
+        # If v unspecified then transition the col.
         transition = [col] if v is None else []
+        # Incorporate dim into view.
         v = 0 if v is None else v
         if 0 <= v < self.n_views():
             view = self.views[v]
         elif v == self.n_views():
             view = View(self.X, rng=self.rng)
             self._append_view(view)
-
         view.incorporate_dim(D)
         self.Zv[col] = v
-
+        # Transition.
         self.transition_columns(cols=transition)
         self.transition_column_hypers(cols=[col])
+        # Validate.
         self._check_partitions()
 
     def unincorporate_dim(self, col):
         """Unincorporate the Dim whose output is col."""
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
-
-        v_del = self.Zv[col]
+        if col not in self.outputs:
+            raise ValueError('col does not exist: %s, %s.')
+        # Find the dim and its view.
         d_del = self.dim_for(col)
+        v_del = self.Zv[col]
         self.views[v_del].unincorporate_dim(d_del)
-
+        # Clear a singleton.
         if self.Nv(v_del) == 0:
             self._delete_view(v_del)
-
+        # Clear data, outputs, and view assignment.
         del self.X[col]
         del self.outputs[self.outputs.index(col)]
         del self.Zv[col]
-
+        # Validate.
         self._check_partitions()
 
     def incorporate_rows(self, X, k=None):
