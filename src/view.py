@@ -60,14 +60,14 @@ class View(object):
         self.X = X
 
         # Generate alpha.
-        self.alpha_grid = gu.log_linspace(1./len(self.X[0]), len(self.X[0]), 30)
+        self.alpha_grid = gu.log_linspace(1./self.n_rows(), self.n_rows(), 30)
         if alpha is None:
             alpha = self.rng.choice(self.alpha_grid)
         self.alpha = alpha
 
         # Generate row partition.
         if Zr is None:
-            Zr = gu.simulate_crp(len(self.X[0]), alpha, rng=self.rng)
+            Zr = gu.simulate_crp(self.n_rows(), alpha, rng=self.rng)
         self.Zr = list(Zr)
         self.Nk = list(np.bincount(Zr))
 
@@ -195,22 +195,11 @@ class View(object):
     # --------------------------------------------------------------------------
     # Accounting
 
-    def set_dataset(self, X):
-        """Update pointer to global dataset X, see __init__ for contract."""
-        self.X = X
-
-    def reindex_dims(self):
-        """Update dict(indices->dims). Invoke when global dim indices change."""
-        dims = dict()
-        for dim in self.dims.values():
-            dims[dim.index] = dim
-        self.dims = dims
-
     def reindex_rows(self):
         """Update row partition by deleting nans. Invoke when rowids in
         unincorporate_row are deleted from the global dataset X."""
         self.Zr = [z for z in self.Zr if not isnan(z)]
-        assert len(self.Zr) == len(self.X[0])
+        assert len(self.Zr) == self.n_rows()
 
     # --------------------------------------------------------------------------
     # Inference
@@ -434,6 +423,9 @@ class View(object):
 
     # --------------------------------------------------------------------------
     # Internal query utils.
+
+    def n_rows(self):
+        return len(self.X[self.X.keys()[0]])
 
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
