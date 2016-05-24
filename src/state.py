@@ -39,18 +39,28 @@ from gpmcc.view import View
 class State(object):
     """The outer most GPM in gpmcc."""
 
-    def __init__(self, X, cctypes, distargs=None, Zv=None, Zrv=None, alpha=None,
-            view_alphas=None, hypers=None, Cd=None, Ci=None, Rd=None, Ri=None,
-            iterations=None, rng=None):
+    def __init__(self, X, cctypes, outputs=None, inputs=None, distargs=None,
+            Zv=None, Zrv=None, alpha=None, view_alphas=None, hypers=None,
+            Cd=None, Ci=None, Rd=None, Ri=None, iterations=None, rng=None):
         """Construct State GPM with initial conditions and constraints."""
         # Seed.
         self.rng = gu.gen_rng() if rng is None else rng
 
         # Dataset.
-        # XXX FIXME XXX
+        # XXX FIXME should take in the dictionary XXX
         X = np.asarray(X)
-        cols = X.shape[1]
-        self.X = OrderedDict([(c,X[:,c].tolist()) for c in xrange(cols)])
+        if not outputs:
+            outputs = range(X.shape[1])
+        else:
+            # XXX Ensure that X.keys() contains the outputs.
+            pass
+        self.outputs = outputs
+        self.X = OrderedDict([(c, X[:,c].tolist()) for c in self.outputs])
+
+        if inputs:
+            raise ValueError('State cannot accept inputs.')
+        if len(self.outputs) < 1:
+            raise ValueError('State needs at least one output.')
 
         # Distargs.
         if distargs is None:
@@ -102,8 +112,8 @@ class State(object):
         # Dims.
         def create_dim(c):
             D = Dim(
-                cctypes[c], c, hypers=hypers[c],
-                distargs=distargs[c], rng=self.rng)
+                outputs=[c], inputs=None, cctype=cctypes[c],
+                hypers=hypers[c], distargs=distargs[c], rng=self.rng)
             D.transition_hyper_grids(self.X[c])
             return D
         dims = [create_dim(c) for c in xrange(self.n_cols())]
@@ -578,11 +588,11 @@ class State(object):
 
     def n_rows(self):
         """Number of incorporated rows."""
-        return len(self.X[0])
+        return len(self.X[self.outputs[0]])
 
     def n_cols(self):
         """Number of incorporated columns."""
-        return len(self.X)
+        return len(self.outputs)
 
     def cctypes(self):
         """DistributionGpm name of each Dim."""
@@ -762,6 +772,8 @@ class State(object):
     def _check_partitions(self):
         # For debugging only.
         assert self.alpha > 0.
+        # All outputs should be in the dataset keys.
+        assert [c in self.X.keys() for c in self.outputs]
         # Zv and dims should match n_cols.
         assert len(self.Zv) == self.n_cols()
         assert len(self.dims()) == self.n_cols()

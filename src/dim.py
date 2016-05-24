@@ -28,8 +28,8 @@ class Dim(object):
     shared hyperparameters and grids. Technically not GPM, but easily becomes
     one by placing creating a View with a single Dim."""
 
-    def __init__(self, cctype, index, inputs=None, hypers=None, params=None,
-            distargs=None, rng=None):
+    def __init__(self, outputs, inputs=None, cctype=None, hypers=None,
+            params=None, distargs=None, rng=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -46,9 +46,13 @@ class Dim(object):
         self.rng = gu.gen_rng() if rng is None else rng
 
         # Identifier.
-        self.index = index
-        self.outputs = [self.index]
+        if len(outputs) != 1:
+            raise ValueError('Dim requires exactly 1 output.')
+        self.outputs = outputs
         self.inputs = inputs if inputs else []
+        # XXX ENCAPSULATE ME! XXX
+        self.index = self.outputs[0]
+        # XXX ENCAPSULATE ME! XXX
 
         # Model type.
         self.model = cu.cctype_class(cctype)
