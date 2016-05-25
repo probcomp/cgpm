@@ -800,22 +800,8 @@ class State(object):
         # Nv should have an entry for each view.
         assert len(self.Nv()) == max(self.Zv.values())+1
         for v in xrange(len(self.Nv())):
-            # Check that the number of dims actually assigned to the view
-            # matches the count in Nv.
             assert len(self.views[v].dims) == self.Nv(v)
-            Nk = self.views[v].Nk
-            assert set(self.views[v].Zr.keys()) == set(xrange(self.n_rows()))
-            assert len(self.views[v].Zr) == sum(Nk) == self.n_rows()
-            assert max(self.views[v].Zr.values()) == len(Nk)-1
-            for dim in self.views[v].dims.values():
-                # Ensure number of clusters in each dim in views[v]
-                # is the same and as described in the view (K, Nk).
-                assert len(dim.clusters) == len(Nk)
-                for k in xrange(len(dim.clusters)):
-                    rowids = [r for (r,z) in self.views[v].Zr.items()
-                        if z == k]
-                    nans = np.isnan([self.X[dim.index][r] for r in rowids])
-                    assert dim.clusters[k].N == Nk[k] - np.sum(nans)
+            self.views[v]._check_partitions()
         # Dependence constraints.
         assert vu.validate_crp_constrained_partition(
             self.Zv, self.Cd, self.Ci, self.Rd, self.Ri)
