@@ -112,7 +112,7 @@ class State(object):
                     self.Ri, rng=self.rng)
             else:
                 Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
-        # XXX Convert Zv to a dictionary.
+        # Convert Zv to a dictionary.
         assert len(Zv) == len(self.outputs)
         self.Zv = {i:z for i, z in zip(self.outputs, Zv)}
 
@@ -777,7 +777,6 @@ class State(object):
         del self.views[v]
         adjust = lambda i: i-1 if v < i else i
         self.Zv = {c: adjust(self.Zv[c]) for c in self.outputs}
-        # [i-1 if i>v else i for i in self.Zv]
 
     def _append_view(self, view):
         """Append a view and return and its index."""
@@ -809,14 +808,15 @@ class State(object):
             # matches the count in Nv.
             assert len(self.views[v].dims) == self.Nv(v)
             Nk = self.views[v].Nk
+            assert set(self.views[v].Zr.keys()) == set(xrange(self.n_rows()))
             assert len(self.views[v].Zr) == sum(Nk) == self.n_rows()
-            assert max(self.views[v].Zr) == len(Nk)-1
+            assert max(self.views[v].Zr.values()) == len(Nk)-1
             for dim in self.views[v].dims.values():
                 # Ensure number of clusters in each dim in views[v]
                 # is the same and as described in the view (K, Nk).
                 assert len(dim.clusters) == len(Nk)
                 for k in xrange(len(dim.clusters)):
-                    rowids = [r for (r, z) in enumerate(self.views[v].Zr)
+                    rowids = [r for (r,z) in self.views[v].Zr.items()
                         if z == k]
                     nans = np.isnan([self.X[dim.index][r] for r in rowids])
                     assert dim.clusters[k].N == Nk[k] - np.sum(nans)
@@ -856,7 +856,7 @@ class State(object):
             metadata['distargs'].append(dim.distargs)
 
         for view in self.views:
-            metadata['Zrv'].append(view.Zr)
+            metadata['Zrv'].append([view.Zr[i] for i in sorted(view.Zr)])
             metadata['view_alphas'].append(view.alpha)
 
         return metadata
