@@ -30,7 +30,7 @@ from gpmcc.utils import general as gu
 
 class TestSerialize(unittest.TestCase):
 
-    def serialize_generic(self, Model):
+    def serialize_generic(self, Model, additional=None):
         """Model is either State or Engine class."""
         # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
         data = np.random.normal(size=(100,5))
@@ -51,13 +51,20 @@ class TestSerialize(unittest.TestCase):
             with open(temp.name, 'w') as f:
                 model.to_pickle(f)
             with open(temp.name, 'r') as f:
-                Model.from_pickle(f, rng=gu.gen_rng(10))
+                model = Model.from_pickle(f, rng=gu.gen_rng(10))
+                if additional:
+                    additional(model)
 
     def test_state_serialize(self):
         self.serialize_generic(State)
 
     def test_engine_serialize(self):
-        self.serialize_generic(Engine)
+        def additional(engine):
+            e = engine.to_metadata()
+            assert 'X' not in e['states'][0]
+            s = engine.get_state(0)
+            assert 'X' in s.to_metadata()
+        self.serialize_generic(Engine, additional=additional)
 
 
 if __name__ == '__main__':
