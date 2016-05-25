@@ -80,7 +80,7 @@ def load_docstrings(module):
             with a partition from the CRP prior.
         """
 
-    module.State.incorporate_row.__func__.__doc__ = """
+    module.State.incorporate.__func__.__doc__ = """
         Incorporate list of new rows.
 
         Parameters

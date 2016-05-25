@@ -207,28 +207,34 @@ class State(object):
         # Validate.
         self._check_partitions()
 
-    def incorporate_row(self, rowid, query, k=None):
-        # if not self._is_hypothetical(rowid):
-        #     raise ValueError('Already incorporated: %d' % rowid)
+    def incorporate(self, rowid, query, evidence=None):
         if not set.issubset(set(query), set(self.outputs)):
-            raise ValueError('Query must be subset of outputs: %s' % query)
-        # Default rowid and clusters.
+            raise ValueError('Query must be subset of outputs: %s.' % query)
+        if any(isnan(v) for v in query.values()):
+            raise ValueError('Incorporate nan by leaving it out: %s.' % query)
+        if evidence is None:
+            evidence = {}
+        # Append the observation to dataset.
+        def update_list(c):
+            if self._is_hypothetical(rowid):
+                self.X[c].append(query.get(c, float('nan')))
+            elif c in query:
+                assert isnan(self.X[c][rowid])
+                self.X[c][rowid] = query[c]
+            return self.X[c]
+        self.X = {c: update_list(c) for c in self.outputs}
+        # Tell the views.
         if self._is_hypothetical(rowid):
-            rowid = self.n_rows()
-        clusters =  k if k else [None] * self.n_views()
-        assert len(clusters) == len(self.views)
-        # Append the observation,.
-        for c in self.outputs:
-            if c in query:
-                self.X[c].append(query[c])
-            else:
-                self.X[c].append(float('nan'))
-        for view, k in zip(self.views, clusters):
-            view.incorporate_row(rowid, k=k)
+            rowid = self.n_rows()-1
+        for v, view in enumerate(self.views):
+            view.incorporate(
+                rowid,
+                query={d: self.X[d][rowid] for d in view.dims},
+                evidence={-1: evidence[-(v+1)]} if -(v+1) in evidence else {})
         # Validate.
         self._check_partitions()
 
-    def unincorporate_row(self, rowid):
+    def unincorporate(self, rowid):
         """Unincorporate rowid."""
         if self.n_rows() == 1:
             raise ValueError('State has only one row, cannot unincorporate.')
@@ -236,11 +242,10 @@ class State(object):
             raise ValueError('No such rowid: %d' % rowid)
         # Remove from dataset.
         for c in self.outputs:
-            del self.X[c]
-        # Remove from Views.
+            del self.X[c][rowid]
+        # Remove from views.
         for view in self.views:
-            view.unincorporate_row(rowid)
-            view._reindex_rows()
+            view.unincorporate(rowid)
         # Validate.
         self._check_partitions()
 
