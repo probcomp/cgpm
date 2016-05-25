@@ -61,7 +61,7 @@ class State(object):
             # XXX Ensure that X.keys() contains the outputs.
             pass
         self.outputs = outputs
-        self.X = OrderedDict([(c, X[:,c].tolist()) for c in self.outputs])
+        self.X = {c: X[:,c].tolist() for c in self.outputs}
 
         # Cctypes.
         if cctypes is None:
