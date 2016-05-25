@@ -473,7 +473,22 @@ class View(object):
         dims = [self.dims[i] for i in self._unconditional_dims()]
         return [d.get_distargs() for d in dims]
 
+    # --------------------------------------------------------------------------
+    # Data structure invariants.
+
     def _check_partitions(self):
         # For debugging only.
         assert self.alpha > 0.
-        assert sum(self.Nk) == len(self.Zr)
+        # Check that the number of dims actually assigned to the view
+        # matches the count in Nv.
+        assert set(self.Zr.keys()) == set(xrange(self.n_rows()))
+        assert len(self.Zr) == sum(self.Nk) == self.n_rows()
+        assert max(self.Zr.values()) == len(self.Nk)-1
+        for dim in self.dims.values():
+            # Ensure number of clusters in each dim in views[v]
+            # is the same and as described in the view (K, Nk).
+            assert len(dim.clusters) == len(self.Nk)
+            for k in xrange(len(dim.clusters)):
+                rowids = [r for (r,z) in self.Zr.items() if z == k]
+                nans = np.isnan([self.X[dim.index][r] for r in rowids])
+                assert dim.clusters[k].N == self.Nk[k] - np.sum(nans)
