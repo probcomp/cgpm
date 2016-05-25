@@ -54,7 +54,7 @@ class State(object):
             outputs = range(X.shape[1])
         else:
             assert len(outputs) == X.shape[1]
-            assert all(o > 0 for o in outputs)
+            assert all(o >= 0 for o in outputs)
         self.outputs = outputs
         self.X = {c: X[:,i].tolist() for i,c in enumerate(self.outputs)}
 
@@ -815,6 +815,7 @@ class State(object):
         # Dataset.
         # XXX FIXME
         metadata['X'] = np.asarray(self.X.values()).T.tolist()
+        metadata['outputs'] = self.outputs
 
         # Iteration counts.
         metadata['iterations'] = self.iterations
@@ -852,7 +853,8 @@ class State(object):
         if rng is None: rng = gu.gen_rng(0)
         return cls(
             np.asarray(metadata['X']),
-            cctypes=metadata['cctypes'],
+            outputs=metadata.get('outputs', None),
+            cctypes=metadata.get('cctypes', None),
             distargs=metadata.get('distargs',None),
             Zv=metadata.get('Zv', None),
             Zrv=metadata.get('Zrv', None),
