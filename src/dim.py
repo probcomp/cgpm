@@ -50,9 +50,8 @@ class Dim(object):
             raise ValueError('Dim requires exactly 1 output.')
         self.outputs = outputs
         self.inputs = inputs if inputs else []
-        # XXX ENCAPSULATE ME! XXX
+        # XXX ENCAPSULATE ME!
         self.index = self.outputs[0]
-        # XXX ENCAPSULATE ME! XXX
 
         # Model type.
         self.model = cu.cctype_class(cctype)

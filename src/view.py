@@ -15,7 +15,6 @@
 # limitations under the License.
 
 from math import isinf
-from math import isnan
 
 import numpy as np
 
@@ -52,7 +51,7 @@ class View(object):
             clsuter of row i. If None, is sampled from CRP(alpha).
         """
         if outputs or inputs:
-            raise ValueError('View does not support explicit input or output.')
+            raise ValueError('View does not require explicit input or output.')
 
         # Entropy.
         self.rng = gu.gen_rng() if rng is None else rng
@@ -102,13 +101,11 @@ class View(object):
                 rowid,
                 query={dim.index: self.X[dim.index][rowid]},
                 evidence=self._get_evidence(rowid, dim, k))
-        # XXX Clear out empty clusters.
         K = max(self.Zr.values())+1
         if K < len(dim.clusters):
             dim.clusters = dim.clusters[:K]
         assert len(dim.clusters) == K
         dim.transition_params()
-        # XXX Major hack end.
 
     def _prepare_incorporate(self, cctype):
         distargs = {}
@@ -124,37 +121,33 @@ class View(object):
         del self.dims[dim.index]
         return dim.logpdf_score()
 
-    def incorporate(self, rowid, query, evidence):
-        """Incorporate rowid from the global dataset X into the view. Use
-        set_dataset to update X if it has new rowids.
+    def incorporate(self, rowid, query, evidence=None):
+        """Incorporate an observation into the View.
 
         Parameters
         ----------
         rowid : int
-            The rowid in dataset X to be incorporated.
-        k : int, optional
-            Index of the cluster to assign the row. If unspecified, will be
-            sampled. If 0 <= k < len(view.Nk) will insert into an existing
-            cluster. If k = len(state.Nv) a singleton cluster will be created.
+            Fresh, non-negative rowid.
+        query : dict{output:val}
+            Keys of the query must exactly be the output (Github issue 89).
+            Optionally use {-1:k} for latent cluster assignment of rowid where
+            0 <= k <= len(self.Nk). The cluster is a query variable since View
+            has a generative model for k, unlike Dim which takes k as evidence.
         """
-        # If k unspecified, transition the new rowid.
-        k = evidence.get(-1, 0)
+        k = query.get(-1, 0)
         transition = [rowid] if k is None else []
-        # Account.
-        if k == len(self.Nk):
+        if len(self.Nk) == k:
             self.Nk.append(0)
         self.Nk[k] += 1
         self.Zr[rowid] = k
-        # Incorporate into dims.
-        for dim in self.dims.values():
-            dim.incorporate(
+        for d in self.dims:
+            self.dims[d].incorporate(
                 rowid,
-                query={dim.index: query[dim.index]},
-                evidence=self._get_evidence(rowid, dim, k))
+                query={d: query[d]},
+                evidence=self._get_evidence(rowid, self.dims[d], k))
         self.transition_rows(rows=transition)
 
     def unincorporate(self, rowid):
-        """Remove rowid from the global datset X from this view."""
         # Unincorporate from dims.
         for dim in self.dims.values():
             dim.unincorporate(rowid)
@@ -162,11 +155,11 @@ class View(object):
         k = self.Zr[rowid]
         self.Nk[k] -= 1
         if self.Nk[k] == 0:
-            adjust = lambda i: i-1 if k < i else i
+            adjust = lambda z: z-1 if k < z else z
             self.Zr = {r: adjust(self.Zr[r]) for r in self.Zr}
             del self.Nk[k]
             for dim in self.dims.values():
-                # XXX Abstract in a batter way
+                # XXX Abstract in a better way
                 del dim.clusters[k]
         del self.Zr[rowid]
 
@@ -394,10 +387,9 @@ class View(object):
         z_b = gu.log_pflip(p_cluster, rng=self.rng)
         if z_b != self.Zr[rowid]:
             self.unincorporate(rowid)
-            self.incorporate(
-                rowid,
-                query={d: self.X[d][rowid] for d in self.dims},
-                evidence={-1: z_b})
+            query = gu.merge_dicts(
+                {d: self.X[d][rowid] for d in self.dims}, {-1: z_b})
+            self.incorporate(rowid, query)
         self._check_partitions()
 
     def _logpdf_row_gibbs(self, rowid, m):

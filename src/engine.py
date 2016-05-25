@@ -261,7 +261,6 @@ class Engine(object):
         # XXX Backward compatability.
         if 'states' not in metadata:
             metadata['states'] = metadata['state_metadatas']
-        # XXX Backward compatability.
         return cls(
             metadata['states'][0]['X'],
             metadata['states'][0]['cctypes'],

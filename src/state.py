@@ -44,24 +44,22 @@ class State(object):
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, iterations=None,
             rng=None):
         """Construct State GPM with initial conditions and constraints."""
-        if inputs:
-            raise ValueError('State cannot accept inputs.')
-        if outputs and len(outputs) < 1:
-            raise ValueError('State needs at least one output.')
 
         # Seed.
         self.rng = gu.gen_rng() if rng is None else rng
 
         # Dataset.
-        # XXX FIXME should take in the dictionary XXX
         X = np.asarray(X)
         if not outputs:
             outputs = range(X.shape[1])
         else:
-            # XXX Ensure that X.keys() contains the outputs.
-            pass
+            assert len(outputs) == X.shape[1]
+            assert all(o > 0 for o in outputs)
         self.outputs = outputs
-        self.X = {c: X[:,c].tolist() for c in self.outputs}
+        self.X = {c: X[:,i].tolist() for i,c in enumerate(self.outputs)}
+
+        if inputs:
+            raise ValueError('State does not accept inputs.')
 
         # Cctypes.
         if cctypes is None:
@@ -99,8 +97,7 @@ class State(object):
         self.Ci = [] if Ci is None else Ci
         self.Rd = {} if Rd is None else Rd
         self.Ri = {} if Ri is None else Ri
-
-        # XXX TEMPORARY.
+        # XXX Github issue #13.
         if len(self.Cd) > 0:
             raise ValueError('Dependency constraints not yet implemented.')
 
@@ -208,10 +205,17 @@ class State(object):
         self._check_partitions()
 
     def incorporate(self, rowid, query, evidence=None):
-        if not set.issubset(set(query), set(self.outputs)):
-            raise ValueError('Query must be subset of outputs: %s.' % query)
+        # Validation.
+        if not self._is_hypothetical(rowid): # XXX Only allow new rows.
+            raise ValueError('Cannot incorporate non-hypothetical: %d' % rowid)
+        if not set.issubset(set(q for q in query if q>=0), set(self.outputs)):
+            raise ValueError(
+                'Query must be subset of outputs: %s, %s.'
+                % (query, self.outputs))
+        if any(not 0 <= -(q+1) < len(self.views) for q in query if q < 0):
+            raise ValueError('Invalid view: %s.' % query)
         if any(isnan(v) for v in query.values()):
-            raise ValueError('Incorporate nan by leaving it out: %s.' % query)
+            raise ValueError('Cannot incorporate nan: %s.' % query)
         if evidence is None:
             evidence = {}
         # Append the observation to dataset.
@@ -227,27 +231,14 @@ class State(object):
         if self._is_hypothetical(rowid):
             rowid = self.n_rows()-1
         for v, view in enumerate(self.views):
-            view.incorporate(
-                rowid,
-                query={d: self.X[d][rowid] for d in view.dims},
-                evidence={-1: evidence[-(v+1)]} if -(v+1) in evidence else {})
+            qv = {d: self.X[d][rowid] for d in view.dims}
+            kv = {-1: query[-(v+1)]} if -(v+1) in query else {}
+            view.incorporate(rowid, gu.merge_dicts(qv, kv))
         # Validate.
         self._check_partitions()
 
     def unincorporate(self, rowid):
-        """Unincorporate rowid."""
-        if self.n_rows() == 1:
-            raise ValueError('State has only one row, cannot unincorporate.')
-        if not 0 <= rowid < self.n_rows():
-            raise ValueError('No such rowid: %d' % rowid)
-        # Remove from dataset.
-        for c in self.outputs:
-            del self.X[c][rowid]
-        # Remove from views.
-        for view in self.views:
-            view.unincorporate(rowid)
-        # Validate.
-        self._check_partitions()
+        raise NotImplementedError('Functionality disabled, Github issue #83.')
 
     # --------------------------------------------------------------------------
     # Schema updates.
@@ -263,7 +254,7 @@ class State(object):
         self._check_partitions()
 
     def update_foreign_predictor(self, predictor, parents):
-        """DOCUMENT ME."""
+        """XXX REWRITE ME!."""
         # Foreign predictors indexed from -1, -2, ... no cycles.
         index = -next(self.counter)
         if any(p in self.predictors for p in parents):
@@ -273,7 +264,7 @@ class State(object):
         return index
 
     def remove_foreign_predictor(self, index):
-        """DOCUMENT ME."""
+        """XXX REWRITE ME!."""
         if index not in self.predictors:
             raise ValueError('Predictor %s never hooked.' % str(index))
         del self.predictors[index]
@@ -836,7 +827,7 @@ class State(object):
         metadata = dict()
 
         # Dataset.
-        # XXX FIXME XXX
+        # XXX FIXME
         metadata['X'] = np.asarray(self.X.values()).T.tolist()
 
         # Iteration counts.
