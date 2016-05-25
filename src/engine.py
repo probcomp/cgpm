@@ -47,15 +47,20 @@ class Engine(object):
     def __init__(self, X, cctypes, distargs=None, num_states=1, rng=None,
             states=None, multithread=1):
         self.rng = gu.gen_rng(1) if rng is None else rng
+        self.X = np.asarray(X)
         if states:
             self.states = states
             self.num_states = len(states)
+            self._populate_metadata()
         else:
             self.num_states = num_states
             pool, mapper = self._get_mapper(multithread)
             args = ((X, cctypes, distargs, rng) for rng in self._get_rngs())
             self.states = mapper(_intialize, args)
             self._close_mapper(pool)
+
+    # --------------------------------------------------------------------------
+    # External
 
     def transition(self, N=None, S=None, kernels=None, target_views=None,
             target_rows=None, target_cols=None, do_plot=False, do_progress=True,
@@ -199,9 +204,11 @@ class Engine(object):
         return S
 
     def get_state(self, index):
+        self._populate_metadata()
         return State.from_metadata(self.states[index])
 
     def get_states(self, indices):
+        self._populate_metadata()
         return [self.get_state(i) for i in indices]
 
     def drop_state(self, index):
@@ -213,13 +220,11 @@ class Engine(object):
         self.states = [m for i,m in enumerate(self.states) if i not in drop]
         self.num_states = len(self.states)
 
-    def to_metadata(self):
-        metadata = dict()
-        metadata['states'] = self.states
-        return metadata
+    # --------------------------------------------------------------------------
+    # Internal
 
     def _get_mapper(self, multithread):
-        self._seed_metadata() # XXX Right place?
+        self._populate_metadata() # XXX Right place?
         pool, mapper = None, map
         if multithread:
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
@@ -230,11 +235,19 @@ class Engine(object):
         if pool is not None:
             pool.close()
 
-    def _seed_metadata(self):
+    def _populate_metadata(self):
         if not hasattr(self, 'states'):
             return
-        for r, m in zip(self._get_rngs(), self.states):
-            m['rng'] = r
+        for rng, state in zip(self._get_rngs(), self.states):
+            state['rng'] = rng
+            state['X'] = self.X
+
+    def _depopulate_metadata(self):
+        if not hasattr(self, 'states'):
+            return
+        for state in self.states:
+            state.pop('rng', None)
+            state.pop('X', None)
 
     def _get_rngs(self):
         seeds = self.rng.randint(low=1, high=2**32-1, size=self.num_states)
@@ -255,16 +268,29 @@ class Engine(object):
         n_model = np.bincount(gu.log_pflip(weights, size=N, rng=self.rng))
         return np.vstack([s[:n] for s,n in zip(samples, n_model) if n])
 
+    # --------------------------------------------------------------------------
+    # Serialize
+
+    def to_metadata(self):
+        self._depopulate_metadata()
+        metadata = dict()
+        metadata['X'] = self.X.tolist()
+        metadata['states'] = self.states
+        return metadata
+
     @classmethod
     def from_metadata(cls, metadata, rng=None):
-        if rng is None: rng = gu.gen_rng(0)
+        if rng is None:
+            rng = gu.gen_rng(0)
         # XXX Backward compatability.
         if 'states' not in metadata:
             metadata['states'] = metadata['state_metadatas']
+        if 'X' not in metadata:
+            metadata['X'] = metadata['states'][0]['X']
         return cls(
-            metadata['states'][0]['X'],
-            metadata['states'][0]['cctypes'],
-            metadata['states'][0]['distargs'],
+            X=metadata['X'],
+            cctypes=metadata['states'][0]['cctypes'],
+            distargs=metadata['states'][0]['distargs'],
             rng=rng,
             states=metadata['states'])
 
