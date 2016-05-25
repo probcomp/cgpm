@@ -89,11 +89,11 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
     p_table = lambda t: p_current() if t == Z[i] else p_other(t)
     return [log(p_table(t)) for t in xrange(len(Nk))] + [log(p_table_aux)]*m_aux
 
-def logp_crp_fresh(Nk, Z, alpha, m=1):
-    """Compute the CRP probabilities for a fresh customer i=len(Z), with
-    table counts Nk, table assignments Z, and m auxiliary tables."""
+def logp_crp_fresh(N, Nk, alpha, m=1):
+    """Compute the CRP probabilities for a fresh customer i=N+1, with
+    table counts Nk, total customers N=sum(Nk), and m auxiliary tables."""
     log_crp_numer = np.log(Nk + [alpha/m]*m)
-    logp_crp_denom = log(len(Z) + alpha)
+    logp_crp_denom = log(N + alpha)
     return log_crp_numer - logp_crp_denom
 
 def log_pflip(logp, size=None, rng=None):
