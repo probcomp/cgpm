@@ -22,17 +22,22 @@ def load_docstrings(module):
         ----------
         X : np.ndarray
             Data matrix, each row is an observation and each column a variable.
-        cctypes : list<str>
+        outputs : list<int>, optional
+            Unique non-negative ID for each column in X, and used to refer to
+            the column for all future queries. Defaults to range(1, X.shape[1])
+        inputs : list<int>, optional
+            Currently unsupported.
+        cctypes : list<str>, optional
             Data type of each column, see `utils.config` for valid cctypes.
+            Defaults to normal.
         distargs : list<dict>, optional
-            Distargs appropriate for each cctype in cctypes. For details on
-            distargs see the documentation for each DistributionGpm.
+            See the documentation for each DistributionGpm for its distargs.
         Zv : list<int>, optional
-            Assignmet of columns to views. If unspecified, sampled from CRP.
+            Assignmet of columns to views. Defaults to sampling from CRP.
         Zrv : list(list<int>), optional
             Assignment of rows to clusters in each view, where Zrv[k] is
-            the Zr for View k. If unspecified, sampled from CRP. If specified,
-            then Zv must also be specified.
+            the Zr for View k. If specified, then Zv must also be specified.
+            Defaults to sampling from CRP.
         Cd : list(list<int>), optional
             List of marginal dependence constraints for columns. Each element in
             the list is a list of columns which are to be in the same view. Each
@@ -67,34 +72,32 @@ def load_docstrings(module):
 
         Parameters
         ----------
-        X : np.array
-            An array of data with length self.n_rows().
-        cctype : str
-            DistributionGpm name, see `gpmcc.utils.config`, unconditional only.
-        distargs : dict, optional.
-            Distargs appropriate for the cctype.
+        X : list
+            Data with length self.n_rows().
+        outputs : list[int]
+            Identity of the variable modeled by this dim, must be non-negative
+            and cannot collide with State.outputs. Only univariate outputs
+            currently supported.
         v : int, optional
-            Index of the view to assign the data. If unspecified, will be
-            sampled. If 0 <= v < len(state.views) then insert into an existing
-            View. If v = len(state.views) then singleton view will be created
-            with a partition from the CRP prior.
+            Index of the view to assign the data. If 0 <= v < len(state.views)
+            then insert into an existing View. If v = len(state.views) then
+            singleton view will be created with a partition from the CRP prior.
+            If unspecified, will be sampled.
         """
 
     module.State.incorporate.__func__.__doc__ = """
-        Incorporate list of new rows.
+        Incorporate a new rowid.
 
         Parameters
         ----------
-        X : np.array
-            A (r x self.n_cols) list of data, where r is number of
-            new rows to incorporate.
-        k : list(list<int>), optional
-            A (r x self.n_views()) list of integers, where r is the number of
-            new rows to incorporate, and k[r][i] is the cluster to insert row r
-            in view i. If k[r][i] is greater than the number of
-            clusters in view[i] an error will be thrown. To specify cluster
-            assignments for only some views, use None in all other locations
-            i.e. k=[[None,2,None],[[0,None,1]]].
+        rowid : int
+            Only rowid = -1 is currently supported, pending Github #84 which
+            will support cell-level operations.
+        query : dict{output:val}
+            Keys of the query must a subset of the State output, unspecified
+            outputs will be nan. At least one non-nan value must be specified.
+            Optionally use {-v:k} for latent cluster assignments of rowid, where
+            1 <= v <= len(State.views) and 0 <= k <= len(State.views[v].Nk).
         """
 
 
@@ -108,19 +111,8 @@ def load_docstrings(module):
         ----------
         col : int
             Index of column to update.
-        cctype : str
-            DistributionGpm name see `gpmcc.utils.config`.
-        distargs : dict, optional.
-            Distargs appropriate for the cctype.
         """
 
-    module.State.update_cctype.__func__.__doc__ = """
-        TODO
-        """
-
-    module.State.update_cctype.__func__.__doc__ = """
-        TODO
-        """
 
     # --------------------------------------------------------------------------
     # logpdf

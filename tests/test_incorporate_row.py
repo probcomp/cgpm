@@ -19,34 +19,7 @@ import pytest
 import numpy as np
 
 from gpmcc.state import State
-from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
-
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2015-2016 MIT Probabilistic Computing Project
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-
-#    http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import pytest
-
-import numpy as np
-
-from gpmcc.state import State
-from gpmcc.utils import config as cu
-from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
 
 
 X = [[1, np.nan, 2, -1, np.nan],
@@ -56,69 +29,80 @@ X = [[1, np.nan, 2, -1, np.nan],
     [18, -7, -2, 11, -12],]
 
 
-def test_incorporate():
+def test_invalid_evidence_keys():
     state = State(X, cctypes=['normal']*5, Zv=[0,0,0,1,1], rng=gu.gen_rng(0))
-    state.transition(N=5)
+    # Non-existent view -3.
+    with pytest.raises(ValueError):
+        state.incorporate(
+            rowid=-1,
+            query={0:0, 1:1, 2:2, 3:3, 4:4, -1:0, -2:0, -3:0})
+    # Condition on an output 1.
+    with pytest.raises(ValueError):
+        state.incorporate(
+            rowid=-1,
+            query={0:0, 1:1, 2:2, 3:3, 4:4, -3:0})
 
+
+def test_invalid_evidence_cluster():
+    state = State(X, cctypes=['normal']*5, Zv=[0,0,0,1,1], rng=gu.gen_rng(0))
+    # No such cluster 100.
+    with pytest.raises(Exception):
+        state.incorporate(
+            rowid=-1,
+            query={0:0, 1:1, 2:2, 3:3, 4:4, -1:100})
+    # Should crash.
+    with pytest.raises(Exception):
+        state.incorporate(
+            rowid=-1,
+            query={0:0, 1:1, 2:2, 3:3, 4:4, -1:None})
+
+
+def test_invalid_query_nan():
+    state = State(X, cctypes=['normal']*5, Zv=[0,0,0,1,1], rng=gu.gen_rng(0))
+    # Not allowed to incorporate nan.
+    with pytest.raises(ValueError):
+        state.incorporate(
+            rowid=-1,
+            query={0:np.nan, 1:1, 2:2, 3:3, 4:4})
+
+
+def test_invalid_rowid():
+    state = State(X, cctypes=['normal']*5, Zv=[0,0,0,1,1], rng=gu.gen_rng(0))
+    # Hypotheticals disabled.
+    with pytest.raises(ValueError):
+        state.incorporate(
+            rowid=0,
+            query={0:2})
+
+
+def test_incorporate_valid():
+    state = State(X, cctypes=['normal']*5, Zv=[0,0,1,1,1], rng=gu.gen_rng(0))
     # Incorporate row into cluster 0 for all views.
     previous = np.asarray([v.Nk[0] for v in state.views])
     state.incorporate(
         rowid=-1,
-        query={0:0, 1:1, 2:2, 3:3, 4:4},
-        evidence={-1:0, -2:0})
+        query={0:0, 1:1, 2:2, 3:3, 4:4, -1:0, -2:0})
     assert [v.Nk[0] for v in state.views] == list(previous+1)
+    # Incorporate row into cluster 0 for view -2 with some missing values.
+    previous = state.views[1].Nk[0]
+    state.incorporate(
+        rowid=-1,
+        query={0:0, 2:2, -2:0})
+    assert state.views[1].Nk[0] == previous+1
+    state.transition(N=2)
 
-    # Incorporate row into a singleton for all views.
-    # previous = [len(v.Nk) for v in state.views]
-    # data = {i: T[11,i] for i in xrange(6)}
-    # state.incorporate_row(11, data, k=previous)
-    # assert [len(v.Nk) for v in state.views] == [p+1 for p in previous]
 
-    # Unincorporate row from the singleton view just created.
-    # previous = [len(v.Nk) for v in state.views]
-    # state.unincorporate_row(11)
-    # assert [len(v.Nk) for v in state.views] == [p-1 for p in previous]
-
-    # # Undo the last step.
-    # previous = np.asarray([len(v.Nk) for v in state.views])
-    # state.incorporate_rows([T[11,:]], k=[previous])
-    # assert [len(v.Nk) for v in state.views] == list(previous+1)
-
-    # # Incorporate row without specifying a view.
-    # state.incorporate_rows([T[12,:]], k=None)
-
-    # # Incorporate row specifying different clusters.
-    # k = [None] * len(state.views)
-    # k[::2] = [1] * len(k[::2])
-    # previous = np.asarray([v.Nk[1] for v in state.views])
-    # state.incorporate_rows([T[13,:]], k=[k])
-    # for i in xrange(len(state.views)):
-    #     if i%2 == 0:
-    #         assert state.views[i].Nk[1] == previous[i]+1
-
-    # # Incorporate two rows with different clusterings.
-    # previous = np.asarray([v.Nk[0] for v in state.views])
-    # k = [0 for _ in xrange(len(state.views))]
-    # state.incorporate_rows(T[[14,15],:], k=[k,k])
-    # assert state.views[0].Nk[0] == previous[0]+2
-
-    # # Incoporate remaining rows in the default way.
-    # state.incorporate_rows(T[16:,:])
-    # assert state.n_rows() == len(T)
-
-    # # Unincorporate all rows except the last one using ascending.
-    # state.unincorporate_rows(xrange(1, len(T)))
-    # assert state.n_rows() == 1
-
-    # # Reincorporate all rows.
-    # state.incorporate_rows(T[1:,:])
-    # assert state.n_rows() == len(T)
-
-    # # Unincorporate all rows except the last one using descending.
-    # state.unincorporate_rows(xrange(len(T)-1, 0, -1))
-    # assert state.n_rows() == 1
-
-    # # Unincorporating last dim should raise.
-    # with pytest.raises(ValueError):
-    #     state.unincorporate_rows([0])
-
+def test_incorporate_session():
+    rng = gu.gen_rng(4)
+    state = State(X, cctypes=['normal']*5, Zv=[0,0,1,1,2], rng=rng)
+    # Incorporate row into a singleton cluster for all views.
+    previous = [len(v.Nk) for v in state.views]
+    data = {i: rng.normal() for i in xrange(5)}
+    clusters = {-1: previous[0], -2: previous[1], -3: previous[2]}
+    state.incorporate(-1, gu.merge_dicts(data, clusters))
+    assert [len(v.Nk) for v in state.views] == [p+1 for p in previous]
+    # Incorporate row without specifying clusters, and some missing values
+    previous = [len(v.Nk) for v in state.views]
+    data = {i: rng.normal() for i in xrange(2)}
+    state.incorporate(-1, data)
+    state.transition(N=2)
