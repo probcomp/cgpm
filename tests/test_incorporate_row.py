@@ -49,31 +49,24 @@ from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
 
 
-CCTYPES, DISTARGS = cu.parse_distargs([
-    'normal',        # 0
-    'poisson',       # 1
-    'bernoulli',     # 2
-    'lognormal',     # 3
-    'exponential',   # 4
-    'geometric',])   # 5
-
-
-T, Zv, Zc = tu.gen_data_table(
-    20, [1], [[.33, .33, .34]], CCTYPES, DISTARGS,
-    [.95]*len(CCTYPES), rng=gu.gen_rng(0))
-T = T.T
+X = [[1, np.nan, 2, -1, np.nan],
+    [1, 3, 2, -1, -5],
+    [18, -7, -2, 11, -12],
+    [1, np.nan, np.nan, np.nan, np.nan],
+    [18, -7, -2, 11, -12],]
 
 
 def test_incorporate():
-    state = State(
-        T[:5,:], cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
+    state = State(X, cctypes=['normal']*5, Zv=[0,0,0,1,1], rng=gu.gen_rng(0))
     state.transition(N=5)
 
     # Incorporate row into cluster 0 for all views.
-    # previous = np.asarray([v.Nk[0] for v in state.views])
-    # data = {i: T[6,i] for i in xrange(6)}
-    # state.incorporate_row(-1, data, k=[0]*len(state.views))
-    # assert [v.Nk[0] for v in state.views] == list(previous+1)
+    previous = np.asarray([v.Nk[0] for v in state.views])
+    state.incorporate(
+        rowid=-1,
+        query={0:0, 1:1, 2:2, 3:3, 4:4},
+        evidence={-1:0, -2:0})
+    assert [v.Nk[0] for v in state.views] == list(previous+1)
 
     # Incorporate row into a singleton for all views.
     # previous = [len(v.Nk) for v in state.views]
