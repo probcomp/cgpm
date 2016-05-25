@@ -69,13 +69,14 @@ class View(object):
         # Generate row partition.
         if Zr is None:
             Zr = gu.simulate_crp(self.n_rows(), alpha, rng=self.rng)
-        self.Zr = list(Zr)
+        # Convert Zr to a dictionary.
+        self.Zr = {i:z for i,z in zip(xrange(self.n_rows()), Zr)}
         self.Nk = list(np.bincount(Zr))
 
-        # Incoroprate the dimensions.
+        # Dimensions.
         self.dims = dict()
 
-        # self._check_partitions()
+        self._check_partitions()
 
     # --------------------------------------------------------------------------
     # Observe
@@ -96,12 +97,13 @@ class View(object):
         dim.clusters_inverse = {}
         dim.ignored = set([])
         dim.aux_model = dim.create_aux_model()
-        for rowid in np.argsort(self.Zr):
-            query = {dim.index: self.X[dim.index][rowid]}
-            evidence = self._get_evidence(rowid, dim, self.Zr[rowid])
-            dim.incorporate(rowid, query, evidence)
+        for rowid, k in sorted(self.Zr.items(), key=lambda e: e[1]):
+            dim.incorporate(
+                rowid,
+                query={dim.index: self.X[dim.index][rowid]},
+                evidence=self._get_evidence(rowid, dim, k))
         # XXX Clear out empty clusters.
-        K = max(self.Zr)+1
+        K = max(self.Zr.values())+1
         if K < len(dim.clusters):
             dim.clusters = dim.clusters[:K]
         assert len(dim.clusters) == K
@@ -142,8 +144,6 @@ class View(object):
         if k == len(self.Nk):
             self.Nk.append(0)
         self.Nk[k] += 1
-        if rowid == len(self.Zr):
-            self.Zr.append(0)
         self.Zr[rowid] = k
         # Incorporate into dims.
         for dim in self.dims.values():
@@ -162,12 +162,13 @@ class View(object):
         k = self.Zr[rowid]
         self.Nk[k] -= 1
         if self.Nk[k] == 0:
-            self.Zr = [i-1 if i>k else i for i in self.Zr]
+            adjust = lambda i: i-1 if k < i else i
+            self.Zr = {r: adjust(self.Zr[r]) for r in self.Zr}
             del self.Nk[k]
             for dim in self.dims.values():
                 # XXX Abstract in a batter way
                 del dim.clusters[k]
-        self.Zr[rowid] = np.nan
+        del self.Zr[rowid]
 
     # --------------------------------------------------------------------------
     # Update schema.
@@ -222,7 +223,7 @@ class View(object):
     def transition_rows(self, rows=None):
         """Compute row conditions for each cluster and transition."""
         if rows is None:
-            rows = xrange(len(self.Zr))
+            rows = self.Zr.keys()
         for rowid in rows:
             self._transition_row(rowid)
 
@@ -386,8 +387,6 @@ class View(object):
 
     def _transition_row(self, rowid):
         # Skip unincorporated rows.
-        if isnan(self.Zr[rowid]):
-            return
         logp_data = self._logpdf_row_gibbs(rowid, 1)
         logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
@@ -425,11 +424,6 @@ class View(object):
 
     def n_rows(self):
         return len(self.X[self.X.keys()[0]])
-
-    def _reindex_rows(self):
-        """TODO WRITE ME."""
-        self.Zr = [z for z in self.Zr if not isnan(z)]
-        assert len(self.Zr) == self.n_rows()
 
     def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr))
