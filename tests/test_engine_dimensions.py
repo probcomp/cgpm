@@ -19,7 +19,7 @@ Engine.logpdf_bulk, Engine.simulate, and Engine.simulate_bulk are of the
 correct dimensions, based on the number of states and type of query.
 
 Every results from these queries should be a list of length
-Engine.num_states. The elements of the returned list differ based on the
+Engine.num_states(). The elements of the returned list differ based on the
 method, where we use
 
     - logpdf[s] = logpdf of query from state s.
@@ -57,21 +57,23 @@ def engine():
     [.95]*len(cctypes),rng=gu.gen_rng(0))
     T = T.T
     # Make some nan cells for evidence.
-    T[5,2]=T[5,3]=T[5,0]=T[5,1]=np.nan
-    T[8,4]=np.nan
-    e = Engine(T, cctypes, distargs, num_states=6, rng=gu.gen_rng(0))
+    T[5,2] = T[5,3] = T[5,0] = T[5,1] = np.nan
+    T[8,4] = np.nan
+    e = Engine(
+        T, cctypes=cctypes, distargs=distargs, num_states=6, rng=gu.gen_rng(0))
     e.transition(N=2)
-    return e
+    return e.to_metadata()
 
 
 def test_logpdf__ci_(engine):
+    engine = Engine.from_metadata(engine)
     for rowid in [-1, 5]:
         query1, evidence1 = [(0,1)], [(2,1), (3,.5)]
         query2, evidence2 = [(2,0), (5,3)], [(0,4), (1,5)]
         for Q, E in [(query1, evidence1), (query2, evidence2)]:
             # logpdfs should be a list of floats.
             logpdfs = engine.logpdf(rowid, Q, evidence=E)
-            assert np.allclose(len(logpdfs), engine.num_states)
+            assert np.allclose(len(logpdfs), engine.num_states())
             for state_logpdfs in logpdfs:
                 # Each element in logpdfs should be a single float.
                 assert isinstance(state_logpdfs, float)
@@ -80,6 +82,7 @@ def test_logpdf__ci_(engine):
 
 
 def test_simulate__ci_(engine):
+    engine = Engine.from_metadata(engine)
     for rowid in [-1, 5]:
         for N in [1, 8]:
             query1, evidence1 = [0], [(2,0), (3,6)]
@@ -87,7 +90,7 @@ def test_simulate__ci_(engine):
             for Q, E in [(query1, evidence1), (query2, evidence2)]:
                 # samples should be a list of samples, one for each state.
                 samples = engine.simulate(rowid, Q, evidence=E, N=N)
-                assert np.allclose(len(samples), engine.num_states)
+                assert np.allclose(len(samples), engine.num_states())
                 for states_samples in samples:
                     # Each element of samples should be a list of N samples.
                     assert np.allclose(len(states_samples), N)
@@ -99,6 +102,7 @@ def test_simulate__ci_(engine):
 
 
 def test_logpdf_bulk__ci_(engine):
+    engine = Engine.from_metadata(engine)
     rowid1, query1, evidence1 = 5, [(0,0), (5,3)], [(2,1), (3,.5)]
     rowid2, query2, evidence2 = -1, [(1,0), (4,.8)], [(5,.5)]
     # Bulk.
@@ -108,7 +112,7 @@ def test_logpdf_bulk__ci_(engine):
     # Invoke
     logpdfs = engine.logpdf_bulk(
         rowids, queries, evidences=evidences)
-    assert np.allclose(len(logpdfs), engine.num_states)
+    assert np.allclose(len(logpdfs), engine.num_states())
     for state_logpdfs in logpdfs:
         # state_logpdfs should be a list of floats, one float per query.
         assert np.allclose(len(state_logpdfs), len(rowids))
@@ -117,6 +121,7 @@ def test_logpdf_bulk__ci_(engine):
 
 
 def test_simulate_bulk__ci_(engine):
+    engine = Engine.from_metadata(engine)
     rowid1, query1, evidence1, N1, = -1, [0,2,4,5], [(3,1)], 7
     rowid2, query2, evidence2, N2 = 5, [1,3], [(2,.8)], 3
     rowid3, query3, evidence3, N3 = 8, [0], [(4,.8)], 3
@@ -128,7 +133,7 @@ def test_simulate_bulk__ci_(engine):
     # Invoke
     samples = engine.simulate_bulk(
         rowids, queries, evidences=evidences, Ns=Ns)
-    assert np.allclose(len(samples), engine.num_states)
+    assert np.allclose(len(samples), engine.num_states())
     for states_samples in samples:
         assert np.allclose(len(states_samples), len(rowids))
         for i, sample in enumerate(states_samples):

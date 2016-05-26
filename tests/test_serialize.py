@@ -37,7 +37,8 @@ class TestSerialize(unittest.TestCase):
         data[:,0] = 0
         # Run a single chain for a few iterations.
         model = Model(
-            data, cctypes=['bernoulli','normal','normal','normal','normal'],
+            data,
+            cctypes=['bernoulli','normal','normal','normal','normal'],
             rng=gu.gen_rng(0))
         model.transition(N=1)
         # To metadata.
@@ -61,7 +62,10 @@ class TestSerialize(unittest.TestCase):
     def test_engine_serialize(self):
         def additional(engine):
             e = engine.to_metadata()
+            # Only one dataset per engine, not once per state.
+            assert 'X' in e
             assert 'X' not in e['states'][0]
+            # Each state should be populated with dataset when retrieving.
             s = engine.get_state(0)
             assert 'X' in s.to_metadata()
         self.serialize_generic(Engine, additional=additional)
