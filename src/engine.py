@@ -72,31 +72,36 @@ class Engine(object):
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def incorporate_dim(self, X, cctype, distargs=None, v=None, multithread=1):
+    def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
+            distargs=None, v=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('incorporate_dim', self.states[i],
-            (X, cctype, distargs, v)) for i in xrange(self.num_states)]
+                (T, outputs, inputs, cctype, distargs, v))
+                for i in xrange(self.num_states)]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def unincorporate_dim(self, col, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('unincorporate_dim', self.states[i], (col,)) for i in
-            xrange(self.num_states)]
+        args = [('unincorporate_dim', self.states[i],
+                (col,))
+                for i in xrange(self.num_states)]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def incorporate_rows(self, X, k=None, multithread=1):
+    def incorporate(self, rowid, query, evidence=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('incorporate_rows', self.states[i], (X, k)) for i in
-            xrange(self.num_states)]
+        args = [('incorporate', self.states[i],
+                (rowid, query, evidence))
+                for i in xrange(self.num_states)]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def unincorporate_rows(self, rowid, multithread=1):
+    def unincorporate(self, rowid, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('unincorporate_rows', self.states[i], (rowid,)) for i in
-            xrange(self.num_states)]
+        args = [('unincorporate', self.states[i],
+                (rowid,))
+                for i in xrange(self.num_states)]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
