@@ -63,7 +63,7 @@ for i in xrange(N_SAMPLES):
 def state():
     # Create an engine.
     engine = Engine(
-        DATA, ['normal', 'categorical'], [None, {'k':6}],
+        DATA, cctypes=['normal', 'categorical'], distargs=[None, {'k':6}],
         num_states=4, rng=gu.gen_rng(2))
     engine.transition(N=15)
     marginals = engine.logpdf_score()

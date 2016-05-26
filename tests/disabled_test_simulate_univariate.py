@@ -187,7 +187,7 @@ def generate_gpmcc_posteriors(cctype, distargs, D_train, iters, seconds):
     """Learns gpmcc on D_train for seconds and simulates NUM_TEST times."""
     # Learning and posterior simulation.
     engine = Engine(
-        D_train, [cctype], distargs=[distargs],
+        D_train, cctypes=[cctype], distargs=[distargs],
         num_states=64, rng=gu.gen_rng(1))
     engine.transition(N=iters, S=seconds, do_progress=0)
     if iters:
