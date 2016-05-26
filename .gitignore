@@ -69,8 +69,8 @@ docs/_build/
 *.toc
 *.out
 *.synctex.gz
+*.xwm
 *_minted-*
-
 
 # specific directories
 src/utils/xy_gpm/images
