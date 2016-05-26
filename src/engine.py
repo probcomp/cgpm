@@ -32,14 +32,15 @@ def _intialize((X, cctypes, distargs, rng)):
     state = State(X, cctypes=cctypes, distargs=distargs, rng=rng)
     return state.to_metadata()
 
-def _modify((name, metadata, args)):
+def _modify((method, metadata, args)):
     state = State.from_metadata(metadata, rng=metadata['rng'])
-    getattr(state, name)(*args)
+    getattr(state, method)(*args)
     return state.to_metadata()
 
-def _evaluate((name, metadata, args)):
+def _evaluate((method, metadata, args)):
     state = State.from_metadata(metadata, rng=metadata['rng'])
-    return getattr(state, name)(*args)
+    return getattr(state, method)(*args)
+
 
 class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel States."""
@@ -66,9 +67,10 @@ class Engine(object):
             target_rows=None, target_cols=None, do_plot=False, do_progress=True,
             multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('transition', self.states[i], (N, S, kernels, target_views,
-            target_rows, target_cols, do_plot, do_progress)) for i in
-            xrange(self.num_states)]
+        args = [('transition', self.states[i],
+                (N, S, kernels, target_views, target_rows, target_cols,
+                    do_plot, do_progress))
+                for i in xrange(self.num_states)]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
@@ -105,42 +107,46 @@ class Engine(object):
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def update_cctype(self, col, cctype, hypers=None, distargs=None,
-            multithread=1):
+    def update_cctype(self, col, cctype, distargs=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('update_cctype', self.states[i],
-            (col, cctype, hypers, distargs)) for i in xrange(self.num_states)]
+                (col, cctype, distargs))
+                for i in xrange(self.num_states)]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
     def logpdf(self, rowid, query, evidence=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('logpdf', self.states[i], (rowid, query, evidence)) for i in
-            xrange(self.num_states)]
+        args = [('logpdf', self.states[i],
+                (rowid, query, evidence))
+            for i in xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
         return np.asarray(logpdfs)
 
     def logpdf_bulk(self, rowids, queries, evidences=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('logpdf_bulk', self.states[i], (rowids, queries, evidences))
-            for i in xrange(self.num_states)]
+        args = [('logpdf_bulk', self.states[i],
+                (rowids, queries, evidences))
+                for i in xrange(self.num_states)]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
         return np.asarray(logpdfs)
 
     def logpdf_score(self, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('logpdf_score', self.states[i], ()) for i in
-            xrange(self.num_states)]
+        args = [('logpdf_score', self.states[i],
+                ())
+                for i in xrange(self.num_states)]
         logpdf_scores = mapper(_evaluate, args)
         self._close_mapper(pool)
         return np.asarray(logpdf_scores)
 
     def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
         pool, mapper = self._get_mapper(multithread)
-        args = [('simulate', self.states[i], (rowid, query, evidence, N)) for
-            i in xrange(self.num_states)]
+        args = [('simulate', self.states[i],
+                (rowid, query, evidence, N))
+                for i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
         return np.asarray(samples)
@@ -150,7 +156,8 @@ class Engine(object):
         """Returns list of simualate_bulk, one for each state."""
         pool, mapper = self._get_mapper(multithread)
         args = [('simulate_bulk', self.states[i],
-            (rowids, queries, evidences, Ns)) for i in xrange(self.num_states)]
+                (rowids, queries, evidences, Ns))
+                for i in xrange(self.num_states)]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
         return np.asarray(samples)
@@ -160,7 +167,8 @@ class Engine(object):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
         args = [('mutual_information', self.states[i],
-            (col0, col1, evidence, N)) for i in xrange(self.num_states)]
+                (col0, col1, evidence, N))
+                for i in xrange(self.num_states)]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)
         return np.asarray(mis)
@@ -170,7 +178,8 @@ class Engine(object):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multithread)
         args = [('conditional_mutual_information', self.states[i],
-            (col0, col1, evidence, T, N)) for i in xrange(self.num_states)]
+                (col0, col1, evidence, T, N))
+                for i in xrange(self.num_states)]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)
         return np.asarray(mis)
