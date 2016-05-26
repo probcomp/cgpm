@@ -43,7 +43,8 @@ Z = np.random.randint(4, size=(N_ROWS))
 X[:,5:] = 4*np.reshape(np.repeat(Z,4), (len(Z),4)) + np.random.randn(N_ROWS, 4)
 
 # Inference.
-engine = Engine(X, cctypes, distargs, num_states=N_STATES, initialize=True)
+engine = Engine(
+    X, cctypes=cctypes, distargs=distargs, num_states=N_STATES)
 engine.initialize()
 engine.transition(N=N_ITERS)
 

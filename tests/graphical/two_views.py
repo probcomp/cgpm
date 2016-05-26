@@ -52,6 +52,7 @@ cctypes = [
 cctypes, distargs = cu.parse_distargs(cctypes)
 
 from gpmcc import engine
-runner = engine.Engine(T.T, cctypes, distargs, num_states=8, initialize=0)
+runner = engine.Engine(
+    T.T, cctypes=cctypes, distargs=distargs, num_states=8, initialize=0)
 runner.initialize(multithread=0)
 runner.transition(N=1000, multithread=True)
