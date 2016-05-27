@@ -25,7 +25,7 @@ np.random.seed(0)
 
 N_ROWS = 300
 N_STATES = 12
-N_ITERS = 50
+N_ITERS = 100
 
 cctypes = ['categorical(k={})'.format(N_ROWS)] + ['normal']*8
 cctypes, distargs = cu.parse_distargs(cctypes)
@@ -45,7 +45,6 @@ X[:,5:] = 4*np.reshape(np.repeat(Z,4), (len(Z),4)) + np.random.randn(N_ROWS, 4)
 # Inference.
 engine = Engine(
     X, cctypes=cctypes, distargs=distargs, num_states=N_STATES)
-engine.initialize()
 engine.transition(N=N_ITERS)
 
 # Dependence probability.
