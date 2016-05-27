@@ -39,9 +39,49 @@ from gpmcc.utils import config as cu
 from gpmcc.utils import entropy_estimators as ee
 from gpmcc.utils.general import gen_rng
 
+"""
+This script produces the following directory structure
+
+|- zero_corr.py
+|- resources/
+    |-timetsamp#1/
+        |- diamond/
+            |- samples_diamond_0.01.png
+            |- samples_diamond_0.05.png
+            ...
+            |- samples_diamond_0.95.png
+            |- mi_diamond.png
+        |- parabola/
+        ...
+        |- ring/
+    |-timestamp#2/
+        |...
+
+To invoke
+    `python zero_corr.py`
+which will launch all the jobs in parallel and wait for them to terminate, then
+produce the plots. Note that the script uses all available processors so will
+cause heavy overload on the machine.
+
+For each distribution (diamond, sin, ring, etc) two plots can be generated:
+
+    1. Plot of samples versus true distribution (samples_<dist>_<noise>].png)
+        which is 11 plots, that can either be organized into a single PNG or
+        shown in sequence.
+
+    2. Plot of the mutual information versus noise (mi_<dist>.png) which is 1
+        plot showing the mutual information varying with noise level.
+"""
+
 
 # --------------------------------------------------------------------------
 # Configuration.
+
+NUM_SAMPLES = 200
+NUM_STATES = 12
+NUM_SECONDS = 300
+NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, .05, .01]
+
 
 def get_latest_timestamp():
     def get_datetime(timestamp):
@@ -54,7 +94,6 @@ def get_latest_timestamp():
     highest = sorted(d for d in dates if d is not None)[-1]
     return highest.strftime('%Y%m%d-%H%M%S')
 
-TIMESTAMP = get_latest_timestamp()
 
 simulators = {
     'diamond': DiamondGpm,
@@ -233,11 +272,6 @@ def plot_mi_all(dist, noises, timestamp):
 
 if __name__ == '__main__':
 
-    NUM_SAMPLES = 10
-    NUM_STATES = 12
-    NUM_SECONDS = 5
-    NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, .05, .01]
-
     # Creates the structure for this run.
     def create_directories(timestamp):
         if 'resources' not in os.listdir('.'):
@@ -281,9 +315,9 @@ if __name__ == '__main__':
     else:
         timestamp = cu.timestamp()
         create_directories(timestamp)
+        processes = [run_dist(d, timestamp) for d in simulators]
+        codes = [p.wait() for proc in processes for p in proc]
         for d in simulators:
-            processes = run_dist(d, timestamp)
-            codes = [p.wait() for p in processes]
             plot_samples_all(d, NOISES, NUM_SAMPLES, timestamp)
             plot_mi_all(d, NOISES, timestamp)
 
