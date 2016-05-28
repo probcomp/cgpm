@@ -71,6 +71,11 @@ For each distribution (diamond, sin, ring, etc) two plots can be generated:
 
     2. Plot of the mutual information versus noise (mi_<dist>.png) which is 1
         plot showing the mutual information varying with noise level.
+
+The estimate runtime for the whole script with the current configuration is
+
+    30 min per dist, (10 min per noise, 64/16=4 in parallel, 12/4=3 chunks)
+    7 total dists = 210 min
 """
 
 
@@ -78,9 +83,14 @@ For each distribution (diamond, sin, ring, etc) two plots can be generated:
 # Configuration.
 
 NUM_SAMPLES = 200
-NUM_STATES = 12
-NUM_SECONDS = 300
-NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, .05, .01]
+NUM_STATES = 16
+NUM_SECONDS = 600
+NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, 0.10, .05, .01]
+
+NUM_PROCESSORS = 64
+NUM_PARALLEL = NUM_PROCESSORS/NUM_STATES
+SLICES = range(0, len(NOISES), NUM_PARALLEL) + [None]
+CKPTS = [NOISES[SLICES[i-1]:SLICES[i]] for i in xrange(1, len(SLICES))]
 
 
 def get_latest_timestamp():
@@ -288,15 +298,18 @@ if __name__ == '__main__':
         generate_mi(dist, noise, timestamp)
 
     def run_dist(dist, timestamp):
-        processes = []
-         # Run these in parallel.
-        for n in NOISES:
-            proc = subprocess.Popen(
-                ['python ./zero_corr.py -d %s -n %1.2f -t %s'
-                    % (dist, n, timestamp)],
-                shell=True)
-            processes.append(proc)
-        return processes
+        # Run these in parallel.
+        for ckpt in CKPTS:
+            processes = []
+            for n in ckpt:
+                proc = subprocess.Popen(
+                    ['python ./zero_corr.py -d %s -n %1.2f -t %s'
+                        % (dist, n, timestamp)],
+                    shell=True)
+                processes.append(proc)
+            for p in processes:
+                p.wait()
+        return None
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -315,9 +328,8 @@ if __name__ == '__main__':
     else:
         timestamp = cu.timestamp()
         create_directories(timestamp)
-        processes = [run_dist(d, timestamp) for d in simulators]
-        codes = [p.wait() for proc in processes for p in proc]
         for d in simulators:
+            run_dist(d, timestamp)
             plot_samples_all(d, NOISES, NUM_SAMPLES, timestamp)
             plot_mi_all(d, NOISES, timestamp)
 
