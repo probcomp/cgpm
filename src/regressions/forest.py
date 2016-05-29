@@ -22,7 +22,7 @@ import numpy as np
 from scipy.misc import logsumexp
 from sklearn.ensemble import RandomForestClassifier
 
-from gpmcc.exponentials.gpm import Gpm
+from gpmcc.gpm import Gpm
 from gpmcc.utils import general as gu
 
 

@@ -26,7 +26,7 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
 import gpmcc.utils.general as gu
 
-from gpmcc.exponentials.gpm import Gpm
+from gpmcc.gpm import Gpm
 
 
 Data = namedtuple('Data', ['x', 'Y'])
