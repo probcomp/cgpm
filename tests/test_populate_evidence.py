@@ -18,7 +18,7 @@ import pytest
 
 import numpy as np
 
-from gpmcc.state import State
+from gpmcc.crosscat.state import State
 
 
 @pytest.fixture(scope='module')

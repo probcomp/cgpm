@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gpmcc.utils import test as tu
-from gpmcc.utils import config as cu
-from gpmcc import state
 import numpy as np
+
+from gpmcc.crosscat.engine import Engine
+from gpmcc.utils import config as cu
+from gpmcc.utils import test as tu
 
 # Set up the data generation.
 n_rows = 200
@@ -51,7 +52,6 @@ cctypes = [
     'normal']
 cctypes, distargs = cu.parse_distargs(cctypes)
 
-from gpmcc import engine
-engine = engine.Engine(
+engine = Engine(
     T.T, cctypes=cctypes, distargs=distargs, num_states=8)
 engine.transition(N=1000, multithread=True)

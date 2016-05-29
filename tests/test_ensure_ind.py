@@ -19,7 +19,7 @@ import unittest
 
 import numpy as np
 
-from gpmcc.state import State
+from gpmcc.crosscat.state import State
 from gpmcc.utils import general as gu
 from gpmcc.utils import validation as vu
 

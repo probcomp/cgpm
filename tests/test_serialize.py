@@ -22,8 +22,8 @@ import unittest
 
 import numpy as np
 
-from gpmcc.engine import Engine
-from gpmcc.state import State
+from gpmcc.crosscat.engine import Engine
+from gpmcc.crosscat.state import State
 
 from gpmcc.utils import general as gu
 

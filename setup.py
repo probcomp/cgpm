@@ -64,8 +64,10 @@ setup(
     ],
     packages=[
         'gpmcc',
-        'gpmcc.exponentials',
+        'gpmcc.crosscat',
         'gpmcc.doc',
+        'gpmcc.exponentials',
+        'gpmcc.regressions',
         'gpmcc.utils'
     ],
     package_dir={

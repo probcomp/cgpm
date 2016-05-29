@@ -17,8 +17,8 @@
 import numpy as np
 import pylab
 
+from gpmcc.crosscat.state import State
 from gpmcc.utils import test as tu
-from gpmcc import state
 
 from sklearn.metrics import adjusted_rand_score
 
