@@ -19,7 +19,7 @@ import numpy as np
 from scipy.misc import logsumexp
 from scipy.stats import norm
 
-from gpmcc.utils.xy_gpm import synthetic
+from gpmcc.uncorrelated import synthetic
 
 
 class DotsGpm(synthetic.SyntheticXyGpm):

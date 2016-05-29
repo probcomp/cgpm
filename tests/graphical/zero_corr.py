@@ -26,13 +26,13 @@ import numpy as np
 
 from matplotlib import cm
 
-from gpmcc.utils.xy_gpm.diamond import DiamondGpm
-from gpmcc.utils.xy_gpm.dots import DotsGpm
-from gpmcc.utils.xy_gpm.linear import LinearGpm
-from gpmcc.utils.xy_gpm.parabola import ParabolaGpm
-from gpmcc.utils.xy_gpm.ring import RingGpm
-from gpmcc.utils.xy_gpm.sin import SinGpm
-from gpmcc.utils.xy_gpm.xcross import XCrossGpm
+from gpmcc.uncorrelated.diamond import DiamondGpm
+from gpmcc.uncorrelated.dots import DotsGpm
+from gpmcc.uncorrelated.linear import LinearGpm
+from gpmcc.uncorrelated.parabola import ParabolaGpm
+from gpmcc.uncorrelated.ring import RingGpm
+from gpmcc.uncorrelated.sin import SinGpm
+from gpmcc.uncorrelated.xcross import XCrossGpm
 
 from gpmcc.crosscat.engine import Engine
 from gpmcc.utils import config as cu

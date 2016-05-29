@@ -16,22 +16,33 @@
 
 import numpy as np
 
+from scipy.misc import logsumexp
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 
-from gpmcc.utils.xy_gpm import synthetic
+from gpmcc.uncorrelated import synthetic
 
 
-class LinearGpm(synthetic.SyntheticXyGpm):
-    """Y = X + N(0,noise)."""
+class XCrossGpm(synthetic.SyntheticXyGpm):
+    """Y = (+/- w.p .5) X + N(0,noise)."""
 
     def simulate_xy(self, size=None):
-        return self.rng.multivariate_normal(
-            [0,0], cov=[[1,1-self.noise],[1-self.noise,1]], size=size)
+        X = np.zeros((size,2))
+        for i in xrange(size):
+            if self.rng.rand() < .5:
+                cov = np.array([[1,1-self.noise],[1-self.noise,1]])
+            else:
+                cov = np.array([[1,-1+self.noise],[-1+self.noise,1]])
+            X[i,:] = self.rng.multivariate_normal([0,0], cov=cov)
+        return X
 
     def logpdf_xy(self, x, y):
-        return multivariate_normal.logpdf([x,y], [0,0],
-            cov=[[1,1-self.noise],[1-self.noise,1]])
+        return logsumexp([
+            np.log(.5)+multivariate_normal.logpdf([x,y], [0,0],
+                cov=[[1,1-self.noise],[1-self.noise,1]]),
+            np.log(.5)+multivariate_normal.logpdf([x,y], [0,0],
+                cov=[[1,-1+self.noise],[-1+self.noise,1]]),
+            ])
 
     def logpdf_x(self, x):
         return norm.logpdf(x, scale=1)
@@ -44,7 +55,3 @@ class LinearGpm(synthetic.SyntheticXyGpm):
 
     def logpdf_y_given_x(self, y, x):
         raise NotImplementedError
-
-    def mutual_information(self):
-        cov = 1-self.noise
-        return -.5 * np.log(1-cov**2)
