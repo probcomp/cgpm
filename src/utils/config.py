@@ -27,12 +27,12 @@ cctype_class_lookup = {
     'categorical'       : ('gpmcc.exponentials.categorical', 'Categorical'),
     'exponential'       : ('gpmcc.exponentials.exponential', 'Exponential'),
     'geometric'         : ('gpmcc.exponentials.geometric', 'Geometric'),
-    'linear_regression' : ('gpmcc.exponentials.linreg', 'LinearRegression'),
+    'linear_regression' : ('gpmcc.regressions.linreg', 'LinearRegression'),
     'lognormal'         : ('gpmcc.exponentials.lognormal', 'Lognormal'),
     'normal'            : ('gpmcc.exponentials.normal', 'Normal'),
     'normal_trunc'      : ('gpmcc.exponentials.normal_trunc', 'NormalTrunc'),
     'poisson'           : ('gpmcc.exponentials.poisson', 'Poisson'),
-    'random_forest'     : ('gpmcc.exponentials.forest', 'RandomForest'),
+    'random_forest'     : ('gpmcc.regressions.forest', 'RandomForest'),
     'vonmises'          : ('gpmcc.exponentials.vonmises', 'Vonmises'),
 }
 
