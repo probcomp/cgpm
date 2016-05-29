@@ -31,9 +31,9 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.plots as pu
 import gpmcc.utils.validation as vu
 
-from gpmcc.dim import Dim
+from gpmcc.mixtures.dim import Dim
+from gpmcc.mixtures.view import View
 from gpmcc.utils.general import logmeanexp
-from gpmcc.view import View
 
 
 class State(object):

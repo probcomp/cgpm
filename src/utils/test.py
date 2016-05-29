@@ -23,7 +23,7 @@ from scipy.stats import norm
 
 import gpmcc.utils.general as gu
 
-from gpmcc import dim
+from gpmcc.mixtures.dim import Dim
 
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
@@ -109,7 +109,7 @@ def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
     for col in xrange(n_cols):
         v = Zv[col]
         cctype = cctypes[col]
-        dim_c = dim.Dim(cctype, col, distargs=distargs[col])
+        dim_c = Dim(cctype, col, distargs=distargs[col])
         dim_c.transition_hyper_grids(T[col])
         dim_c.bulk_incorporate(T[col], Zc[v])
         dims.append(dim_c)

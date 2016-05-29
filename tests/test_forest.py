@@ -22,7 +22,7 @@ import numpy as np
 
 from scipy.misc import logsumexp
 
-from gpmcc.dim import Dim
+from gpmcc.mixtures.dim import Dim
 from gpmcc.dists.forest import RandomForest
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu

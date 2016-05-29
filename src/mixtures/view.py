@@ -22,7 +22,7 @@ from scipy.misc import logsumexp
 
 import gpmcc.utils.general as gu
 
-from gpmcc.dim import Dim
+from gpmcc.mixtures.dim import Dim
 from gpmcc.utils.config import cctype_class
 from gpmcc.utils.general import logmeanexp
 
