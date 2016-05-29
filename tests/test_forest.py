@@ -23,7 +23,7 @@ import numpy as np
 from scipy.misc import logsumexp
 
 from gpmcc.mixtures.dim import Dim
-from gpmcc.exponentials.forest import RandomForest
+from gpmcc.regressions.forest import RandomForest
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu

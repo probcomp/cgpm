@@ -19,7 +19,7 @@ import pytest
 import matplotlib.pyplot as plt
 import numpy as np
 
-from gpmcc.exponentials.linreg import LinearRegression
+from gpmcc.regressions.linreg import LinearRegression
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu
