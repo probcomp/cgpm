@@ -19,7 +19,6 @@ from math import log
 import numpy as np
 import scipy
 
-import gpmcc.utils.general as gu
 import gpmcc.utils.sampling as su
 
 from gpmcc.exponentials.distribution import DistributionGpm

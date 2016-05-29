@@ -21,13 +21,11 @@ import sys
 import time
 
 from math import isnan
-from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import gpmcc.utils.general as gu
-import gpmcc.utils.config as cu
 import gpmcc.utils.plots as pu
 import gpmcc.utils.validation as vu
 
