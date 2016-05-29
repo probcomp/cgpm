@@ -66,6 +66,7 @@ setup(
         'gpmcc',
         'gpmcc.crosscat',
         'gpmcc.exponentials',
+        'gpmcc.mixtures',
         'gpmcc.regressions',
         'gpmcc.uncorrelated',
         'gpmcc.utils',
