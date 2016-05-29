@@ -34,7 +34,7 @@ from gpmcc.utils.xy_gpm.ring import RingGpm
 from gpmcc.utils.xy_gpm.sin import SinGpm
 from gpmcc.utils.xy_gpm.xcross import XCrossGpm
 
-from gpmcc.engine import Engine
+from gpmcc.crosscat.engine import Engine
 from gpmcc.utils import config as cu
 from gpmcc.utils import entropy_estimators as ee
 from gpmcc.utils.general import gen_rng

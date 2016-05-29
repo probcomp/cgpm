@@ -16,7 +16,7 @@
 
 import unittest
 
-from gpmcc.state import State
+from gpmcc.crosscat.state import State
 from gpmcc.utils import general as gu
 
 

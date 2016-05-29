@@ -870,5 +870,5 @@ class State(object):
         return cls.from_metadata(metadata, rng=rng)
 
 
-from gpmcc.doc import statedoc
+from gpmcc.crosscat import statedoc
 statedoc.load_docstrings(sys.modules[__name__])

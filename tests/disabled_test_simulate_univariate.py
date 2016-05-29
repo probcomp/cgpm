@@ -31,8 +31,8 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.general as gu
 import gpmcc.utils.test as tu
 
-from gpmcc.engine import Engine
-from gpmcc.state import State
+from gpmcc.crosscat.engine import Engine
+from gpmcc.crosscat.state import State
 
 NUM_ITERS = 1000
 NUM_SECONDS = 180

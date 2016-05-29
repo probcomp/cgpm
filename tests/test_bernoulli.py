@@ -20,8 +20,7 @@ import numpy as np
 
 from scipy.misc import logsumexp
 
-import gpmcc.engine
-
+from gpmcc.crosscat.engine import Engine
 from gpmcc.utils.general import gen_rng
 
 
@@ -37,7 +36,7 @@ def test_bernoulli():
     # Create categorical data of DATA_NUM_0 zeros and DATA_NUM_1 ones.
     data = np.transpose(np.array([[0] * DATA_NUM_0 + [1] * DATA_NUM_1]))
     # Run a single chain for a few iterations.
-    engine = gpmcc.engine.Engine(
+    engine = Engine(
         data, cctypes=['categorical'], distargs=[{'k': 2}],
         rng=gen_rng(0), multithread=0)
     engine.transition(NUM_ITER, multithread=multithread)

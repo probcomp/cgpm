@@ -36,7 +36,7 @@ This test suite is slow because many simulate/logpdf queries are invoked.
 import pytest
 import numpy as np
 
-from gpmcc.engine import Engine
+from gpmcc.crosscat.engine import Engine
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
 from gpmcc.utils import test as tu

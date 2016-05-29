@@ -69,7 +69,7 @@ def parse_schema(schema, dataframe):
             }
         where 'k' for 'country' has been extracted from the dataset.
 
-    >>> S = gpmcc.state.State(D, cctypes=cctypes, distargs=distargs)
+    >>> S = gpmcc.crosscat.state.State(D, cctypes=cctypes, distargs=distargs)
     """
     dataframe.replace('NA', np.nan, inplace=True)
     D = []
