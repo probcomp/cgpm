@@ -20,8 +20,8 @@ import numpy as np
 
 import gpmcc.utils.general as gu
 
-from gpmcc.dists.distribution import DistributionGpm
-from gpmcc.dists.normal import Normal
+from gpmcc.exponentials.distribution import DistributionGpm
+from gpmcc.exponentials.normal import Normal
 
 
 class Lognormal(DistributionGpm):

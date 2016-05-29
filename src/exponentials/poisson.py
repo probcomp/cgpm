@@ -16,18 +16,20 @@
 
 from math import log
 
+import numpy as np
+
 from scipy.special import gammaln
 
 import gpmcc.utils.general as gu
 
-from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.exponentials.distribution import DistributionGpm
 
 
-class Exponential(DistributionGpm):
-    """Exponential distribution with gamma prior on mu. Collapsed.
+class Poisson(DistributionGpm):
+    """Poisson distribution with gamma prior on mu. Collapsed.
 
     mu ~ Gamma(a, b)
-    x ~ Exponential(mu)
+    x ~ Poisson(mu)
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None,
@@ -37,6 +39,7 @@ class Exponential(DistributionGpm):
         # Sufficient statistics.
         self.N = 0
         self.sum_x = 0
+        self.sum_log_fact_x = 0
         # Hyperparameters.
         if hypers is None: hypers = {}
         self.a = hypers.get('a', 1)
@@ -47,37 +50,38 @@ class Exponential(DistributionGpm):
     def incorporate(self, rowid, query, evidence):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if x < 0:
-            raise ValueError('Invalid Exponential: %s' % str(x))
+        if not (x % 1 == 0 and x >= 0):
+            raise ValueError('Invalid Poisson: %s' % str(x))
         self.N += 1
         self.sum_x += x
+        self.sum_log_fact_x += gammaln(x+1)
         self.data[rowid] = x
 
     def unincorporate(self, rowid):
         x = self.data.pop(rowid)
         self.N -= 1
         self.sum_x -= x
+        self.sum_log_fact_x -= gammaln(x+1)
 
     def logpdf(self, rowid, query, evidence):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if x < 0:
+        if not (x % 1 == 0 and x >= 0):
             return -float('inf')
-        return Exponential.calc_predictive_logp(
+        return Poisson.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
 
     def simulate(self, rowid, query, evidence):
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return self.data[rowid]
-        an, bn = Exponential.posterior_hypers(
+        an, bn = Poisson.posterior_hypers(
             self.N, self.sum_x, self.a, self.b)
-        mu = self.rng.gamma(an, scale=1./bn)
-        return self.rng.exponential(scale=1./mu)
+        return self.rng.negative_binomial(an, bn/(bn+1.))
 
     def logpdf_score(self):
-        return Exponential.calc_logpdf_marginal(
-            self.N, self.sum_x, self.a, self.b)
+        return Poisson.calc_logpdf_marginal(
+            self.N, self.sum_x, self.sum_log_fact_x, self.a, self.b)
 
     ##################
     # NON-GPM METHOD #
@@ -89,8 +93,8 @@ class Exponential(DistributionGpm):
     def set_hypers(self, hypers):
         assert hypers['a'] > 0
         assert hypers['b'] > 0
-        self.b = hypers['b']
         self.a = hypers['a']
+        self.b = hypers['b']
 
     def get_hypers(self):
         return {'a': self.a, 'b': self.b}
@@ -99,7 +103,8 @@ class Exponential(DistributionGpm):
         return {}
 
     def get_suffstats(self):
-        return {'N': self.N, 'sum_x': self.sum_x}
+        return {'N': self.N, 'sum_x' : self.sum_x,
+            'sum_log_fact_x': self.sum_log_fact_x}
 
     def get_distargs(self):
         return {}
@@ -107,13 +112,15 @@ class Exponential(DistributionGpm):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['a'] = gu.log_linspace(.5, float(len(X)), n_grid)
-        grids['b'] = gu.log_linspace(.5, float(len(X)), n_grid)
+        # only use integers for a so we can nicely draw from a negative binomial
+        # in predictive_draw
+        grids['a'] = np.unique(np.round(np.linspace(1, len(X), n_grid)))
+        grids['b'] = gu.log_linspace(.1, float(len(X)), n_grid)
         return grids
 
     @staticmethod
     def name():
-        return 'exponential'
+        return 'poisson'
 
     @staticmethod
     def is_collapsed():
@@ -121,7 +128,7 @@ class Exponential(DistributionGpm):
 
     @staticmethod
     def is_continuous():
-        return True
+        return False
 
     @staticmethod
     def is_conditional():
@@ -137,26 +144,32 @@ class Exponential(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, a, b):
-        an,bn = Exponential.posterior_hypers(N, sum_x, a, b)
-        am,bm = Exponential.posterior_hypers(N+1, sum_x+x, a, b)
-        ZN = Exponential.calc_log_Z(an, bn)
-        ZM = Exponential.calc_log_Z(am, bm)
-        return  ZM - ZN
+        an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
+        am, bm = Poisson.posterior_hypers(N+1, sum_x+x, a, b)
+        ZN = Poisson.calc_log_Z(an, bn)
+        ZM = Poisson.calc_log_Z(am, bm)
+        return  ZM - ZN - gammaln(x+1)
 
     @staticmethod
-    def calc_logpdf_marginal(N, sum_x, a, b):
-        an, bn = Exponential.posterior_hypers(N, sum_x, a, b)
-        Z0 = Exponential.calc_log_Z(a, b)
-        ZN = Exponential.calc_log_Z(an, bn)
-        return ZN - Z0
+    def calc_logpdf_marginal(N, sum_x, sum_log_fact_x, a, b):
+        an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
+        Z0 = Poisson.calc_log_Z(a, b)
+        ZN = Poisson.calc_log_Z(an, bn)
+        return ZN - Z0 - sum_log_fact_x
 
     @staticmethod
     def posterior_hypers(N, sum_x, a, b):
-        an = a + N
-        bn = b + sum_x
+        an = a + sum_x
+        bn = b + N
         return an, bn
 
     @staticmethod
     def calc_log_Z(a, b):
         Z =  gammaln(a) - a*log(b)
         return Z
+
+    @staticmethod
+    def preprocess(x, y, distargs=None):
+        if float(x) != int(x) or x < 0:
+            raise ValueError('Poisson requires [0,1,..): {}'.format(x))
+        return int(x), y

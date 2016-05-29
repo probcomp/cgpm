@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The class gpmcc.dists.normal.Normal uses derivations from both
+"""The class gpmcc.exponentials.normal.Normal uses derivations from both
 
     http://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
     https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf (Section 3)
@@ -34,7 +34,7 @@ from numpy import log, pi, sqrt
 from scipy.special import gammaln
 from scipy.stats import t
 
-from gpmcc.dists.normal import Normal
+from gpmcc.exponentials.normal import Normal
 from gpmcc.utils.general import gen_rng
 
 
