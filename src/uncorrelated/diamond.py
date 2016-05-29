@@ -16,19 +16,32 @@
 
 import numpy as np
 
-from gpmcc.utils.xy_gpm import synthetic
+from gpmcc.uncorrelated import synthetic
 
 
-class RingGpm(synthetic.SyntheticXyGpm):
-    """(X,Y) ~ Ring + Noise."""
+class DiamondGpm(synthetic.SyntheticXyGpm):
+    """Y = (+/- w.p .5) X + N(0,noise)."""
 
     def simulate_xy(self, size=None):
         X = np.zeros((size,2))
         for i in xrange(size):
-            angle = self.rng.uniform(0., 2.*np.pi)
-            distance = self.rng.uniform(1.-self.noise, 1.)
-            X[i,0] = np.cos(angle)*distance
-            X[i,1] = np.sin(angle)*distance
+            x = self.rng.uniform(-1, 1)
+            slope = self.rng.rand() < .5
+            if x < 0:
+                if slope:
+                    y = x+1
+                    y = max(-x-1, y-self.rng.uniform(0, self.noise))
+                else:
+                    y = -x-1
+                    y = min(x+1, y+self.rng.uniform(0, self.noise))
+            else:
+                if slope:
+                    y = x-1
+                    y = min(-x+1, y+self.rng.uniform(0, self.noise))
+                else:
+                    y = -x+1
+                    y = max(x-1, y-self.rng.uniform(0, self.noise))
+            X[i,:] = [x, y]
         return X
 
     def logpdf_xy(self, x, y):

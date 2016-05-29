@@ -16,20 +16,19 @@
 
 import numpy as np
 
-from gpmcc.utils.xy_gpm import synthetic
+from gpmcc.uncorrelated import synthetic
 
 
-class ParabolaGpm(synthetic.SyntheticXyGpm):
-    """Y = (+/- w.p .5) X^2 + U(0,noise)."""
+class RingGpm(synthetic.SyntheticXyGpm):
+    """(X,Y) ~ Ring + Noise."""
 
     def simulate_xy(self, size=None):
         X = np.zeros((size,2))
         for i in xrange(size):
-            x = self.rng.uniform(-1., 1.)
-            X[i,0] = x
-            X[i,1] = (x**2) + self.rng.uniform(-self.noise, self.noise)
-            if self.rng.rand() < .5:
-                X[i,1] *= -1
+            angle = self.rng.uniform(0., 2.*np.pi)
+            distance = self.rng.uniform(1.-self.noise, 1.)
+            X[i,0] = np.cos(angle)*distance
+            X[i,1] = np.sin(angle)*distance
         return X
 
     def logpdf_xy(self, x, y):

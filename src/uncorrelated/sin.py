@@ -19,7 +19,7 @@ import numpy as np
 from scipy.integrate import dblquad
 from scipy.integrate import quad
 
-from gpmcc.utils.xy_gpm import synthetic
+from gpmcc.uncorrelated import synthetic
 
 
 class SinGpm(synthetic.SyntheticXyGpm):

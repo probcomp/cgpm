@@ -67,7 +67,8 @@ setup(
         'gpmcc.crosscat',
         'gpmcc.exponentials',
         'gpmcc.regressions',
-        'gpmcc.utils'
+        'gpmcc.uncorrelated',
+        'gpmcc.utils',
     ],
     package_dir={
         'gpmcc': 'src',
