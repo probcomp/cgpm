@@ -64,7 +64,7 @@ setup(
     ],
     packages=[
         'gpmcc',
-        'gpmcc.dists',
+        'gpmcc.exponentials',
         'gpmcc.doc',
         'gpmcc.utils'
     ],

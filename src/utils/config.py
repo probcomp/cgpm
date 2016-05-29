@@ -22,18 +22,18 @@ import importlib
 
 
 cctype_class_lookup = {
-    'bernoulli'         : ('gpmcc.dists.bernoulli', 'Bernoulli'),
-    'beta_uc'           : ('gpmcc.dists.beta_uc', 'BetaUC'),
-    'categorical'       : ('gpmcc.dists.categorical', 'Categorical'),
-    'exponential'       : ('gpmcc.dists.exponential', 'Exponential'),
-    'geometric'         : ('gpmcc.dists.geometric', 'Geometric'),
-    'linear_regression' : ('gpmcc.dists.linreg', 'LinearRegression'),
-    'lognormal'         : ('gpmcc.dists.lognormal', 'Lognormal'),
-    'normal'            : ('gpmcc.dists.normal', 'Normal'),
-    'normal_trunc'      : ('gpmcc.dists.normal_trunc', 'NormalTrunc'),
-    'poisson'           : ('gpmcc.dists.poisson', 'Poisson'),
-    'random_forest'     : ('gpmcc.dists.forest', 'RandomForest'),
-    'vonmises'          : ('gpmcc.dists.vonmises', 'Vonmises'),
+    'bernoulli'         : ('gpmcc.exponentials.bernoulli', 'Bernoulli'),
+    'beta_uc'           : ('gpmcc.exponentials.beta_uc', 'BetaUC'),
+    'categorical'       : ('gpmcc.exponentials.categorical', 'Categorical'),
+    'exponential'       : ('gpmcc.exponentials.exponential', 'Exponential'),
+    'geometric'         : ('gpmcc.exponentials.geometric', 'Geometric'),
+    'linear_regression' : ('gpmcc.exponentials.linreg', 'LinearRegression'),
+    'lognormal'         : ('gpmcc.exponentials.lognormal', 'Lognormal'),
+    'normal'            : ('gpmcc.exponentials.normal', 'Normal'),
+    'normal_trunc'      : ('gpmcc.exponentials.normal_trunc', 'NormalTrunc'),
+    'poisson'           : ('gpmcc.exponentials.poisson', 'Poisson'),
+    'random_forest'     : ('gpmcc.exponentials.forest', 'RandomForest'),
+    'vonmises'          : ('gpmcc.exponentials.vonmises', 'Vonmises'),
 }
 
 def timestamp():

@@ -22,7 +22,7 @@ import scipy
 import gpmcc.utils.general as gu
 import gpmcc.utils.sampling as su
 
-from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.exponentials.distribution import DistributionGpm
 
 
 class BetaUC(DistributionGpm):

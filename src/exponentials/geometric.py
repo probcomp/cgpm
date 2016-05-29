@@ -18,7 +18,7 @@ from scipy.special import betaln
 
 import gpmcc.utils.general as gu
 
-from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.exponentials.distribution import DistributionGpm
 
 
 class Geometric(DistributionGpm):

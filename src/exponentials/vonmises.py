@@ -26,7 +26,7 @@ from scipy.special import i1 as bessel_1
 
 import gpmcc.utils.general as gu
 
-from gpmcc.dists.distribution import DistributionGpm
+from gpmcc.exponentials.distribution import DistributionGpm
 
 
 class Vonmises(DistributionGpm):
