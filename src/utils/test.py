@@ -18,7 +18,6 @@ import math
 
 import numpy as np
 
-from scipy.stats import geom
 from scipy.stats import norm
 
 import gpmcc.utils.general as gu
