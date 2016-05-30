@@ -20,7 +20,7 @@ from scipy.misc import logsumexp
 from scipy.stats import uniform
 
 from gpmcc.gpm import Gpm
-from gpmcc.uncorrelated.synthetic import SyntheticXyGpm
+from gpmcc.uncorrelated.xy import DirectedXyGpm
 from gpmcc.uncorrelated.uniformx import UniformX
 from gpmcc.utils.general import gen_rng
 
@@ -62,11 +62,11 @@ class ParabolaY(Gpm):
             np.log(.5)+self.uniform.logpdf(-y-x**2)])
 
 
-class Parabola(SyntheticXyGpm):
+class Parabola(DirectedXyGpm):
     """Y = (+/- w.p .5) X^2 + U(0,noise)."""
 
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
-        SyntheticXyGpm.__init__(
+        DirectedXyGpm.__init__(
             self, outputs=outputs, inputs=inputs, noise=noise, rng=rng)
         self.x = UniformX(
             outputs=[self.outputs[0]], low=-1, high=1)

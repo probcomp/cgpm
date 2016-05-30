@@ -22,8 +22,8 @@ from scipy.integrate import quad
 from scipy.stats import uniform
 
 from gpmcc.gpm import Gpm
-from gpmcc.uncorrelated.synthetic import SyntheticXyGpm
 from gpmcc.uncorrelated.uniformx import UniformX
+from gpmcc.uncorrelated.xy import DirectedXyGpm
 from gpmcc.utils.general import gen_rng
 
 
@@ -57,11 +57,11 @@ class SinY(Gpm):
         raise NotImplementedError
 
 
-class Sin(SyntheticXyGpm):
+class Sin(DirectedXyGpm):
     """Y = cos(X) + Noise."""
 
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
-        SyntheticXyGpm.__init__(
+        DirectedXyGpm.__init__(
             self, outputs=outputs, inputs=inputs, noise=noise, rng=rng)
         self.x = UniformX(
             outputs=[self.outputs[0]], low=-1.5*np.pi, high=1.5*np.pi)
@@ -71,7 +71,7 @@ class Sin(SyntheticXyGpm):
             noise=noise)
 
     # All further methods not invoked, should override simuate and logpdf from
-    # the importance network in SyntheticXyGpm to activate.
+    # the importance network in DirectedXyGpm to activate.
 
     def logpdf_xy(self, x, y):
         if not self.D[0] <= x <= self.D[1]:

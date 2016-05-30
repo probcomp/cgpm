@@ -19,53 +19,19 @@ import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 
-from gpmcc.gpm import Gpm
-from gpmcc.utils.general import gen_rng
+from gpmcc.uncorrelated.xy import UnDirectedXyGpm
 
 
-class Linear(Gpm):
-    """Y = X + N(0,noise), it is NOT uncorrelated."""
-
-    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
-        if rng is None:
-            rng = gen_rng(0)
-        if outputs is None:
-            outputs = [0, 1]
-        if noise is None:
-            noise = .1
-        self.rng = rng
-        self.outputs = outputs
-        self.inputs = []
-        self.noise = noise
-
-    def simulate(self, rowid, query, evidence=None):
-        if not evidence:
-            sample = self.simulate_joint()
-            return [sample[self.outputs.index(q)] for q in query]
-        else:
-            assert len(evidence) == len(query) == 1
-            z = evidence.values()[0]
-            return self.simulate_conditional(z)
-
-    def logpdf(self, rowid, query, evidence):
-        if not evidence:
-            if len(query) == 2:
-                x, y = query.values()
-                return self.logpdf_joint(x, y)
-            else:
-                z = query.values()[0]
-                return self.logpdf_maringal(z)
-        else:
-            assert len(evidence) == len(query) == 1
-            z = evidence.values()[0]
-            w = query.values()[0]
-            return self.logpdf_conditional(w, z)
-
-    # Internal simulators and assesors.
+class Linear(UnDirectedXyGpm):
 
     def simulate_joint(self):
         return self.rng.multivariate_normal(
             [0,0], cov=[[1,1-self.noise],[1-self.noise,1]])
+
+    def simulate_conditional(self, z):
+        mean = self.conditional_mean(z)
+        var = self.conditional_variance(z)
+        return self.rng.normal(loc=mean, scale=np.sqrt(var))
 
     def logpdf_joint(self, x, y):
         return multivariate_normal.logpdf(
@@ -79,11 +45,6 @@ class Linear(Gpm):
         mean = self.conditional_mean(z)
         var = self.conditional_variance(z)
         return norm.logpdf(w, loc=mean, scale=np.sqrt(var))
-
-    def simulate_conditional(self, z):
-        mean = self.conditional_mean(z)
-        var = self.conditional_variance(z)
-        return self.rng.normal(loc=mean, scale=np.sqrt(var))
 
     def conditional_mean(self, z):
         return (1-self.noise)*z

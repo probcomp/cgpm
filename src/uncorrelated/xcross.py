@@ -18,52 +18,12 @@ import numpy as np
 
 from scipy.misc import logsumexp
 from scipy.stats import multivariate_normal
-from scipy.stats import norm
 
-from gpmcc.gpm import Gpm
-from gpmcc.utils.general import gen_rng
+from gpmcc.uncorrelated.xy import UnDirectedXyGpm
 
 
-class XCross(Gpm):
+class XCross(UnDirectedXyGpm):
     """Y = (+/- w.p .5) X + N(0,noise)."""
-
-    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
-        if rng is None:
-            rng = gen_rng(0)
-        if outputs is None:
-            outputs = [0, 1]
-        if noise is None:
-            noise = .1
-        self.rng = rng
-        self.outputs = outputs
-        self.inputs = []
-        self.noise = noise
-
-    def simulate(self, rowid, query, evidence=None):
-        if not evidence:
-            sample = self.simulate_joint()
-            return [sample[self.outputs.index(q)] for q in query]
-        else:
-            assert len(evidence) == len(query) == 1
-            z = evidence.values()[0]
-            return self.simulate_conditional(z)
-
-    def logpdf(self, rowid, query, evidence):
-        if not evidence:
-            if len(query) == 2:
-                x, y = query.values()
-                return self.logpdf_joint(x, y)
-            else:
-                z = query.values()[0]
-                return self.logpdf_maringal(z)
-        else:
-            assert len(evidence) == len(query) == 1
-            z = evidence.values()[0]
-            w = query.values()[0]
-            return self.logpdf_conditional(w, z)
-
-    # Internal simulators and assesors.
-
 
     def simulate_joint(self):
         if self.rng.rand() < .5:
@@ -79,15 +39,3 @@ class XCross(Gpm):
             np.log(.5)+multivariate_normal.logpdf([x,y], [0,0],
                 cov=[[1,-1+self.noise],[-1+self.noise,1]]),
             ])
-
-    def logpdf_marginal(self, z):
-        raise NotImplementedError
-
-    def logpdf_conditional(self, w, z):
-        raise NotImplementedError
-
-    def simulate_conditional(self, z):
-        raise NotImplementedError
-
-    def mutual_information(self):
-        raise NotImplementedError
