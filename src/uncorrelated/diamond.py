@@ -16,45 +16,62 @@
 
 import numpy as np
 
-from gpmcc.uncorrelated import synthetic
+from scipy.misc import logsumexp
+from scipy.stats import uniform
+
+from gpmcc.gpm import Gpm
+from gpmcc.uncorrelated.synthetic import SyntheticXyGpm
+from gpmcc.uncorrelated.uniformx import UniformX
+from gpmcc.utils.general import gen_rng
 
 
-class DiamondGpm(synthetic.SyntheticXyGpm):
-    """Y = (+/- w.p .5) X + N(0,noise)."""
+class DiamondY(Gpm):
+    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
+        if rng is None:
+            rng = gen_rng(1)
+        if outputs is None:
+            outputs = [0]
+        if inputs is None:
+            inputs = [1]
+        if noise is None:
+            noise = .1
+        self.rng = rng
+        self.outputs = outputs
+        self.inputs = inputs
+        self.noise = noise
+        self.uniform = uniform(scale=self.noise)
 
-    def simulate_xy(self, size=None):
-        X = np.zeros((size,2))
-        for i in xrange(size):
-            x = self.rng.uniform(-1, 1)
-            slope = self.rng.rand() < .5
-            if x < 0:
-                if slope:
-                    y = x+1
-                    y = max(-x-1, y-self.rng.uniform(0, self.noise))
-                else:
-                    y = -x-1
-                    y = min(x+1, y+self.rng.uniform(0, self.noise))
-            else:
-                if slope:
-                    y = x-1
-                    y = min(-x+1, y+self.rng.uniform(0, self.noise))
-                else:
-                    y = -x+1
-                    y = max(x-1, y-self.rng.uniform(0, self.noise))
-            X[i,:] = [x, y]
-        return X
+    def simulate(self, rowid, query, evidence):
+        assert query == self.outputs
+        assert evidence.keys() == self.inputs
+        x = evidence[self.inputs[0]]
+        slope = self.rng.rand()
+        noise = self.uniform.rvs(random_state=self.rng)
+        if x < 0 and slope < .5:
+            y = max(-x-1, x+1 - noise)
+        elif x < 0 and slope > .5:
+            y = min(x+1, -x-1 + noise)
+        elif x > 0 and slope < .5:
+            y = min(-x+1, x-1 + noise)
+        elif x > 0 and slope > .5:
+            y = max(x-1, -x+1 - noise)
+        else:
+            raise ValueError()
+        return y
 
-    def logpdf_xy(self, x, y):
+    def logpdf(self, rowid, query, evidence):
         raise NotImplementedError
 
-    def logpdf_x(self, x):
-        raise NotImplementedError
 
-    def logpdf_y(self, y):
-        raise NotImplementedError
+class Diamond(SyntheticXyGpm):
+    """Y = (+/- w.p .5) X^2 + U(0,noise)."""
 
-    def logpdf_x_given_y(self, x, y):
-        raise NotImplementedError
-
-    def logpdf_y_given_x(self, y, x):
-        raise NotImplementedError
+    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
+        SyntheticXyGpm.__init__(
+            self, outputs=outputs, inputs=inputs, noise=noise, rng=rng)
+        self.x = UniformX(
+            outputs=[self.outputs[0]], low=-1, high=1)
+        self.y = DiamondY(
+            outputs=[self.outputs[1]],
+            inputs=[self.outputs[0]],
+            noise=noise)

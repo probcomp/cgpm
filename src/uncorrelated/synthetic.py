@@ -29,7 +29,7 @@ class SyntheticXyGpm(Gpm):
     correlation dataset, but any distribution over R2 is possible.
     """
 
-    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
+    def __init__(self, outputs=None, inputs=None, noise=None, acc=1, rng=None):
         """Initialize the Gpm with given noise parameter.
 
         Parameters
@@ -48,20 +48,23 @@ class SyntheticXyGpm(Gpm):
         self.rng = rng
         self.outputs = outputs
         self.noise = noise
+        self.acc = acc
 
     def logpdf(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
-        _, wQE = self.weighted_samples(rowid, merge_dicts(query, evidence))
-        _, wE = self.weighted_samples(rowid, evidence) if evidence else (0, [0])
+        _, wQE = self.weighted_samples(
+            rowid, merge_dicts(query, evidence), self.acc)
+        _, wE = self.weighted_samples(rowid, evidence, self.acc) if evidence\
+            else (0, [0])
         return logmeanexp(wQE) - logmeanexp(wE)
 
     def simulate(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
-        samples, weights = self.weighted_samples(rowid, evidence)
+        samples, weights = self.weighted_samples(rowid, evidence, self.acc)
         index = log_pflip(weights, rng=self.rng)
         return [samples[index][q] for q in query]
 
-    def weighted_samples(self, rowid, evidence, size=1000):
+    def weighted_samples(self, rowid, evidence, size):
         """Ad-hoc importance network to use as test case for full network."""
         if not evidence:
             xs = [self.simulate_x(rowid) for _ in xrange(size)]
