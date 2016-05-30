@@ -47,7 +47,10 @@ class ParabolaY(Gpm):
         x = evidence[self.inputs[0]]
         u = self.rng.rand()
         noise = self.uniform.rvs(random_state=self.rng)
-        return x**2 + noise if u < .5 else -(x**2 + noise)
+        if u < .5:
+            return x**2 + noise
+        else:
+            return -(x**2 + noise)
 
     def logpdf(self, rowid, query, evidence):
         assert query.keys() == self.outputs
@@ -63,8 +66,10 @@ class Parabola(SyntheticXyGpm):
     """Y = (+/- w.p .5) X^2 + U(0,noise)."""
 
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
-        SyntheticXyGpm.__init__(self, outputs, inputs, noise, rng)
-        self.x = UniformX(outputs=[self.outputs[0]], low=-1, high=1)
+        SyntheticXyGpm.__init__(
+            self, outputs=outputs, inputs=inputs, noise=noise, rng=rng)
+        self.x = UniformX(
+            outputs=[self.outputs[0]], low=-1, high=1)
         self.y = ParabolaY(
             outputs=[self.outputs[1]],
             inputs=[self.outputs[0]],
