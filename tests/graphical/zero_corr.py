@@ -26,13 +26,13 @@ import numpy as np
 
 from matplotlib import cm
 
-from gpmcc.uncorrelated.diamond import DiamondGpm
-from gpmcc.uncorrelated.dots import DotsGpm
-from gpmcc.uncorrelated.linear import LinearGpm
-from gpmcc.uncorrelated.parabola import ParabolaGpm
-from gpmcc.uncorrelated.ring import RingGpm
-from gpmcc.uncorrelated.sin import SinGpm
-from gpmcc.uncorrelated.xcross import XCrossGpm
+from gpmcc.uncorrelated.diamond import Diamond
+from gpmcc.uncorrelated.dots import Dots
+from gpmcc.uncorrelated.linear import Linear
+from gpmcc.uncorrelated.parabola import Parabola
+from gpmcc.uncorrelated.ring import Ring
+from gpmcc.uncorrelated.sin import Sin
+from gpmcc.uncorrelated.xcross import XCross
 
 from gpmcc.crosscat.engine import Engine
 from gpmcc.utils import config as cu
@@ -106,13 +106,13 @@ def get_latest_timestamp():
 
 
 simulators = {
-    'diamond': DiamondGpm,
-    'dots': DotsGpm,
-    'linear': LinearGpm,
-    'parabola': ParabolaGpm,
-    'ring': RingGpm,
-    'sin': SinGpm,
-    'xcross': XCrossGpm,
+    'diamond': Diamond,
+    'dots': Dots,
+    'linear': Linear,
+    'parabola': Parabola,
+    'ring': Ring,
+    'sin': Sin,
+    'xcross': XCross,
     }
 
 
@@ -156,9 +156,10 @@ def filename_mi_figure(dist, timestamp):
 # --------------------------------------------------------------------------
 # Inference.
 
-def simulate_dataset(dist, noise, size):
+def simulate_dataset(dist, noise, size=200):
     rng = gen_rng(0)
-    return simulators[dist](noise=noise, rng=rng).simulate_xy(size=size)
+    cgpm = simulators[dist](noise=noise, rng=rng)
+    return np.asarray([cgpm.simulate(-1, [0,1]) for _ in xrange(size)])
 
 def create_engine(dist, noise, num_samples, num_states, timestamp):
     T = simulate_dataset(dist, noise, num_samples)
@@ -326,10 +327,10 @@ if __name__ == '__main__':
         assert args.timestamp is not None
         run_dist_noise(args.distribution, args.noise, args.timestamp)
     else:
-        timestamp = cu.timestamp()
-        create_directories(timestamp)
+        tstamp = cu.timestamp()
+        create_directories(tstamp)
         for d in simulators:
-            run_dist(d, timestamp)
-            plot_samples_all(d, NOISES, NUM_SAMPLES, timestamp)
-            plot_mi_all(d, NOISES, timestamp)
+            run_dist(d, tstamp)
+            plot_samples_all(d, NOISES, NUM_SAMPLES, tstamp)
+            plot_mi_all(d, NOISES, tstamp)
 
