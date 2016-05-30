@@ -14,10 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from gpmcc.gpm import Gpm
 from gpmcc.utils.general import gen_rng
+from gpmcc.utils.general import log_pflip
+from gpmcc.utils.general import logmeanexp
+from gpmcc.utils.general import merge_dicts
 
 
-class SyntheticXyGpm(object):
+class SyntheticXyGpm(Gpm):
     """Interface synthetic, two-dimensional GPMs that take arbitrary noise
     parameter in (0,1).
 
@@ -25,7 +29,7 @@ class SyntheticXyGpm(object):
     correlation dataset, but any distribution over R2 is possible.
     """
 
-    def __init__(self, noise=.1, rng=None):
+    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
         """Initialize the Gpm with given noise parameter.
 
         Parameters
@@ -35,44 +39,59 @@ class SyntheticXyGpm(object):
         rng : np.random.RandomState, optional.
             Source of entropy.
         """
-        assert 0 < noise < 1
         if rng is None:
             rng = gen_rng(0)
+        if outputs is None:
+            outputs = [0, 1]
+        if noise is None:
+            noise = .1
         self.rng = rng
+        self.outputs = outputs
         self.noise = noise
 
-    def simulate_xy(self, size=None):
-        """Simulate from the joint distribution (X,Y)."""
-        raise NotImplementedError
+    def logpdf(self, rowid, query, evidence=None):
+        if evidence is None: evidence = {}
+        _, wQE = self.weighted_samples(rowid, merge_dicts(query, evidence))
+        _, wE = self.weighted_samples(rowid, evidence) if evidence else (0, [0])
+        return logmeanexp(wQE) - logmeanexp(wE)
 
-    def logpdf_xy(self, x, y):
-        """Evaluate the joint log density p(x,y)."""
-        raise NotImplementedError
+    def simulate(self, rowid, query, evidence=None):
+        if evidence is None: evidence = {}
+        samples, weights = self.weighted_samples(rowid, evidence)
+        index = log_pflip(weights, rng=self.rng)
+        return [samples[index][q] for q in query]
 
-    def logpdf_x(self, x):
-        """Evaluate the marginal log density p(x,y)."""
-        raise NotImplementedError
+    def weighted_samples(self, rowid, evidence, size=1000):
+        """Ad-hoc importance network to use as test case for full network."""
+        if not evidence:
+            xs = [self.simulate_x(rowid) for _ in xrange(size)]
+            ys = [self.simulate_yGx(rowid, x) for x in xs]
+            samples = zip(xs, ys)
+            weights = [0] * size
+        elif evidence.keys() == self.outputs[:1]:
+            x = evidence[self.outputs[0]]
+            samples = [(x, self.simulate_yGx(rowid, x)) for _ in xrange(size)]
+            weights = [self.logpdf_x(rowid, s[0]) for s in samples]
+        elif evidence.keys() == self.outputs[1:]:
+            y = evidence[self.outputs[1]]
+            samples = [(self.simulate_x(rowid), y) for _ in xrange(size)]
+            weights = [self.logpdf_yGx(rowid, y, s[0]) for s in samples]
+        elif set(evidence.keys()) == set(self.outputs):
+            x, y = evidence[self.outputs[0]], evidence[self.outputs[1]]
+            samples = [[x,y]]*size
+            weights = [self.logpdf_x(rowid,x)+self.logpdf_yGx(rowid,y,x)]*size
+        else:
+            raise ValueError('Bad arguments to weighted_samples.')
+        return samples, weights
 
-    def logpdf_y(self, y):
-        """Evaluate the marginal log density p(y)."""
-        raise NotImplementedError
+    def simulate_x(self, rowid):
+        return self.x.simulate(rowid, [self.outputs[0]])
 
-    def simulate_x_given_y(self, y):
-        """Simulate from the conditional density p(x|y)."""
-        raise NotImplementedError
+    def logpdf_x(self, rowid, x):
+        return self.x.logpdf(rowid, {self.outputs[0]:x})
 
-    def logpdf_x_given_y(self, x, y):
-        """Evaluate the conditional log density p(x|y)."""
-        raise NotImplementedError
+    def simulate_yGx(self, rowid, x):
+        return self.y.simulate(rowid, [self.outputs[1]], {self.outputs[0]:x})
 
-    def simulate_y_given_x(self, x):
-        """Simulate from the conditional density p(y|x)."""
-        raise NotImplementedError
-
-    def logpdf_y_given_x(self, y, x):
-        """Evaluate the marginal log density p(y|x)."""
-        raise NotImplementedError
-
-    def mutual_information(self):
-        """Compute the mutual information MI(X:Y)"""
-        raise NotImplementedError
+    def logpdf_yGx(self, rowid, y, x):
+        return self.y.logpdf(rowid, {self.outputs[1]:y}, {self.outputs[0]:x})
