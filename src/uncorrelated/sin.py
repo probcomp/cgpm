@@ -19,26 +19,59 @@ import numpy as np
 from scipy.integrate import dblquad
 from scipy.integrate import quad
 
-from gpmcc.uncorrelated import synthetic
+from scipy.stats import uniform
+
+from gpmcc.gpm import Gpm
+from gpmcc.uncorrelated.synthetic import SyntheticXyGpm
+from gpmcc.uncorrelated.uniformx import UniformX
+from gpmcc.utils.general import gen_rng
 
 
-class SinGpm(synthetic.SyntheticXyGpm):
+class SinY(Gpm):
+    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
+        if rng is None:
+            rng = gen_rng(1)
+        if outputs is None:
+            outputs = [0]
+        if inputs is None:
+            inputs = [1]
+        if noise is None:
+            noise = .1
+        self.rng = rng
+        self.outputs = outputs
+        self.inputs = inputs
+        self.noise = noise
+        self.uniform = uniform(scale=self.noise)
+
+    def simulate(self, rowid, query, evidence):
+        assert query == self.outputs
+        assert evidence.keys() == self.inputs
+        x = evidence[self.inputs[0]]
+        noise = self.uniform.rvs(random_state=self.rng)
+        if np.cos(x) < 0:
+            return np.cos(x) + noise
+        else:
+            return np.cos(x) - noise
+
+    def logpdf(self, rowid, query, evidence):
+        raise NotImplementedError
+
+
+class Sin(SyntheticXyGpm):
     """Y = cos(X) + Noise."""
 
-    # XXX Domain of cos(X), do not change!
-    D = [-1.5*np.pi, 1.5*np.pi]
+    def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
+        SyntheticXyGpm.__init__(
+            self, outputs=outputs, inputs=inputs, noise=noise, rng=rng)
+        self.x = UniformX(
+            outputs=[self.outputs[0]], low=-1.5*np.pi, high=1.5*np.pi)
+        self.y = SinY(
+            outputs=[self.outputs[1]],
+            inputs=[self.outputs[0]],
+            noise=noise)
 
-    def simulate_xy(self, size=None):
-        X = np.zeros((size,2))
-        for i in xrange(size):
-            x = self.rng.uniform(self.D[0], self.D[1])
-            if np.cos(x) < 0:
-                error = self.rng.uniform(0, self.noise)
-            else:
-                error = -self.rng.uniform(0, self.noise)
-            X[i,0] = x
-            X[i,1] = np.cos(x) + error
-        return X
+    # All further methods not invoked, should override simuate and logpdf from
+    # the importance network in SyntheticXyGpm to activate.
 
     def logpdf_xy(self, x, y):
         if not self.D[0] <= x <= self.D[1]:
