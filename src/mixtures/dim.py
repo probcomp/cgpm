@@ -80,6 +80,8 @@ class Dim(object):
         If k == len(self.clusters) then a new cluster will be created.
         If k > len(self.clusters) then an error will be thrown.
         """
+        if rowid in self.clusters_inverse or rowid in self.ignored:
+            raise ValueError('rowid already incorporated: %d' % rowid)
         k, evidence, valid = self.preprocess(query, evidence)
         assert k <= len(self.clusters)
         if k == len(self.clusters):
@@ -95,15 +97,17 @@ class Dim(object):
         """Remove observation rowid."""
         if rowid in self.ignored:
             self.ignored.remove(rowid)
-        else:
+        elif rowid in self.clusters_inverse:
             cluster = self.clusters_inverse[rowid]
             cluster.unincorporate(rowid)
             del self.clusters_inverse[rowid]
+        else:
+            raise ValueError('rowid not incorporated: %d' % rowid)
 
     # --------------------------------------------------------------------------
-    # Github issue #65.
+    # logpdf score
 
-    def logpdf_score(self, k=None):
+    def logpdf_score(self):
         """Return log score summed over all clusters."""
         return sum(cluster.logpdf_score() for cluster in self.clusters)
 
