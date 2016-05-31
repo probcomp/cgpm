@@ -88,8 +88,9 @@ class Lognormal(DistributionGpm):
             self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
             self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
-        x = self.rng.normal(loc=mu, scale=rho**-.5)
-        return np.exp(x)
+        xn = self.rng.normal(loc=mu, scale=rho**-.5)
+        x = np.exp(xn)
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return -self.sum_log_x + \

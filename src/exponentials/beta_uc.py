@@ -85,7 +85,8 @@ class BetaUC(DistributionGpm):
             return self.data[rowid]
         alpha = self.strength * self.balance
         beta = self.strength * (1. - self.balance)
-        return self.rng.beta(alpha, beta)
+        x = self.rng.beta(alpha, beta)
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         data_logp = BetaUC.calc_log_likelihood(

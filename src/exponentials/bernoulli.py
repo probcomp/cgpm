@@ -74,7 +74,8 @@ class Bernoulli(DistributionGpm):
             0, self.N, self.x_sum, self.alpha, self.beta)
         p1 = Bernoulli.calc_predictive_logp(
             1, self.N, self.x_sum, self.alpha, self.beta)
-        return gu.log_pflip([p0, p1], rng=self.rng)
+        x = gu.log_pflip([p0, p1], rng=self.rng)
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return Bernoulli.calc_logpdf_marginal(

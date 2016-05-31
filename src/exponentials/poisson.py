@@ -77,7 +77,8 @@ class Poisson(DistributionGpm):
             return self.data[rowid]
         an, bn = Poisson.posterior_hypers(
             self.N, self.sum_x, self.a, self.b)
-        return self.rng.negative_binomial(an, bn/(bn+1.))
+        x = self.rng.negative_binomial(an, bn/(bn+1.))
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return Poisson.calc_logpdf_marginal(

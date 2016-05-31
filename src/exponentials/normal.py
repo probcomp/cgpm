@@ -83,7 +83,8 @@ class Normal(DistributionGpm):
         mn, rn, sn, nun = Normal.posterior_hypers(
             self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
-        return self.rng.normal(loc=mu, scale=rho**-.5)
+        x = self.rng.normal(loc=mu, scale=rho**-.5)
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return Normal.calc_logpdf_marginal(

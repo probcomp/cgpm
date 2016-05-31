@@ -90,7 +90,7 @@ class Vonmises(DistributionGpm):
         mu = self.rng.vonmises(bn-pi, an) + pi
         x = self.rng.vonmises(mu-pi, self.k) + pi
         assert 0 <= x <= 2*pi
-        return x
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return Vonmises.calc_logpdf_marginal(
