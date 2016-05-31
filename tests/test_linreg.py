@@ -128,9 +128,9 @@ def test_simulate():
     xpred, xtrue = [], []
     for row in D[25:]:
         xtrue.append(row[0])
-        xpred.append(
-            [linreg.simulate(-1, [0], {i:row[i] for i in linreg.inputs})
-            for _ in xrange(100)])
+        evidence = {i:row[i] for i in linreg.inputs}
+        samples = [linreg.simulate(-1, [0], evidence)[0] for _ in xrange(100)]
+        xpred.append(samples)
     xpred = np.asarray(xpred)
     xmeans = np.mean(xpred, axis=1)
     xlow = np.percentile(xpred, 25, axis=1)
