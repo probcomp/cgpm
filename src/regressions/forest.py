@@ -87,9 +87,10 @@ class RandomForest(Gpm):
         assert query == self.outputs
         if rowid in self.data.x:
             return self.data.x[rowid]
-        logps = [self.logpdf(rowid, {query[0]:x}, evidence)
+        logps = [self.logpdf(rowid, {query[0]: x}, evidence)
             for x in xrange(self.k)]
-        return gu.log_pflip(logps, rng=self.rng)
+        x = gu.log_pflip(logps, rng=self.rng)
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return RandomForest.calc_log_likelihood(

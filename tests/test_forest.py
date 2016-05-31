@@ -171,9 +171,9 @@ def test_simulate():
     correct, total = 0, 0.
     for row in D[40:]:
         evidence = gu.merge_dicts({i:row[i] for i in forest.inputs}, {-1:0})
-        s = [forest.simulate(-1, [0], evidence) for _ in xrange(10)]
-        s = np.argmax(np.bincount(s))
-        correct += (s==row[0])
+        samples = [forest.simulate(-1, [0], evidence)[0] for _ in xrange(10)]
+        prediction = np.argmax(np.bincount(samples))
+        correct += (prediction==row[0])
         total += 1.
     # Classification should be better than random.
     assert correct/total > 1./NUM_CLASSES

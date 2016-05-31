@@ -97,7 +97,8 @@ class LinearRegression(Gpm):
             self.mu, self.V)
         sigma2, b = LinearRegression.sample_parameters(
             an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
-        return self.rng.normal(np.dot(yt, b), np.sqrt(sigma2))
+        x = self.rng.normal(np.dot(yt, b), np.sqrt(sigma2))
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return LinearRegression.calc_logpdf_marginal(
