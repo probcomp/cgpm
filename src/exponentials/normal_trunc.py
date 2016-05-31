@@ -91,7 +91,7 @@ class NormalTrunc(DistributionGpm):
         for i in xrange(max_iters):
             x = self.rng.normal(loc=self.mu, scale=self.sigma)
             if self.l <= x <= self.h:
-                return x
+                return {self.outputs[0]: x}
         else:
             raise RuntimeError('NormalTrunc failed to rejection sample.')
 

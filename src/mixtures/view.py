@@ -355,7 +355,7 @@ class View(object):
     def _simulate_unconditional(self, query, k, N):
         """Simulate query from cluster k, N times."""
         assert not any(self.dims[c].is_conditional() for c in query)
-        return [[self.dims[c].simulate(-1, [c], {-1:k}) for c in query]
+        return [[self.dims[c].simulate(-1, [c], {-1:k})[c] for c in query]
             for _ in xrange(N)]
 
     def _simulate_conditional(self, query, evidence, k):
@@ -363,7 +363,7 @@ class View(object):
         assert all(self.dims[c].is_conditional() for c in query)
         assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
         evidence = gu.merge_dicts(evidence, {-1:k})
-        return [self.dims[c].simulate(-1, [c], evidence) for c in query]
+        return [self.dims[c].simulate(-1, [c], evidence)[c] for c in query]
 
     def _logpdf_unconditional(self, query, k):
         assert not any(self.dims[c].is_conditional() for c,x in query)

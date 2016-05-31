@@ -73,7 +73,8 @@ class Geometric(DistributionGpm):
             return self.data[rowid]
         an, bn = Geometric.posterior_hypers(self.N, self.sum_x, self.a, self.b)
         pn = self.rng.beta(an, bn)
-        return self.rng.geometric(pn) - 1
+        x = self.rng.geometric(pn) - 1
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return Geometric.calc_logpdf_marginal(

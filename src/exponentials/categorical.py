@@ -74,7 +74,8 @@ class Categorical(DistributionGpm):
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return self.data[rowid]
-        return gu.pflip(self.counts + self.alpha, rng=self.rng)
+        x = gu.pflip(self.counts + self.alpha, rng=self.rng)
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return Categorical.calc_logpdf_marginal(self.N, self.counts, self.alpha)

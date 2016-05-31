@@ -73,7 +73,8 @@ class Exponential(DistributionGpm):
         an, bn = Exponential.posterior_hypers(
             self.N, self.sum_x, self.a, self.b)
         mu = self.rng.gamma(an, scale=1./bn)
-        return self.rng.exponential(scale=1./mu)
+        x = self.rng.exponential(scale=1./mu)
+        return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return Exponential.calc_logpdf_marginal(
