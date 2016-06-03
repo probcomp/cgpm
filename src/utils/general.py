@@ -39,7 +39,7 @@ def gen_rng(seed=None):
 def curve_color(k):
     return (colors[k], .7) if k < len(colors) else ('gray', .3)
 
-def merge_dicts(*dicts):
+def merged(*dicts):
     result = {}
     for d in dicts:
         result.update(d)

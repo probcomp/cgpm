@@ -231,7 +231,7 @@ class State(object):
         for v, view in enumerate(self.views):
             qv = {d: self.X[d][rowid] for d in view.dims}
             kv = {-1: query[-(v+1)]} if -(v+1) in query else {}
-            view.incorporate(rowid, gu.merge_dicts(qv, kv))
+            view.incorporate(rowid, gu.merged(qv, kv))
         # Validate.
         self._check_partitions()
 
@@ -304,12 +304,11 @@ class State(object):
     def _populate_evidence(self, rowid, query, evidence):
         """Builds the evidence for an observed simulate/logpdb query."""
         # XXX Should poll foreign predictors for their rowid observations??
-        if self._is_hypothetical(rowid): return evidence
-        if isinstance(query[0], tuple): query = [q[0] for q in query]
-        ec = [e[0] for e in evidence]
-        em = [r for r in self.outputs if r not in ec+query]
-        ev = [(c, self.X[c][rowid]) for c in em if not isnan(self.X[c][rowid])]
-        return ev + evidence
+        if self._is_hypothetical(rowid):
+            return evidence
+        em = [r for r in self.outputs if r not in evidence and r not in query]
+        ev = {c: self.X[c][rowid] for c in em if not isnan(self.X[c][rowid])}
+        return gu.merged(evidence, ev)
 
     def _no_leafs(self, query, evidence):
         if query and isinstance(query[0], tuple): query = [q[0] for q in query]
