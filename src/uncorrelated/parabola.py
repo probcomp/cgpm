@@ -48,9 +48,10 @@ class ParabolaY(Gpm):
         u = self.rng.rand()
         noise = self.uniform.rvs(random_state=self.rng)
         if u < .5:
-            return x**2 + noise
+            y = x**2 + noise
         else:
-            return -(x**2 + noise)
+            y = -(x**2 + noise)
+        return {self.outputs[0]: y}
 
     def logpdf(self, rowid, query, evidence):
         assert query.keys() == self.outputs
