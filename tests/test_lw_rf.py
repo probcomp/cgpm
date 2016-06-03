@@ -57,7 +57,7 @@ def test_simulate_unconditional__ci_(state):
 
 def test_simulate_conditional__ci_(state):
     samples = state.simulate(
-        -1, [0], evidence=[(1,-1), (2,1), (3,1)], N=2)
+        -1, [0], evidence={1:-1, 2:1, 3:1}, N=2)
     check_members(samples, range(5))
     samples = state.simulate(-1, [0, 2, 3], N=2)
     check_members(samples, range(5))
@@ -67,21 +67,21 @@ def test_simulate_conditional__ci_(state):
 
 def test_logpdf_unconditional__ci_(state):
     for rowid, k in zip([-1, 1], xrange(5)):
-        assert state.logpdf(rowid, [(0, k)]) < 0
+        assert state.logpdf(rowid, {0: k}) < 0
 
 
 def test_logpdf_deterministic__ci_(state):
     # Ensure logpdf estimation deterministic when all parents in evidence.
     for k in xrange(5):
         lp1 = state.logpdf(
-            -1, [(0,k), (3,0)], evidence=[(1,1), (2,1),])
+            -1, {0:k, 3:0}, evidence={1:1, 2:1})
         lp2 = state.logpdf(
-            -1, [(0,k), (3,0)], evidence=[(1,1), (2,1),])
+            -1, {0:k, 3:0}, evidence={1:1, 2:1})
         assert np.allclose(lp1, lp2)
     # Observed cell already has parents in evidence.
     for k in xrange(5):
-        lp1 = state.logpdf(1, [(0,k), (3,0)])
-        lp2 = state.logpdf(1, [(0,k), (3,0)])
+        lp1 = state.logpdf(1, {0:k, 3:0})
+        lp2 = state.logpdf(1, {0:k, 3:0})
         assert np.allclose(lp1, lp2)
 
 
