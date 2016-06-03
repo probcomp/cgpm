@@ -115,7 +115,7 @@ class Engine(object):
             for i in xrange(self.num_states())]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(logpdfs)
+        return logpdfs
 
     def logpdf_bulk(self, rowids, queries, evidences=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
@@ -124,7 +124,7 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(logpdfs)
+        return logpdfs
 
     def logpdf_score(self, multithread=1):
         pool, mapper = self._get_mapper(multithread)
@@ -133,7 +133,7 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         logpdf_scores = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(logpdf_scores)
+        return logpdf_scores
 
     def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
         pool, mapper = self._get_mapper(multithread)
@@ -153,7 +153,7 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(samples)
+        return samples
 
     def mutual_information(self, col0, col1, evidence=None, N=None,
             multithread=1):
@@ -164,7 +164,7 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(mis)
+        return mis
 
     def conditional_mutual_information(self, col0, col1, evidence, T=None,
             N=None, multithread=1):
@@ -175,7 +175,7 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(mis)
+        return mis
 
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
@@ -275,7 +275,8 @@ class Engine(object):
         weights = np.zeros(len(samples)) if not evidence else\
             self.logpdf(rowid, evidence, multithread=multithread)
         n_model = np.bincount(gu.log_pflip(weights, size=N, rng=self.rng))
-        return np.vstack([s[:n] for s,n in zip(samples, n_model) if n])
+        resamples = [s[:n] for s,n in zip(samples, n_model) if n]
+        return list(itertools.chain.from_iterable(resamples))
 
     # --------------------------------------------------------------------------
     # Serialize
