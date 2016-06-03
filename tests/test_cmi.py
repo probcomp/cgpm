@@ -27,7 +27,7 @@ def test_entropy_bernoulli__ci_():
     state = State(T, cctypes=['bernoulli'], rng=rng)
     state.transition(N=30)
     # Exact computation.
-    logp = state.logpdf_bulk([-1,-1], [[(0,0)], [(0,1)]])
+    logp = state.logpdf_bulk([-1,-1], [{0:0}, {0:1}])
     entropy_exact = -np.sum(np.exp(logp)*logp)
     # Monte Carlo computation.
     entropy_mc = state.mutual_information(0, 0, N=1000)
@@ -57,8 +57,8 @@ def test_cmi_different_views__ci_():
 
     # CMI on variable in other view equal to MI.
     assert np.allclose(
-        state.mutual_information(0, 1, evidence=[(2, 10)]), mi01)
+        state.mutual_information(0, 1, evidence={2:10}), mi01)
     assert np.allclose(
-        state.mutual_information(0, 2, evidence=[(1, 0)]), mi02)
+        state.mutual_information(0, 2, evidence={1:0}), mi02)
     assert np.allclose(
-        state.mutual_information(1, 2, evidence=[(0, -2)]), mi12)
+        state.mutual_information(1, 2, evidence={0:-2}), mi12)

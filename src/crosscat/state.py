@@ -426,54 +426,48 @@ class State(object):
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None: evidences = [[] for _ in xrange(len(rowids))]
-        if Ns is None: Ns = [1 for _ in xrange(len(rowids))]
+        if evidences is None: evidences = [{} for i in xrange(len(rowids))]
+        if Ns is None: Ns = [1 for i in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences) == len(Ns)
-        return np.asarray([self.simulate(r, q, e, n)
-            for (r, q, e, n) in zip(rowids, queries, evidences, Ns)])
+        return [self.simulate(r, q, e, n)
+            for (r, q, e, n) in zip(rowids, queries, evidences, Ns)]
 
     def logpdf_bulk(self, rowids, queries, evidences=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None: evidences = [[] for _ in xrange(len(rowids))]
+        if evidences is None: evidences = [{} for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences)
-        return np.asarray([self.logpdf(r, q, e)
-            for (r, q, e) in zip(rowids, queries, evidences)])
+        return [self.logpdf(r, q, e)
+            for (r, q, e) in zip(rowids, queries, evidences)]
 
     # --------------------------------------------------------------------------
     # Mutual information
 
     def mutual_information(self, col0, col1, evidence=None, N=None):
         """Computes the mutual information MI(col0:col1|evidence)."""
-        if N is None:
-            N = 1000
-
-        if evidence is None:
-            evidence = []
-
-        def samples_logpdf(cols, samples, evidence):
-            queries = [zip(cols, samples[i]) for i in xrange(N)]
-            return self.logpdf_bulk([-1]*N, queries, [evidence]*N)
-
+        if N is None: N = 1000
+        if evidence is None: evidence = {}
+        def samples_logpdf(samples, evidence):
+            assert len(samples) == N
+            return self.logpdf_bulk([-1]*N, samples, [evidence]*N)
         # MI or entropy?
         if col0 != col1:
             samples = self.simulate(-1, [col0, col1], evidence=evidence, N=N)
-            PXY = samples_logpdf([col0, col1], samples, evidence)
-            PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
-            PY = samples_logpdf([col1], samples[:,1].reshape(-1,1), evidence)
+            PXY = samples_logpdf(samples, evidence)
+            PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
+            PY = samples_logpdf([{col1: s[col1]} for s in samples], evidence)
             return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
         else:
             samples = self.simulate(-1, [col0], evidence=evidence, N=N)
-            PX = samples_logpdf([col0], samples[:,0].reshape(-1,1), evidence)
+            PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
             return - np.sum(PX) / N
 
     def conditional_mutual_information(self, col0, col1, evidence, T=None,
             N=None):
         """Computes conditional mutual information MI(col0:col1|evidence)."""
-        if T is None:
-            T = 100
+        if T is None: T = 100
         samples = self.simulate(-1, evidence, N=T)
-        mi = sum(self.mutual_information(col0, col1, evidence=zip(evidence, s),
-            N=N) for s in samples)
+        mi = sum(self.mutual_information(
+            col0, col1, evidence=zip(evidence, s), N=N) for s in samples)
         return mi / T
 
     # --------------------------------------------------------------------------
