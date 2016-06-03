@@ -99,7 +99,7 @@ def test_incorporate_session():
     previous = [len(v.Nk) for v in state.views]
     data = {i: rng.normal() for i in xrange(5)}
     clusters = {-1: previous[0], -2: previous[1], -3: previous[2]}
-    state.incorporate(-1, gu.merge_dicts(data, clusters))
+    state.incorporate(-1, gu.merged(data, clusters))
     assert [len(v.Nk) for v in state.views] == [p+1 for p in previous]
     # Incorporate row without specifying clusters, and some missing values
     previous = [len(v.Nk) for v in state.views]
