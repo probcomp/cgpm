@@ -49,9 +49,10 @@ class SinY(Gpm):
         x = evidence[self.inputs[0]]
         noise = self.uniform.rvs(random_state=self.rng)
         if np.cos(x) < 0:
-            return np.cos(x) + noise
+            y = np.cos(x) + noise
         else:
-            return np.cos(x) - noise
+            y = np.cos(x) - noise
+        return {self.outputs[0]: y}
 
     def logpdf(self, rowid, query, evidence):
         raise NotImplementedError

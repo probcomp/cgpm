@@ -54,7 +54,7 @@ class DiamondY(Gpm):
             y = max(x-1, -x+1 - noise)
         else:
             raise ValueError()
-        return y
+        return {self.outputs[0]: y}
 
     def logpdf(self, rowid, query, evidence):
         raise NotImplementedError

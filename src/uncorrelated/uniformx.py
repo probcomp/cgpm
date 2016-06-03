@@ -38,7 +38,8 @@ class UniformX(Gpm):
     def simulate(self, rowid, query, evidence=None):
         assert not evidence
         assert query == self.outputs
-        return self.uniform.rvs(random_state=self.rng)
+        x = self.uniform.rvs(random_state=self.rng)
+        return {self.outputs[0]: x}
 
     def logpdf(self, rowid, query, evidence=None):
         assert not evidence
