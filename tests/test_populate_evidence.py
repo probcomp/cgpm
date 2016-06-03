@@ -32,39 +32,38 @@ def state():
 
 def test_hypothetical_unchanged(state):
     rowid = -1
-    qr1 = [(3,-1)]
-    ev1 = [(1,1), (2,2)]
+    qr1 = {3:-1}
+    ev1 = {1:1, 2:2}
     ev2 = state._populate_evidence(rowid, qr1, ev1)
-    assert set(ev1) == set(ev2)
+    assert ev1 == ev2
 
 
 def test_nothing_to_populate(state):
     rowid = 2
-    qr1 = [(0,1)]
-    ev2 = state._populate_evidence(rowid, qr1, [])
-    assert set(ev2) == set([])
+    qr1 = {0:1}
+    ev2 = state._populate_evidence(rowid, qr1, {})
+    assert ev2 == {}
 
 
 def test_some_to_populate(state):
     rowid = 0
-    qr1 = [(1,1)]
-    ev1 = [(2,2)]
+    qr1 = {1:1}
+    ev1 = {2:2}
     ev2 = state._populate_evidence(rowid, qr1, ev1)
-    assert set(ev2) == set([(2,2), (0,1), (3,-1)])
+    assert ev2 == {2:2, 0:1, 3:-1}
 
 
 def test_everything_to_populate(state):
     rowid = 1
-    qr1 = [(1,1), (4,1)]
-    ev2 = state._populate_evidence(rowid, qr1, [])
-    assert set(ev2) == set([(0,1), (2,2), (3,-1)])
+    qr1 = {1:1, 4:1}
+    ev2 = state._populate_evidence(rowid, qr1, {})
+    assert ev2 == {0:1, 2:2, 3:-1}
 
-    qr1 = [(1,3)] # Actual query not allowed.
-    ev1 = [(4,-5)]
+    qr1 = {1:3}     # Actual query not allowed.
+    ev1 = {4:-5}
     ev2 = state._populate_evidence(rowid, qr1, ev1)
-    assert set(ev2) == set([(0,1), (2,2), (3,-1), (4,-5)])
+    assert ev2 == {0:1, 2:2, 3:-1, 4:-5}
 
-    qr1 = [(0,1), (1,3)] # Actual query not allowed.
-    ev1 = [(2,2)]
-    ev2 = state._populate_evidence(rowid, qr1, [])
-    assert set(ev2) == set([(2,2), (3,-1), (4,-5)])
+    qr1 = {0:1, 1:3} # Actual query not allowed.
+    ev2 = state._populate_evidence(rowid, qr1, {})
+    assert ev2 == {2:2, 3:-1, 4:-5}
