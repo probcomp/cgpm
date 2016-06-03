@@ -369,7 +369,7 @@ class View(object):
 
     def _simulate_conditional(self, query, evidence, k):
         """Simulate unconditional query from cluster k."""
-        assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
+        assert set(self._unconditional_dims()) == set(evidence)
         assert all(self.dims[c].is_conditional() for c in query)
         evidence = merged(evidence, {-1:k})
         samples = [self.dims[c].simulate(-1, [c], evidence) for c in query]
@@ -381,8 +381,8 @@ class View(object):
         return sum(lps)
 
     def _logpdf_conditional(self, query, evidence, k):
-        assert all(self.dims[c].is_conditional() for c,x in query)
-        assert set(self._unconditional_dims()) == set([e[0] for e in evidence])
+        assert all(self.dims[c].is_conditional() for c in query)
+        assert set(self._unconditional_dims()) == set(evidence)
         evidence = merged(evidence, {-1: k})
         lps = [self.dims[c].logpdf(-1, {c:query[c]}, evidence) for c in query]
         return sum(lps)
