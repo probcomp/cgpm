@@ -126,18 +126,30 @@ def validate_query_evidence(X, rowid, hypothetical, query, evidence=None):
     #     raise ValueError('Cannot query a non-nan observed cell.')
 
 def partition_query_evidence(Z, query, evidence):
-    """queries[v], evidences[v] are the queries, evidences for view v."""
-    queries, evidences = {}, {}
-    for q in query:
-        col = q if isinstance(q, int) else q[0]
-        if Z[col] in queries:
-            queries[Z[col]].append(q)
-        else:
-            queries[Z[col]] = [q]
-    for e in evidence:
-        col = e[0]
-        if Z[col] in evidences:
-            evidences[Z[col]].append(e)
-        else:
-            evidences[Z[col]] = [e]
+    """Returns queries[k], evidences[k] are queries, evidences for cluster k."""
+    evidences = partition_dict(Z, evidence)
+    if isinstance(query, list):
+        queries = partition_list(Z, query)
+    else:
+        queries = partition_dict(Z, query)
     return queries, evidences
+
+def partition_list(Z, L):
+    result = {}
+    for l in L:
+        k = Z[l]
+        if k in result:
+            result[k].append(l)
+        else:
+            result[k] = [l]
+    return result
+
+def partition_dict(Z, L):
+    result = {}
+    for l in L:
+        k, val = Z[l], (l, L[l])
+        if k in result:
+            result[k].append(val)
+        else:
+            result[k] = [val]
+    return {k: dict(v) for k,v in result.iteritems()}
