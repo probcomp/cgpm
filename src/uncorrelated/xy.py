@@ -115,11 +115,11 @@ class UnDirectedXyGpm(Gpm):
     def simulate(self, rowid, query, evidence=None):
         if not evidence:
             sample = self.simulate_joint()
-            return [sample[self.outputs.index(q)] for q in query]
+            return {q: sample[self.outputs.index(q)] for q in query}
         else:
             assert len(evidence) == len(query) == 1
             z = evidence.values()[0]
-            return self.simulate_conditional(z)
+            return {query[0]: self.simulate_conditional(z)}
 
     def logpdf(self, rowid, query, evidence):
         if not evidence:
