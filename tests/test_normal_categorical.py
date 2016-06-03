@@ -72,7 +72,7 @@ def state():
 
 
 def test_joint(state):
-    # Simulate from the joint distribution of (x,i).
+    # Simulate from the joint distribution of (x,z).
     joint_samples = state.simulate(-1, [0,1], N=N_SAMPLES)
     _, ax = plt.subplots()
     ax.set_title('Joint Simulation')
@@ -80,14 +80,14 @@ def test_joint(state):
         # Plot original data.
         data_subpop = DATA[DATA[:,1] == t]
         ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
-        # Plot simulated data.
-        joint_samples_subpop = joint_samples[joint_samples[:,1] == t]
+        # Plot simulated data for indicator t.
+        samples_subpop = [j[0] for j in joint_samples if j[1] == t]
         ax.scatter(
-            joint_samples_subpop[:,1] + .25, joint_samples_subpop[:,0],
+            np.add([t]*len(samples_subpop), .25), samples_subpop,
             color=gu.colors[t])
         # KS test.
-        pvalue = ks_2samp(data_subpop[:,0], joint_samples_subpop[:,0])[1]
-        assert 0.05 < pvalue
+        pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
+        assert .05 < pvalue
     ax.set_xlabel('Indicator')
     ax.set_ylabel('x')
     ax.grid()
@@ -102,15 +102,14 @@ def test_conditional_indicator(state):
         data_subpop = DATA[DATA[:,1] == t]
         ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
         # Plot simulated data.
-        conditional_samples_subpop = state.simulate(
-            -1, [0], evidence=[(1,t)], N=len(data_subpop))
+        samples_subpop = [s[0] for s in
+            state.simulate(-1, [0], evidence={1:t}, N=len(data_subpop))]
         ax.scatter(
             np.repeat(t, len(data_subpop)) + .25,
-            conditional_samples_subpop[:,0], color=gu.colors[t])
+            samples_subpop, color=gu.colors[t])
         # KS test.
-        pvalue = ks_2samp(
-            data_subpop[:,0], conditional_samples_subpop[:,0])[1]
-        assert 0.1 < pvalue
+        pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
+        assert .1 < pvalue
     ax.set_xlabel('Indicator')
     ax.set_ylabel('x')
     ax.grid()
@@ -121,12 +120,11 @@ def test_conditional_real(state):
     fig, axes = plt.subplots(2,3)
     fig.suptitle('Conditional Simulation Of Indicator Z Given Data X')
     # Compute representative data sample for each dindicator.
-    means = [np.mean(DATA[DATA[:,1]==i], axis=0)[0] for
-        i in INDICATORS]
+    means = [np.mean(DATA[DATA[:,1]==t], axis=0)[0] for t in INDICATORS]
     for mean, indicator, ax in zip(means, INDICATORS, axes.ravel('F')):
-        conditional_samples_subpop = state.simulate(
-            -1, [1], evidence=[(0,mean)], N=N_SAMPLES)
-        ax.hist(conditional_samples_subpop, color='g', alpha=.4)
+        samples_subpop = [s[1] for s in
+            state.simulate(-1, [1], evidence={0:mean}, N=N_SAMPLES)]
+        ax.hist(samples_subpop, color='g', alpha=.4)
         ax.set_title('True Indicator %d' % indicator)
         ax.set_xlabel('Simulated Indicator')
         ax.set_xticks(INDICATORS)
