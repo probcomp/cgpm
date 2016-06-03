@@ -142,7 +142,7 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
-        return np.asarray(samples)
+        return samples
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
             multithread=1):
