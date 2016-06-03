@@ -16,8 +16,6 @@
 
 import pytest
 
-import numpy as np
-
 from gpmcc.crosscat.state import State
 from gpmcc.utils import config as cu
 from gpmcc.utils import general as gu
@@ -58,8 +56,8 @@ def test_incorporate():
     state.transition(N=1)
 
     # Some crash testing queries.
-    state.logpdf(-1, [(10,1)], evidence=[(0,2), (1,1)])
-    state.simulate(-1, [10], evidence=[(0,2)])
+    state.logpdf(-1, {10:1}, evidence={0:2, 1:1})
+    state.simulate(-1, [10], evidence={0:2})
 
     # Incorporating with a duplicated output should raise.
     with pytest.raises(ValueError):
