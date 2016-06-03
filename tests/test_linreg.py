@@ -100,19 +100,15 @@ def test_logpdf_predictive():
     Dx2 = D[D[:,1]==2]
     Dx3 = D[D[:,1]==3]
     for i, row in enumerate(Dx0[1:]):
-        linreg.incorporate(
-            i, {0: row[0]}, {i:row[i] for i in linreg.inputs})
+        linreg.incorporate(i, {0: row[0]}, {i: row[i] for i in linreg.inputs})
     # Ensure can compute predictive for seen class 0.
-    linreg.logpdf(
-        -1, {0: Dx0[0,0]}, {i:Dx0[0,i] for i in linreg.inputs})
+    linreg.logpdf(-1, {0: Dx0[0,0]}, {i: Dx0[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 1.
-    linreg.logpdf(
-        -1, {0: Dx1[0,0]}, {i:Dx1[0,i] for i in linreg.inputs})
+    linreg.logpdf(-1, {0: Dx1[0,0]}, {i: Dx1[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 2.
-    linreg.logpdf(
-        -1, {0: Dx2[0,0]}, {i:Dx2[0,i] for i in linreg.inputs})
+    linreg.logpdf(-1, {0: Dx2[0,0]}, {i: Dx2[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 3.
-    linreg.logpdf(-1, {0: Dx3[0,0]}, {i:Dx3[0,i] for i in linreg.inputs})
+    linreg.logpdf(-1, {0: Dx3[0,0]}, {i: Dx3[0,i] for i in linreg.inputs})
 
 
 def test_simulate():
@@ -121,15 +117,13 @@ def test_simulate():
         distargs={'cctypes': CCTYPES, 'ccargs': CCARGS},
         rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:25]):
-        query = {0: row[0]}
-        evidence = {i:row[i] for i in linreg.inputs}
-        linreg.incorporate(rowid, query, evidence)
+        linreg.incorporate(rowid, {0:row[0]}, {i:row[i] for i in linreg.inputs})
     _, ax = plt.subplots()
     xpred, xtrue = [], []
     for row in D[25:]:
         xtrue.append(row[0])
         evidence = {i:row[i] for i in linreg.inputs}
-        samples = [linreg.simulate(-1, [0], evidence)[0] for _ in xrange(100)]
+        samples = [linreg.simulate(-1, [0], evidence)[0] for i in xrange(100)]
         xpred.append(samples)
     xpred = np.asarray(xpred)
     xmeans = np.mean(xpred, axis=1)
