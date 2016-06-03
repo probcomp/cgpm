@@ -146,7 +146,7 @@ def test_transition_hypers():
     Zr[len(D)/2:] = 1
     for rowid, row in enumerate(D[:25]):
         query = {0: row[0]}
-        evidence = gu.merge_dicts(
+        evidence = gu.merged(
             {i: row[i] for i in forest.inputs}, {-1: Zr[rowid]})
         forest.incorporate(rowid, query, evidence)
     # Transitions.
@@ -162,7 +162,7 @@ def test_simulate():
     # Incorporate data into 1 cluster.
     for rowid, row in enumerate(D[:40]):
         query = {0: row[0]}
-        evidence = gu.merge_dicts({i:row[i] for i in forest.inputs}, {-1:0})
+        evidence = gu.merged({i:row[i] for i in forest.inputs}, {-1:0})
         forest.incorporate(rowid, query, evidence)
     # Transitions.
     forest.transition_params()
@@ -170,8 +170,8 @@ def test_simulate():
         forest.transition_hypers()
     correct, total = 0, 0.
     for row in D[40:]:
-        evidence = gu.merge_dicts({i:row[i] for i in forest.inputs}, {-1:0})
-        samples = [forest.simulate(-1, [0], evidence)[0] for _ in xrange(10)]
+        evidence = gu.merged({i:row[i] for i in forest.inputs}, {-1:0})
+        samples = [forest.simulate(-1, [0], evidence)[0] for i in xrange(10)]
         prediction = np.argmax(np.bincount(samples))
         correct += (prediction==row[0])
         total += 1.
