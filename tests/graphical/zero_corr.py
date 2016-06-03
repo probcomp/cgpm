@@ -14,31 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import os
-import subprocess
-
-from datetime import datetime
-
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-import numpy as np
-
-from matplotlib import cm
-
-from gpmcc.uncorrelated.diamond import Diamond
-from gpmcc.uncorrelated.dots import Dots
-from gpmcc.uncorrelated.linear import Linear
-from gpmcc.uncorrelated.parabola import Parabola
-from gpmcc.uncorrelated.ring import Ring
-from gpmcc.uncorrelated.sin import Sin
-from gpmcc.uncorrelated.xcross import XCross
-
-from gpmcc.crosscat.engine import Engine
-from gpmcc.utils import config as cu
-from gpmcc.utils import entropy_estimators as ee
-from gpmcc.utils.general import gen_rng
-
 """
 This script produces the following directory structure
 
@@ -78,6 +53,30 @@ The estimate runtime for the whole script with the current configuration is
     7 total dists = 210 min
 """
 
+import argparse
+import os
+import subprocess
+
+from datetime import datetime
+
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import numpy as np
+
+from matplotlib import cm
+
+from gpmcc.uncorrelated.diamond import Diamond
+from gpmcc.uncorrelated.dots import Dots
+from gpmcc.uncorrelated.linear import Linear
+from gpmcc.uncorrelated.parabola import Parabola
+from gpmcc.uncorrelated.ring import Ring
+from gpmcc.uncorrelated.sin import Sin
+from gpmcc.uncorrelated.xcross import XCross
+
+from gpmcc.crosscat.engine import Engine
+from gpmcc.utils import config as cu
+from gpmcc.utils import entropy_estimators as ee
+from gpmcc.utils.general import gen_rng
 
 # --------------------------------------------------------------------------
 # Configuration.
@@ -158,8 +157,10 @@ def filename_mi_figure(dist, timestamp):
 
 def simulate_dataset(dist, noise, size=200):
     rng = gen_rng(0)
-    cgpm = simulators[dist](noise=noise, rng=rng)
-    return np.asarray([cgpm.simulate(-1, [0,1]) for _ in xrange(size)])
+    cgpm = simulators[dist](outputs=[0,1], noise=noise, rng=rng)
+    samples = [cgpm.simulate(-1, [0, 1]) for i in xrange(size)]
+    D = [(s[0], s[1]) for s in samples]
+    return np.asarray(D)
 
 def create_engine(dist, noise, num_samples, num_states, timestamp):
     T = simulate_dataset(dist, noise, num_samples)
