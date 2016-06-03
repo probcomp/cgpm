@@ -14,15 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 from gpmcc.utils import validation as vu
 
 
-def test_partition_query_evidence():
+def test_partition_query_evidence_dict():
     Zv = [0,0,0,1,1,1,2,2,2,3]
-    query = [(9,1), (1,1), (4,2), (5,7), (7,0)]
-    evidence = [(2,4), (3,1), (9,1), (6,-1), (0,0)]
+    query = {9:101, 1:1, 4:2, 5:7, 7:0}
+    evidence = {2:4, 3:1, 9:1, 6:-1, 0:0}
     queries, evidences = vu.partition_query_evidence(Zv, query, evidence)
 
     # All 4 views have query.
@@ -30,30 +28,70 @@ def test_partition_query_evidence():
 
     # View 0 has 2 queries.
     assert len(queries[0]) == 1
-    assert (1,1) in queries[0]
+    assert queries[0][1] == 1
     # View 1 has 2 queries.
     assert len(queries[1]) == 2
-    assert (4,2) in queries[1]
-    assert (5,7) in queries[1]
+    assert queries[1][4] == 2
+    assert queries[1][5] == 7
     # View 2 has 1 queries.
     assert len(queries[2]) == 1
-    assert (7,0) in queries[2]
+    assert queries[2][7] == 0
     # View 3 has 1 queries.
     assert len(queries[3]) == 1
-    assert (9,1) in queries[3]
+    assert queries[3][9] == 101
 
     # Views 0,1,2,3 have evidence.
     assert len(evidences) == 4
     # View 0 has 2 evidence.
     assert len(evidences[0]) == 2
-    assert (0,0) in evidences[0]
-    assert (2,4) in evidences[0]
+    assert evidences[0][0] == 0
+    assert evidences[0][2] == 4
     # View 1 has 1 evidence.
     assert len(evidences[1]) == 1
-    assert (3,1) in evidences[1]
+    assert evidences[1][3] == 1
     # View 2 has 1 evidence.
     assert len(evidences[2]) == 1
-    assert (6,-1) in evidences[2]
+    assert evidences[2][6] == -1
     # View 3 has 1 evidence.
     assert len(evidences[3]) == 1
-    assert (9,1) in evidences[3]
+    assert evidences[3][9] == 1
+
+
+def test_partition_query_evidence_list():
+    Zv = [0,0,0,1,1,1,2,2,2,3]
+    query = [9, 1, 4, 5, 7]
+    evidence = {2:-4, 3:-1, 9:-1, 6:1, 0:100}
+    queries, evidences = vu.partition_query_evidence(Zv, query, evidence)
+
+    # All 4 views have query.
+    assert len(queries) == 4
+
+    # View 0 has 2 queries.
+    assert len(queries[0]) == 1
+    assert 1 in queries[0]
+    # View 1 has 2 queries.
+    assert len(queries[1]) == 2
+    assert 4 in queries[1]
+    assert 5 in queries[1]
+    # View 2 has 1 queries.
+    assert len(queries[2]) == 1
+    assert 7 in queries[2]
+    # View 3 has 1 queries.
+    assert len(queries[3]) == 1
+    assert 9 in queries[3]
+
+    # Views 0,1,2,3 have evidence.
+    assert len(evidences) == 4
+    # View 0 has 2 evidence.
+    assert len(evidences[0]) == 2
+    assert evidences[0][0] == 100
+    assert evidences[0][2] == -4
+    # View 1 has 1 evidence.
+    assert len(evidences[1]) == 1
+    assert evidences[1][3] == -1
+    # View 2 has 1 evidence.
+    assert len(evidences[2]) == 1
+    assert evidences[2][6] == 1
+    # View 3 has 1 evidence.
+    assert len(evidences[3]) == 1
+    assert evidences[3][9] == -1
