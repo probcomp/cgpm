@@ -105,20 +105,16 @@ def validate_crp_constrained_input(N, Cd, Ci, Rd, Ri):
 
 def validate_query_evidence(X, rowid, hypothetical, query, evidence=None):
     if evidence is None:
-        evidence = []
-    qcols = [q[0] for q in query] if isinstance(query[0], list) else query
-    ecols = [e[0] for e in evidence]
+        evidence = {}
     # Disallow duplicated query cols.
-    if len(set(qcols)) != len(qcols):
+    if isinstance(query, list) and len(set(query)) != len(query):
         raise ValueError('Query columns must be unique.')
     # Disallow overlap between query and evidence.
-    if len(set.intersection(set(qcols), set(ecols))) > 0:
+    if len(set.intersection(set(query), set(evidence))) > 0:
         raise ValueError('Query and evidence columns must be disjoint.')
     # Skip rest.
-    if hypothetical:
-        return
     # Disallow evidence overriding non-nan cells.
-    if any(not np.isnan(X[ec][rowid]) for ec in ecols):
+    if not hypothetical and any(not np.isnan(X[e][rowid]) for e in evidence):
         raise ValueError('Cannot evidence a non-nan observed cell.')
     # XXX DISABLED
     # Disallow query of observed cell. It is already observed so Dirac.

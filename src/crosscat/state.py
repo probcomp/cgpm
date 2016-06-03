@@ -280,7 +280,10 @@ class State(object):
 
     def logpdf(self, rowid, query, evidence=None):
         """Compute density of query under posterior predictive distirbution."""
-        if evidence is None: evidence = []
+        if evidence is None:
+            evidence = {}
+        assert isinstance(query, dict)
+        assert isinstance(evidence, dict)
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
@@ -292,7 +295,10 @@ class State(object):
 
     def simulate(self, rowid, query, evidence=None, N=1):
         """Simulate from the posterior predictive distirbution."""
-        if evidence is None: evidence = []
+        if evidence is None:
+            evidence = {}
+        assert isinstance(query, list)
+        assert isinstance(evidence, dict)
         vu.validate_query_evidence(self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
@@ -311,10 +317,11 @@ class State(object):
         return gu.merged(evidence, ev)
 
     def _no_leafs(self, query, evidence):
-        if query and isinstance(query[0], tuple): query = [q[0] for q in query]
-        clean_evidence = all(e[0] >= 0 for e in evidence)
-        clean_query = all(q >= 0 for q in query)
-        return clean_evidence and clean_query
+        return True
+        # if query and isinstance(query[0], tuple): query = [q[0] for q in query]
+        # clean_evidence = all(e[0] >= 0 for e in evidence)
+        # clean_query = all(q >= 0 for q in query)
+        # return clean_evidence and clean_query
 
     def _simulate_joint(self, rowid, query, evidence, N):
         if self._no_leafs(query, evidence):
@@ -386,13 +393,9 @@ class State(object):
         assert all(c not in self.predictors for c in query)
         queries, evidences = vu.partition_query_evidence(
             self.Zv, query, evidence)
-        samples = np.zeros((N, len(query)))
-        for v in queries:
-            draws = self.views[v].simulate(
-                rowid, queries[v], evidence=evidences.get(v,[]), N=N)
-            for i, c in enumerate(queries[v]):
-                samples[:,query.index(c)] = draws[:,i]
-        return samples
+        samples = [self.views[v].simulate(rowid, queries[v],
+            evidence=evidences.get(v, {}), N=N) for v in queries]
+        return [gu.merged(*s) for s in zip(*samples)]
 
     def _simulate_leafs(self, rowid, query, evidence):
         assert all(c in self.predictors for c in query)
@@ -403,11 +406,11 @@ class State(object):
         return [self.predictors[c].simulate(rowid, y) for c,y in zip(query, ys)]
 
     def _logpdf_roots(self, rowid, query, evidence):
-        assert all(c not in self.predictors for c, x in query)
+        assert all(c not in self.predictors for c in query)
         queries, evidences = vu.partition_query_evidence(
             self.Zv, query, evidence)
-        return sum([self.views[v].logpdf(
-            rowid, queries[v], evidences.get(v,[])) for v in queries])
+        return sum([self.views[v].logpdf(rowid, queries[v], evidences.get(v,{}))
+            for v in queries])
 
     def _logpdf_leafs(self, rowid, query, evidence):
         assert all(c in self.predictors for c, x in query)
