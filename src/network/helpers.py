@@ -14,33 +14,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
+import itertools as it
 
 
 def validate_cgpms(cgpms):
     ot = [set(c.outputs) for c in cgpms]
     if not all(s for s in ot):
         raise ValueError('Not output for a cgpm: %s' % ot)
-    if any(set.intersection(a,b) for a,b in itertools.combinations(ot, 2)):
+    if any(set.intersection(a,b) for a,b in it.combinations(ot, 2)):
         raise ValueError('Duplicate outputs for cgpms: %s' % ot)
     return cgpms
 
 
 def retrieve_variable_to_cgpm(cgpms):
-    # Returns map of variable to its index in the cgpms list.
+    """Return map of variable v to its index i in the list of cgpms."""
     return {v:i for i, c in enumerate(cgpms) for v in c.outputs}
 
 
-def retrieve_adjacency(cgpms, v_to_c):
-    # v_to_c is the output of retrieve_variable_to_cgpm
-    return {i: list(set(v_to_c[p] for p in c.inputs if p in v_to_c))
+def retrieve_adjacency(cgpms, vtc):
+    """Return map of cgpm index to list of indexes of its parent cgpms."""
+    return {i: list(set(vtc[p] for p in c.inputs if p in vtc))
         for i,c in enumerate(cgpms)}
 
 
-def retrieve_extranous_inputs(cgpms, v_to_c):
-    # v_to_c is the output of retrieve_variable_to_cgpm
-    missing = [[i for i in c.inputs if i not in v_to_c] for c in cgpms]
-    return [item for m in missing for item in m]
+def retrieve_extranous_inputs(cgpms, vtc):
+    """Return list of inputs that are not the output of any cgpm."""
+    extraneous = [[i for i in c.inputs if i not in vtc] for c in cgpms]
+    return list(it.chain.from_iterable(extraneous))
+
+
+def retrieve_missing_inputs(cgpms, vtc, query, evidence):
+    """Return list of inputs (not in evidence) required to answer query."""
+    cgpms_query = set(vtc[q] for q in query)
+    inputs_all = set(it.chain.from_iterable(c.inputs for c in cgpms_query))
+    inputs_mis = [i for i in inputs_all if i not in evidence and i not in query]
+    return inputs_mis
 
 
 def topological_sort(graph):
