@@ -68,7 +68,7 @@ def topological_sort(graph):
             if all(e not in graph for e in edges):
                 cyclic = False
                 del graph[node]
-                graph_sorted.append((node, edges))
+                graph_sorted.append(node)
         if cyclic:
             raise ValueError('Cyclic dependency occurred in topological_sort.')
     return graph_sorted
