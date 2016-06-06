@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-class Gpm(object):
+class CGpm(object):
     """Interface for generative population models.
 
-    Generative population models provide a procedural abstraction for
-    multivariate probability densities and stochastic samplers.
+    Conditional generative population models provide a procedural abstraction
+    for multivariate probability densities and stochastic samplers.
     """
 
     def __init__(self, outputs, inputs, schema, rng):

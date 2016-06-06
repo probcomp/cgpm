@@ -14,14 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gpmcc.gpm import Gpm
+from gpmcc.cgpm import CGpm
 from gpmcc.utils.general import gen_rng
-from gpmcc.utils.general import log_pflip
-from gpmcc.utils.general import logmeanexp
-from gpmcc.utils.general import merged
 
 
-class DirectedXyGpm(Gpm):
+class DirectedXyGpm(CGpm):
     """Interface directed two-dimensional GPMs over the R2 plane."""
 
     def __init__(self, outputs=None, inputs=None, noise=None, acc=1, rng=None):
@@ -59,7 +56,7 @@ class DirectedXyGpm(Gpm):
             raise ValueError('self.network not defined by %s' % type(self))
         return self.network.simulate(rowid, query, evidence, N)
 
-class UnDirectedXyGpm(Gpm):
+class UnDirectedXyGpm(CGpm):
     """Interface undirected two-dimensional GPMs over the R2 plane."""
 
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):

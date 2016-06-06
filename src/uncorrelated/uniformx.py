@@ -16,11 +16,11 @@
 
 from scipy.stats import uniform
 
-from gpmcc.gpm import Gpm
+from gpmcc.cgpm import CGpm
 from gpmcc.utils.general import gen_rng
 
 
-class UniformX(Gpm):
+class UniformX(CGpm):
 
     def __init__(self, outputs=None, inputs=None, low=0, high=1, rng=None):
         assert not inputs
