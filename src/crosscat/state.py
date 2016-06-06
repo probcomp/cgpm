@@ -309,7 +309,6 @@ class State(object):
 
     def _populate_evidence(self, rowid, query, evidence):
         """Builds the evidence for an observed simulate/logpdb query."""
-        # XXX Should poll foreign predictors for their rowid observations??
         if self._is_hypothetical(rowid):
             return evidence
         em = [r for r in self.outputs if r not in evidence and r not in query]

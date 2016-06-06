@@ -17,6 +17,7 @@
 import itertools
 
 from math import isinf
+from math import isnan
 
 import numpy as np
 
@@ -438,16 +439,11 @@ class View(object):
 
     def _populate_evidence(self, rowid, query, evidence):
         """Builds the evidence for an observed simulate/logpdb query."""
-        ucols = self._unconditional_dims()
-        ccols = self._conditional_dims()
-        uvals = self._unconditional_values(rowid)
-        cvals = self._conditional_values(rowid)
-        qrts = [q for q in query if q in ucols]
-        qlfs = [q for q in query if q in ccols]
-        ev_c = {c: v for c,v in zip(ucols, uvals) if c not in qrts}
-        ev_u = {c: v for c,v in zip(ccols, cvals) if c not in qlfs}
-        # XXX TODO: Avoid nan values being populated.
-        return merged(evidence, ev_u, ev_c)
+        if self._is_hypothetical(rowid):
+            return evidence
+        em = [r for r in self.outputs if r not in evidence and r not in query]
+        ev = {c: self.X[c][rowid] for c in em if not isnan(self.X[c][rowid])}
+        return merged(evidence, ev)
 
     def _get_evidence(self, rowid, dim, k):
         """Prepare the evidence for a Dim logpdf/simulate query."""
@@ -464,12 +460,6 @@ class View(object):
         """Return unconditional dims in sorted order."""
         return filter(lambda d: not self.dims[d].is_conditional(),
             sorted(self.dims))
-
-    def _unconditional_values(self, rowid):
-        return [self.X[i][rowid] for i in self._unconditional_dims()]
-
-    def _conditional_values(self, rowid):
-        return [self.X[i][rowid] for i in self._conditional_dims()]
 
     def _unconditional_cctypes(self):
         dims = [self.dims[i] for i in self._unconditional_dims()]
