@@ -26,13 +26,13 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.data as du
 import gpmcc.utils.general as gu
 
-from gpmcc.gpm import Gpm
+from gpmcc.cgpm import CGpm
 
 
 Data = namedtuple('Data', ['x', 'Y'])
 
 
-class LinearRegression(Gpm):
+class LinearRegression(CGpm):
     """Bayesian linear model with normal prior on regression parameters and
     inverse-gamma prior on both observation and regression variance.
 

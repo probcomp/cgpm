@@ -22,14 +22,14 @@ import numpy as np
 from scipy.misc import logsumexp
 from sklearn.ensemble import RandomForestClassifier
 
-from gpmcc.gpm import Gpm
+from gpmcc.cgpm import CGpm
 from gpmcc.utils import general as gu
 
 
 Data = namedtuple('Data', ['x', 'Y'])
 
 
-class RandomForest(Gpm):
+class RandomForest(CGpm):
     """RandomForest conditional GPM over k variables, with uniform noise model.
 
     p(x|Y,D) = \alpha*(1/k) + (1-\alpha)*RF(x|Y,D)

@@ -16,14 +16,14 @@
 
 from scipy.stats import uniform
 
-from gpmcc.gpm import Gpm
+from gpmcc.cgpm import CGpm
 from gpmcc.network.importance import ImportanceNetwork
 from gpmcc.uncorrelated.uniformx import UniformX
 from gpmcc.uncorrelated.xy import DirectedXyGpm
 from gpmcc.utils.general import gen_rng
 
 
-class DiamondY(Gpm):
+class DiamondY(CGpm):
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
         if rng is None:
             rng = gen_rng(1)
