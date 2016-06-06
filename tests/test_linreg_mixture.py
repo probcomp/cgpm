@@ -40,7 +40,7 @@ def generate_gaussian_samples():
     state = State(D, cctypes=['normal','normal'], Zv=[0,0], rng=gu.gen_rng(0))
     view = state.view_for(1)
     state.transition(S=15, kernels=['rows','column_params','column_hypers'])
-    return view._simulate_hypothetical([0,1], [], 100, cluster=True)
+    return view._simulate_hypothetical([0,1], {}, 100, cluster=True)
 
 
 def generate_regression_samples():
@@ -48,18 +48,19 @@ def generate_regression_samples():
     view = state.view_for(1)
     state.update_cctype(1, 'linear_regression')
     state.transition(S=30, kernels=['rows','column_params','column_hypers'])
-    return view._simulate_hypothetical([0,1], [], 100, cluster=True)
+    return view._simulate_hypothetical([0,1], {}, 100, cluster=True)
 
 
 def plot_samples(samples, title):
     fig, ax = plt.subplots()
-    clusters = set(samples[:,2])
+    clusters = set(s[-1] for s in samples)
     colors = iter(cm.gist_rainbow(np.linspace(0, 1, len(clusters)+2)))
     ax.scatter(D[:,0], D[:,1], color='k', label='Data')
     for i, c in enumerate(clusters):
-        sc = samples[samples[:,2] == c][:,[0,1]]
+        sc = [(j[0], j[1]) for j in samples if j[-1] == c]
+        xs, ys = zip(*sc)
         ax.scatter(
-            sc[:,0], sc[:,1], alpha=.5, color=next(colors),
+            xs, ys, alpha=.5, color=next(colors),
             label='Simulated (cluster %d)' %i)
     ax.set_title(title)
     ax.legend(framealpha=0, loc='upper left')
