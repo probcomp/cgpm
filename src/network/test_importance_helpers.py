@@ -15,11 +15,14 @@
 # limitations under the License.
 
 import itertools
-import pytest
 
 from collections import namedtuple
 
+import pytest
+
 from gpmcc.network import helpers
+from gpmcc.network.importance import ImportanceNetwork
+
 
 CGpm = namedtuple('CGpm', ['outputs', 'inputs'])
 
@@ -42,7 +45,7 @@ def build_cgpms_markov_chain():
     return [
         CGpm(outputs=[2], inputs=[]),
         CGpm(outputs=[1], inputs=[8]),
-        CGpm(outputs=[8], inputs=[2, 5])]
+        CGpm(outputs=[8], inputs=[2, 5]),]
 
 
 def build_cgpms_complex():
@@ -52,11 +55,6 @@ def build_cgpms_complex():
         CGpm(outputs=[5], inputs=[0, -10, -11]),
         CGpm(outputs=[4, 16], inputs=[5, -12]),]
 
-
-def load_cgpm_vtc(cgpm_builder):
-    cgpms = cgpm_builder()
-    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
-    return cgpms, vtc
 
 
 def test_retrieve_variable_to_cgpm():
@@ -71,45 +69,53 @@ def test_retrieve_variable_to_cgpm():
 
 def test_retrieve_adjacency():
     # No connections.
-    cgpms, vtc = load_cgpm_vtc(build_cgpm_no_connection)
+    cgpms = build_cgpm_no_connection()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
     adj = helpers.retrieve_adjacency(cgpms, vtc)
     assert {0: [], 1:[], 2:[]}, set([]) == adj
 
     # V structure.
-    cgpms, vtc = load_cgpm_vtc(build_cgpms_v_structure)
+    cgpms = build_cgpms_v_structure()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
     adj = helpers.retrieve_adjacency(cgpms, vtc)
     assert {0: [], 1:[], 2:[0, 1]} == adj
 
     # Markov chain.
-    cgpms, vtc = load_cgpm_vtc(build_cgpms_markov_chain)
+    cgpms = build_cgpms_markov_chain()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
     adj = helpers.retrieve_adjacency(cgpms, vtc)
     assert {0: [], 1:[2], 2:[0]} == adj
 
     # Complex.
-    cgpms, vtc = load_cgpm_vtc(build_cgpms_complex)
+    cgpms = build_cgpms_complex()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
     adj = helpers.retrieve_adjacency(cgpms, vtc)
     assert {0: [2,3], 1:[3], 2:[], 3:[2]} == adj
 
 
 def test_retrieve_extraneous_inputs():
     # No connections.
-    cgpms, vtc = load_cgpm_vtc(build_cgpm_no_connection)
-    ext = helpers.retrieve_extranous_inputs(cgpms, vtc)
+    cgpms = build_cgpm_no_connection()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    ext = helpers.retrieve_extraneous_inputs(cgpms, vtc)
     assert [] == ext
 
     # V structure.
-    cgpms, vtc = load_cgpm_vtc(build_cgpms_v_structure)
-    ext = helpers.retrieve_extranous_inputs(cgpms, vtc)
+    cgpms = build_cgpms_v_structure()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    ext = helpers.retrieve_extraneous_inputs(cgpms, vtc)
     assert [] == ext
 
     # Markov chain.
-    cgpms, vtc = load_cgpm_vtc(build_cgpms_markov_chain)
-    ext = helpers.retrieve_extranous_inputs(cgpms, vtc)
+    cgpms = build_cgpms_markov_chain()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    ext = helpers.retrieve_extraneous_inputs(cgpms, vtc)
     assert [5] == ext
 
     # Complex.
-    cgpms, vtc = load_cgpm_vtc(build_cgpms_complex)
-    ext = helpers.retrieve_extranous_inputs(cgpms, vtc)
+    cgpms = build_cgpms_complex()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    ext = helpers.retrieve_extraneous_inputs(cgpms, vtc)
     assert set([0, -8, -9, -10, -11, -12]) == set(ext)
 
 

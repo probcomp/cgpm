@@ -31,24 +31,16 @@ def retrieve_variable_to_cgpm(cgpms):
     return {v:i for i, c in enumerate(cgpms) for v in c.outputs}
 
 
-def retrieve_adjacency(cgpms, vtc):
+def retrieve_adjacency(cgpms, v_to_c):
     """Return map of cgpm index to list of indexes of its parent cgpms."""
-    return {i: list(set(vtc[p] for p in c.inputs if p in vtc))
-        for i,c in enumerate(cgpms)}
+    return {i: list(set(v_to_c[p] for p in c.inputs if p in v_to_c))
+        for i, c in enumerate(cgpms)}
 
 
-def retrieve_extranous_inputs(cgpms, vtc):
+def retrieve_extraneous_inputs(cgpms, v_to_c):
     """Return list of inputs that are not the output of any cgpm."""
-    extraneous = [[i for i in c.inputs if i not in vtc] for c in cgpms]
+    extraneous = [[i for i in c.inputs if i not in v_to_c] for c in cgpms]
     return list(it.chain.from_iterable(extraneous))
-
-
-def retrieve_missing_inputs(cgpms, vtc, query, evidence):
-    """Return list of inputs (not in evidence) required to answer query."""
-    cgpms_query = set(vtc[q] for q in query)
-    inputs_all = set(it.chain.from_iterable(c.inputs for c in cgpms_query))
-    inputs_mis = [i for i in inputs_all if i not in evidence and i not in query]
-    return inputs_mis
 
 
 def topological_sort(graph):

@@ -24,10 +24,10 @@ class ImportanceNetwork(object):
     def __init__(self, X, cgpms, rng=None):
         self.rng = rng if rng else gu.gen_rng(1)
         self.X = X
-        self.cgpms = hu.validate_gpms(cgpms)
+        self.cgpms = hu.validate_cgpms(cgpms)
         self.v_to_c = hu.retrieve_variable_to_cgpm(self.cgpms)
         self.adjacency = hu.retrieve_adjacency(self.cgpms, self.v_to_c)
-        self.extranous = hu.retrieve_extranous_inputs(self.cgpms, self.v_to_c)
+        self.extraneous = hu.retrieve_extraneous_inputs(self.cgpms, self.v_to_c)
         self.topo = hu.topological_sort(self.adjacency)
 
     def simulate(self, r, query, evidence):
