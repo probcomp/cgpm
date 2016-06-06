@@ -121,14 +121,14 @@ def test_retrieve_extraneous_inputs():
 
 def test_retrieve_missing_inputs():
     # No connections.
-    network = ImportanceNetwork(X=None, cgpms=build_cgpm_no_connection())
+    network = ImportanceNetwork(build_cgpm_no_connection())
     missing = network.retrieve_missing_inputs([2], {8: None})
     assert [] == missing
     missing = network.retrieve_missing_inputs([2,8], {1: None})
     assert [] == missing
 
     # V structure.
-    network = ImportanceNetwork(X=None, cgpms=build_cgpms_v_structure())
+    network = ImportanceNetwork(build_cgpms_v_structure())
     missing = network.retrieve_missing_inputs([1], {})
     assert [] == missing
     missing = network.retrieve_missing_inputs([1, 2], {})
@@ -145,7 +145,7 @@ def test_retrieve_missing_inputs():
     assert set([1,2]) == set(missing)
 
     # Markov chain.
-    network = ImportanceNetwork(X=None, cgpms=build_cgpms_markov_chain())
+    network = ImportanceNetwork(build_cgpms_markov_chain())
     missing = network.retrieve_missing_inputs([1,2,8], {})
     assert missing == []
     missing = network.retrieve_missing_inputs([2,8], {5:None})
@@ -171,7 +171,8 @@ def test_retrieve_missing_inputs():
     missing = network.retrieve_missing_inputs([1,2], {8:None})
     assert missing == []
 
-    network = ImportanceNetwork(X=None, cgpms=build_cgpms_complex())
+    # Complex.
+    network = ImportanceNetwork(build_cgpms_complex())
     missing = network.retrieve_missing_inputs([5,4,3,2], {})
     assert missing == []
     missing = network.retrieve_missing_inputs([5,4,3], {2: None})

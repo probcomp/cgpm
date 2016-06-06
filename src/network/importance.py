@@ -21,9 +21,8 @@ import gpmcc.utils.general as gu
 class ImportanceNetwork(object):
     """Querier for a Composite CGpm."""
 
-    def __init__(self, X, cgpms, accuracy=1, rng=None):
+    def __init__(self, cgpms, accuracy=1, rng=None):
         self.rng = rng if rng else gu.gen_rng(1)
-        self.X = X
         self.cgpms = hu.validate_cgpms(cgpms)
         self.accuracy = accuracy
         self.v_to_c = hu.retrieve_variable_to_cgpm(self.cgpms)
