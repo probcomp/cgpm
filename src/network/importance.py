@@ -36,13 +36,34 @@ class ImportanceNetwork(object):
     def logpdf(self, r, query, evidence):
         pass
 
-    def weighted_sample(self, r, evidence):
+    def weighted_sample(self, r, query, evidence):
         pass
 
-    def simulate_layer(self, r, l, s):
-        # Layer is self.cgpms[l], and s is the aggregated sample.
-        cgpm = self.cgpms[l]
-        evidence = {e:x for e,x in s if e in cgpm.inputs}
-        query = {q:x for e,x in s if q in cgpm.outputs}
-        logp = cgpm.logpdf(r, query, evidence) if query else 0
-        evidence = gu.merge_dicts(query, evidence)
+    def invoke_cgpm(self, r, index, query, evidence):
+        cgpm = self.cgpms[index]
+        assert isinstance(query, list)
+        assert all(i in evidence for i in cgpm.inputs)
+        assert isinstance(evidence, dict)
+        assert all(q in cgpm.outputs for q in query)
+        assert all(e in cgpm.inputs or e in cgpm.outputs for e in evidence)
+        ev_in = {e:x for e,x in evidence.items() if e in cgpm.inputs}
+        ev_out = {e:x for e,x in evidence.items() if e in cgpm.outputs}
+        weight = cgpm.logpdf(r, ev_out, ev_in) if ev_out else 0
+        sample = cgpm.simulate(r, query, evidence)
+        return sample, weight
+
+
+    def retrieve_missing_inputs(self, query, evidence):
+        """Return list of inputs (not in evidence) required to answer query."""
+
+        def retrieve_missing_input(cgpm, query):
+            active = any(i in query or i in evidence for i in cgpm.outputs)
+            return cgpm.inputs if active else []
+
+        missing = set(query)
+        for l in reversed(self.topo):
+            missing_l = retrieve_missing_input(self.cgpms[l[0]], missing)
+            missing.update(missing_l)
+
+        return [c for c in missing if
+            all(c not in x for x in [query, evidence, self.extraneous])]
