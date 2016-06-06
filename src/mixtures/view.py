@@ -55,6 +55,11 @@ class View(object):
         """
         if outputs or inputs:
             raise ValueError('View does not require explicit input or output.')
+        self.inputs = []
+
+        # Dimensions.
+        self.dims = dict()
+        self.outputs = self.dims.keys()
 
         # Entropy.
         self.rng = gu.gen_rng() if rng is None else rng
@@ -75,9 +80,6 @@ class View(object):
         self.Zr = {i:z for i,z in zip(xrange(self.n_rows()), Zr)}
         self.Nk = list(np.bincount(Zr))
 
-        # Dimensions.
-        self.dims = dict()
-
         self._check_partitions()
 
     # --------------------------------------------------------------------------
@@ -91,6 +93,7 @@ class View(object):
             dim.distargs.update(distargs)
             self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
+        self.outputs = self.dims.keys()
         return dim.logpdf_score()
 
     def _bulk_incorporate(self, dim):
@@ -122,6 +125,7 @@ class View(object):
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify)."""
         del self.dims[dim.index]
+        self.outputs = self.dims.keys()
         return dim.logpdf_score()
 
     def incorporate(self, rowid, query, evidence=None):
