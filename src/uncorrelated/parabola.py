@@ -20,8 +20,9 @@ from scipy.misc import logsumexp
 from scipy.stats import uniform
 
 from gpmcc.gpm import Gpm
-from gpmcc.uncorrelated.xy import DirectedXyGpm
+from gpmcc.network.importance import ImportanceNetwork
 from gpmcc.uncorrelated.uniformx import UniformX
+from gpmcc.uncorrelated.xy import DirectedXyGpm
 from gpmcc.utils.general import gen_rng
 
 
@@ -75,3 +76,4 @@ class Parabola(DirectedXyGpm):
             outputs=[self.outputs[1]],
             inputs=[self.outputs[0]],
             noise=noise)
+        self.network = ImportanceNetwork([self.x, self.y], rng=self.rng)

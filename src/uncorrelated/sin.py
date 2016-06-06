@@ -22,6 +22,7 @@ from scipy.integrate import quad
 from scipy.stats import uniform
 
 from gpmcc.gpm import Gpm
+from gpmcc.network.importance import ImportanceNetwork
 from gpmcc.uncorrelated.uniformx import UniformX
 from gpmcc.uncorrelated.xy import DirectedXyGpm
 from gpmcc.utils.general import gen_rng
@@ -70,9 +71,11 @@ class Sin(DirectedXyGpm):
             outputs=[self.outputs[1]],
             inputs=[self.outputs[0]],
             noise=noise)
+        self.network = ImportanceNetwork([self.x, self.y], rng=self.rng)
 
-    # All further methods not invoked, should override simuate and logpdf from
-    # the importance network in DirectedXyGpm to activate.
+    # All further methods are here for historical reasons and are not invoked.
+    # Should override simuate and logpdf from the importance network in
+    # DirectedXyGpm to activate them.
 
     def logpdf_xy(self, x, y):
         if not self.D[0] <= x <= self.D[1]:
