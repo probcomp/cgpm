@@ -15,9 +15,10 @@
 # limitations under the License.
 
 from gpmcc.utils import general as gu
+from gpmcc.gpm import Gpm
 
 
-class DistributionGpm(object):
+class DistributionGpm(Gpm):
     """Interface for generative population models representing univariate
     probability distribution.
 
