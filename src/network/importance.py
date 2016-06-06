@@ -30,26 +30,26 @@ class ImportanceNetwork(object):
         self.extraneous = hu.retrieve_extraneous_inputs(self.cgpms, self.v_to_c)
         self.topo = hu.topological_sort(self.adjacency)
 
-    def simulate(self, rowid, query, evidence, N=1):
+    def simulate(self, rowid, query, evidence=None, N=1):
+        if evidence is None: evidence = {}
         samples, weights = zip(*
             [self.weighted_sample(rowid, query, evidence)
             for i in xrange(self.accuracy*N)])
         indices = gu.log_pflip(weights, size=N, rng=self.rng)
         return [{q: samples[i][q] for q in query} for i in indices]
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
+        if evidence is None: evidence = {}
         # Compute joint probability.
         samples_joint, weights_joint = zip(*
             [self.weighted_sample(rowid, [], gu.merged(evidence, query))
             for i in xrange(self.accuracy)])
         logp_joint = gu.logmeanexp(weights_joint)
         # Compute marginal probability.
-        logp_evidence = 0.
-        if evidence:
-            samples_marginal, weights_marginal = zip(*
-                [self.weighted_sample(rowid, [], evidence)
-                for i in xrange(self.accuracy)])
-            logp_evidence = gu.logmeanexp(weights_marginal)
+        samples_marginal, weights_marginal = zip(*
+            [self.weighted_sample(rowid, [], evidence)
+            for i in xrange(self.accuracy)]) if evidence else ({}, [0.])
+        logp_evidence = gu.logmeanexp(weights_marginal)
         # Take log ratio.
         return logp_joint - logp_evidence
 
@@ -59,8 +59,9 @@ class ImportanceNetwork(object):
         weight = 0
         for l in self.topo:
             sl, wl = self.invoke_cgpm(rowid, self.cgpms[l], query_all, sample)
-            sample = gu.merged(sample, sl) if sl else sample
+            sample.update(sl)
             weight += wl
+        assert all(q in sample for q in sample)
         return sample, weight
 
     def invoke_cgpm(self, rowid, cgpm, query, evidence):
@@ -68,7 +69,7 @@ class ImportanceNetwork(object):
         ev_in = {e:x for e,x in evidence.items() if e in cgpm.inputs}
         ev_out = {e:x for e,x in evidence.items() if e in cgpm.outputs}
         ev_all = gu.merged(ev_in, ev_out)
-        qry_out = [q for q in query if q in self.outputs]
+        qry_out = [q for q in query if q in cgpm.outputs]
         weight = cgpm.logpdf(rowid, ev_out, ev_in) if ev_out else 0
         sample = cgpm.simulate(rowid, qry_out, ev_all) if qry_out else {}
         return sample, weight
