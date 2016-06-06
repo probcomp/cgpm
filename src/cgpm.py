@@ -34,7 +34,8 @@ class CGpm(object):
         schema : **kwargs
             An opaque binary parsed by the GPM to initialize itself.
             Often contains information about hyperparameters, parameters,
-            sufficient statistics, or metadata about the input variables.
+            sufficient statistics, configuration settings,
+            or metadata about the input variables.
         """
 
         raise NotImplementedError
@@ -62,7 +63,7 @@ class CGpm(object):
         """Compute the conditional density of `query` given `evidence`.
 
         query : dict{int:value}
-            The keys of `targets` must be a subet of the `output` variables.
+            The keys of `targets` must be a subset of the `output` variables.
         evidence : dict{int:value}, optional
             Values of all `input` variables, if any, as well as any partial
             observations of `output` variables (may not overlap with `query`).
