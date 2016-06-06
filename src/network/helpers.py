@@ -71,15 +71,12 @@ def topological_sort(graph):
     graph_sorted = []
     graph = dict(graph)
     while graph:
-        acyclic = False
+        cyclic = True
         for node, edges in graph.items():
-            for edge in edges:
-                if edge in graph:
-                    break
-            else:
-                acyclic = True
+            if all(e not in graph for e in edges):
+                cyclic = False
                 del graph[node]
                 graph_sorted.append((node, edges))
-        if not acyclic:
-            raise ValueError('A cyclic dependency occurred in topological_sort')
+        if cyclic:
+            raise ValueError('Cyclic dependency occurred in topological_sort.')
     return graph_sorted
