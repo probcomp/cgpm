@@ -71,7 +71,11 @@ simulator_limits = {
 def simulate_dataset(dist, noise, size=200):
     rng = gen_rng(0)
     cgpm = simulators[dist](outputs=[2,4], noise=noise, rng=rng)
-    samples = [cgpm.simulate(-1, [2, 4]) for i in xrange(size)]
+    samples = cgpm.simulate(-1, [2, 4], N=size)
+    try: # XXX Crash test only!
+        logpdfs = [cgpm.logpdf(-1, s, {}) for s in samples]
+    except NotImplementedError:
+        pass
     D = [(s[2], s[4]) for s in samples]
     return np.asarray(D)
 
