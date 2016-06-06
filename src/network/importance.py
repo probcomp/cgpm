@@ -62,7 +62,7 @@ class ImportanceNetwork(object):
 
         missing = set(query)
         for l in reversed(self.topo):
-            missing_l = retrieve_missing_input(self.cgpms[l[0]], missing)
+            missing_l = retrieve_missing_input(self.cgpms[l], missing)
             missing.update(missing_l)
 
         return [c for c in missing if
