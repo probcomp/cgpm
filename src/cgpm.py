@@ -15,70 +15,77 @@
 # limitations under the License.
 
 class CGpm(object):
-    """Interface for generative population models.
+    """Interface for conditional generative population models.
 
     Conditional generative population models provide a procedural abstraction
     for multivariate probability densities and stochastic samplers.
     """
 
     def __init__(self, outputs, inputs, schema, rng):
-        """Initialize the Gpm.
+        """Initialize the CGpm.
 
         Parameters
         ----------
         outputs : list<int>
             List of variables whose joint distribution is modeled by the GPM.
         inputs : list<int>, optional
-            List of variables that must accompany any observation or query about
-            a particular rowid.
+            List of variables that must accompany any observation or query.
         schema : **kwargs
             An opaque binary parsed by the GPM to initialize itself.
             Often contains information about hyperparameters, parameters,
             sufficient statistics, configuration settings,
             or metadata about the input variables.
+        rng : numpy.random.RandomState
+            Source of entropy.
         """
-
         raise NotImplementedError
 
     def incorporate(self, rowid, query, evidence):
-        """Record an observed cell for the rowid member.
+        """Record an observation for `rowid`.
 
-        rowid : token
-            A unique token identifying the member.
+        rowid : int
+            A unique integer identifying the member.
         query : dict{int:value}
-            The keys of `query` must be a subset of the `output` variables.
+            The observed values. The keys of `query` must be a subset of the
+            `output` variables, and `value` must be type-matched based on
+            `schema`.
         evidence : dict{int:value}, optional
-            Values of all `input` variables, if any.
+            Values of all required `input` variables for the `rowid`.
         """
         raise NotImplementedError
 
     def unincorporate(self, rowid):
-        """Remove all incorporated observations of `rowid`.
-
-        An error will be thrown if the rowid was not previously incorporated.
-        """
+        """Remove all incorporated observations of `rowid`."""
         raise NotImplementedError
 
     def logpdf(self, rowid, query, evidence):
-        """Compute the conditional density of `query` given `evidence`.
+        """Return the conditional density of `query` given `evidence`.
 
         query : dict{int:value}
             The keys of `targets` must be a subset of the `output` variables.
         evidence : dict{int:value}, optional
-            Values of all `input` variables, if any, as well as any partial
-            observations of `output` variables (may not overlap with `query`).
+            Values of all required `input` variables as well as any partial
+            observations of `output` variables to condition on (may not overlap
+            with `query`).
         """
         raise NotImplementedError
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        """Produce N samples of the `query` variables conditioned on `evidence`.
+        """Return N iid samples of `query` variables conditioned on `evidence`.
+
+        query : list<int>
+            List of `output` variables to simulate.
+        evidence : dict{int:value}, optional
+            Values of all required `input` variables as well as any partial
+            observations of `output` variables to condition on (may not overlap
+            with `query`).
 
         The sample must be drawn from the same density as `logpdf`.
         """
         raise NotImplementedError
 
     def logpdf_score(self):
-        """Joint density of all observations and current latent state."""
+        """Return joint density of all observations and current latent state."""
         raise NotImplementedError
 
     def infer(self, program):
