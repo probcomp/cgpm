@@ -79,7 +79,9 @@ class View(object):
             Zr = gu.simulate_crp(self.n_rows(), alpha, rng=self.rng)
         # Convert Zr to a dictionary.
         self.Zr = {i:z for i,z in enumerate(Zr)}
-        self.Nk = list(np.bincount(Zr))
+        # Build Nk dictionary.
+        counts = np.bincount(Zr)
+        self.Nk = {k: count for k, count in enumerate(counts) if count > 0}
 
         self._check_partitions()
 
@@ -144,8 +146,10 @@ class View(object):
         """
         k = query.get(-1, 0)
         transition = [rowid] if k is None else []
-        if len(self.Nk) == k:
-            self.Nk.append(0)
+        if k not in self.Nk:
+            self.Nk[k] = 0
+        # if len(self.Nk) == k:
+        #     self.Nk.append(0)
         self.Nk[k] += 1
         self.Zr[rowid] = k
         for d in self.dims:
@@ -166,6 +170,7 @@ class View(object):
             adjust = lambda z: z-1 if k < z else z
             self.Zr = {r: adjust(self.Zr[r]) for r in self.Zr}
             del self.Nk[k]
+            self.Nk = {adjust(z): self.Nk[z] for z in self.Nk}
             for dim in self.dims.values():
                 # XXX Abstract in a better way
                 del dim.clusters[k]
@@ -233,7 +238,7 @@ class View(object):
 
     def logpdf_score(self):
         """Compute the marginal logpdf CRP assignment and data."""
-        logp_crp = gu.logp_crp(len(self.Zr), self.Nk, self.alpha)
+        logp_crp = gu.logp_crp(len(self.Zr), self.Nk_list(), self.alpha)
         logp_dims = [dim.logpdf_score() for dim in self.dims.values()]
         return logp_crp + sum(logp_dims)
 
@@ -262,7 +267,7 @@ class View(object):
         # p(z|xE)   logp_cluster
         # p(xQ|z)   logp_query
         K = range(len(self.Nk)+1)
-        lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk, self.alpha)
+        lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = gu.log_normalize(np.add(lp_crp, lp_evidence))
@@ -290,7 +295,7 @@ class View(object):
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster exposes latent cluster of each sample in extra column."""
         K = range(len(self.Nk)+1)
-        lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk, self.alpha)
+        lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = np.add(lp_crp, lp_evidence)
@@ -400,7 +405,8 @@ class View(object):
     def _transition_row(self, rowid):
         # Skip unincorporated rows.
         logp_data = self._logpdf_row_gibbs(rowid, 1)
-        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
+        logp_crp = gu.logp_crp_gibbs(
+            self.Nk_list(), self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
         p_cluster = np.add(logp_data, logp_crp)
         z_b = gu.log_pflip(p_cluster, rng=self.rng)
@@ -432,6 +438,9 @@ class View(object):
 
     # --------------------------------------------------------------------------
     # Internal query utils.
+
+    def Nk_list(self):
+        return [self.Nk[k] for k in sorted(self.Nk)]
 
     def n_rows(self):
         return len(self.X[self.X.keys()[0]])
@@ -490,12 +499,12 @@ class View(object):
         if not sorted(set(self.Zr.values())) == range(max(self.Zr.values())+1):
             import ipdb; ipdb.set_trace()
         assert set(self.Zr.keys()) == set(xrange(self.n_rows()))
-        assert len(self.Zr) == sum(self.Nk) == self.n_rows()
-        assert max(self.Zr.values()) == len(self.Nk)-1
+        assert len(self.Zr) == sum(self.Nk_list()) == self.n_rows()
+        assert max(self.Zr.values()) == len(self.Nk_list())-1
         for dim in self.dims.values():
             # Ensure number of clusters in each dim in views[v]
             # is the same and as described in the view (K, Nk).
-            assert len(dim.clusters) == len(self.Nk)
+            assert len(dim.clusters) == len(self.Nk_list())
             for k in xrange(len(dim.clusters)):
                 rowids = [r for (r,z) in self.Zr.items() if z == k]
                 nans = np.isnan([self.X[dim.index][r] for r in rowids])
