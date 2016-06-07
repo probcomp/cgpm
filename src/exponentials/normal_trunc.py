@@ -83,7 +83,9 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma, self.l, self.h)
         return logpdf_unorm - logcdf_norm
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return self.data[rowid]

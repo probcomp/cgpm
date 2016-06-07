@@ -70,7 +70,9 @@ class Categorical(DistributionGpm):
         return Categorical.calc_predictive_logp(
             int(x), self.N, self.counts, self.alpha)
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return self.data[rowid]

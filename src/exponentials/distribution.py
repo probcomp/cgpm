@@ -55,7 +55,7 @@ class DistributionGpm(CGpm):
         assert not evidence
         assert query.keys() == self.outputs
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
         assert not evidence
         assert query == self.outputs
 
