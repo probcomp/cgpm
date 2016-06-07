@@ -266,7 +266,7 @@ class View(object):
         # p(xE|z)   logp_evidence
         # p(z|xE)   logp_cluster
         # p(xQ|z)   logp_query
-        K = range(len(self.Nk)+1)
+        K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
         lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
@@ -294,7 +294,7 @@ class View(object):
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster exposes latent cluster of each sample in extra column."""
-        K = range(len(self.Nk)+1)
+        K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
         lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
