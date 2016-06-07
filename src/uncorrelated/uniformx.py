@@ -35,7 +35,9 @@ class UniformX(CGpm):
         self.inputs = []
         self.uniform = uniform(loc=self.low, scale=self.high-self.low)
 
-    def simulate(self, rowid, query, evidence=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert not evidence
         assert query == self.outputs
         x = self.uniform.rvs(random_state=self.rng)

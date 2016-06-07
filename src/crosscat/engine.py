@@ -135,7 +135,7 @@ class Engine(object):
         self._close_mapper(pool)
         return logpdf_scores
 
-    def simulate(self, rowid, query, evidence=None, N=1, multithread=1):
+    def simulate(self, rowid, query, evidence=None, N=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('simulate', self.states[i],
                 (rowid, query, evidence, N))

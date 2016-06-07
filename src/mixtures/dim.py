@@ -123,13 +123,13 @@ class Dim(object):
     # --------------------------------------------------------------------------
     # Simulate
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
         """Simulate the query given evidence."""
         k, evidence, valid = self.preprocess(query, evidence)
         if not valid:
             raise ValueError('Bad simulate args: %s, %s.') % (query, evidence)
         cluster = self.aux_model if k==len(self.clusters) else self.clusters[k]
-        return cluster.simulate(rowid, query, evidence)
+        return cluster.simulate(rowid, query, evidence, N=N)
 
     # --------------------------------------------------------------------------
     # Inferece

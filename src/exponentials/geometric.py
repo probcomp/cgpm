@@ -67,7 +67,9 @@ class Geometric(DistributionGpm):
         return Geometric.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return self.data[rowid]

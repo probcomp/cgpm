@@ -79,7 +79,9 @@ class BetaUC(DistributionGpm):
             return -float('inf')
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return self.data[rowid]

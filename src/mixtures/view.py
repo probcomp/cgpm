@@ -272,9 +272,11 @@ class View(object):
     # --------------------------------------------------------------------------
     # simulate
 
-    def simulate(self, rowid, query, evidence, N=1):
+    def simulate(self, rowid, query, evidence, N=None):
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
+        if N is None:
+            N = 1
         if self._is_hypothetical(rowid):
             return self._simulate_hypothetical(query, evidence, N)
         else:

@@ -293,13 +293,16 @@ class State(object):
     # --------------------------------------------------------------------------
     # Simulate
 
-    def simulate(self, rowid, query, evidence=None, N=1):
+    def simulate(self, rowid, query, evidence=None, N=None):
         """Simulate from the posterior predictive distirbution."""
         if evidence is None:
             evidence = {}
+        if N is None:
+            N = 1
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
-        vu.validate_query_evidence(self.X, rowid, self._is_hypothetical(rowid),
+        vu.validate_query_evidence(
+            self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
         return self._simulate_joint(rowid, query, evidence, N)

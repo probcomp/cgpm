@@ -66,7 +66,9 @@ class Bernoulli(DistributionGpm):
         return Bernoulli.calc_predictive_logp(
             x, self.N, self.x_sum, self.alpha, self.beta)
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return self.data[rowid]

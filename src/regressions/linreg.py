@@ -87,7 +87,9 @@ class LinearRegression(CGpm):
             xt, yt, self.N, self.data.Y.values(), self.data.x.values(), self.a,
             self.b, self.mu, self.V)
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
         if rowid in self.data.x:
             return self.data.x[rowid]

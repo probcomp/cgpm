@@ -42,7 +42,9 @@ class ParabolaY(CGpm):
         self.noise = noise
         self.uniform = uniform(loc=-self.noise, scale=2*self.noise)
 
-    def simulate(self, rowid, query, evidence):
+    def simulate(self, rowid, query, evidence, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
         assert evidence.keys() == self.inputs
         x = evidence[self.inputs[0]]
