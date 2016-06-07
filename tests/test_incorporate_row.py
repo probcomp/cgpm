@@ -78,17 +78,17 @@ def test_invalid_rowid():
 def test_incorporate_valid():
     state = State(X, cctypes=['normal']*5, Zv=[0,0,1,1,1], rng=gu.gen_rng(0))
     # Incorporate row into cluster 0 for all views.
-    previous = np.asarray([v.Nk(0) for v in state.views])
+    previous = np.asarray([v.Nk[0] for v in state.views])
     state.incorporate(
         rowid=-1,
         query={0:0, 1:1, 2:2, 3:3, 4:4, -1:0, -2:0})
-    assert [v.Nk(0) for v in state.views] == list(previous+1)
+    assert [v.Nk[0] for v in state.views] == list(previous+1)
     # Incorporate row into cluster 0 for view -2 with some missing values.
-    previous = state.views[1].Nk(0)
+    previous = state.views[1].Nk[0]
     state.incorporate(
         rowid=-1,
         query={0:0, 2:2, -2:0})
-    assert state.views[1].Nk(0) == previous+1
+    assert state.views[1].Nk[0] == previous+1
     state.transition(N=2)
 
 
@@ -96,13 +96,13 @@ def test_incorporate_session():
     rng = gu.gen_rng(4)
     state = State(X, cctypes=['normal']*5, Zv=[0,0,1,1,2], rng=rng)
     # Incorporate row into a singleton cluster for all views.
-    previous = [len(v.Nk()) for v in state.views]
+    previous = [len(v.Nk) for v in state.views]
     data = {i: rng.normal() for i in xrange(5)}
     clusters = {-1: previous[0], -2: previous[1], -3: previous[2]}
     state.incorporate(-1, gu.merged(data, clusters))
-    assert [len(v.Nk()) for v in state.views] == [p+1 for p in previous]
+    assert [len(v.Nk) for v in state.views] == [p+1 for p in previous]
     # Incorporate row without specifying clusters, and some missing values
-    previous = [len(v.Nk()) for v in state.views]
+    previous = [len(v.Nk) for v in state.views]
     data = {i: rng.normal() for i in xrange(2)}
     state.incorporate(-1, data)
     state.transition(N=2)
