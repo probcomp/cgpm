@@ -78,7 +78,7 @@ class View(object):
         if Zr is None:
             Zr = gu.simulate_crp(self.n_rows(), alpha, rng=self.rng)
         # Convert Zr to a dictionary.
-        self.Zr = {i:z for i,z in zip(xrange(self.n_rows()), Zr)}
+        self.Zr = {i:z for i,z in enumerate(Zr)}
         self.Nk = list(np.bincount(Zr))
 
         self._check_partitions()
