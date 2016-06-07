@@ -419,13 +419,10 @@ class View(object):
 
     def _logpdf_row_gibbs(self, rowid):
         """Internal use only for Gibbs transition."""
-        # m_aux = 0 if self.Nk[self.Zr[rowid]]==1 else 1
-        # ks = range(len(self.Nk) + m_aux)
         m_aux = [] if self.Nk[self.Zr[rowid]]==1 else [max(self.Nk)+1]
-        ks = sorted(self.Nk.keys() + m_aux)
-        # assert ks == ks_prime
+        K = sorted(self.Nk.keys() + m_aux)
         return [sum([self._logpdf_cell_gibbs(rowid, dim, k)
-            for dim in self.dims.values()]) for k in ks]
+            for dim in self.dims.values()]) for k in K]
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         query = {dim.index: self.X[dim.index][rowid]}
