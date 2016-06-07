@@ -161,7 +161,7 @@ class View(object):
 
     def unincorporate(self, rowid):
         # Unincorporate from dims.
-        for dim in self.dims.values():
+        for dim in self.dims.itervalues():
             dim.unincorporate(rowid)
         # Account.
         k = self.Zr[rowid]
@@ -171,7 +171,7 @@ class View(object):
             self.Zr = {r: adjust(self.Zr[r]) for r in self.Zr}
             del self.Nk[k]
             self.Nk = {adjust(z): self.Nk[z] for z in self.Nk}
-            for dim in self.dims.values():
+            for dim in self.dims.itervalues():
                 # XXX Abstract in a better way
                 del dim.clusters[k]
         del self.Zr[rowid]
@@ -239,7 +239,7 @@ class View(object):
     def logpdf_score(self):
         """Compute the marginal logpdf CRP assignment and data."""
         logp_crp = gu.logp_crp(len(self.Zr), self.Nk_list(), self.alpha)
-        logp_dims = [dim.logpdf_score() for dim in self.dims.values()]
+        logp_dims = [dim.logpdf_score() for dim in self.dims.itervalues()]
         return logp_crp + sum(logp_dims)
 
     # --------------------------------------------------------------------------
@@ -422,7 +422,7 @@ class View(object):
         m_aux = [] if self.Nk[self.Zr[rowid]]==1 else [max(self.Nk)+1]
         K = sorted(self.Nk.keys() + m_aux)
         return [sum([self._logpdf_cell_gibbs(rowid, dim, k)
-            for dim in self.dims.values()]) for k in K]
+            for dim in self.dims.itervalues()]) for k in K]
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         query = {dim.index: self.X[dim.index][rowid]}
@@ -500,7 +500,7 @@ class View(object):
         assert set(self.Zr.keys()) == set(xrange(self.n_rows()))
         assert len(self.Zr) == sum(self.Nk_list()) == self.n_rows()
         assert max(self.Zr.values()) == len(self.Nk_list())-1
-        for dim in self.dims.values():
+        for dim in self.dims.itervalues():
             # Ensure number of clusters in each dim in views[v]
             # is the same and as described in the view (K, Nk).
             assert len(dim.clusters) == len(self.Nk_list())
