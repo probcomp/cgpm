@@ -487,6 +487,8 @@ class View(object):
         assert self.alpha > 0.
         # Check that the number of dims actually assigned to the view
         # matches the count in Nv.
+        if not sorted(set(self.Zr.values())) == range(max(self.Zr.values())+1):
+            import ipdb; ipdb.set_trace()
         assert set(self.Zr.keys()) == set(xrange(self.n_rows()))
         assert len(self.Zr) == sum(self.Nk) == self.n_rows()
         assert max(self.Zr.values()) == len(self.Nk)-1
