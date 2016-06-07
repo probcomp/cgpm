@@ -70,8 +70,8 @@ class CGpm(object):
         """
         raise NotImplementedError
 
-    def simulate(self, rowid, query, evidence):
-        """Produce a sample of the `query` variables conditioned on `evidence`.
+    def simulate(self, rowid, query, evidence=None, N=None):
+        """Produce N samples of the `query` variables conditioned on `evidence`.
 
         The sample must be drawn from the same density as `logpdf`.
         """
