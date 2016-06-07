@@ -404,7 +404,7 @@ class View(object):
 
     def _transition_row(self, rowid):
         # Skip unincorporated rows.
-        logp_data = self._logpdf_row_gibbs(rowid, 1)
+        logp_data = self._logpdf_row_gibbs(rowid)
         logp_crp = gu.logp_crp_gibbs(
             self.Nk_list(), self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
@@ -417,13 +417,15 @@ class View(object):
             self.incorporate(rowid, query)
         self._check_partitions()
 
-    def _logpdf_row_gibbs(self, rowid, m):
+    def _logpdf_row_gibbs(self, rowid):
         """Internal use only for Gibbs transition."""
-        m_aux = m-1 if self.Nk[self.Zr[rowid]]==1 else m
-        return [
-            sum([self._logpdf_cell_gibbs(rowid, dim, k)
-                for dim in self.dims.values()])
-            for k in xrange(len(self.Nk) + m_aux)]
+        # m_aux = 0 if self.Nk[self.Zr[rowid]]==1 else 1
+        # ks = range(len(self.Nk) + m_aux)
+        m_aux = [] if self.Nk[self.Zr[rowid]]==1 else [max(self.Nk)+1]
+        ks = sorted(self.Nk.keys() + m_aux)
+        # assert ks == ks_prime
+        return [sum([self._logpdf_cell_gibbs(rowid, dim, k)
+            for dim in self.dims.values()]) for k in ks]
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         query = {dim.index: self.X[dim.index][rowid]}
