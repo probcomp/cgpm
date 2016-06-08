@@ -25,14 +25,15 @@ from scipy.misc import logsumexp
 
 import gpmcc.utils.general as gu
 
+from gpmcc.cgpm import CGpm
 from gpmcc.mixtures.dim import Dim
 from gpmcc.utils.config import cctype_class
 from gpmcc.utils.general import logmeanexp
 from gpmcc.utils.general import merged
 
 
-class View(object):
-    """View, a collection of Dim and their row mixtures."""
+class View(CGpm):
+    """CGpm represnting a multivariate Dirichlet process mixture of CGpms."""
 
     def __init__(self, X, outputs=None, inputs=None, alpha=None,
             cctypes=None, distargs=None, hypers=None, Zr=None, rng=None):

@@ -29,13 +29,14 @@ import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
 import gpmcc.utils.validation as vu
 
+from gpmcc.cgpm import CGpm
 from gpmcc.mixtures.dim import Dim
 from gpmcc.mixtures.view import View
 from gpmcc.utils.general import logmeanexp
 
 
-class State(object):
-    """The outer most GPM in gpmcc."""
+class State(CGpm):
+    """CGpm representing Crosscat, built as a composition of smaller CGpms."""
 
     def __init__(self, X, outputs=None, inputs=None, cctypes=None,
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,

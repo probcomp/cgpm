@@ -22,11 +22,15 @@ import gpmcc.utils.config as cu
 import gpmcc.utils.general as gu
 import gpmcc.utils.plots as pu
 
+from gpmcc.cgpm import CGpm
 
-class Dim(object):
-    """Dim holds sufficient statistics, DistributionGpm type, clusters, and
-    shared hyperparameters and grids. Technically not GPM, but easily becomes
-    one by placing creating a View with a single Dim."""
+
+class Dim(CGpm):
+    """CGpm representing a homogeneous mixture of univariate CGpm.
+
+    There is no prior over the cluster assignment k of each member. Formally,
+    the cluster assignment is a required input variable to the CGpm.
+    """
 
     def __init__(self, outputs, inputs=None, cctype=None, hypers=None,
             params=None, distargs=None, rng=None):
