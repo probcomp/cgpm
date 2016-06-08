@@ -138,6 +138,7 @@ class Dim(object):
         """Updates the hyperparameters of each cluster."""
         for k in self.clusters:
             self.clusters[k].set_hypers(self.hypers)
+            self.aux_model = self.create_aux_model()
         targets = self.hypers.keys()
         self.rng.shuffle(targets)
         for target in targets:
