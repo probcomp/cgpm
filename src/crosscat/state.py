@@ -42,9 +42,13 @@ class State(object):
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, iterations=None,
             rng=None):
         """Construct State GPM with initial conditions and constraints."""
-
         # Seed.
         self.rng = gu.gen_rng() if rng is None else rng
+
+        # Inputs
+        if inputs:
+            raise ValueError('State does not accept inputs.')
+        self.inputs = []
 
         # Dataset.
         X = np.asarray(X)
@@ -56,25 +60,6 @@ class State(object):
         self.outputs = outputs
         self.X = {c: X[:,i].tolist() for i,c in enumerate(self.outputs)}
 
-        if inputs:
-            raise ValueError('State does not accept inputs.')
-
-        # Cctypes.
-        if cctypes is None:
-            cctypes = [None] * len(self.outputs)
-
-        # Distargs.
-        if distargs is None:
-            distargs = [None] * len(cctypes)
-
-        # Hypers.
-        if hypers is None:
-            hypers = [None] * len(cctypes)
-
-        # View CRP alphas.
-        if view_alphas is None:
-            view_alphas = [None] * len(cctypes)
-
         # State CRP alpha grid.
         self.alpha_grid = gu.log_linspace(1./self.n_cols(), self.n_cols(), 30)
 
@@ -84,9 +69,9 @@ class State(object):
         else:
             self.alpha = alpha
 
-        # Row partitions.
+        # View row partitions.
         if Zrv is None:
-            Zrv = [None] * len(cctypes)
+            Zrv = [None] * len(self.outputs)
         else:
             assert len(Zrv) == len(set(Zv))
 
@@ -99,7 +84,7 @@ class State(object):
         if len(self.Cd) > 0:
             raise ValueError('Dependency constraints not yet implemented.')
 
-        # View partition.
+        # Column partition.
         if Zv is None:
             if self.Cd or self.Ci:
                 Zv = gu.simulate_crp_constrained(
@@ -111,24 +96,25 @@ class State(object):
         assert len(Zv) == len(self.outputs)
         self.Zv = {i:z for i, z in zip(self.outputs, Zv)}
 
-        # Dims.
-        def create_dim(c):
-            D = Dim(
-                outputs=[c], inputs=None, cctype=cctypes[c],
-                hypers=hypers[c], distargs=distargs[c], rng=self.rng)
-            D.transition_hyper_grids(self.X[c])
-            return D
-        dims = [create_dim(o) for o in self.outputs]
+
+        # View data.
+        if cctypes is None: cctypes = [None] * len(self.outputs)
+        if distargs is None: distargs = [None] * len(self.outputs)
+        if hypers is None: hypers = [None] * len(self.outputs)
+        if view_alphas is None: view_alphas = [None] * len(self.outputs)
 
         # Views.
-        def create_view(v):
-            V =  View(
-                self.X, outputs=None, inputs=None, Zr=Zrv[v],
-                alpha=view_alphas[v], rng=self.rng)
-            for c in [o for o in self.outputs if Zv[o] == v]:
-                V.incorporate_dim(dims[c])
-            return V
-        self.views = [create_view(v) for v in sorted(set(self.Zv.values()))]
+        self.views = []
+        for v in sorted(set(self.Zv.values())):
+            v_outputs = [o for o in self.outputs if Zv[o] == v]
+            v_cctypes = [cctypes[c] for c in v_outputs]
+            v_distargs = [distargs[c] for c in v_outputs]
+            v_hypers = [hypers[c] for c in v_outputs]
+            view = View(
+                self.X, outputs=v_outputs, inputs=None, Zr=Zrv[v],
+                alpha=view_alphas[v], cctypes=v_cctypes, distargs=v_distargs,
+                hypers=v_hypers, rng=self.rng)
+            self.views.append(view)
 
         # Iteration metadata.
         self.iterations = iterations if iterations is not None else {}

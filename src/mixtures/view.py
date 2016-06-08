@@ -35,7 +35,7 @@ class View(object):
     """View, a collection of Dim and their row mixtures."""
 
     def __init__(self, X, outputs=None, inputs=None, alpha=None,
-            Zr=None, rng=None):
+            cctypes=None, distargs=None, hypers=None, Zr=None, rng=None):
         """View constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
@@ -54,33 +54,48 @@ class View(object):
             Starting partiton of rows to categories where Zr[i] is the latent
             clsuter of row i. If None, is sampled from CRP(alpha).
         """
-        if outputs or inputs:
-            raise ValueError('View does not require explicit input or output.')
-        self.inputs = []
-
-        # Dimensions.
-        self.dims = dict()
-        self.outputs = self.dims.keys()
-
         # Entropy.
         self.rng = gu.gen_rng() if rng is None else rng
+
+        # Inputs
+        if inputs:
+            raise ValueError('View does not accept inputs.')
+        self.inputs = []
 
         # Dataset.
         self.X = X
 
-        # Generate alpha.
+        # Outputs
+        if outputs:
+            assert len(outputs) == len(cctypes) == len(distargs) == len(hypers)
+        else:
+            outputs = []
+        self.outputs = outputs
+
+        # CRP alpha grid.
         self.alpha_grid = gu.log_linspace(1./self.n_rows(), self.n_rows(), 30)
         if alpha is None:
             alpha = self.rng.choice(self.alpha_grid)
         self.alpha = alpha
 
-        # Generate row partition.
+        # Row partition.
         if Zr is None:
             Zr = gu.simulate_crp(self.n_rows(), alpha, rng=self.rng)
         # Convert Zr to a dictionary.
         self.Zr = {i:z for i,z in enumerate(Zr)}
         # Build Nk dictionary.
         self.Nk = {k:count for k,count in enumerate(np.bincount(Zr)) if count>0}
+
+        # Dimensions.
+        self.dims = dict()
+        for i, c in enumerate(self.outputs):
+            dim = Dim(
+                outputs=[c], inputs=None, cctype=cctypes[i],
+                hypers=hypers[i], distargs=distargs[i], rng=self.rng)
+            dim.transition_hyper_grids(self.X[c])
+            if dim.is_conditional():
+                raise ValueError('Use incorporate for conditional dims.')
+            self.incorporate_dim(dim)
 
         self._check_partitions()
 
