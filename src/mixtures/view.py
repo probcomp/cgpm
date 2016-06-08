@@ -410,13 +410,23 @@ class View(object):
     # Internal row transition.
 
     def _transition_row(self, rowid):
-        # Skip unincorporated rows.
-        logp_data, K = self._logpdf_row_gibbs(rowid)
+        # If singleton then no aux clusters.
+        m_aux = [] if self.Nk[self.Zr[rowid]]==1 else [max(self.Nk)+1]
+        K = sorted(self.Nk.keys() + m_aux)
+
+        # Probability of row crp assignment to each cluster.
         logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
+        # Probability of row data in each cluster.
+        logp_data = self._logpdf_row_gibbs(rowid, K)
+
         assert len(logp_data) == len(logp_crp)
+
+        # Sample new cluster.
         p_cluster = np.add(logp_data, logp_crp)
         index = gu.log_pflip(p_cluster, rng=self.rng)
         z_b = K[index]
+
+        # Migrate the row.
         if z_b != self.Zr[rowid]:
             self.unincorporate(rowid)
             query = merged(
@@ -424,17 +434,14 @@ class View(object):
             self.incorporate(rowid, query)
         self._check_partitions()
 
-    def _logpdf_row_gibbs(self, rowid):
-        """Internal use only for Gibbs transition."""
-        m_aux = [] if self.Nk[self.Zr[rowid]]==1 else [max(self.Nk)+1]
-        K = sorted(self.Nk.keys() + m_aux)
-        logps = [sum([self._logpdf_cell_gibbs(rowid, dim, k)
+    def _logpdf_row_gibbs(self, rowid, K):
+        return [sum([self._logpdf_cell_gibbs(rowid, dim, k)
             for dim in self.dims.itervalues()]) for k in K]
-        return logps, K
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         query = {dim.index: self.X[dim.index][rowid]}
         evidence = self._get_evidence(rowid, dim, k)
+        # If rowid in cluster k then unincorporate then compute predictive.
         if self.Zr[rowid] == k:
             dim.unincorporate(rowid)
             logp = dim.logpdf(rowid, query, evidence)
