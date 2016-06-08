@@ -18,44 +18,6 @@ from gpmcc.cgpm import CGpm
 from gpmcc.utils.general import gen_rng
 
 
-class DirectedXyGpm(CGpm):
-    """Interface directed two-dimensional GPMs over the R2 plane."""
-
-    def __init__(self, outputs=None, inputs=None, noise=None, acc=1, rng=None):
-        """Initialize the Gpm with given noise parameter.
-
-        Parameters
-        ----------
-        noise : float
-            Value in (0,1) indicating the noise level of the distribution.
-        rng : np.random.RandomState, optional.
-            Source of entropy.
-        """
-        if type(self) is DirectedXyGpm:
-            raise Exception('Cannot directly insantiate DirectedXyGpm.')
-        if rng is None:
-            rng = gen_rng(0)
-        if outputs is None:
-            outputs = [0, 1]
-        if noise is None:
-            noise = .1
-        self.rng = rng
-        self.outputs = outputs
-        self.noise = noise
-        self.acc = acc
-        # Override the network in subclass.
-        self.network = None
-
-    def logpdf(self, rowid, query, evidence=None):
-        if self.network is None:
-            raise ValueError('self.network not defined by %s' % type(self))
-        return self.network.logpdf(rowid, query, evidence)
-
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if self.network is None:
-            raise ValueError('self.network not defined by %s' % type(self))
-        return self.network.simulate(rowid, query, evidence, N)
-
 class UnDirectedXyGpm(CGpm):
     """Interface undirected two-dimensional GPMs over the R2 plane."""
 

@@ -19,7 +19,7 @@ import numpy as np
 from scipy.misc import logsumexp
 from scipy.stats import norm
 
-from gpmcc.uncorrelated.xy import UnDirectedXyGpm
+from gpmcc.uncorrelated.undirected import UnDirectedXyGpm
 
 
 class Dots(UnDirectedXyGpm):

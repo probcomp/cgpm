@@ -23,8 +23,8 @@ from scipy.stats import uniform
 
 from gpmcc.cgpm import CGpm
 from gpmcc.network.importance import ImportanceNetwork
+from gpmcc.uncorrelated.directed import DirectedXyGpm
 from gpmcc.uncorrelated.uniformx import UniformX
-from gpmcc.uncorrelated.xy import DirectedXyGpm
 from gpmcc.utils.general import gen_rng
 
 
