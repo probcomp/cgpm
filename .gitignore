@@ -54,7 +54,7 @@ docs/_build/
 
 # gpmcc artifacts
 *.engine*
-*.bak
+*.bak*
 
 # numpy binaries
 *.npy
