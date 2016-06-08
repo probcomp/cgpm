@@ -80,8 +80,7 @@ class View(object):
         # Convert Zr to a dictionary.
         self.Zr = {i:z for i,z in enumerate(Zr)}
         # Build Nk dictionary.
-        counts = np.bincount(Zr)
-        self.Nk = {k: count for k, count in enumerate(counts) if count > 0}
+        self.Nk = {k:count for k,count in enumerate(np.bincount(Zr)) if count>0}
 
         self._check_partitions()
 
@@ -100,20 +99,17 @@ class View(object):
         return dim.logpdf_score()
 
     def _bulk_incorporate(self, dim):
-        # XXX Major hack! We should really be creating new Dim objects
-        dim.clusters = []
-        dim.clusters_inverse = {}
-        dim.ignored = set([])
+        # XXX Major hack! We should really be creating new Dim objects.
+        dim.clusters = {}   # Mapping of cluster k to the object.
+        dim.Zr = {}         # Mapping of non-nan rowids to cluster k.
+        dim.Zi = {}         # Mapping of nan rowids to cluster k.
         dim.aux_model = dim.create_aux_model()
         for rowid, k in sorted(self.Zr.items(), key=lambda e: e[1]):
             dim.incorporate(
                 rowid,
                 query={dim.index: self.X[dim.index][rowid]},
                 evidence=self._get_evidence(rowid, dim, k))
-        K = max(self.Zr.values())+1
-        if K < len(dim.clusters):
-            dim.clusters = dim.clusters[:K]
-        assert len(dim.clusters) == K
+        assert merged(dim.Zr, dim.Zi) == self.Zr
         dim.transition_params()
 
     def _prepare_incorporate(self, cctype):
@@ -148,8 +144,6 @@ class View(object):
         transition = [rowid] if k is None else []
         if k not in self.Nk:
             self.Nk[k] = 0
-        # if len(self.Nk) == k:
-        #     self.Nk.append(0)
         self.Nk[k] += 1
         self.Zr[rowid] = k
         for d in self.dims:
@@ -167,10 +161,7 @@ class View(object):
         k = self.Zr[rowid]
         self.Nk[k] -= 1
         if self.Nk[k] == 0:
-            adjust = lambda z: z-1 if k < z else z
-            self.Zr = {r: adjust(self.Zr[r]) for r in self.Zr}
             del self.Nk[k]
-            self.Nk = {adjust(z): self.Nk[z] for z in self.Nk}
             for dim in self.dims.itervalues():
                 # XXX Abstract in a better way
                 del dim.clusters[k]
@@ -299,7 +290,8 @@ class View(object):
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = np.add(lp_crp, lp_evidence)
-        ks = gu.log_pflip(lp_cluster, size=N, rng=self.rng)
+        indices = gu.log_pflip(lp_cluster, size=N, rng=self.rng)
+        ks = [K[i] for i in indices]
         counts = {k:n for k, n in enumerate(np.bincount(ks)) if n > 0}
         samples = [self._simulate_joint(query, evidence, k, counts[k])
             for k in sorted(counts)]
@@ -404,12 +396,12 @@ class View(object):
 
     def _transition_row(self, rowid):
         # Skip unincorporated rows.
-        logp_data = self._logpdf_row_gibbs(rowid)
-        logp_crp = gu.logp_crp_gibbs(
-            self.Nk_list(), self.Zr, rowid, self.alpha, 1)
+        logp_data, K = self._logpdf_row_gibbs(rowid)
+        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
         assert len(logp_data) == len(logp_crp)
         p_cluster = np.add(logp_data, logp_crp)
-        z_b = gu.log_pflip(p_cluster, rng=self.rng)
+        index = gu.log_pflip(p_cluster, rng=self.rng)
+        z_b = K[index]
         if z_b != self.Zr[rowid]:
             self.unincorporate(rowid)
             query = merged(
@@ -421,8 +413,9 @@ class View(object):
         """Internal use only for Gibbs transition."""
         m_aux = [] if self.Nk[self.Zr[rowid]]==1 else [max(self.Nk)+1]
         K = sorted(self.Nk.keys() + m_aux)
-        return [sum([self._logpdf_cell_gibbs(rowid, dim, k)
+        logps = [sum([self._logpdf_cell_gibbs(rowid, dim, k)
             for dim in self.dims.itervalues()]) for k in K]
+        return logps, K
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         query = {dim.index: self.X[dim.index][rowid]}
@@ -495,16 +488,19 @@ class View(object):
         assert self.alpha > 0.
         # Check that the number of dims actually assigned to the view
         # matches the count in Nv.
-        if not sorted(set(self.Zr.values())) == range(max(self.Zr.values())+1):
-            import ipdb; ipdb.set_trace()
+        rowids = range(self.n_rows())
         assert set(self.Zr.keys()) == set(xrange(self.n_rows()))
-        assert len(self.Zr) == sum(self.Nk_list()) == self.n_rows()
-        assert max(self.Zr.values()) == len(self.Nk_list())-1
+        assert set(self.Zr.values()) == set(self.Nk)
         for dim in self.dims.itervalues():
             # Ensure number of clusters in each dim in views[v]
             # is the same and as described in the view (K, Nk).
-            assert len(dim.clusters) == len(self.Nk_list())
-            for k in xrange(len(dim.clusters)):
-                rowids = [r for (r,z) in self.Zr.items() if z == k]
-                nans = np.isnan([self.X[dim.index][r] for r in rowids])
-                assert dim.clusters[k].N == self.Nk[k] - np.sum(nans)
+            assignments = merged(dim.Zr, dim.Zi)
+            assert assignments == self.Zr
+            assert set(assignments.values()) == set(self.Nk.keys())
+            all_ks = dim.clusters.keys() + dim.Zi.values()
+            assert set(all_ks) == set(self.Nk.keys())
+            for k in dim.clusters:
+                # Law of conservation of rowids.
+                rowids_nan = np.isnan(
+                    [self.X[dim.index][r] for r in rowids if self.Zr[r]==k])
+                assert dim.clusters[k].N + np.sum(rowids_nan) == self.Nk[k]

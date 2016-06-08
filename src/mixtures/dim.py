@@ -63,9 +63,9 @@ class Dim(object):
         self.hypers = hypers if hypers is not None else {}
 
         # Clusters.
-        self.clusters = []
-        self.clusters_inverse = {}
-        self.ignored = set([])
+        self.clusters = {}  # Mapping of cluster k to the object.
+        self.Zr = {}        # Mapping of non-nan rowids to cluster k.
+        self.Zi = {}        # Mapping of nan rowids to cluster k.
 
         # Auxiliary singleton model.
         self.aux_model = self.create_aux_model()
@@ -74,42 +74,36 @@ class Dim(object):
     # Observe
 
     def incorporate(self, rowid, query, evidence):
-        """Record an observation.
-
-        If k < len(self.clusters) then x will be incorporated to cluster k.
-        If k == len(self.clusters) then a new cluster will be created.
-        If k > len(self.clusters) then an error will be thrown.
-        """
-        if rowid in self.clusters_inverse or rowid in self.ignored:
-            raise ValueError('rowid already incorporated: %d' % rowid)
+        """Record an observation."""
+        if rowid in self.Zr or rowid in self.Zi:
+            raise ValueError('rowid already incorporated: %d.' % rowid)
         k, evidence, valid = self.preprocess(query, evidence)
-        assert k <= len(self.clusters)
-        if k == len(self.clusters):
-            self.clusters.append(self.aux_model)
+        if k not in self.clusters:
+            self.clusters[k] = self.aux_model
             self.aux_model = self.create_aux_model()
         if valid:
             self.clusters[k].incorporate(rowid, query, evidence)
-            self.clusters_inverse[rowid] = self.clusters[k]
+            self.Zr[rowid] = k
         else:
-            self.ignored.add(rowid)
+            self.Zi[rowid] = k
 
     def unincorporate(self, rowid):
         """Remove observation rowid."""
-        if rowid in self.ignored:
-            self.ignored.remove(rowid)
-        elif rowid in self.clusters_inverse:
-            cluster = self.clusters_inverse[rowid]
+        if rowid in self.Zi:
+            del self.Zi[rowid]
+        elif rowid in self.Zr:
+            cluster = self.clusters[self.Zr[rowid]]
             cluster.unincorporate(rowid)
-            del self.clusters_inverse[rowid]
+            del self.Zr[rowid]
         else:
-            raise ValueError('rowid not incorporated: %d' % rowid)
+            raise ValueError('rowid not incorporated: %d.' % rowid)
 
     # --------------------------------------------------------------------------
     # logpdf score
 
     def logpdf_score(self):
         """Return log score summed over all clusters."""
-        return sum(cluster.logpdf_score() for cluster in self.clusters)
+        return sum(self.clusters[k].logpdf_score() for k in self.clusters)
 
     # --------------------------------------------------------------------------
     # logpdf
@@ -117,7 +111,7 @@ class Dim(object):
     def logpdf(self, rowid, query, evidence):
         """Evaluate the log density of the query given evidence."""
         k, evidence, valid = self.preprocess(query, evidence)
-        cluster = self.aux_model if k==len(self.clusters) else self.clusters[k]
+        cluster = self.clusters.get(k, self.aux_model)
         return cluster.logpdf(rowid, query, evidence) if valid else 0
 
     # --------------------------------------------------------------------------
@@ -128,7 +122,7 @@ class Dim(object):
         k, evidence, valid = self.preprocess(query, evidence)
         if not valid:
             raise ValueError('Bad simulate args: %s, %s.') % (query, evidence)
-        cluster = self.aux_model if k==len(self.clusters) else self.clusters[k]
+        cluster = self.clusters.get(k, self.aux_model)
         return cluster.simulate(rowid, query, evidence, N=N)
 
     # --------------------------------------------------------------------------
@@ -137,13 +131,13 @@ class Dim(object):
     def transition_params(self):
         """Updates the component parameters of each cluster."""
         if not self.is_collapsed():
-            for cluster in self.clusters:
-                cluster.transition_params()
+            for k in self.clusters:
+                self.clusters[k].transition_params()
 
     def transition_hypers(self):
         """Updates the hyperparameters of each cluster."""
-        for cluster in self.clusters:
-            cluster.set_hypers(self.hypers)
+        for k in self.clusters:
+            self.clusters[k].set_hypers(self.hypers)
         targets = self.hypers.keys()
         self.rng.shuffle(targets)
         for target in targets:
@@ -221,9 +215,9 @@ class Dim(object):
         for g in self.hyper_grids[target]:
             hypers[target] = g
             logp = 0
-            for cluster in self.clusters:
-                cluster.set_hypers(hypers)
-                logp += cluster.logpdf_score()
-                cluster.set_hypers(self.hypers)
+            for k in self.clusters:
+                self.clusters[k].set_hypers(hypers)
+                logp += self.clusters[k].logpdf_score()
+                self.clusters[k].set_hypers(self.hypers)
             logps.append(logp)
         return logps
