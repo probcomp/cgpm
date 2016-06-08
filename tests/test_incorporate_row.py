@@ -22,11 +22,11 @@ from gpmcc.crosscat.state import State
 from gpmcc.utils import general as gu
 
 
-X = [[1, np.nan, 2, -1, np.nan],
-    [1, 3, 2, -1, -5],
-    [18, -7, -2, 11, -12],
-    [1, np.nan, np.nan, np.nan, np.nan],
-    [18, -7, -2, 11, -12],]
+X = [[1,     np.nan,     2,         -1,         np.nan  ],
+     [1,     3,          2,         -1,         -5      ],
+     [18,    -7,         -2,        11,         -12     ],
+     [1,     np.nan,     np.nan,    np.nan,     np.nan  ],
+     [18,    -7,         -2,        11,         -12     ]]
 
 
 def test_invalid_evidence_keys():
@@ -45,12 +45,7 @@ def test_invalid_evidence_keys():
 
 def test_invalid_evidence_cluster():
     state = State(X, cctypes=['normal']*5, Zv=[0,0,0,1,1], rng=gu.gen_rng(0))
-    # No such cluster 100.
-    with pytest.raises(Exception):
-        state.incorporate(
-            rowid=-1,
-            query={0:0, 1:1, 2:2, 3:3, 4:4, -1:100})
-    # Should crash.
+    # Should crash with None.
     with pytest.raises(Exception):
         state.incorporate(
             rowid=-1,
@@ -90,6 +85,10 @@ def test_incorporate_valid():
         query={0:0, 2:2, -2:0})
     assert state.views[1].Nk[0] == previous+1
     state.transition(N=2)
+    # Hypothetical cluster 100.
+    state.incorporate(
+        rowid=-1,
+        query={0:0, 1:1, 2:2, 3:3, 4:4, -1:100})
 
 
 def test_incorporate_session():

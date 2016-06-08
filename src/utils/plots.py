@@ -49,14 +49,13 @@ def plot_dist_continuous(X, output, clusters, ax=None, Y=None, hist=True):
     if Y is None:
         Y = np.linspace(x_min, x_max, 200)
     # Compute weighted pdfs.
-    K = len(clusters)
-    pdf = np.zeros((K, len(Y)))
-    W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-    for k in xrange(K):
-        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(-1, {output:y}, [])
-                for y in Y])
-        color, alpha = gu.curve_color(k)
-        ax.plot(Y, pdf[k,:], color=color, linewidth=5, alpha=alpha)
+    pdf = np.zeros((len(clusters), len(Y)))
+    W = [log(clusters[k].N) - log(float(len(X))) for k in clusters]
+    for i, k in enumerate(clusters):
+        pdf[i,:] = np.exp(
+            [W[i] + clusters[k].logpdf(-1, {output:y}, []) for y in Y])
+        color, alpha = gu.curve_color(i)
+        ax.plot(Y, pdf[i,:], color=color, linewidth=5, alpha=alpha)
     # Plot the sum of pdfs.
     ax.plot(Y, np.sum(pdf, axis=0), color='black', linewidth=3)
     # Plot the samples.
@@ -69,7 +68,7 @@ def plot_dist_continuous(X, output, clusters, ax=None, Y=None, hist=True):
         for x in X:
             ax.vlines(x, 0, y_max/10., linewidth=1)
     # Title.
-    ax.set_title(clusters[0].name())
+    ax.set_title(clusters.values()[0].name())
     return ax
 
 def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
@@ -83,20 +82,19 @@ def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
     X_hist = np.bincount(X) / float(len(X))
     ax.bar(Y, X_hist, color='gray', edgecolor='none')
     # Compute weighted pdfs
-    K = len(clusters)
-    pdf = np.zeros((K, len(Y)))
-    W = [log(clusters[k].N) - log(float(len(X))) for k in xrange(K)]
-    for k in xrange(K):
-        pdf[k,:] = np.exp([W[k] + clusters[k].logpdf(-1, {output:y}, [])
-                for y in Y])
-        color, alpha = gu.curve_color(k)
-        ax.bar(Y, pdf[k,:], color=color, edgecolor='none', alpha=alpha)
+    pdf = np.zeros((len(clusters), len(Y)))
+    W = [log(clusters[k].N) - log(float(len(X))) for k in clusters]
+    for i, k in enumerate(clusters):
+        pdf[i,:] = np.exp(
+            [W[i] + clusters[k].logpdf(-1, {output:y}, []) for y in Y])
+        color, alpha = gu.curve_color(i)
+        ax.bar(Y, pdf[i,:], color=color, edgecolor='none', alpha=alpha)
     # Plot the sum of pdfs.
-    ax.bar(Y, np.sum(pdf, axis=0), color='none', edgecolor='black',
-        linewidth=3)
+    ax.bar(
+        Y, np.sum(pdf, axis=0), color='none', edgecolor='black', linewidth=3)
     ax.set_xlim([0, x_max+1])
     # Title.
-    ax.set_title(clusters[0].name())
+    ax.set_title(clusters.values()[0].name())
     return ax
 
 def plot_clustermap(D, xticklabels=None, yticklabels=None):

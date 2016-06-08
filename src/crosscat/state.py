@@ -204,7 +204,7 @@ class State(object):
 
     def incorporate(self, rowid, query, evidence=None):
         # Validation.
-        if not self._is_hypothetical(rowid): # XXX Only allow new rows.
+        if not self._is_hypothetical(rowid): # XXX Only allow new rows for now.
             raise ValueError('Cannot incorporate non-hypothetical: %d' % rowid)
         if not set.issubset(set(q for q in query if q>=0), set(self.outputs)):
             raise ValueError(
