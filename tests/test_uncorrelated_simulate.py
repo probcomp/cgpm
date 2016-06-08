@@ -89,9 +89,9 @@ def plot_synthetic(dist, noise, size=1000):
     ax.grid()
     ax.set_xlim(simulator_limits[dist][0])
     ax.set_ylim(simulator_limits[dist][1])
-    fig.savefig('synth_%s_%1.2f.png' % (dist, noise))
+    fig.savefig('/tmp/synth_%s_%1.2f.png' % (dist, noise))
     plt.close('all')
 
 @pytest.mark.parametrize('dist, noise', itertools.product(simulators, NOISES))
-def test_dist_noise(dist, noise):
+def test_dist_noise__ci_(dist, noise):
     plot_synthetic(dist, noise)
