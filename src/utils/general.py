@@ -81,13 +81,15 @@ def logp_crp_unorm(N, K, alpha):
 def logp_crp_gibbs(Nk, Z, i, alpha, m):
     """Compute the CRP probabilities for a Gibbs transition of customer i,
     with table counts Nk, table assignments Z, and m auxiliary tables."""
+    # XXX F ME
+    K = sorted(Nk) if isinstance(Nk, dict) else xrange(len(Nk))
     singleton = Nk[Z[i]] == 1
     m_aux = m-1 if singleton else m
     p_table_aux = alpha/float(m)
     p_current = lambda : p_table_aux if singleton else Nk[Z[i]]-1
     p_other = lambda t : Nk[t]
     p_table = lambda t: p_current() if t == Z[i] else p_other(t)
-    return [log(p_table(t)) for t in xrange(len(Nk))] + [log(p_table_aux)]*m_aux
+    return [log(p_table(t)) for t in K] + [log(p_table_aux)]*m_aux
 
 def logp_crp_fresh(N, Nk, alpha, m=1):
     """Compute the CRP probabilities for a fresh customer i=N+1, with
