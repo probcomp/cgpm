@@ -532,8 +532,7 @@ class State(CGpm):
         """Transition CRP concentration of State."""
         logps = [gu.logp_crp_unorm(self.n_cols(), self.n_views(), alpha)
             for alpha in self.alpha_grid]
-        index = gu.log_pflip(logps, rng=self.rng)
-        self.alpha = self.alpha_grid[index]
+        self.alpha = gu.log_pflip(logps, array=self.alpha_grid, rng=self.rng)
 
     def transition_view_alphas(self, views=None):
         """Transition CRP concentration of the Views."""
