@@ -222,8 +222,7 @@ class View(CGpm):
         """Calculate CRP alpha conditionals over grid and transition."""
         logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha)
             for alpha in self.alpha_grid]
-        index = gu.log_pflip(logps, rng=self.rng)
-        self.alpha = self.alpha_grid[index]
+        self.alpha = gu.log_pflip(logps, array=self.alpha_grid, rng=self.rng)
 
     def transition_column_hypers(self, cols=None):
         """Calculate column (dim) hyperparameter conditionals over grid and
@@ -306,8 +305,7 @@ class View(CGpm):
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = np.add(lp_crp, lp_evidence)
-        indices = gu.log_pflip(lp_cluster, size=N, rng=self.rng)
-        ks = [K[i] for i in indices]
+        ks = gu.log_pflip(lp_cluster, array=K, size=N, rng=self.rng)
         counts = {k:n for k, n in enumerate(np.bincount(ks)) if n > 0}
         samples = [self._simulate_joint(query, evidence, k, counts[k])
             for k in sorted(counts)]
@@ -424,8 +422,7 @@ class View(CGpm):
 
         # Sample new cluster.
         p_cluster = np.add(logp_data, logp_crp)
-        index = gu.log_pflip(p_cluster, rng=self.rng)
-        z_b = K[index]
+        z_b = gu.log_pflip(p_cluster, array=K, rng=self.rng)
 
         # Migrate the row.
         if z_b != self.Zr[rowid]:

@@ -98,20 +98,23 @@ def logp_crp_fresh(N, Nk, alpha, m=1):
     logp_crp_denom = log(N + alpha)
     return log_crp_numer - logp_crp_denom
 
-def log_pflip(logp, size=None, rng=None):
+def log_pflip(logp, array=None, size=None, rng=None):
     """Categorical draw from a vector logp of log probabilities."""
-    return pflip(np.exp(log_normalize(logp)), size=size, rng=rng)
+    p = np.exp(log_normalize(logp))
+    return pflip(p, array=array, size=size, rng=rng)
 
-def pflip(p, size=None, rng=None):
+def pflip(p, array=None, size=None, rng=None):
     """Categorical draw from a vector p of probabilities."""
+    if array is None:
+        array = range(len(p))
     if len(p) == 1:
-        return 0 if size is None else [0] * size
+        return array[0] if size is None else [array[0]] * size
     if rng is None:
         rng = gen_rng()
     p = normalize(p)
     if 10.**(-8.) < math.fabs(1.-sum(p)):
         warnings.warn('pflip probability vector sums to %f.' % sum(p))
-    return rng.choice(range(len(p)), size=size, p=p)
+    return rng.choice(array, size=size, p=p)
 
 def logmeanexp(array):
     """log of arithmetic mean of exp(array)."""

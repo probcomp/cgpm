@@ -111,8 +111,7 @@ class RandomForest(CGpm):
                 self.data.x.values(), self.data.Y.values(), self.regressor,
                 self.counts, a)
             for a in alphas]
-        index = gu.log_pflip(alpha_logps, rng=self.rng)
-        self.alpha = alphas[index]
+        self.alpha = gu.log_pflip(alpha_logps, array=alphas, rng=self.rng)
         # Transition forest.
         if len(self.data.Y) > 0:
             self.regressor.fit(self.data.Y.values(), self.data.x.values())
