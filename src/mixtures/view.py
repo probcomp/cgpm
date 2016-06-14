@@ -87,6 +87,21 @@ class View(CGpm):
         # Build Nk dictionary.
         self.Nk = {k:count for k,count in enumerate(np.bincount(Zr)) if count>0}
 
+
+        # XXX Initialize the CRP CGpm, with an index of 1e7.
+        self.crp = Dim(
+            [1e7], cctype='crp', hypers={'alpha': alpha}, rng=self.rng)
+        self.crp.transition_hyper_grids(self.X[self.X.keys()[0]])
+        if Zr is None:
+            for i in xrange(self.n_rows()):
+                s = self.crp.simulate(i, [1e7], {-1:0})
+                self.crp.incorporate(i, s, {-1:0})
+        else:
+            for i, z in enumerate(Zr):
+                self.crp.incorporate(i, {1e7:z}, {-1:0})
+        assert self.Zr == self.crp.clusters[0].data
+        assert self.Nk == self.crp.clusters[0].counts
+
         # Dimensions.
         self.dims = dict()
         for i, c in enumerate(self.outputs):
