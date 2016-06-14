@@ -177,6 +177,11 @@ class View(CGpm):
             self.Nk[k] = 0
         self.Nk[k] += 1
         self.Zr[rowid] = k
+        # XXX F ME XXX
+        self.crp.incorporate(rowid, {1e7:k}, {-1:0})
+        assert self.Zr == self.crp.clusters[0].data
+        assert self.Nk == self.crp.clusters[0].counts
+        # XXX F ME XXX
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
@@ -197,6 +202,11 @@ class View(CGpm):
                 # XXX Abstract in a better way
                 del dim.clusters[k]
         del self.Zr[rowid]
+        # XXX F ME XXX
+        self.crp.unincorporate(rowid)
+        assert self.Zr == self.crp.clusters[0].data
+        assert self.Nk == self.crp.clusters[0].counts
+        # XXX F ME XXX
 
     # --------------------------------------------------------------------------
     # Update schema.
