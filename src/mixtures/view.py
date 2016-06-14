@@ -313,9 +313,9 @@ class View(CGpm):
         K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
         lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
         # XXX F ME XXX
-        lp_crp_2 = [self.crp.logpdf(-1, {1e7:v}, {-1:0}) for v in
-            sorted(self.crp.clusters[0].counts)]
-        lp_crp_2.append(self.crp.logpdf(-1, {1e7: K[-1]}, {-1:0}))
+        K_prime = self.crp.clusters[0].gibbs_tables(-1)
+        lp_crp_2 = [self.crp.logpdf(-1, {1e7: v}, {-1:0}) for v in K]
+        assert np.allclose(K, K_prime)
         assert np.allclose(lp_crp_2, lp_crp)
         # XXX F ME XXX
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
@@ -347,9 +347,9 @@ class View(CGpm):
         K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
         lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
         # XXX F ME XXX
-        lp_crp_2 = [self.crp.logpdf(-1, {1e7:v}, {-1:0}) for v in
-            sorted(self.crp.clusters[0].counts)]
-        lp_crp_2.append(self.crp.logpdf(-1, {1e7: K[-1]}, {-1:0}))
+        K_prime = self.crp.clusters[0].gibbs_tables(-1)
+        lp_crp_2 = [self.crp.logpdf(-1, {1e7: v}, {-1:0}) for v in K]
+        assert np.allclose(K, K_prime)
         assert np.allclose(lp_crp_2, lp_crp)
         # XXX F ME XXX
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
@@ -465,6 +465,15 @@ class View(CGpm):
 
         # Probability of row crp assignment to each cluster.
         logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
+
+        # XXX F ME
+        logp_crp_manual = self.crp.clusters[0].gibbs_logps(rowid)
+        K_manual = self.crp.clusters[0].gibbs_tables(rowid)
+        assert np.allclose(logp_crp, logp_crp_manual)
+        assert np.allclose(K, K_manual)
+        # XXX F ME
+
+
         # Probability of row data in each cluster.
         logp_data = self._logpdf_row_gibbs(rowid, K)
 

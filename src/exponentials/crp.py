@@ -122,7 +122,7 @@ class Crp(DistributionGpm):
         return sorted(self.counts) + t_aux
 
     def singleton(self, rowid):
-        return self.counts[self.data[rowid]] == 1
+        return self.counts[self.data[rowid]] == 1 if rowid in self.data else 0
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
