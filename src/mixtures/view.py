@@ -101,6 +101,7 @@ class View(CGpm):
                 self.crp.incorporate(i, {1e7:z}, {-1:0})
         assert self.Zr == self.crp.clusters[0].data
         assert self.Nk == self.crp.clusters[0].counts
+        assert np.allclose(self.crp.hyper_grids['alpha'], self.alpha_grid)
 
         # Dimensions.
         self.dims = dict()
