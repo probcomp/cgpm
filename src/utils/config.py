@@ -25,6 +25,7 @@ cctype_class_lookup = {
     'bernoulli'         : ('gpmcc.exponentials.bernoulli', 'Bernoulli'),
     'beta_uc'           : ('gpmcc.exponentials.beta_uc', 'BetaUC'),
     'categorical'       : ('gpmcc.exponentials.categorical', 'Categorical'),
+    'crp'               : ('gpmcc.exponentials.crp', 'Crp'),
     'exponential'       : ('gpmcc.exponentials.exponential', 'Exponential'),
     'geometric'         : ('gpmcc.exponentials.geometric', 'Geometric'),
     'linear_regression' : ('gpmcc.regressions.linreg', 'LinearRegression'),
