@@ -279,6 +279,9 @@ class View(CGpm):
     def logpdf_score(self):
         """Compute the marginal logpdf CRP assignment and data."""
         logp_crp = gu.logp_crp(len(self.Zr), self.Nk_list(), self.alpha)
+        # XXX F ME XXX
+        assert np.allclose(logp_crp, self.crp.logpdf_score())
+        # XXX F ME XXX
         logp_dims = [dim.logpdf_score() for dim in self.dims.itervalues()]
         return logp_crp + sum(logp_dims)
 
