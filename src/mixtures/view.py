@@ -101,7 +101,8 @@ class View(CGpm):
                 self.crp.incorporate(i, {1e7:z}, {-1:0})
         assert self.Zr == self.crp.clusters[0].data
         assert self.Nk == self.crp.clusters[0].counts
-        assert np.allclose(self.crp.hyper_grids['alpha'], self.alpha_grid)
+        if not np.allclose(self.crp.hyper_grids['alpha'], self.alpha_grid):
+            import ipdb; ipdb.set_trace()
 
         # Dimensions.
         self.dims = dict()
@@ -311,6 +312,12 @@ class View(CGpm):
         # p(xQ|z)   logp_query
         K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
         lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
+        # XXX F ME XXX
+        lp_crp_2 = [self.crp.logpdf(-1, {1e7:v}, {-1:0}) for v in
+            sorted(self.crp.clusters[0].counts)]
+        lp_crp_2.append(self.crp.logpdf(-1, {1e7: K[-1]}, {-1:0}))
+        assert np.allclose(lp_crp_2, lp_crp)
+        # XXX F ME XXX
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = gu.log_normalize(np.add(lp_crp, lp_evidence))
@@ -339,6 +346,12 @@ class View(CGpm):
         """cluster exposes latent cluster of each sample in extra column."""
         K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
         lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
+        # XXX F ME XXX
+        lp_crp_2 = [self.crp.logpdf(-1, {1e7:v}, {-1:0}) for v in
+            sorted(self.crp.clusters[0].counts)]
+        lp_crp_2.append(self.crp.logpdf(-1, {1e7: K[-1]}, {-1:0}))
+        assert np.allclose(lp_crp_2, lp_crp)
+        # XXX F ME XXX
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = np.add(lp_crp, lp_evidence)
