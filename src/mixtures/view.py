@@ -91,7 +91,7 @@ class View(CGpm):
         # XXX Initialize the CRP CGpm, with an index of 1e7.
         self.crp = Dim(
             [1e7], cctype='crp', hypers={'alpha': alpha}, rng=self.rng)
-        self.crp.transition_hyper_grids(self.X[self.X.keys()[0]])
+        self.crp.transition_hyper_grids([1]*self.n_rows())
         if Zr is None:
             for i in xrange(self.n_rows()):
                 s = self.crp.simulate(i, [1e7], {-1:0})
