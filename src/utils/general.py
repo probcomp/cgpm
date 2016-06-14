@@ -164,8 +164,8 @@ def simulate_crp(N, alpha, rng=None):
     assert sum(Nk) == N
 
     K = len(Nk)
-    if K > 1:
-        rng.shuffle(partition)
+    # if K > 1:
+    #     rng.shuffle(partition)
     return partition
 
 def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
