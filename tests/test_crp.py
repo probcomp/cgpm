@@ -24,34 +24,6 @@ from gpmcc.exponentials.crp import Crp
 from gpmcc.utils import general as gu
 
 
-def simulate_crp_manual(N, alpha, rng):
-    """Generates random N-length partition from the CRP with parameter alpha."""
-    assert N > 0 and alpha > 0.
-    alpha = float(alpha)
-    partition = [0]*N
-    Nk = [1]
-    for i in xrange(1,N):
-        K = len(Nk)
-        ps = np.zeros(K+1)
-        for k in xrange(K):
-            ps[k] = float(Nk[k])
-        ps[K] = alpha
-        ps /= (float(i) - 1 + alpha)
-        assignment = gu.pflip(ps, rng=rng)
-        if assignment == K:
-            Nk.append(1)
-        elif assignment < K:
-            Nk[assignment] += 1
-        else:
-            raise ValueError("Invalid assignment: %i, max=%i" % (assignment, K))
-        partition[i] = assignment
-    assert max(partition)+1 == len(Nk)
-    assert len(partition)==N
-    assert sum(Nk) == N
-    K = len(Nk)
-    return partition, Nk
-
-
 def simulate_crp_gpm(N, alpha, rng):
     crp = Crp(outputs=[0], inputs=None, hypers={'alpha':alpha}, rng=rng)
     for i in xrange(N):
@@ -92,20 +64,24 @@ seed = [5]
 @pytest.mark.parametrize('N, alpha, seed', itertools.product(N, alpha, seed))
 def test_crp_simple(N, alpha, seed):
     # Obtain the partitions.
-    A, Nk = simulate_crp_manual(N, alpha, rng=gu.gen_rng(seed))
+    A = gu.simulate_crp(N, alpha, rng=gu.gen_rng(seed))
+    Nk = list(np.bincount(A))
+
     crp = simulate_crp_gpm(N, alpha, rng=gu.gen_rng(seed))
+
     assert A == crp.data.values()
     assert_crp_equality(alpha, Nk, crp)
 
 
 @pytest.mark.parametrize('N, alpha, seed', itertools.product(N, alpha, seed))
 def test_crp_decrement(N, alpha, seed):
-    A, Nk = simulate_crp_manual(N, alpha, rng=gu.gen_rng(seed))
-    crp = simulate_crp_gpm(N, alpha, rng=gu.gen_rng(seed))
-
+    A = gu.simulate_crp(N, alpha, rng=gu.gen_rng(seed))
+    Nk = list(np.bincount(A))
     # Decrement all counts by 1.
     Nk = [n-1 if n > 1 else n for n in Nk]
+
     # Decrement rowids.
+    crp = simulate_crp_gpm(N, alpha, rng=gu.gen_rng(seed))
     targets = [c for c in crp.counts if crp.counts[c] > 1]
     seen = set([])
     for r, c in crp.data.items():
@@ -120,13 +96,13 @@ def test_crp_decrement(N, alpha, seed):
 
 @pytest.mark.parametrize('N, alpha, seed', itertools.product(N, alpha, seed))
 def test_crp_increment(N, alpha, seed):
-    A, Nk = simulate_crp_manual(N, alpha, rng=gu.gen_rng(seed))
-    crp = simulate_crp_gpm(N, alpha, rng=gu.gen_rng(seed))
-
+    A = gu.simulate_crp(N, alpha, rng=gu.gen_rng(seed))
+    Nk = list(np.bincount(A))
     # Add 3 new classes.
     Nk.extend([2, 3, 1])
 
-    # Decrement rowids.
+    crp = simulate_crp_gpm(N, alpha, rng=gu.gen_rng(seed))
+    # Increment rowids.
     rowid = max(crp.data)
     clust = max(crp.data.values())
     crp.incorporate(rowid+1, {0:clust+1}, None)
