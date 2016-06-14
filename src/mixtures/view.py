@@ -249,6 +249,14 @@ class View(CGpm):
         logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha)
             for alpha in self.alpha_grid]
         self.alpha = gu.log_pflip(logps, array=self.alpha_grid, rng=self.rng)
+        # XXX F ME XXX
+        logp_crp_baz = [gu.logp_crp(len(self.Zr), self.Nk_list(), alpha)
+            for alpha in self.alpha_grid]
+        logp_crp_foo = self.crp._calc_hyper_proposal_logps('alpha')
+        assert np.allclose(logp_crp_baz, logp_crp_foo)
+        self.crp.clusters[0].alpha = self.alpha
+        self.crp.hypers = {'alpha': self.alpha}
+        # XXX F ME XXX
 
     def transition_column_hypers(self, cols=None):
         """Calculate column (dim) hyperparameter conditionals over grid and
