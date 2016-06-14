@@ -73,24 +73,10 @@ class View(CGpm):
             outputs = []
         self.outputs = outputs
 
-        # CRP alpha grid.
-        self.alpha_grid = gu.log_linspace(1./self.n_rows(), self.n_rows(), 30)
-        if alpha is None:
-            alpha = self.rng.choice(self.alpha_grid)
-        self.alpha = alpha
-
-        # Row partition.
-        if Zr is None:
-            Zr = gu.simulate_crp(self.n_rows(), alpha, rng=self.rng)
-        # Convert Zr to a dictionary.
-        self.Zr = {i:z for i,z in enumerate(Zr)}
-        # Build Nk dictionary.
-        self.Nk = {k:count for k,count in enumerate(np.bincount(Zr)) if count>0}
-
-
-        # XXX Initialize the CRP CGpm, with an index of 1e7.
+        # Initialize the CRP CGpm, with an index of 1e7.
+        crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp = Dim(
-            [1e7], cctype='crp', hypers={'alpha': alpha}, rng=self.rng)
+            [1e7], cctype='crp', hypers=crp_alpha, rng=self.rng)
         self.crp.transition_hyper_grids([1]*self.n_rows())
         if Zr is None:
             for i in xrange(self.n_rows()):
@@ -99,12 +85,8 @@ class View(CGpm):
         else:
             for i, z in enumerate(Zr):
                 self.crp.incorporate(i, {1e7:z}, {-1:0})
-        assert self.Zr == self.crp.clusters[0].data
-        assert self.Nk == self.crp.clusters[0].counts
-        if not np.allclose(self.crp.hyper_grids['alpha'], self.alpha_grid):
-            import ipdb; ipdb.set_trace()
 
-        # Dimensions.
+        # Initialize the dimensions.
         self.dims = dict()
         for i, c in enumerate(self.outputs):
             dim = Dim(
@@ -137,17 +119,12 @@ class View(CGpm):
         dim.Zr = {}         # Mapping of non-nan rowids to cluster k.
         dim.Zi = {}         # Mapping of nan rowids to cluster k.
         dim.aux_model = dim.create_aux_model()
-        insertion_order = sorted(self.Zr.items(), key=lambda e: e[1])
-        insertion_order_prime = sorted(
-            self.crp.clusters[0].data.items(),
-            key=lambda e: e[1])
-        insertion_order == insertion_order_prime
-        for rowid, k in insertion_order:
+        for rowid, k in sorted(self.Zr().items(), key=lambda e: e[1]):
             dim.incorporate(
                 rowid,
                 query={dim.index: self.X[dim.index][rowid]},
                 evidence=self._get_evidence(rowid, dim, k))
-        assert merged(dim.Zr, dim.Zi) == self.Zr
+        assert merged(dim.Zr, dim.Zi) == self.Zr()
         dim.transition_params()
 
     def _prepare_incorporate(self, cctype):
@@ -180,15 +157,7 @@ class View(CGpm):
         """
         k = query.get(-1, 0)
         transition = [rowid] if k is None else []
-        if k not in self.Nk:
-            self.Nk[k] = 0
-        self.Nk[k] += 1
-        self.Zr[rowid] = k
-        # XXX F ME XXX
         self.crp.incorporate(rowid, {1e7:k}, {-1:0})
-        assert self.Zr == self.crp.clusters[0].data
-        assert self.Nk == self.crp.clusters[0].counts
-        # XXX F ME XXX
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
@@ -201,19 +170,11 @@ class View(CGpm):
         for dim in self.dims.itervalues():
             dim.unincorporate(rowid)
         # Account.
-        k = self.Zr[rowid]
-        self.Nk[k] -= 1
-        if self.Nk[k] == 0:
-            del self.Nk[k]
-            for dim in self.dims.itervalues():
-                # XXX Abstract in a better way
-                del dim.clusters[k]
-        del self.Zr[rowid]
-        # XXX F ME XXX
+        k = self.Zr(rowid)
         self.crp.unincorporate(rowid)
-        assert self.Zr == self.crp.clusters[0].data
-        assert self.Nk == self.crp.clusters[0].counts
-        # XXX F ME XXX
+        if k not in self.Nk():
+            for dim in self.dims.itervalues():
+                del dim.clusters[k]     # XXX Abstract me!
 
     # --------------------------------------------------------------------------
     # Update schema.
@@ -252,17 +213,8 @@ class View(CGpm):
 
     def transition_alpha(self):
         """Calculate CRP alpha conditionals over grid and transition."""
-        logps = [gu.logp_crp_unorm(len(self.Zr), len(self.Nk), alpha)
-            for alpha in self.alpha_grid]
-        self.alpha = gu.log_pflip(logps, array=self.alpha_grid, rng=self.rng)
-        # XXX F ME XXX
-        logp_crp_baz = [gu.logp_crp(len(self.Zr), self.Nk_list(), alpha)
-            for alpha in self.alpha_grid]
-        logp_crp_foo = self.crp._calc_hyper_proposal_logps('alpha')
-        assert np.allclose(logp_crp_baz, logp_crp_foo)
-        self.crp.clusters[0].alpha = self.alpha
-        self.crp.hypers = {'alpha': self.alpha}
-        # XXX F ME XXX
+        self.crp.transition_hypers()
+        self.crp.transition_hypers()
 
     def transition_column_hypers(self, cols=None):
         """Calculate column (dim) hyperparameter conditionals over grid and
@@ -275,7 +227,7 @@ class View(CGpm):
     def transition_rows(self, rows=None):
         """Compute row conditions for each cluster and transition."""
         if rows is None:
-            rows = self.Zr.keys()
+            rows = self.Zr().keys()
         for rowid in rows:
             self._transition_row(rowid)
 
@@ -284,10 +236,7 @@ class View(CGpm):
 
     def logpdf_score(self):
         """Compute the marginal logpdf CRP assignment and data."""
-        logp_crp = gu.logp_crp(len(self.Zr), self.Nk_list(), self.alpha)
-        # XXX F ME XXX
-        assert np.allclose(logp_crp, self.crp.logpdf_score())
-        # XXX F ME XXX
+        logp_crp = self.crp.logpdf_score()
         logp_dims = [dim.logpdf_score() for dim in self.dims.itervalues()]
         return logp_crp + sum(logp_dims)
 
@@ -304,7 +253,7 @@ class View(CGpm):
 
     def _logpdf_observed(self, rowid, query, evidence):
         evidence = self._populate_evidence(rowid, query, evidence)
-        return self._logpdf_joint(query, evidence, self.Zr[rowid])
+        return self._logpdf_joint(query, evidence, self.Zr(rowid))
 
     def _logpdf_hypothetical(self, query, evidence):
         # Algorithm. Partition all columns in query and evidence by views.
@@ -315,14 +264,8 @@ class View(CGpm):
         # p(xE|z)   logp_evidence
         # p(z|xE)   logp_cluster
         # p(xQ|z)   logp_query
-        K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
-        lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
-        # XXX F ME XXX
-        K_prime = self.crp.clusters[0].gibbs_tables(-1)
-        lp_crp_2 = [self.crp.logpdf(-1, {1e7: v}, {-1:0}) for v in K]
-        assert np.allclose(K, K_prime)
-        assert np.allclose(lp_crp_2, lp_crp)
-        # XXX F ME XXX
+        K = self.crp.clusters[0].gibbs_tables(-1)
+        lp_crp = [self.crp.logpdf(-1, {1e7: k}, {-1:0}) for k in K]
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = gu.log_normalize(np.add(lp_crp, lp_evidence))
@@ -344,19 +287,13 @@ class View(CGpm):
 
     def _simulate_observed(self, rowid, query, evidence, N):
         evidence = self._populate_evidence(rowid, query, evidence)
-        samples = self._simulate_joint(query, evidence, self.Zr[rowid], N)
+        samples = self._simulate_joint(query, evidence, self.Zr(rowid), N)
         return samples
 
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster exposes latent cluster of each sample in extra column."""
-        K = sorted(self.Nk.keys() + [max(self.Nk.keys())+1])
-        lp_crp = gu.logp_crp_fresh(len(self.Zr), self.Nk_list(), self.alpha)
-        # XXX F ME XXX
-        K_prime = self.crp.clusters[0].gibbs_tables(-1)
-        lp_crp_2 = [self.crp.logpdf(-1, {1e7: v}, {-1:0}) for v in K]
-        assert np.allclose(K, K_prime)
-        assert np.allclose(lp_crp_2, lp_crp)
-        # XXX F ME XXX
+        K = self.crp.clusters[0].gibbs_tables(-1)
+        lp_crp = [self.crp.logpdf(-1, {1e7: k}, {-1:0}) for k in K]
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = np.add(lp_crp, lp_evidence)
@@ -464,20 +401,9 @@ class View(CGpm):
     # Internal row transition.
 
     def _transition_row(self, rowid):
-        # If singleton then no aux clusters.
-        m_aux = [] if self.Nk[self.Zr[rowid]]==1 else [max(self.Nk)+1]
-        K = sorted(self.Nk.keys() + m_aux)
-
         # Probability of row crp assignment to each cluster.
-        logp_crp = gu.logp_crp_gibbs(self.Nk, self.Zr, rowid, self.alpha, 1)
-
-        # XXX F ME
-        logp_crp_manual = self.crp.clusters[0].gibbs_logps(rowid)
-        K_manual = self.crp.clusters[0].gibbs_tables(rowid)
-        assert np.allclose(logp_crp, logp_crp_manual)
-        assert np.allclose(K, K_manual)
-        # XXX F ME
-
+        K = self.crp.clusters[0].gibbs_tables(rowid)
+        logp_crp = self.crp.clusters[0].gibbs_logps(rowid)
 
         # Probability of row data in each cluster.
         logp_data = self._logpdf_row_gibbs(rowid, K)
@@ -489,7 +415,7 @@ class View(CGpm):
         z_b = gu.log_pflip(p_cluster, array=K, rng=self.rng)
 
         # Migrate the row.
-        if z_b != self.Zr[rowid]:
+        if z_b != self.Zr(rowid):
             self.unincorporate(rowid)
             query = merged(
                 {d: self.X[d][rowid] for d in self.dims}, {-1: z_b})
@@ -504,7 +430,7 @@ class View(CGpm):
         query = {dim.index: self.X[dim.index][rowid]}
         evidence = self._get_evidence(rowid, dim, k)
         # If rowid in cluster k then unincorporate then compute predictive.
-        if self.Zr[rowid] == k:
+        if self.Zr(rowid) == k:
             dim.unincorporate(rowid)
             logp = dim.logpdf(rowid, query, evidence)
             dim.incorporate(rowid, query, evidence)
@@ -513,16 +439,27 @@ class View(CGpm):
         return logp
 
     # --------------------------------------------------------------------------
-    # Internal query utils.
+    # Internal crp utils.
 
-    def Nk_list(self):
-        return [self.Nk[k] for k in sorted(self.Nk)]
+    def alpha(self):
+        return self.crp.hypers['alpha']
+
+    def Nk(self, k=None):
+        Nk = self.crp.clusters[0].counts
+        return Nk[k] if k is not None else Nk
+
+    def Zr(self, rowid=None):
+        Zr = self.crp.clusters[0].data
+        return Zr[rowid] if rowid is not None else Zr
+
+    # --------------------------------------------------------------------------
+    # Internal query utils.
 
     def n_rows(self):
         return len(self.X[self.X.keys()[0]])
 
     def _is_hypothetical(self, rowid):
-        return not (0 <= rowid < len(self.Zr))
+        return not (0 <= rowid < len(self.Zr()))
 
     def _populate_evidence(self, rowid, query, evidence):
         """Builds the evidence for an observed simulate/logpdb query."""
@@ -569,22 +506,23 @@ class View(CGpm):
 
     def _check_partitions(self):
         # For debugging only.
-        assert self.alpha > 0.
+        assert self.alpha() > 0.
         # Check that the number of dims actually assigned to the view
         # matches the count in Nv.
         rowids = range(self.n_rows())
-        assert set(self.Zr.keys()) == set(xrange(self.n_rows()))
-        assert set(self.Zr.values()) == set(self.Nk)
+        Zr, Nk = self.Zr(), self.Nk()
+        assert set(Zr.keys()) == set(xrange(self.n_rows()))
+        assert set(Zr.values()) == set(Nk)
         for dim in self.dims.itervalues():
             # Ensure number of clusters in each dim in views[v]
             # is the same and as described in the view (K, Nk).
             assignments = merged(dim.Zr, dim.Zi)
-            assert assignments == self.Zr
-            assert set(assignments.values()) == set(self.Nk.keys())
+            assert assignments == Zr
+            assert set(assignments.values()) == set(Nk.keys())
             all_ks = dim.clusters.keys() + dim.Zi.values()
-            assert set(all_ks) == set(self.Nk.keys())
+            assert set(all_ks) == set(Nk.keys())
             for k in dim.clusters:
                 # Law of conservation of rowids.
                 rowids_nan = np.isnan(
-                    [self.X[dim.index][r] for r in rowids if self.Zr[r]==k])
-                assert dim.clusters[k].N + np.sum(rowids_nan) == self.Nk[k]
+                    [self.X[dim.index][r] for r in rowids if Zr[r]==k])
+                assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]

@@ -821,8 +821,9 @@ class State(CGpm):
             metadata['distargs'].append(dim.distargs)
 
         for view in self.views:
-            metadata['Zrv'].append([view.Zr[i] for i in sorted(view.Zr)])
-            metadata['view_alphas'].append(view.alpha)
+            rowids = sorted(view.Zr())
+            metadata['Zrv'].append([view.Zr(i) for i in rowids])
+            metadata['view_alphas'].append(view.alpha())
 
         return metadata
 

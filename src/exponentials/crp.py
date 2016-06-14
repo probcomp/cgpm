@@ -104,6 +104,8 @@ class Crp(DistributionGpm):
     def get_distargs(self):
         return {}
 
+    # Some Gibbs utils.
+
     def gibbs_logps(self, rowid):
         """Compute the CRP probabilities for a Gibbs transition of rowid,
         with table counts Nk, table assignments Z, and m auxiliary tables."""
