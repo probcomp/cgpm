@@ -468,12 +468,12 @@ class View(CGpm):
         return not (0 <= rowid < len(self.Zr()))
 
     def _populate_evidence(self, rowid, query, evidence):
-        """Builds the evidence for an observed simulate/logpdb query."""
-        if self._is_hypothetical(rowid):
-            return evidence
-        em = [r for r in self.outputs[1:] if not (r in evidence or r in query)]
-        ev = {c: self.X[c][rowid] for c in em if not isnan(self.X[c][rowid])}
-        return merged(evidence, ev)
+        """Loads query evidence from the dataset."""
+        if self._is_hypothetical(rowid): return evidence
+        missing = {c: self.X[c][rowid] for c in self.outputs[1:]
+            if c not in evidence and c not in query
+            and not isnan(self.X[c][rowid])}
+        return merged(evidence, missing)
 
     def _get_evidence(self, rowid, dim, k):
         """Prepare the evidence for a Dim logpdf/simulate query."""
