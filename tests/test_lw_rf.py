@@ -85,6 +85,19 @@ def test_logpdf_deterministic__ci_(state):
         assert np.allclose(lp1, lp2)
 
 
+def test_logpdf_impute__ci_(state):
+    # Ensure logpdf estimation deterministic when all parents in evidence.
+    for k in xrange(5):
+        lp1 = state.logpdf(-1, {0:k}, evidence={1:1})
+        lp2 = state.logpdf(-1, {0:k}, evidence={1:1})
+        print lp1, lp2
+    # Observed cell already has parents in evidence.
+    for k in xrange(5):
+        lp1 = state.logpdf(-1, query={1:1, 2:2}, evidence={0:k})
+        lp2 = state.logpdf(-1, query={1:1, 2:2}, evidence={0:k})
+        print lp1, lp2
+
+
 def check_members(samples, allowed):
     for s in samples:
         assert s[0] in allowed

@@ -42,6 +42,7 @@ class DistributionGpm(CGpm):
         assert len(outputs) == 1
         assert not inputs
         self.outputs = list(outputs)
+        self.inputs = []
         self.data = dict()
         self.rng = gu.gen_rng() if rng is None else rng
 

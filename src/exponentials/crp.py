@@ -59,7 +59,8 @@ class Crp(DistributionGpm):
             del self.counts[x]
 
     def logpdf(self, rowid, query, evidence):
-        DistributionGpm.logpdf(self, rowid, query, evidence)
+        assert not evidence
+        assert query.keys() == self.outputs
         x = int(query[self.outputs[0]])
         if rowid in self.data:
             return 0 if self.data[rowid] == x else -float('inf')

@@ -20,7 +20,7 @@ import itertools as it
 def validate_cgpms(cgpms):
     ot = [set(c.outputs) for c in cgpms]
     if not all(s for s in ot):
-        raise ValueError('Not output for a cgpm: %s' % ot)
+        raise ValueError('No output for a cgpm: %s' % ot)
     if any(set.intersection(a,b) for a,b in it.combinations(ot, 2)):
         raise ValueError('Duplicate outputs for cgpms: %s' % ot)
     return cgpms
