@@ -66,31 +66,33 @@ class View(CGpm):
         # Dataset.
         self.X = X
 
-        # Outputs
-        if outputs:
-            assert len(outputs) == len(cctypes) == len(distargs) == len(hypers)
-        else:
-            outputs = []
+         # Outputs
+        if len(outputs) < 1:
+            raise ValueError('View needs at least one output.')
+        if len(outputs) > 1:
+            assert len(outputs[1:])==len(cctypes)==len(distargs)==len(hypers)
         self.outputs = outputs
 
-        # Initialize the CRP CGpm, with an index of 1e7.
+
+        # Initialize the CRP CGpm.
         crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp = Dim(
-            [1e7], cctype='crp', hypers=crp_alpha, rng=self.rng)
+            [self.outputs[0]], [-1], cctype='crp', hypers=crp_alpha,
+            rng=self.rng)
         self.crp.transition_hyper_grids([1]*self.n_rows())
         if Zr is None:
             for i in xrange(self.n_rows()):
-                s = self.crp.simulate(i, [1e7], {-1:0})
+                s = self.crp.simulate(i, [self.outputs[0]], {-1:0})
                 self.crp.incorporate(i, s, {-1:0})
         else:
             for i, z in enumerate(Zr):
-                self.crp.incorporate(i, {1e7:z}, {-1:0})
+                self.crp.incorporate(i, {self.outputs[0]: z}, {-1: 0})
 
         # Initialize the dimensions.
         self.dims = dict()
-        for i, c in enumerate(self.outputs):
+        for i, c in enumerate(self.outputs[1:]):
             dim = Dim(
-                outputs=[c], inputs=None, cctype=cctypes[i],
+                outputs=[c], inputs=[self.outputs[0]], cctype=cctypes[i],
                 hypers=hypers[i], distargs=distargs[i], rng=self.rng)
             dim.transition_hyper_grids(self.X[c])
             if dim.is_conditional():
@@ -103,14 +105,14 @@ class View(CGpm):
     # Observe
 
     def incorporate_dim(self, dim, reassign=True):
-        """Incorporate the dim into this View. If reassign is False, the row
-        partition of dim should match self.Zr already."""
+        """Incorporate dim into View. If not reassign, partition should match."""
+        dim.inputs[0] = self.outputs[0]
         if reassign:
             distargs = self._prepare_incorporate(dim.cctype)
             dim.distargs.update(distargs)
             self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
-        self.outputs = self.dims.keys()
+        self.outputs.append(dim.index)
         return dim.logpdf_score()
 
     def _bulk_incorporate(self, dim):
@@ -139,7 +141,7 @@ class View(CGpm):
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify)."""
         del self.dims[dim.index]
-        self.outputs = self.dims.keys()
+        self.outputs.remove(dim.index)
         return dim.logpdf_score()
 
     def incorporate(self, rowid, query, evidence=None):
@@ -151,13 +153,13 @@ class View(CGpm):
             Fresh, non-negative rowid.
         query : dict{output:val}
             Keys of the query must exactly be the output (Github issue 89).
-            Optionally use {-1:k} for latent cluster assignment of rowid where
-            0 <= k <= len(self.Nk). The cluster is a query variable since View
+            Optionally, use {self.outputs[0]: k} for latent cluster assignment
+            of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
-        k = query.get(-1, 0)
+        k = query.get(self.outputs[0], 0)
         transition = [rowid] if k is None else []
-        self.crp.incorporate(rowid, {1e7:k}, {-1:0})
+        self.crp.incorporate(rowid, {self.outputs[0]: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
@@ -193,6 +195,7 @@ class View(CGpm):
                 del local_distargs['cctypes'][me]
                 del local_distargs['ccargs'][me]
                 del inputs[me]
+        inputs = [self.outputs[0]] + inputs
         distargs.update(local_distargs)
         D_old = self.dims[col]
         D_new = Dim(
@@ -265,7 +268,7 @@ class View(CGpm):
         # p(z|xE)   logp_cluster
         # p(xQ|z)   logp_query
         K = self.crp.clusters[0].gibbs_tables(-1)
-        lp_crp = [self.crp.logpdf(-1, {1e7: k}, {-1:0}) for k in K]
+        lp_crp = [self.crp.logpdf(-1, {self.outputs[0]: k}, {-1:0}) for k in K]
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = gu.log_normalize(np.add(lp_crp, lp_evidence))
@@ -293,7 +296,7 @@ class View(CGpm):
     def _simulate_hypothetical(self, query, evidence, N, cluster=False):
         """cluster exposes latent cluster of each sample in extra column."""
         K = self.crp.clusters[0].gibbs_tables(-1)
-        lp_crp = [self.crp.logpdf(-1, {1e7: k}, {-1:0}) for k in K]
+        lp_crp = [self.crp.logpdf(-1, {self.outputs[0]: k}, {-1:0}) for k in K]
         lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
         if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
         lp_cluster = np.add(lp_crp, lp_evidence)
@@ -374,26 +377,28 @@ class View(CGpm):
     def _simulate_unconditional(self, query, k):
         """Simulate query from cluster k, N times."""
         assert not any(self.dims[c].is_conditional() for c in query)
-        samples = [self.dims[c].simulate(-1, [c], {-1:k}) for c in query]
+        evidence = {self.outputs[0]: k}
+        samples = [self.dims[c].simulate(-1, [c], evidence) for c in query]
         return merged(*samples)
 
     def _simulate_conditional(self, query, evidence, k):
         """Simulate unconditional query from cluster k."""
         assert set(self._unconditional_dims()) == set(evidence)
         assert all(self.dims[c].is_conditional() for c in query)
-        evidence = merged(evidence, {-1:k})
+        evidence = merged(evidence, {self.outputs[0]: k})
         samples = [self.dims[c].simulate(-1, [c], evidence) for c in query]
         return merged(*samples)
 
     def _logpdf_unconditional(self, query, k):
         assert not any(self.dims[c].is_conditional() for c in query)
-        lps = [self.dims[c].logpdf(-1, {c: query[c]}, {-1: k}) for c in query]
+        evidence = {self.outputs[0]: k}
+        lps = [self.dims[c].logpdf(-1, {c: query[c]}, evidence) for c in query]
         return sum(lps)
 
     def _logpdf_conditional(self, query, evidence, k):
         assert all(self.dims[c].is_conditional() for c in query)
         assert set(self._unconditional_dims()) == set(evidence)
-        evidence = merged(evidence, {-1: k})
+        evidence = merged(evidence, {self.outputs[0]: k})
         lps = [self.dims[c].logpdf(-1, {c:query[c]}, evidence) for c in query]
         return sum(lps)
 
@@ -418,7 +423,8 @@ class View(CGpm):
         if z_b != self.Zr(rowid):
             self.unincorporate(rowid)
             query = merged(
-                {d: self.X[d][rowid] for d in self.dims}, {-1: z_b})
+                {d: self.X[d][rowid] for d in self.dims},
+                {self.outputs[0]: z_b})
             self.incorporate(rowid, query)
         self._check_partitions()
 
@@ -465,14 +471,14 @@ class View(CGpm):
         """Builds the evidence for an observed simulate/logpdb query."""
         if self._is_hypothetical(rowid):
             return evidence
-        em = [r for r in self.outputs if r not in evidence and r not in query]
+        em = [r for r in self.outputs[1:] if not (r in evidence or r in query)]
         ev = {c: self.X[c][rowid] for c in em if not isnan(self.X[c][rowid])}
         return merged(evidence, ev)
 
     def _get_evidence(self, rowid, dim, k):
         """Prepare the evidence for a Dim logpdf/simulate query."""
-        inputs = {i: self.X[i][rowid] for i in dim.inputs}
-        cluster = {-1: k}
+        inputs = {i: self.X[i][rowid] for i in dim.inputs[1:]}
+        cluster = {self.outputs[0]: k}
         return merged(inputs, cluster)
 
     def _conditional_dims(self):
@@ -514,6 +520,8 @@ class View(CGpm):
         assert set(Zr.keys()) == set(xrange(self.n_rows()))
         assert set(Zr.values()) == set(Nk)
         for dim in self.dims.itervalues():
+            # Assert first output is first input of the Dim.
+            assert self.outputs[0] == dim.inputs[0]
             # Ensure number of clusters in each dim in views[v]
             # is the same and as described in the view (K, Nk).
             assignments = merged(dim.Zr, dim.Zi)

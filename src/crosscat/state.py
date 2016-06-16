@@ -108,7 +108,6 @@ class State(CGpm):
         if view_alphas is None: view_alphas = [None] * len(self.outputs)
 
         # Views.
-        # import ipdb; ipdb.set_trace()
         self.views = OrderedDict()
         for v in set(self.Zv.values()):
             v_outputs = [o for o in self.outputs if self.Zv[o] == v]
@@ -116,7 +115,7 @@ class State(CGpm):
             v_distargs = [distargs[c] for c in v_outputs]
             v_hypers = [hypers[c] for c in v_outputs]
             view = View(
-                self.X, outputs=v_outputs, inputs=None, Zr=Zrv[v],
+                self.X, outputs=[10**7+v]+v_outputs, inputs=None, Zr=Zrv[v],
                 alpha=view_alphas[v], cctypes=v_cctypes, distargs=v_distargs,
                 hypers=v_hypers, rng=self.rng)
             self.views[v] = view
@@ -147,26 +146,27 @@ class State(CGpm):
             raise ValueError('outputs exist: %s, %s.' % (outputs, self.outputs))
         if inputs:
             raise ValueError('inputs unsupported: %s.' % inputs)
-        # Append to outputs.
+        # Append new output to outputs.
         col = outputs[0]
         self.X[col] = T
         self.outputs.append(col)
-        # XXX Does not handle conditional models; consider moving to view?
-        D = Dim(
-            outputs=outputs, inputs=inputs, cctype=cctype,
-            distargs=distargs, rng=self.rng)
-        D.transition_hyper_grids(self.X[col])
         # If v unspecified then transition the col.
         transition = [col] if v is None else []
-        # Incorporate dim into view.
-        v = 0 if v is None else v
-        if v in self.views:
-            view = self.views[v]
+        # Determine correct view.
+        v_add = 0 if v is None else v
+        if v_add in self.views:
+            view = self.views[v_add]
         else:
-            view = View(self.X, rng=self.rng)
-            self._append_view(view, identity=v)
+            view = View(self.X, outputs=[10**7+v_add], rng=self.rng)
+            self._append_view(view, v_add)
+        self.Zv[col] = v_add
+        # Create the dimension.
+        # XXX Does not handle conditional models; consider moving to view?
+        D = Dim(
+            outputs=outputs, inputs=[view.outputs[0]], cctype=cctype,
+            distargs=distargs, rng=self.rng)
+        D.transition_hyper_grids(self.X[col])
         view.incorporate_dim(D)
-        self.Zv[col] = v
         # Transition.
         self.transition_columns(cols=transition)
         self.transition_column_hypers(cols=[col])
@@ -194,35 +194,30 @@ class State(CGpm):
         self._check_partitions()
 
     def incorporate(self, rowid, query, evidence=None):
-        # Validation.
-        if not self._is_hypothetical(rowid): # XXX Only allow new rows for now.
+        # XXX Only allow new rows for now, pending Github #
+        if not self._is_hypothetical(rowid):
             raise ValueError('Cannot incorporate non-hypothetical: %d' % rowid)
-        if not set.issubset(set(q for q in query if q>=0), set(self.outputs)):
-            raise ValueError(
-                'Query must be subset of outputs: %s, %s.'
-                % (query, self.outputs))
-        if any(not 0 <= -(q+1) < len(self.views) for q in query if q < 0):
-            raise ValueError('Invalid view: %s.' % query)
+        if evidence:
+            raise ValueError('Cannot incoroprate with evidence: %s' % evidence)
+        valid_clusters = set([self.views[v].outputs[0] for v in self.views])
+        query_clusters = [q for q in query if q in valid_clusters]
+        query_outputs = [q for q in query if q not in query_clusters]
+        if not all(q in self.outputs for q in query_outputs):
+            raise ValueError('Invalid query: %s' % query)
         if any(isnan(v) for v in query.values()):
             raise ValueError('Cannot incorporate nan: %s.' % query)
-        if evidence is None:
-            evidence = {}
         # Append the observation to dataset.
-        def update_list(c):
-            if self._is_hypothetical(rowid):
+        for c in self.outputs:
                 self.X[c].append(query.get(c, float('nan')))
-            elif c in query:
-                assert isnan(self.X[c][rowid])
-                self.X[c][rowid] = query[c]
-            return self.X[c]
-        self.X = {c: update_list(c) for c in self.outputs}
-        # Tell the views.
+        # Pick a fresh rowid.
         if self._is_hypothetical(rowid):
             rowid = self.n_rows()-1
-        for v, view in enumerate(self.views):
-            qv = {d: self.X[d][rowid] for d in view.dims}
-            kv = {-1: query[-(v+1)]} if -(v+1) in query else {}
-            view.incorporate(rowid, gu.merged(qv, kv))
+        # Tell the views.
+        for v in self.views:
+            qv = {d: self.X[d][rowid] for d in self.views[v].dims}
+            kid = self.views[v].outputs[0]
+            kv = {kid: query[kid]} if kid in query else {}
+            self.views[v].incorporate(rowid, gu.merged(qv, kv))
         # Validate.
         self._check_partitions()
 
@@ -705,14 +700,17 @@ class State(CGpm):
 
         # Auxiliary views.
         m_aux = range(m-1) if self.Nv(self.Zv[col]) == 1 else range(m)
-        dprops_aux = [get_prop_dim(None, self.dim_for(col)) for _ in m_aux]
-        vprops_aux = [View(self.X, rng=self.rng) for _ in m_aux]
+        t_aux = max(self.views)+1
+        dprop_aux = [get_prop_dim(None, self.dim_for(col))
+            for i in m_aux]
+        vprop_aux = [View(self.X, outputs=[10**7+t_aux], rng=self.rng)
+            for i in m_aux]
 
         logp_data_aux = [get_data_logp(view, dim)
-            for (view, dim) in zip(vprops_aux, dprops_aux)]
+            for (view, dim) in zip(vprop_aux, dprop_aux)]
 
         # Extend data structs with auxiliary proposals.
-        dprops.extend(dprops_aux)
+        dprops.extend(dprop_aux)
         logp_data.extend(logp_data_aux)
 
         # Compute the CRP probabilities.
@@ -729,7 +727,7 @@ class State(CGpm):
             p_view[index] = float('-inf')
 
         # Draw view.
-        tables = self.views.keys() + [max(self.views)+1] * len(m_aux)
+        tables = self.views.keys() + [t_aux]*len(m_aux)
         assert len(tables) == len(p_view)
 
         index = gu.log_pflip(p_view, rng=self.rng)
@@ -738,8 +736,7 @@ class State(CGpm):
         if v_a != v_b:
             self.views[v_a].unincorporate_dim(dprops[index])
             if v_b > max(self.views):
-                self._append_view(vprops_aux[index-self.n_views()])
-            # import ipdb; ipdb.set_trace()
+                self._append_view(vprop_aux[index-self.n_views()], t_aux)
             self.views[v_b].incorporate_dim(
                 dprops[index], reassign=dprops[index].is_collapsed())
             # Accounting
@@ -757,11 +754,9 @@ class State(CGpm):
         assert self.Nv(v) == 0
         del self.views[v]
 
-    def _append_view(self, view, identity=None):
+    def _append_view(self, view, identity):
         """Append a view and return and its index."""
         assert len(view.dims) == 0
-        if identity is None:
-            identity = max(self.views)+1
         self.views[identity] = view
 
     def _is_hypothetical(self, rowid):
@@ -787,10 +782,9 @@ class State(CGpm):
             assert len(self.views[v].dims) == self.Nv(v)
             self.views[v]._check_partitions()
         # Dependence constraints.
-        if not vu.validate_crp_constrained_partition(
+        assert vu.validate_crp_constrained_partition(
             [self.Zv[c] for c in self.outputs], self.Cd, self.Ci,
-            self.Rd, self.Ri):
-            import ipdb; ipdb.set_trace()
+            self.Rd, self.Ri)
 
     # --------------------------------------------------------------------------
     # Serialize
