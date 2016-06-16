@@ -38,8 +38,8 @@ def state():
         50, [1], [[.33, .33, .34]], cctypes, distargs, [.95]*len(cctypes),
         rng=gu.gen_rng(0))
     s = State(
-        T.T, cctypes=cctypes, distargs=distargs, Zv=[0]*len(cctypes),
-        rng=gu.gen_rng(0))
+        T.T, cctypes=cctypes, distargs=distargs,
+        Zv={i:0 for i in xrange(len(cctypes))}, rng=gu.gen_rng(0))
     s.update_cctype(0, 'random_forest', distargs={'k':5})
     # XXX Uncomment me for a bug!
     # state.update_cctype(1, 'linear_regression')

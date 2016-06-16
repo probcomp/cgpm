@@ -43,16 +43,18 @@ def test_incorporate():
         T[:,:2], cctypes=CCTYPES[:2], distargs=DISTARGS[:2], rng=gu.gen_rng(0))
     state.transition(N=5)
 
+    target = state.views.keys()[0]
+
     # Incorporate a new dim into view[0].
     state.incorporate_dim(
-        T[:,2], outputs=[2], cctype=CCTYPES[2], distargs=DISTARGS[2], v=0)
-    assert state.Zv[2] == 0
+        T[:,2], outputs=[2], cctype=CCTYPES[2], distargs=DISTARGS[2], v=target)
+    assert state.Zv[2] == target
     state.transition(N=1)
 
     # Incorporate a new dim into view[0] with a non-continuous output.
     state.incorporate_dim(
-        T[:,2], outputs=[10], cctype=CCTYPES[2], distargs=DISTARGS[2], v=0)
-    assert state.Zv[10] == 0
+        T[:,2], outputs=[10], cctype=CCTYPES[2], distargs=DISTARGS[2], v=target)
+    assert state.Zv[10] == target
     state.transition(N=1)
 
     # Some crash testing queries.
@@ -62,37 +64,39 @@ def test_incorporate():
     # Incorporating with a duplicated output should raise.
     with pytest.raises(ValueError):
         state.incorporate_dim(
-            T[:,2], outputs=[10], cctype=CCTYPES[2], distargs=DISTARGS[2], v=0)
+            T[:,2], outputs=[10], cctype=CCTYPES[2], distargs=DISTARGS[2],
+            v=target)
 
     # Multivariate incorporate should raise.
     with pytest.raises(ValueError):
         state.incorporate_dim(
             T[:,2], outputs=[10, 2], cctype=CCTYPES[2],
-            distargs=DISTARGS[2], v=0)
+            distargs=DISTARGS[2], v=target)
 
     # Missing output should raise.
     with pytest.raises(ValueError):
         state.incorporate_dim(
             T[:,2], outputs=[], cctype=CCTYPES[2],
-            distargs=DISTARGS[2], v=0)
+            distargs=DISTARGS[2], v=target)
 
     # Wrong number of rows should raise.
     with pytest.raises(ValueError):
         state.incorporate_dim(
             T[:,2][:-1], outputs=[11], cctype=CCTYPES[2],
-            distargs=DISTARGS[2], v=0)
+            distargs=DISTARGS[2], v=target)
 
     # Inputs should raise.
     with pytest.raises(ValueError):
         state.incorporate_dim(
             T[:,2], outputs=[11], inputs=[2], cctype=CCTYPES[2],
-            distargs=DISTARGS[2], v=0)
+            distargs=DISTARGS[2], v=target)
 
     # Incorporate dim into a newly created singleton view.
+    target = max(state.views)+1
     state.incorporate_dim(
         T[:,3], outputs=[3], cctype=CCTYPES[3],
-        distargs=DISTARGS[3], v=state.n_views())
-    assert state.Zv[3] == state.n_views()-1
+        distargs=DISTARGS[3], v=target)
+    assert state.Zv[3] == target
     state.transition(N=1)
 
     # Incorporate dim without specifying a view.
@@ -112,17 +116,19 @@ def test_incorporate():
     state.transition(N=1)
 
     # Incorporate dim into singleton view, remove it, assert destroyed.
+    target = max(state.views)+1
     state.incorporate_dim(
         T[:,5], outputs=[5], cctype=CCTYPES[5], distargs=DISTARGS[5],
-        v=state.n_views())
+        v=target)
     previous = state.n_views()
     state.unincorporate_dim(5)
     assert state.n_views() == previous-1
     state.transition(N=1)
 
     # Reincorporate dim into a singleton view.
+    target = max(state.views)+1
     state.incorporate_dim(T[:,5], outputs=[5], cctype=CCTYPES[5],
-        distargs=DISTARGS[5], v=len(state.views))
+        distargs=DISTARGS[5], v=target)
     state.transition(N=1)
 
     # Incorporate the rest of the dims in the default way.

@@ -180,7 +180,7 @@ class Engine(object):
     def dependence_probability(self, col0, col1, states=None):
         """Compute dependence probability between col0 and col1 as float."""
         if states is None: states = xrange(self.num_states())
-        Zvs = [self.states[s]['Zv'] for s in states]
+        Zvs = [dict(self.states[s]['Zv']) for s in states]
         counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
         return sum(counts) / float(len(states))
 
@@ -197,7 +197,8 @@ class Engine(object):
         if states is None: states = xrange(self.num_states())
         if cols is None: cols = range(len(self.states[0]['cctypes']))
         def row_sim_state(s):
-            Zv, Zrv = self.states[s]['Zv'], self.states[s]['Zrv']
+            Zv = dict(self.states[s]['Zv'])
+            Zrv = dict(self.states[s]['Zrv'])
             Zrs = [Zrv[v] for v in set(Zv[c] for c in cols)]
             return sum([Zr[row0]==Zr[row1] for Zr in Zrs]) / float(len(Zrv))
         return sum(map(row_sim_state, states)) / len(states)
