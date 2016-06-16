@@ -32,29 +32,47 @@ class Dim(CGpm):
     the cluster assignment is a required input variable to the CGpm.
     """
 
-    def __init__(self, outputs, inputs=None, cctype=None, hypers=None,
+    def __init__(self, outputs, inputs, cctype=None, hypers=None,
             params=None, distargs=None, rng=None):
         """Dim constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
 
         Parameters
         ----------
-        cctype : str
-            DistributionGpm name see `gpmcc.utils.config`.
-        index : int
-            Unique identifier for this dim.
+         cctype : str
+             DistributionGpm name see `gpmcc.utils.config`.
+        outputs : list<int>
+            A singleton list containing the identifier of the output variable.
+        inputs : list<int>
+            A list of at least length 1. The first item is the index of the
+            variable corresponding to the required cluster identity. The
+            remaining items are input variables to the internal cgpms.
+        cctypes : str, optional
+            Data type of output variable, defaults to normal.
+        hypers : dict, optional
+            Shared hypers of internal cgpms.
+        params : dict, optional
+            Currently disabled.
         distargs : dict, optional.
-            Distargs appropriate for the cctype. For details on
-            distargs see the documentation for each DistributionGpm.
+            Distargs appropriate for the cctype.
+        rng : np.random.RandomState
+            Entropy.
         """
         self.rng = gu.gen_rng() if rng is None else rng
 
-        # Identifier.
+        # Outputs.
         if len(outputs) != 1:
             raise ValueError('Dim requires exactly 1 output.')
         self.outputs = outputs
         self.inputs = inputs if inputs else []
-        # XXX ENCAPSULATE ME!
+        self.outputs = list(outputs)
+
+        # Inputs.
+        if len(inputs) < 1:
+            raise ValueError('Dim requires at least 1 input.')
+        self.inputs = list(inputs)
+
+        # Identifier. Find a better way to encapsulate.
         self.index = self.outputs[0]
 
         # Model type.
@@ -194,16 +212,17 @@ class Dim(CGpm):
 
     def create_aux_model(self):
         return self.model(
-            outputs=[self.index], inputs=self.inputs, hypers=self.hypers,
+            outputs=[self.index], inputs=self.inputs[1:], hypers=self.hypers,
             distargs=self.distargs, rng=self.rng)
 
     def preprocess(self, query, evidence):
         evidence = evidence.copy()
         try:
-            k = evidence.pop(-1)
+            k = evidence.pop(self.inputs[0])
         except KeyError:
-            raise ValueError('Dim needs cluster -1 in evidence: %s' % evidence)
-        valid_x, valid_y = True, True
+            raise ValueError('Dim needs inputs[0] in evidence: %s' % evidence)
+        valid_x = True
+        valid_y = True
         if isinstance(query, dict):
             valid_x = not math.isnan(query[self.index])
         if evidence:
