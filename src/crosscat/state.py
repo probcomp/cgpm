@@ -20,6 +20,7 @@ import itertools
 import sys
 import time
 
+from collections import OrderedDict
 from math import isnan
 
 import matplotlib.pyplot as plt
@@ -70,12 +71,6 @@ class State(CGpm):
         else:
             self.alpha = alpha
 
-        # View row partitions.
-        if Zrv is None:
-            Zrv = [None] * len(self.outputs)
-        else:
-            assert len(Zrv) == len(set(Zv))
-
         # Constraints.
         self.Cd = [] if Cd is None else Cd
         self.Ci = [] if Ci is None else Ci
@@ -85,18 +80,26 @@ class State(CGpm):
         if len(self.Cd) > 0:
             raise ValueError('Dependency constraints not yet implemented.')
 
-        # Column partition.
+        # View column partition.
         if Zv is None:
             if self.Cd or self.Ci:
-                Zv = gu.simulate_crp_constrained(
+                Zvtmp = gu.simulate_crp_constrained(
                     self.n_cols(), self.alpha, self.Cd, self.Ci, self.Rd,
                     self.Ri, rng=self.rng)
             else:
-                Zv = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
-        # Convert Zv to a dictionary.
-        assert len(Zv) == len(self.outputs)
-        self.Zv = {i:z for i, z in zip(self.outputs, Zv)}
+                Zvtmp = gu.simulate_crp(self.n_cols(), self.alpha, rng=self.rng)
+            self.Zv = {i:z for i, z in zip(self.outputs, Zvtmp)}
+        else:
+            self.Zv = Zv
+        assert isinstance(self.Zv, dict)
+        assert len(self.Zv) == len(self.outputs)
 
+
+        # View row partitions.
+        if Zrv is None:
+            Zrv = [None] * len(self.outputs)
+        else:
+            assert set(Zrv.keys()) == set(self.Zv.values())
 
         # View data.
         if cctypes is None: cctypes = [None] * len(self.outputs)
@@ -105,9 +108,10 @@ class State(CGpm):
         if view_alphas is None: view_alphas = [None] * len(self.outputs)
 
         # Views.
-        self.views = []
-        for v in sorted(set(self.Zv.values())):
-            v_outputs = [o for o in self.outputs if Zv[o] == v]
+        # import ipdb; ipdb.set_trace()
+        self.views = OrderedDict()
+        for v in set(self.Zv.values()):
+            v_outputs = [o for o in self.outputs if self.Zv[o] == v]
             v_cctypes = [cctypes[c] for c in v_outputs]
             v_distargs = [distargs[c] for c in v_outputs]
             v_hypers = [hypers[c] for c in v_outputs]
@@ -115,7 +119,7 @@ class State(CGpm):
                 self.X, outputs=v_outputs, inputs=None, Zr=Zrv[v],
                 alpha=view_alphas[v], cctypes=v_cctypes, distargs=v_distargs,
                 hypers=v_hypers, rng=self.rng)
-            self.views.append(view)
+            self.views[v] = view
 
         # Iteration metadata.
         self.iterations = iterations if iterations is not None else {}
@@ -156,11 +160,11 @@ class State(CGpm):
         transition = [col] if v is None else []
         # Incorporate dim into view.
         v = 0 if v is None else v
-        if 0 <= v < self.n_views():
+        if v in self.views:
             view = self.views[v]
-        elif v == self.n_views():
+        else:
             view = View(self.X, rng=self.rng)
-            self._append_view(view)
+            self._append_view(view, identity=v)
         view.incorporate_dim(D)
         self.Zv[col] = v
         # Transition.
@@ -259,8 +263,8 @@ class State(CGpm):
 
     def logpdf_score(self):
         """Compute the joint density of latents and data p(theta,Z,X|CC)."""
-        return gu.logp_crp(len(self.Zv), self.Nv(), self.alpha) + \
-            sum(v.logpdf_score() for v in self.views)
+        return gu.logp_crp(len(self.Zv), self.Nv_list(), self.alpha) + \
+            sum(v.logpdf_score() for v in self.views.itervalues())
 
     # --------------------------------------------------------------------------
     # logpdf
@@ -537,7 +541,7 @@ class State(CGpm):
     def transition_view_alphas(self, views=None):
         """Transition CRP concentration of the Views."""
         if views is None:
-            views = xrange(self.n_views())
+            views = self.views.keys()
         for v in views:
             self.views[v].transition_alpha()
 
@@ -567,14 +571,14 @@ class State(CGpm):
         if self.n_rows() == 1:
             return
         if views is None:
-            views = xrange(self.n_views())
+            views = self.views.keys()
         for v in views:
             self.views[v].transition_rows(rows=rows)
 
     def transition_columns(self, cols=None, m=2):
         """Transition Dim CRP assignments in State."""
-        if self.n_cols() == 1:
-            return
+        # if self.n_cols() == 1:
+        #     return
         if cols is None:
             cols = self.outputs
         cols = self.rng.permutation(cols)
@@ -642,26 +646,24 @@ class State(CGpm):
     # Accessors
 
     def dim_for(self, c):
-        """Dim for column c."""
         return self.view_for(c).dims[c]
 
     def dims(self):
-        """All Dims."""
         return [self.view_for(c).dims[c] for c in self.outputs]
 
     def view_for(self, c):
-        """View from Dim c."""
         return self.views[self.Zv[c]]
 
     def n_views(self):
-        """Number of Views."""
         return len(self.views)
 
     def Nv(self, v=None):
-        """Number of Dims in View v."""
         if v is not None:
             return len(self.views[v].dims)
-        return [len(view.dims) for view in self.views]
+        return {v: self.Nv(v) for v in self.views}
+
+    def Nv_list(self):
+        return [len(v.dims) for v in self.views.itervalues()]
 
     # --------------------------------------------------------------------------
     # Inference helpers.
@@ -681,18 +683,11 @@ class State(CGpm):
         # Compute probability of dim data under view partition.
         def get_data_logp(view, dim):
             if is_member(view, dim):
-                return get_data_logp_current(view, dim)
+                logp = view.unincorporate_dim(dim)
+                view.incorporate_dim(dim, reassign=dim.is_collapsed())
             else:
-                return get_data_logp_other(view, dim)
-
-        def get_data_logp_current(view, dim):
-            logp = view.unincorporate_dim(dim)
-            view.incorporate_dim(dim, reassign=dim.is_collapsed())
-            return logp
-
-        def get_data_logp_other(view, dim):
-            logp = view.incorporate_dim(dim)
-            view.unincorporate_dim(dim)
+                logp = view.incorporate_dim(dim)
+                view.unincorporate_dim(dim)
             return logp
 
         # Reuse collapsed, deepcopy uncollapsed.
@@ -703,9 +698,10 @@ class State(CGpm):
                 return copy.deepcopy(dim)
 
         # Existing views.
-        dprops = [get_prop_dim(view, self.dim_for(col)) for view in self.views]
-        logp_data = [get_data_logp(view, dim) for (view, dim)
-            in zip(self.views, dprops)]
+        dprops = [get_prop_dim(self.views[v], self.dim_for(col))
+            for v in self.views]
+        logp_data = [get_data_logp(self.views[v], dim)
+            for (v, dim) in zip(self.views, dprops)]
 
         # Auxiliary views.
         m_aux = range(m-1) if self.Nv(self.Zv[col]) == 1 else range(m)
@@ -729,38 +725,44 @@ class State(CGpm):
         # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
         for a in avoid:
-            p_view[self.Zv[a]] = float('-inf')
+            index = self.views.keys().index(self.Zv[a])
+            p_view[index] = float('-inf')
 
         # Draw view.
-        v_b = gu.log_pflip(p_view, rng=self.rng)
-        D = dprops[v_b]
+        tables = self.views.keys() + [max(self.views)+1] * len(m_aux)
+        assert len(tables) == len(p_view)
+
+        index = gu.log_pflip(p_view, rng=self.rng)
+        v_b = tables[index]
 
         if v_a != v_b:
-            self.views[v_a].unincorporate_dim(D)
-            if v_b >= self.n_views():
-                v_b = self._append_view(vprops_aux[v_b-self.n_views()])
-            self.views[v_b].incorporate_dim(D, reassign=D.is_collapsed())
+            self.views[v_a].unincorporate_dim(dprops[index])
+            if v_b > max(self.views):
+                self._append_view(vprops_aux[index-self.n_views()])
+            # import ipdb; ipdb.set_trace()
+            self.views[v_b].incorporate_dim(
+                dprops[index], reassign=dprops[index].is_collapsed())
             # Accounting
             self.Zv[col] = v_b
             # Delete empty view?
             if self.Nv(v_a) == 0:
                 self._delete_view(v_a)
         else:
-            self.views[v_a].incorporate_dim(D, reassign=D.is_collapsed())
+            self.views[v_a].incorporate_dim(
+                dprops[index], reassign=dprops[index].is_collapsed())
 
         self._check_partitions()
 
     def _delete_view(self, v):
         assert self.Nv(v) == 0
         del self.views[v]
-        adjust = lambda i: i-1 if v < i else i
-        self.Zv = {c: adjust(self.Zv[c]) for c in self.outputs}
 
-    def _append_view(self, view):
+    def _append_view(self, view, identity=None):
         """Append a view and return and its index."""
         assert len(view.dims) == 0
-        self.views.append(view)
-        return self.n_views()-1
+        if identity is None:
+            identity = max(self.views)+1
+        self.views[identity] = view
 
     def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
@@ -778,15 +780,17 @@ class State(CGpm):
         assert len(self.Zv) == self.n_cols()
         assert len(self.dims()) == self.n_cols()
         # Nv should account for each column.
-        assert sum(self.Nv()) == self.n_cols()
+        assert sum(self.Nv_list()) == self.n_cols()
         # Nv should have an entry for each view.
-        assert len(self.Nv()) == max(self.Zv.values())+1
-        for v in xrange(len(self.Nv())):
+        # assert len(self.Nv_list()) == max(self.Zv.values())+1
+        for v in self.views:
             assert len(self.views[v].dims) == self.Nv(v)
             self.views[v]._check_partitions()
         # Dependence constraints.
-        assert vu.validate_crp_constrained_partition(
-            self.Zv, self.Cd, self.Ci, self.Rd, self.Ri)
+        if not vu.validate_crp_constrained_partition(
+            [self.Zv[c] for c in self.outputs], self.Cd, self.Ci,
+            self.Rd, self.Ri):
+            import ipdb; ipdb.set_trace()
 
     # --------------------------------------------------------------------------
     # Serialize
@@ -804,26 +808,24 @@ class State(CGpm):
 
         # View partition data.
         metadata['alpha'] = self.alpha
-        metadata['Zv'] = [self.Zv[c] for c in self.outputs]
-
-        # View data.
-        metadata['Zrv'] = []
-        metadata['view_alphas'] = []
+        metadata['Zv'] = self.Zv.items()
 
         # Column data.
         metadata['cctypes'] = []
         metadata['hypers'] = []
         metadata['distargs'] = []
-
         for dim in self.dims():
             metadata['cctypes'].append(dim.cctype)
             metadata['hypers'].append(dim.hypers)
             metadata['distargs'].append(dim.distargs)
 
-        for view in self.views:
+        # View data.
+        metadata['Zrv'] = []
+        metadata['view_alphas'] = []
+        for v, view in self.views.iteritems():
             rowids = sorted(view.Zr())
-            metadata['Zrv'].append([view.Zr(i) for i in rowids])
-            metadata['view_alphas'].append(view.alpha())
+            metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
+            metadata['view_alphas'].append((v, view.alpha()))
 
         return metadata
 
@@ -834,15 +836,16 @@ class State(CGpm):
     @classmethod
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
+        to_dict = lambda val: None if val is None else dict(val)
         return cls(
             np.asarray(metadata['X']),
             outputs=metadata.get('outputs', None),
             cctypes=metadata.get('cctypes', None),
-            distargs=metadata.get('distargs',None),
-            Zv=metadata.get('Zv', None),
-            Zrv=metadata.get('Zrv', None),
+            distargs=metadata.get('distargs', None),
             alpha=metadata.get('alpha', None),
-            view_alphas=metadata.get('view_alphas', None),
+            Zv=to_dict(metadata.get('Zv', None)),
+            Zrv=to_dict(metadata.get('Zrv', None)),
+            view_alphas=to_dict(metadata.get('view_alphas', None)),
             hypers=metadata.get('hypers', None),
             iterations=metadata.get('iterations', None),
             rng=rng)

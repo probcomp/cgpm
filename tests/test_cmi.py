@@ -42,7 +42,8 @@ def test_cmi_different_views__ci_():
     T[:,1] = rng.normal(loc=2, scale=2, size=50)
     T[:,2] = rng.normal(loc=12, scale=3, size=50)
     state = State(
-        T, cctypes=['normal','normal','normal'], Zv=[0, 1, 2], rng=rng)
+        T, outputs=[0, 1, 2], cctypes=['normal','normal','normal'],
+        Zv={0:0, 1:1, 2:2}, rng=rng)
     state.transition(N=30, kernels=['alpha', 'view_alphas',
         'column_params', 'column_hypers','rows'])
 
