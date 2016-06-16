@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import isinf
+
 import gpmcc.network.helpers as hu
 import gpmcc.utils.general as gu
 
@@ -30,16 +32,19 @@ class ImportanceNetwork(object):
         self.extraneous = hu.retrieve_extraneous_inputs(self.cgpms, self.v_to_c)
         self.topo = hu.topological_sort(self.adjacency)
 
-    def simulate(self, rowid, query, evidence=None, N=1):
+    def simulate(self, rowid, query, evidence=None, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         if evidence is None: evidence = {}
         samples, weights = zip(*
             [self.weighted_sample(rowid, query, evidence)
-            for i in xrange(self.accuracy*N)])
-        indices = gu.log_pflip(weights, size=N, rng=self.rng)
-        return [{q: samples[i][q] for q in query} for i in indices]
+            for i in xrange(self.accuracy)])
+        index = gu.log_pflip(weights, rng=self.rng)
+        return {q: samples[index][q] for q in query}
 
     def logpdf(self, rowid, query, evidence=None):
-        if evidence is None: evidence = {}
+        if evidence is None:
+            evidence = {}
         # Compute joint probability.
         samples_joint, weights_joint = zip(*
             [self.weighted_sample(rowid, [], gu.merged(evidence, query))
@@ -49,8 +54,9 @@ class ImportanceNetwork(object):
         samples_marginal, weights_marginal = zip(*
             [self.weighted_sample(rowid, [], evidence)
             for i in xrange(self.accuracy)]) if evidence else ({}, [0.])
+        assert not all(isinf(l) for l in weights_marginal)
         logp_evidence = gu.logmeanexp(weights_marginal)
-        # Take log ratio.
+        # Return log ratio.
         return logp_joint - logp_evidence
 
     def weighted_sample(self, rowid, query, evidence):
@@ -61,15 +67,15 @@ class ImportanceNetwork(object):
             sl, wl = self.invoke_cgpm(rowid, self.cgpms[l], query_all, sample)
             sample.update(sl)
             weight += wl
-        assert all(q in sample for q in sample)
+        assert set(sample.keys()) == set.union(set(evidence), set(query_all))
         return sample, weight
 
     def invoke_cgpm(self, rowid, cgpm, query, evidence):
-        assert all(i in evidence for i in cgpm.inputs)
-        ev_in = {e:x for e,x in evidence.items() if e in cgpm.inputs}
-        ev_out = {e:x for e,x in evidence.items() if e in cgpm.outputs}
+        ev_in = {e:x for e,x in evidence.iteritems() if e in cgpm.inputs}
+        ev_out = {e:x for e,x in evidence.iteritems() if e in cgpm.outputs}
         ev_all = gu.merged(ev_in, ev_out)
         qry_out = [q for q in query if q in cgpm.outputs]
+        if ev_out or qry_out: assert all(i in evidence for i in cgpm.inputs)
         weight = cgpm.logpdf(rowid, ev_out, ev_in) if ev_out else 0
         sample = cgpm.simulate(rowid, qry_out, ev_all) if qry_out else {}
         return sample, weight

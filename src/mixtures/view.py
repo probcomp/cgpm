@@ -31,6 +31,8 @@ from gpmcc.utils.config import cctype_class
 from gpmcc.utils.general import logmeanexp
 from gpmcc.utils.general import merged
 
+from gpmcc.network.importance import ImportanceNetwork
+
 
 class View(CGpm):
     """CGpm represnting a multivariate Dirichlet process mixture of CGpms."""
@@ -250,9 +252,16 @@ class View(CGpm):
         assert isinstance(query, dict)
         assert isinstance(evidence, dict)
         if self._is_hypothetical(rowid):
-            return self._logpdf_hypothetical(query, evidence)
+            lp1 = self._logpdf_hypothetical(query, evidence)
+            lp2 = self.logpdf_network(rowid, query, evidence)
+            if not any(c in evidence for c in self._unconditional_dims()):
+                assert np.allclose(lp1, lp2)
         else:
-            return self._logpdf_observed(rowid, query, evidence)
+            lp1 = self._logpdf_observed(rowid, query, evidence)
+            lp2 = self.logpdf_network(rowid, query, evidence)
+            if not any(c in evidence for c in self._unconditional_dims()):
+                assert np.allclose(lp1, lp2)
+        return lp1
 
     def _logpdf_observed(self, rowid, query, evidence):
         evidence = self._populate_evidence(rowid, query, evidence)
@@ -274,6 +283,22 @@ class View(CGpm):
         lp_cluster = gu.log_normalize(np.add(lp_crp, lp_evidence))
         lp_query = [self._logpdf_joint(query, evidence, k) for k in K]
         return logsumexp(np.add(lp_cluster, lp_query))
+
+    def logpdf_network(self, rowid, query, evidence):
+        network = self.build_network()
+        evidence = self._populate_evidence(rowid, query, evidence)
+        # Condition on cluster.
+        if self.outputs[0] in evidence:
+            # XXX F ME.
+            if not self._is_hypothetical(rowid): rowid = -1
+            return network.logpdf(rowid, query, evidence)
+        # Marginalize over clusters.
+        K = self.crp.clusters[0].gibbs_tables(-1)
+        evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
+        lp_evidence = [network.logpdf(rowid, ev) for ev in evidences]
+        lp_evidence = gu.log_normalize(lp_evidence)
+        lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
+        return logsumexp(np.add(lp_evidence, lp_query))
 
     # --------------------------------------------------------------------------
     # simulate
@@ -312,6 +337,15 @@ class View(CGpm):
 
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
+
+    def build_network(self):
+        return ImportanceNetwork(
+            cgpms=[self.crp.clusters[0]] + self.dims.values(),
+            accuracy=20,
+            rng=self.rng)
+
+    def simulate_network(self, rowid, query, evidence, N=None):
+        return
 
     def no_leafs(self, query, evidence):
         roots = self._unconditional_dims()
@@ -469,11 +503,13 @@ class View(CGpm):
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
-        if self._is_hypothetical(rowid): return evidence
-        missing = {c: self.X[c][rowid] for c in self.outputs[1:]
+        if self._is_hypothetical(rowid):
+            return evidence
+        data = {c: self.X[c][rowid] for c in self.outputs[1:]
             if c not in evidence and c not in query
             and not isnan(self.X[c][rowid])}
-        return merged(evidence, missing)
+        cluster = {self.outputs[0]: self.Zr(rowid)}
+        return merged(evidence, data, cluster)
 
     def _get_evidence(self, rowid, dim, k):
         """Prepare the evidence for a Dim logpdf/simulate query."""
