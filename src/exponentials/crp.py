@@ -107,22 +107,26 @@ class Crp(DistributionGpm):
 
     # Some Gibbs utils.
 
-    def gibbs_logps(self, rowid):
+    def gibbs_logps(self, rowid, m=1):
         """Compute the CRP probabilities for a Gibbs transition of rowid,
         with table counts Nk, table assignments Z, and m auxiliary tables."""
         assert rowid in self.data
+        singleton = self.singleton(rowid)
+        p_aux = self.alpha/m
+        p_rowid = p_aux if singleton else self.counts[self.data[rowid]]-1
+        tables = self.gibbs_tables(rowid, m=m)
+        def p_table(t):
+            if t == self.data[rowid]: return p_rowid    # rowid table.
+            if t not in self.counts: return p_aux       # auxiliary table.
+            return self.counts[t]                       # regular table.
+        return [log(p_table(t)) for t in tables]
+
+    def gibbs_tables(self, rowid, m=1):
         K = sorted(self.counts)
         singleton = self.singleton(rowid)
-        t_aux = 0 if singleton else 1
-        p_aux = self.alpha
-        p_current = p_aux if singleton else self.counts[self.data[rowid]]-1
-        def p_table(t):
-            return p_current if t == self.data[rowid] else self.counts[t]
-        return [log(p_table(t)) for t in K] + [log(p_aux)] * t_aux
-
-    def gibbs_tables(self, rowid):
-        t_aux = [] if self.singleton(rowid) else [max(self.counts)+1]
-        return sorted(self.counts) + t_aux
+        m_aux = m-1 if singleton else m
+        t_aux = [max(self.counts)+1+m for m in range(m_aux)]
+        return K + t_aux
 
     def singleton(self, rowid):
         return self.counts[self.data[rowid]] == 1 if rowid in self.data else 0
