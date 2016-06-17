@@ -75,7 +75,6 @@ class View(CGpm):
             assert len(outputs[1:])==len(cctypes)==len(distargs)==len(hypers)
         self.outputs = outputs
 
-
         # Initialize the CRP CGpm.
         crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp = Dim(
@@ -116,29 +115,6 @@ class View(CGpm):
         self.dims[dim.index] = dim
         self.outputs.append(dim.index)
         return dim.logpdf_score()
-
-    def _bulk_incorporate(self, dim):
-        # XXX Major hack! We should really be creating new Dim objects.
-        dim.clusters = {}   # Mapping of cluster k to the object.
-        dim.Zr = {}         # Mapping of non-nan rowids to cluster k.
-        dim.Zi = {}         # Mapping of nan rowids to cluster k.
-        dim.aux_model = dim.create_aux_model()
-        for rowid, k in sorted(self.Zr().items(), key=lambda e: e[1]):
-            dim.incorporate(
-                rowid,
-                query={dim.index: self.X[dim.index][rowid]},
-                evidence=self._get_evidence(rowid, dim, k))
-        assert merged(dim.Zr, dim.Zi) == self.Zr()
-        dim.transition_params()
-
-    def _prepare_incorporate(self, cctype):
-        distargs = {}
-        if cctype_class(cctype).is_conditional():
-            if len(self.dims) == 0:
-                raise ValueError('Cannot incorporate single conditional dim.')
-            distargs['cctypes'] = self._unconditional_cctypes()
-            distargs['ccargs'] = self._unconditional_ccargs()
-        return distargs
 
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify)."""
@@ -249,192 +225,66 @@ class View(CGpm):
     # logpdf
 
     def logpdf(self, rowid, query, evidence):
-        assert isinstance(query, dict)
-        assert isinstance(evidence, dict)
-        if self._is_hypothetical(rowid):
-            lp1 = self._logpdf_hypothetical(query, evidence)
-            lp2 = self.logpdf_network(rowid, query, evidence)
-            if not any(c in evidence for c in self._unconditional_dims()):
-                assert np.allclose(lp1, lp2)
-        else:
-            lp1 = self._logpdf_observed(rowid, query, evidence)
-            lp2 = self.logpdf_network(rowid, query, evidence)
-            if not any(c in evidence for c in self._unconditional_dims()):
-                assert np.allclose(lp1, lp2)
-        return lp1
-
-    def _logpdf_observed(self, rowid, query, evidence):
-        evidence = self._populate_evidence(rowid, query, evidence)
-        return self._logpdf_joint(query, evidence, self.Zr(rowid))
-
-    def _logpdf_hypothetical(self, query, evidence):
-        # Algorithm. Partition all columns in query and evidence by views.
+        # Algorithm.
         # P(xQ|xE) = \sum_z p(xQ|z,xE)p(z|xE)       marginalization
         # Now consider p(z|xE) \propto p(z)p(xE|z)  Bayes rule
-        # [term]    [array]
-        # p(z)      logp_crp
-        # p(xE|z)   logp_evidence
-        # p(z|xE)   logp_cluster
-        # p(xQ|z)   logp_query
-        K = self.crp.clusters[0].gibbs_tables(-1)
-        lp_crp = [self.crp.logpdf(-1, {self.outputs[0]: k}, {-1:0}) for k in K]
-        lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
-        if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
-        lp_cluster = gu.log_normalize(np.add(lp_crp, lp_evidence))
-        lp_query = [self._logpdf_joint(query, evidence, k) for k in K]
-        return logsumexp(np.add(lp_cluster, lp_query))
-
-    def logpdf_network(self, rowid, query, evidence):
+        # p(z)p(xE|z)                               logp_evidence_unorm
+        # p(z|xE)                                   logp_evidence
+        # p(xQ|z)                                   logp_query
         network = self.build_network()
         evidence = self._populate_evidence(rowid, query, evidence)
         # Condition on cluster.
         if self.outputs[0] in evidence:
-            # XXX F ME.
+            # XXX Decide what conditioning on a rowid means.
             if not self._is_hypothetical(rowid): rowid = -1
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
         evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
-        lp_evidence = [network.logpdf(rowid, ev) for ev in evidences]
-        lp_evidence = gu.log_normalize(lp_evidence)
+        lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
+        lp_evidence = gu.log_normalize(lp_evidence_unorm)
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
         return logsumexp(np.add(lp_evidence, lp_query))
 
     # --------------------------------------------------------------------------
     # simulate
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence, N):
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
-        if N is None:
-            N = 1
-        if self._is_hypothetical(rowid):
-            return self._simulate_hypothetical(query, evidence, N)
-        else:
-            return self._simulate_observed(rowid, query, evidence, N)
-
-    def _simulate_observed(self, rowid, query, evidence, N):
+        network = self.build_network()
         evidence = self._populate_evidence(rowid, query, evidence)
-        samples = self._simulate_joint(query, evidence, self.Zr(rowid), N)
-        return samples
-
-    def _simulate_hypothetical(self, query, evidence, N, cluster=False):
-        """cluster exposes latent cluster of each sample in extra column."""
+        # Condition on cluster.
+        if self.outputs[0] in evidence:
+            # XXX Decide what conditioning on a rowid means.
+            if not self._is_hypothetical(rowid): rowid = -1
+            return network.simulate(rowid, query, evidence, N)
+        # Query includes cluster.
+        exposed = self.outputs[0] in query
+        if exposed: query = [q for q in query if q != self.outputs[0]]
+        # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
-        lp_crp = [self.crp.logpdf(-1, {self.outputs[0]: k}, {-1:0}) for k in K]
-        lp_evidence = [self._logpdf_joint(evidence, {}, k) for k in K]
-        if all(isinf(l) for l in lp_evidence): raise ValueError('Inf evidence!')
-        lp_cluster = np.add(lp_crp, lp_evidence)
-        ks = gu.log_pflip(lp_cluster, array=K, size=N, rng=self.rng)
-        counts = {k:n for k, n in enumerate(np.bincount(ks)) if n > 0}
-        samples = [self._simulate_joint(query, evidence, k, counts[k])
-            for k in sorted(counts)]
-        # XXX HACK! Shoud use a flag in evidence, not kwarg.
-        if cluster:
-            for s, k in zip(samples, sorted(counts)):
-                [l.update({-1: k}) for l in s]
+        evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
+        lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
+        Ks = gu.log_pflip(lp_evidence_unorm, array=K, size=N, rng=self.rng)
+        counts = {k:n for k, n in enumerate(np.bincount(Ks)) if n > 0}
+        evidences = {k: merged(evidence, {self.outputs[0]: k}) for k in counts}
+        samples = [network.simulate(rowid, query, evidences[k], counts[k])
+            for k in counts]
+        # Query includes cluster.
+        if exposed:
+            samples = [[merged(l, {self.outputs[0]: k}) for l in sample]
+                for sample, k in zip(samples, counts)]
         return list(itertools.chain.from_iterable(samples))
 
     # --------------------------------------------------------------------------
-    # simulate/logpdf helpers
+    # Internal simulate/logpdf helpers
 
     def build_network(self):
         return ImportanceNetwork(
             cgpms=[self.crp.clusters[0]] + self.dims.values(),
-            accuracy=20,
+            accuracy=1,
             rng=self.rng)
-
-    def simulate_network(self, rowid, query, evidence, N=None):
-        return
-
-    def no_leafs(self, query, evidence):
-        roots = self._unconditional_dims()
-        clean_evidence = all(e in roots for e in evidence)
-        clean_query = all(q in roots for q in query)
-        return clean_evidence and clean_query
-
-    def _simulate_joint(self, query, evidence, k, N):
-        assert isinstance(evidence, dict)
-        assert isinstance(query, list)
-        if self.no_leafs(query, evidence):
-            return [self._simulate_unconditional(query, k) for i in xrange(N)]
-        # XXX Should we resample ACCURACY times from the prior for 1 sample?
-        else:
-            ACCURACY = N if self.no_leafs(evidence, {}) else 20*N
-            samples, weights = self._weighted_samples(evidence, k, ACCURACY)
-            return self._importance_resample(query, samples, weights, N)
-
-    def _logpdf_joint(self, query, evidence, k):
-        assert isinstance(evidence, dict)
-        assert isinstance(query, dict)
-        if self.no_leafs(query, evidence):
-            return self._logpdf_unconditional(query, k)
-        else:
-            ACCURACY = 20
-            ev_qr = merged(evidence, query)
-            _, weights_eq = self._weighted_samples(ev_qr, k, ACCURACY)
-            logp_evidence = 0.
-            if evidence:
-                _, weights_e = self._weighted_samples(evidence, k, ACCURACY)
-                logp_evidence = logmeanexp(weights_e)
-            logp_query = logmeanexp(weights_eq) - logp_evidence
-            return logp_query
-
-    def _importance_resample(self, query, samples, weights, N):
-        indices = gu.log_pflip(weights, size=N, rng=self.rng)
-        return [{q: samples[i][q] for q in query} for i in indices]
-
-    def _weighted_samples(self, evidence, k, N):
-        # Find roots and leafs indices.
-        rts = self._unconditional_dims()
-        lfs = self._conditional_dims()
-        # Separate root and leaf evidence.
-        ev_rts = {e:x for e,x in evidence.iteritems() if e in rts}
-        ev_lfs = {e:x for e,x in evidence.iteritems() if e in lfs}
-        # Simulate missing roots.
-        rts_mis = [r for r in rts if r not in ev_rts]
-        rts_sim = [self._simulate_unconditional(rts_mis, k) for i in xrange(N)]
-        rts_all = [merged(ev_rts, r) for r in rts_sim]
-        # Simulate missing leafs.
-        lfs_mis = [l for l in lfs if l not in ev_lfs]
-        lfs_sim = [self._simulate_conditional(lfs_mis, r, k) for r in rts_all]
-        lfs_all = [merged(ev_lfs, l) for l in lfs_sim]
-        # Likelihood of evidence in sample.
-        wgt_rts = self._logpdf_unconditional(ev_rts, k)
-        wgt_lfs = [self._logpdf_conditional(ev_lfs, r, k) for r in rts_all]
-        weights = [wgt_lf + wgt_rts for wgt_lf in wgt_lfs]
-        # Combine the entire sample.
-        samples = [merged(ra, la) for (ra,la) in zip(rts_all, lfs_all)]
-        # Sample and its weight.
-        return samples, weights
-
-    def _simulate_unconditional(self, query, k):
-        """Simulate query from cluster k, N times."""
-        assert not any(self.dims[c].is_conditional() for c in query)
-        evidence = {self.outputs[0]: k}
-        samples = [self.dims[c].simulate(-1, [c], evidence) for c in query]
-        return merged(*samples)
-
-    def _simulate_conditional(self, query, evidence, k):
-        """Simulate unconditional query from cluster k."""
-        assert set(self._unconditional_dims()) == set(evidence)
-        assert all(self.dims[c].is_conditional() for c in query)
-        evidence = merged(evidence, {self.outputs[0]: k})
-        samples = [self.dims[c].simulate(-1, [c], evidence) for c in query]
-        return merged(*samples)
-
-    def _logpdf_unconditional(self, query, k):
-        assert not any(self.dims[c].is_conditional() for c in query)
-        evidence = {self.outputs[0]: k}
-        lps = [self.dims[c].logpdf(-1, {c: query[c]}, evidence) for c in query]
-        return sum(lps)
-
-    def _logpdf_conditional(self, query, evidence, k):
-        assert all(self.dims[c].is_conditional() for c in query)
-        assert set(self._unconditional_dims()) == set(evidence)
-        evidence = merged(evidence, {self.outputs[0]: k})
-        lps = [self.dims[c].logpdf(-1, {c:query[c]}, evidence) for c in query]
-        return sum(lps)
 
     # --------------------------------------------------------------------------
     # Internal row transition.
@@ -495,6 +345,7 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # Internal query utils.
 
+
     def n_rows(self):
         return len(self.X[self.X.keys()[0]])
 
@@ -516,6 +367,29 @@ class View(CGpm):
         inputs = {i: self.X[i][rowid] for i in dim.inputs[1:]}
         cluster = {self.outputs[0]: k}
         return merged(inputs, cluster)
+
+    def _bulk_incorporate(self, dim):
+        # XXX Major hack! We should really be creating new Dim objects.
+        dim.clusters = {}   # Mapping of cluster k to the object.
+        dim.Zr = {}         # Mapping of non-nan rowids to cluster k.
+        dim.Zi = {}         # Mapping of nan rowids to cluster k.
+        dim.aux_model = dim.create_aux_model()
+        for rowid, k in sorted(self.Zr().items(), key=lambda e: e[1]):
+            dim.incorporate(
+                rowid,
+                query={dim.index: self.X[dim.index][rowid]},
+                evidence=self._get_evidence(rowid, dim, k))
+        assert merged(dim.Zr, dim.Zi) == self.Zr()
+        dim.transition_params()
+
+    def _prepare_incorporate(self, cctype):
+        distargs = {}
+        if cctype_class(cctype).is_conditional():
+            if len(self.dims) == 0:
+                raise ValueError('Cannot incorporate single conditional dim.')
+            distargs['cctypes'] = self._unconditional_cctypes()
+            distargs['ccargs'] = self._unconditional_ccargs()
+        return distargs
 
     def _conditional_dims(self):
         """Return conditional dims in sorted order."""
