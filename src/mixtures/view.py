@@ -232,15 +232,15 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         # Algorithm.
         # P(xQ|xE) = \sum_z p(xQ|z,xE)p(z|xE)       marginalization
         # Now consider p(z|xE) \propto p(z)p(xE|z)  Bayes rule
         # p(z)p(xE|z)                               logp_evidence_unorm
         # p(z|xE)                                   logp_evidence
         # p(xQ|z)                                   logp_query
-        network = self.build_network()
         evidence = self._populate_evidence(rowid, query, evidence)
+        network = self.build_network()
         # Condition on cluster.
         if self.outputs[0] in evidence:
             # XXX Decide what conditioning on a rowid means.
@@ -257,11 +257,15 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # simulate
 
-    def simulate(self, rowid, query, evidence, N):
+    def simulate(self, rowid, query, evidence=None, N=None):
+        evidence = self._populate_evidence(rowid, query, evidence)
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
+        # Determine number of samples.
+        unwrap = N is None
+        if unwrap: N = 1
+        # Retrieve evidence.
         network = self.build_network()
-        evidence = self._populate_evidence(rowid, query, evidence)
         # Condition on cluster.
         if self.outputs[0] in evidence:
             # XXX Decide what conditioning on a rowid means.
@@ -283,7 +287,9 @@ class View(CGpm):
         if exposed:
             samples = [[merged(l, {self.outputs[0]: k}) for l in sample]
                 for sample, k in zip(samples, counts)]
-        return list(itertools.chain.from_iterable(samples))
+        # Return samples.
+        result = list(itertools.chain.from_iterable(samples))
+        return result[0] if unwrap else result
 
     # --------------------------------------------------------------------------
     # Internal simulate/logpdf helpers
@@ -358,8 +364,8 @@ class View(CGpm):
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
-        if self._is_hypothetical(rowid):
-            return evidence
+        if evidence is None: evidence = {}
+        if self._is_hypothetical(rowid): return evidence
         data = {c: self.X[c][rowid] for c in self.outputs[1:]
             if c not in evidence and c not in query
             and not isnan(self.X[c][rowid])}

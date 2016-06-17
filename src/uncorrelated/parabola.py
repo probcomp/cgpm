@@ -42,7 +42,7 @@ class ParabolaY(CGpm):
         self.noise = noise
         self.uniform = uniform(loc=-self.noise, scale=2*self.noise)
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
@@ -56,7 +56,7 @@ class ParabolaY(CGpm):
             y = -(x**2 + noise)
         return {self.outputs[0]: y}
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         assert query.keys() == self.outputs
         assert evidence.keys() == self.inputs
         x = evidence[self.inputs[0]]

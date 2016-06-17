@@ -47,7 +47,7 @@ class Categorical(DistributionGpm):
         if hypers is None: hypers = {}
         self.alpha = hypers.get('alpha', 1.)
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not (x % 1 == 0 and 0 <= x < self.k):
@@ -62,7 +62,7 @@ class Categorical(DistributionGpm):
         self.N -= 1
         self.counts[x] -= 1
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not (x % 1 == 0 and 0 <= x < self.k):
@@ -70,7 +70,7 @@ class Categorical(DistributionGpm):
         return Categorical.calc_predictive_logp(
             int(x), self.N, self.counts, self.alpha)
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)

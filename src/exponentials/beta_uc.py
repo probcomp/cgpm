@@ -56,7 +56,7 @@ class BetaUC(DistributionGpm):
         assert self.alpha > 0
         assert self.beta > 0
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not 0 < x < 1:
@@ -72,14 +72,14 @@ class BetaUC(DistributionGpm):
         self.sum_log_x -= log(x)
         self.sum_minus_log_x -= log(1.-x)
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not 0 < x < 1:
             return -float('inf')
         return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
