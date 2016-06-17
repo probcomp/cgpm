@@ -33,7 +33,7 @@ class UnDirectedXyGpm(CGpm):
         self.inputs = []
         self.noise = noise
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         if not evidence:
             if len(query) == 2:
                 x, y = query.values()

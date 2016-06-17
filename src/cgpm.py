@@ -40,7 +40,7 @@ class CGpm(object):
         """
         raise NotImplementedError
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         """Record an observation for `rowid`.
 
         rowid : int
@@ -58,7 +58,7 @@ class CGpm(object):
         """Remove all incorporated observations of `rowid`."""
         raise NotImplementedError
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         """Return the conditional density of `query` given `evidence`.
 
         query : dict{int:value}

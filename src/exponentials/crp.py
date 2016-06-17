@@ -42,7 +42,7 @@ class Crp(DistributionGpm):
         if hypers is None: hypers = {}
         self.alpha = hypers.get('alpha', 1.)
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = int(query[self.outputs[0]])
         self.N += 1
@@ -58,7 +58,7 @@ class Crp(DistributionGpm):
         if self.counts[x] == 0:
             del self.counts[x]
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         assert not evidence
         assert query.keys() == self.outputs
         x = int(query[self.outputs[0]])
@@ -66,7 +66,7 @@ class Crp(DistributionGpm):
             return 0 if self.data[rowid] == x else -float('inf')
         return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha)
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)

@@ -283,10 +283,8 @@ class State(CGpm):
 
     def simulate(self, rowid, query, evidence=None, N=None):
         """Simulate from the posterior predictive distirbution."""
-        if evidence is None:
-            evidence = {}
-        if N is None:
-            N = 1
+        if evidence is None: evidence = {}
+        if N is None: N = 1
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
         vu.validate_query_evidence(

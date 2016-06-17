@@ -59,7 +59,7 @@ class RandomForest(CGpm):
         if self.regressor is None:
             self.regressor = RandomForestClassifier(random_state=self.rng)
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
         x, y = self.preprocess(query, evidence)
@@ -73,7 +73,7 @@ class RandomForest(CGpm):
         del self.data.Y[rowid]
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         assert query.keys() == self.outputs
         assert rowid not in self.data.x
         try:
@@ -83,7 +83,7 @@ class RandomForest(CGpm):
         return RandomForest.calc_predictive_logp(
             x, y, self.regressor, self.counts, self.alpha)
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs

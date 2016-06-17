@@ -95,7 +95,7 @@ class Dim(CGpm):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         """Record an observation."""
         if rowid in self.Zr or rowid in self.Zi:
             raise ValueError('rowid already incorporated: %d.' % rowid)
@@ -130,7 +130,7 @@ class Dim(CGpm):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         """Evaluate the log density of the query given evidence."""
         k, evidence, valid = self.preprocess(query, evidence)
         cluster = self.clusters.get(k, self.aux_model)
@@ -139,7 +139,7 @@ class Dim(CGpm):
     # --------------------------------------------------------------------------
     # Simulate
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         """Simulate the query given evidence."""
         k, evidence, valid = self.preprocess(query, evidence)
         if not valid:

@@ -55,7 +55,7 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma = NormalTrunc.sample_parameters(
                 self.alpha, self.beta, self.l, self.h, self.rng)
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not (self.l <= x <= self.h):
@@ -72,7 +72,7 @@ class NormalTrunc(DistributionGpm):
         self.sum_x -= x
         self.sum_x_sq -= x*x
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not (self.l <= x <= self.h):
@@ -83,7 +83,7 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma, self.l, self.h)
         return logpdf_unorm - logcdf_norm
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)

@@ -39,7 +39,7 @@ class DiamondY(CGpm):
         self.noise = noise
         self.uniform = uniform(scale=self.noise)
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
@@ -59,7 +59,7 @@ class DiamondY(CGpm):
             raise ValueError()
         return {self.outputs[0]: y}
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         raise NotImplementedError
 
 

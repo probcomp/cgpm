@@ -67,7 +67,7 @@ class LinearRegression(CGpm):
         self.mu = hypers.get('mu', np.zeros(self.p))
         self.V = hypers.get('V', np.eye(self.p))
 
-    def incorporate(self, rowid, query, evidence):
+    def incorporate(self, rowid, query, evidence=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
         x, y = self.preprocess(query, evidence)
@@ -80,14 +80,14 @@ class LinearRegression(CGpm):
         del self.data.Y[rowid]
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence):
+    def logpdf(self, rowid, query, evidence=None):
         xt, yt = self.preprocess(query, evidence)
         assert rowid not in self.data.x
         return LinearRegression.calc_predictive_logp(
             xt, yt, self.N, self.data.Y.values(), self.data.x.values(), self.a,
             self.b, self.mu, self.V)
 
-    def simulate(self, rowid, query, evidence, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs

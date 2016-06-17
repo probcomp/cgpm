@@ -47,7 +47,7 @@ def generate_gaussian_samples():
         D, cctypes=['normal','normal'], Zv={0:0, 1:0}, rng=gu.gen_rng(0))
     view = state.view_for(1)
     state.transition(S=15, kernels=['rows','column_params','column_hypers'])
-    samples = view.simulate(-1, [0,1, view.outputs[0]], {}, 100)
+    samples = view.simulate(-1, [0,1, view.outputs[0]], N=100)
     return [replace_key(s, view.outputs[0], -1) for s in samples]
 
 
@@ -57,7 +57,7 @@ def generate_regression_samples():
     view = state.view_for(1)
     state.update_cctype(1, 'linear_regression')
     state.transition(S=30, kernels=['rows','column_params','column_hypers'])
-    samples = view.simulate(-1, [0, 1, view.outputs[0]], {}, 100)
+    samples = view.simulate(-1, [0, 1, view.outputs[0]], N=100)
     return [replace_key(s, view.outputs[0], -1) for s in samples]
 
 def plot_samples(samples, title):
