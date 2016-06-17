@@ -55,8 +55,8 @@ class Dim(CGpm):
             Currently disabled.
         distargs : dict, optional.
             Distargs appropriate for the cctype.
-        rng : np.random.RandomState
-            Entropy.
+        rng : np.random.RandomState, optional.
+            Source of entropy.
         """
         self.rng = gu.gen_rng() if rng is None else rng
 

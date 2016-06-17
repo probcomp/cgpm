@@ -104,9 +104,10 @@ def test_incorporate_valid():
     assert state.views[1].Nk(0) == previous+1
     state.transition(N=2)
     # Hypothetical cluster 100.
+    view = state.views[state.views.keys()[0]]
     state.incorporate(
         rowid=-1,
-        query={0:0, 1:1, 2:2, 3:3, 4:4, state.views[1].outputs[0]:100})
+        query={0:0, 1:1, 2:2, 3:3, 4:4, view.outputs[0]:100})
 
 
 def test_incorporate_session():

@@ -48,13 +48,13 @@ def test_incorporate():
     # Incorporate a new dim into view[0].
     state.incorporate_dim(
         T[:,2], outputs=[2], cctype=CCTYPES[2], distargs=DISTARGS[2], v=target)
-    assert state.Zv[2] == target
+    assert state.Zv(2) == target
     state.transition(N=1)
 
     # Incorporate a new dim into view[0] with a non-continuous output.
     state.incorporate_dim(
         T[:,2], outputs=[10], cctype=CCTYPES[2], distargs=DISTARGS[2], v=target)
-    assert state.Zv[10] == target
+    assert state.Zv(10) == target
     state.transition(N=1)
 
     # Some crash testing queries.
@@ -96,7 +96,7 @@ def test_incorporate():
     state.incorporate_dim(
         T[:,3], outputs=[3], cctype=CCTYPES[3],
         distargs=DISTARGS[3], v=target)
-    assert state.Zv[3] == target
+    assert state.Zv(3) == target
     state.transition(N=1)
 
     # Incorporate dim without specifying a view.

@@ -16,7 +16,6 @@
 
 import itertools
 
-from math import isinf
 from math import isnan
 
 import numpy as np
@@ -28,7 +27,6 @@ import gpmcc.utils.general as gu
 from gpmcc.cgpm import CGpm
 from gpmcc.mixtures.dim import Dim
 from gpmcc.utils.config import cctype_class
-from gpmcc.utils.general import logmeanexp
 from gpmcc.utils.general import merged
 
 from gpmcc.network.importance import ImportanceNetwork
@@ -45,37 +43,46 @@ class View(CGpm):
         Parameters
         ----------
         X : np.ndarray
-            Global dataset of dimension N x D. The invariant is that
-            the data for dim.index should be in X[:,dim.index] and the data
-            for rowid should X[rowid,:]. All rows in X will be incorporated.
-        dims : list<Dim>
-            A list of Dim objects in this View.
-        alpha : float, optional
-            CRP concentration parameter. If None, selected from grid uniformly
-            at random.
-        Zr : list<int>, optional
-            Starting partiton of rows to categories where Zr[i] is the latent
-            clsuter of row i. If None, is sampled from CRP(alpha).
+            Global dataset of dimension N x D, structured in the form
+            X[outputs[i]][rowid] for i>1. All rows are incorporated by default.
+        outputs : list<int>
+            List of output variables. The first item is mandatory, corresponding
+            to the token of the exposed cluster. outputs[1:] are the observable
+            output variables.
+        inputs : list<int>
+            Currently disabled.
+        alpha : float, optional.
+            Concentration parameter for row CRP.
+        cctypes : list<str>, optional.
+            A `len(outputs[1:]`) list of cctypes, see `utils.config` for names.
+        distargs : list<str>, optional.
+            A `len(outputs[1:])` list of distargs.
+        hypers : list<dict>, optional.
+            A `len(outputs[1:])` list of hyperparameters.
+        Zr : list<int>, optional.
+            Row partition, where `Zr[rowid]` is the cluster identity of rowid.
+        rng : np.random.RandomState, optional.
+            Source of entropy.
         """
-        # Entropy.
+        # -- Seed --------------------------------------------------------------
         self.rng = gu.gen_rng() if rng is None else rng
 
-        # Inputs
+        # -- Inputs ------------------------------------------------------------
         if inputs:
             raise ValueError('View does not accept inputs.')
         self.inputs = []
 
-        # Dataset.
+        # -- Dataset -----------------------------------------------------------
         self.X = X
 
-         # Outputs
+         # -- Outputs ----------------------------------------------------------
         if len(outputs) < 1:
             raise ValueError('View needs at least one output.')
         if len(outputs) > 1:
             assert len(outputs[1:])==len(cctypes)==len(distargs)==len(hypers)
         self.outputs = outputs
 
-        # Initialize the CRP CGpm.
+        # -- Row CRP -----------------------------------------------------------
         crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp = Dim(
             [self.outputs[0]], [-1], cctype='crp', hypers=crp_alpha,
@@ -87,9 +94,9 @@ class View(CGpm):
                 self.crp.incorporate(i, s, {-1:0})
         else:
             for i, z in enumerate(Zr):
-                self.crp.incorporate(i, {self.outputs[0]: z}, {-1: 0})
+                self.crp.incorporate(i, {self.outputs[0]: z}, {-1:0})
 
-        # Initialize the dimensions.
+        # -- Dimensions --------------------------------------------------------
         self.dims = dict()
         for i, c in enumerate(self.outputs[1:]):
             dim = Dim(
@@ -100,6 +107,7 @@ class View(CGpm):
                 raise ValueError('Use incorporate for conditional dims.')
             self.incorporate_dim(dim)
 
+        # -- Validation --------------------------------------------------------
         self._check_partitions()
 
     # --------------------------------------------------------------------------
@@ -293,16 +301,12 @@ class View(CGpm):
         # Probability of row crp assignment to each cluster.
         K = self.crp.clusters[0].gibbs_tables(rowid)
         logp_crp = self.crp.clusters[0].gibbs_logps(rowid)
-
         # Probability of row data in each cluster.
         logp_data = self._logpdf_row_gibbs(rowid, K)
-
         assert len(logp_data) == len(logp_crp)
-
         # Sample new cluster.
         p_cluster = np.add(logp_data, logp_crp)
         z_b = gu.log_pflip(p_cluster, array=K, rng=self.rng)
-
         # Migrate the row.
         if z_b != self.Zr(rowid):
             self.unincorporate(rowid)

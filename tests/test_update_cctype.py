@@ -103,13 +103,13 @@ def test_categorical_forest():
     bernoulli_id = CCTYPES.index('bernoulli')
     state.incorporate_dim(
         T[:,bernoulli_id], outputs=[191], cctype='bernoulli',
-        v=state.Zv[cat_id])
+        v=state.Zv(cat_id))
     state.update_cctype(191, 'random_forest', distargs={'k':2})
 
     # Run valid transitions.
     state.transition(
         N=2, kernels=['rows','column_params','column_hypers'],
-        target_views=[state.Zv[cat_id]])
+        target_views=[state.Zv(cat_id)])
 
     # Running column transition should raise.
     with pytest.raises(ValueError):
