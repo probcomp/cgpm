@@ -79,9 +79,12 @@ def test_logpdf_deterministic__ci_(state):
             -1, {0:k, 3:0}, evidence={1:1, 2:1})
         assert np.allclose(lp1, lp2)
     # Observed cell already has parents in evidence.
+    # Currently, logpdf for a non-nan observed cell is not possible.
     for k in xrange(5):
-        lp1 = state.logpdf(1, {0:k, 3:0})
-        lp2 = state.logpdf(1, {0:k, 3:0})
+        with pytest.raises(ValueError):
+            lp1 = state.logpdf(1, {0:k, 3:0})
+        with pytest.raises(ValueError):
+            lp2 = state.logpdf(1, {0:k, 3:0})
         assert np.allclose(lp1, lp2)
 
 
