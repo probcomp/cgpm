@@ -243,8 +243,7 @@ class View(CGpm):
         network = self.build_network()
         # Condition on cluster.
         if self.outputs[0] in evidence:
-            # XXX Decide what conditioning on a rowid means.
-            if not self._is_hypothetical(rowid): rowid = -1
+            # XXX DETERMINE ME!
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
@@ -259,19 +258,14 @@ class View(CGpm):
 
     def simulate(self, rowid, query, evidence=None, N=None):
         evidence = self._populate_evidence(rowid, query, evidence)
-        assert isinstance(query, list)
-        assert isinstance(evidence, dict)
-        # Determine number of samples.
-        unwrap = N is None
-        if unwrap: N = 1
-        # Retrieve evidence.
         network = self.build_network()
         # Condition on cluster.
         if self.outputs[0] in evidence:
-            # XXX Decide what conditioning on a rowid means.
-            if not self._is_hypothetical(rowid): rowid = -1
+            # XXX DETERMINE ME!
             return network.simulate(rowid, query, evidence, N)
-        # Query includes cluster.
+        # Static query analysis.
+        unwrap = N is None
+        if unwrap: N = 1
         exposed = self.outputs[0] in query
         if exposed: query = [q for q in query if q != self.outputs[0]]
         # Marginalize over clusters.
@@ -283,10 +277,10 @@ class View(CGpm):
         evidences = {k: merged(evidence, {self.outputs[0]: k}) for k in counts}
         samples = [network.simulate(rowid, query, evidences[k], counts[k])
             for k in counts]
-        # Query includes cluster.
+        # Expose the CRP to the sample.
         if exposed:
-            samples = [[merged(l, {self.outputs[0]: k}) for l in sample]
-                for sample, k in zip(samples, counts)]
+            expose = lambda S, k: [merged(l, {self.outputs[0]: k}) for l in S]
+            samples = [expose(s, k) for s, k in zip(samples, counts)]
         # Return samples.
         result = list(itertools.chain.from_iterable(samples))
         return result[0] if unwrap else result
