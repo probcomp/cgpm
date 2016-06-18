@@ -71,7 +71,7 @@ class Exponential(DistributionGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
-            return self.data[rowid]
+            return {self.outputs[0]: self.data[rowid]}
         an, bn = Exponential.posterior_hypers(
             self.N, self.sum_x, self.a, self.b)
         mu = self.rng.gamma(an, scale=1./bn)

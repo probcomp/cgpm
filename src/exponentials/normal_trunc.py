@@ -88,7 +88,7 @@ class NormalTrunc(DistributionGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
-            return self.data[rowid]
+            return {self.outputs[0]: self.data[rowid]}
         max_iters = 1000
         for i in xrange(max_iters):
             x = self.rng.normal(loc=self.mu, scale=self.sigma)
