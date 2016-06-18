@@ -62,7 +62,7 @@ class CGpm(object):
         """Return the conditional density of `query` given `evidence`.
 
         query : dict{int:value}
-            The keys of `targets` must be a subset of the `output` variables.
+            The keys of `query` must be a subset of the `output` variables.
         evidence : dict{int:value}, optional
             Values of all required `input` variables as well as any partial
             observations of `output` variables to condition on (may not overlap
@@ -73,14 +73,18 @@ class CGpm(object):
     def simulate(self, rowid, query, evidence=None, N=None):
         """Return N iid samples of `query` variables conditioned on `evidence`.
 
+        The sample must be drawn from the same distribution whose density is
+        assessed by `logpdf`.
+
         query : list<int>
             List of `output` variables to simulate.
         evidence : dict{int:value}, optional
             Values of all required `input` variables as well as any partial
             observations of `output` variables to condition on (may not overlap
             with `query`).
-
-        The sample must be drawn from the same density as `logpdf`.
+        N : int, optional
+            Number of samples to return. If None, returns a single sample. If
+            integer, results a list of samples of length N.
         """
         raise NotImplementedError
 
@@ -88,10 +92,10 @@ class CGpm(object):
         """Return joint density of all observations and current latent state."""
         raise NotImplementedError
 
-    def infer(self, program):
+    def infer(self, **kwargs):
         """Apply an inference operator transitioning the internal state of GPM.
 
-        program : **kwargs, dict
+        program : keyword arguments
             Opaque binary parsed by the GPM to apply inference over its latents.
         """
         raise NotImplementedError
