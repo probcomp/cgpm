@@ -84,7 +84,7 @@ class BetaUC(DistributionGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
-            return self.data[rowid]
+            return {self.outputs[0]: self.data[rowid]}
         alpha = self.strength * self.balance
         beta = self.strength * (1. - self.balance)
         x = self.rng.beta(alpha, beta)

@@ -81,7 +81,7 @@ class Normal(DistributionGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
-            return self.data[rowid]
+            return {self.outputs[0]: self.data[rowid]}
         mn, rn, sn, nun = Normal.posterior_hypers(
             self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
         mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)

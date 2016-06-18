@@ -72,7 +72,7 @@ class Geometric(DistributionGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
-            return self.data[rowid]
+            return {self.outputs[0]: self.data[rowid]}
         an, bn = Geometric.posterior_hypers(self.N, self.sum_x, self.a, self.b)
         pn = self.rng.beta(an, bn)
         x = self.rng.geometric(pn) - 1

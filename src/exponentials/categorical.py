@@ -75,7 +75,7 @@ class Categorical(DistributionGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
-            return self.data[rowid]
+            return {self.outputs[0]: self.data[rowid]}
         x = gu.pflip(self.counts + self.alpha, rng=self.rng)
         return {self.outputs[0]: x}
 

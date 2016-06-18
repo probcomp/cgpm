@@ -84,7 +84,7 @@ class Lognormal(DistributionGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
-            return self.data[rowid]
+            return {self.outputs[0]: self.data[rowid]}
         # Simulate normal parameters.
         mn, rn, sn, nun = Normal.posterior_hypers(
             self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
