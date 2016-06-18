@@ -94,10 +94,10 @@ class Crp(DistributionGpm):
         self.alpha = hypers['alpha']
 
     def get_hypers(self):
-        return {}
+        return {'alpha': self.alpha}
 
     def get_params(self):
-        return {'alpha': self.alpha}
+        return {}
 
     def get_suffstats(self):
         return {'N': self.N, 'counts': list(self.counts)}
