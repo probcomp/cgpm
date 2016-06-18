@@ -121,13 +121,13 @@ class View(CGpm):
             dim.distargs.update(distargs)
             self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
-        self.outputs.append(dim.index)
+        self.outputs = self.outputs[:1] + self.dims.keys()
         return dim.logpdf_score()
 
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify)."""
         del self.dims[dim.index]
-        self.outputs.remove(dim.index)
+        self.outputs = self.outputs[:1] + self.dims.keys()
         return dim.logpdf_score()
 
     def incorporate(self, rowid, query, evidence=None):
