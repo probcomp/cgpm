@@ -158,15 +158,24 @@ class Dim(CGpm):
 
     def transition_hypers(self):
         """Updates the hyperparameters of each cluster."""
-        for k in self.clusters:
-            self.clusters[k].set_hypers(self.hypers)
-            self.aux_model = self.create_aux_model()
+        def transition_hyper(target):
+            def compute_cluster_proposal(k, g):
+                self.hypers[target] = g
+                self.clusters[k].set_hypers(self.hypers)
+                return self.clusters[k].logpdf_score()
+            def compute_proposal(g):
+                return sum(compute_cluster_proposal(k,g) for k in self.clusters)
+            logps = [compute_proposal(g) for g in self.hyper_grids[target]]
+            index = gu.log_pflip(logps, rng=self.rng)
+            self.hypers[target] = self.hyper_grids[target][index]
+        # Transition each of the hyperparameters.
         targets = self.hypers.keys()
         self.rng.shuffle(targets)
         for target in targets:
-            logps = self._calc_hyper_proposal_logps(target)
-            proposal = gu.log_pflip(logps, rng=self.rng)
-            self.hypers[target] = self.hyper_grids[target][proposal]
+            transition_hyper(target)
+        for k in self.clusters:
+            self.clusters[k].set_hypers(self.hypers)
+        self.aux_model = self.create_aux_model()
 
     def transition_hyper_grids(self, X, n_grid=30):
         """Resample the hyperparameter grids using empirical Bayes."""
@@ -228,20 +237,3 @@ class Dim(CGpm):
         if evidence:
             valid_y = not any(np.isnan(evidence.values()))
         return k, evidence, valid_x and valid_y
-
-    def _calc_hyper_proposal_logps(self, target):
-        """Computes the log score for each value in self.hyper_grids[target].
-
-        p(h|X) \\prop p(X,h).
-        """
-        logps = []
-        hypers = self.hypers.copy()
-        for g in self.hyper_grids[target]:
-            hypers[target] = g
-            logp = 0
-            for k in self.clusters:
-                self.clusters[k].set_hypers(hypers)
-                logp += self.clusters[k].logpdf_score()
-                self.clusters[k].set_hypers(self.hypers)
-            logps.append(logp)
-        return logps
