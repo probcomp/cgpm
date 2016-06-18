@@ -35,6 +35,8 @@ from gpmcc.mixtures.dim import Dim
 from gpmcc.mixtures.view import View
 from gpmcc.utils.general import logmeanexp
 
+from gpmcc.network.importance import ImportanceNetwork
+
 
 class State(CGpm):
     """CGpm representing Crosscat, built as a composition of smaller CGpms."""
@@ -195,7 +197,7 @@ class State(CGpm):
         self._check_partitions()
 
     def incorporate(self, rowid, query, evidence=None):
-        # XXX Only allow new rows for now, pending Github #
+        # XXX Only allow new rows for now.
         if not self._is_hypothetical(rowid):
             raise ValueError('Cannot incorporate non-hypothetical: %d' % rowid)
         if evidence:
@@ -268,15 +270,15 @@ class State(CGpm):
 
     def logpdf(self, rowid, query, evidence=None):
         """Compute density of query under posterior predictive distirbution."""
-        if evidence is None:
-            evidence = {}
+        if evidence is None: evidence = {}
         assert isinstance(query, dict)
         assert isinstance(evidence, dict)
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
-        return self._logpdf_joint(rowid, query, evidence)
+        network = self.build_network()
+        return network.logpdf(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
     # Simulate
@@ -284,130 +286,32 @@ class State(CGpm):
     def simulate(self, rowid, query, evidence=None, N=None):
         """Simulate from the posterior predictive distirbution."""
         if evidence is None: evidence = {}
-        if N is None: N = 1
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
         vu.validate_query_evidence(
             self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
-        return self._simulate_joint(rowid, query, evidence, N)
+        network = self.build_network()
+        return network.simulate(rowid, query, evidence, N)
 
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
 
+    def build_network(self):
+        return ImportanceNetwork(
+            cgpms=[self.views[v] for v in self.views],
+            accuracy=1,
+            rng=self.rng)
+
     def _populate_evidence(self, rowid, query, evidence):
-        """Builds the evidence for an observed simulate/logpdb query."""
-        if self._is_hypothetical(rowid):
-            return evidence
-        em = [r for r in self.outputs if r not in evidence and r not in query]
-        ev = {c: self.X[c][rowid] for c in em if not isnan(self.X[c][rowid])}
-        return gu.merged(evidence, ev)
-
-    def _no_leafs(self, query, evidence):
-        return True
-        # if query and isinstance(query[0], tuple): query = [q[0] for q in query]
-        # clean_evidence = all(e[0] >= 0 for e in evidence)
-        # clean_query = all(q >= 0 for q in query)
-        # return clean_evidence and clean_query
-
-    def _simulate_joint(self, rowid, query, evidence, N):
-        if self._no_leafs(query, evidence):
-            return self._simulate_roots(rowid, query, evidence, N)
-        # XXX Should we resample ACCURACY times from the prior for 1 sample?
-        ACC = N if self._no_leafs(evidence, []) else self.accuracy*N
-        samples, weights = self._weighted_samples(rowid, query, evidence, ACC)
-        return self._importance_resample(samples, weights, N)
-
-    def _logpdf_joint(self, rowid, query, evidence):
-        if self._no_leafs(query, evidence):
-            return self._logpdf_roots(rowid, query, evidence)
-        ACC = self.accuracy
-        _, w_joint = self._weighted_samples(rowid, [], evidence+query, ACC)
-        logp_evidence = 0.
-        if evidence:
-            _, w_marg = self._weighted_samples(rowid, [], evidence, ACC)
-            logp_evidence = logmeanexp(w_marg)
-        logp_query = logmeanexp(w_joint) - logp_evidence
-        return logp_query
-
-    def _importance_resample(self, samples, weights, N):
-        indices = gu.log_pflip(weights, size=N, rng=self.rng)
-        return [samples[i] for i in indices]
-
-    def _weighted_samples(self, rowid, query, evidence, N):
-        """Optmized to simulate only required nodes."""
-        ev = sorted(evidence)
-        # Find roots and leafs indices.
-        rts = range(self.n_cols())
-        lfs = sorted(self.predictors.keys())
-        # Separate root and leaf evidence.
-        rts_ev = [e for e in ev if e[0] in rts]
-        lfs_ev = [e for e in ev if e[0] in lfs]
-        # Separate root and leaf query.
-        lfs_obs = [e[0] for e in lfs_ev]
-        lfs_qry = [l for l in query if l in lfs]
-        # Find obs, qry, and aux.
-        rts_obs = [e[0] for e in rts_ev]
-        rts_qry = [q for q in query if q in rts]
-        rts_aux = self._aux_roots(rts_obs, lfs_obs, rts_qry, lfs_qry)
-        # Simulate all required roots.
-        rts_mis = rts_qry + rts_aux
-        rts_sim_aux = self._simulate_roots(rowid, rts_mis, rts_ev, N)\
-            if rts_mis else []
-        rts_all = [rts_ev + zip(rts_mis, sample) for sample in rts_sim_aux]\
-            if rts_mis else [rts_ev]*N
-        # Extract query roots.
-        rts_sim = [sample[:len(rts_qry)] for sample in rts_sim_aux]
-        # Simulate queried leafs.
-        lfs_sim = [self._simulate_leafs(rowid, lfs_qry, r) for r in rts_all]
-        if rts_sim: assert len(rts_sim) == len(lfs_sim)
-        rts_dr = [{q:draw[i] for i,q in enumerate(rts_qry)} for draw in rts_sim]
-        lfs_dr = [{q:draw[i] for i,q in enumerate(lfs_qry)} for draw in lfs_sim]
-        for r,l in zip(rts_dr, lfs_dr): r.update(l)
-        samples = [[s[q] for q in query] for s in rts_dr]
-        # Sample and its weight.
-        weights = [self._logpdf_roots(rowid, rts_ev, []) +
-            self._logpdf_leafs(rowid, lfs_ev, r) for r in rts_all]
-        return samples, weights
-
-    def _aux_roots(self, rts_obs, lfs_obs, rts_qry, lfs_qry):
-        assert not any(set(rts_obs)&set(lfs_obs)&set(rts_qry)&set(lfs_qry))
-        required = set([v for p in lfs_qry+lfs_obs for v in self.parents[p]])
-        rts_seen = rts_obs + rts_qry
-        return [r for r in required if r not in rts_seen]
-
-    def _simulate_roots(self, rowid, query, evidence, N):
-        assert all(c not in self.predictors for c in query)
-        queries, evidences = vu.partition_query_evidence(
-            self.Zv(), query, evidence)
-        samples = [self.views[v].simulate(rowid, queries[v],
-            evidence=evidences.get(v, {}), N=N) for v in queries]
-        return [gu.merged(*s) for s in zip(*samples)]
-
-    def _simulate_leafs(self, rowid, query, evidence):
-        assert all(c in self.predictors for c in query)
-        ev_lookup = dict(evidence)
-        ev_set = set(ev_lookup.keys())
-        all(set.issubset(set(self.parents[c]), ev_set) for c in query)
-        ys = [[ev_lookup[p] for p in self.parents[c]] for c in query]
-        return [self.predictors[c].simulate(rowid, y) for c,y in zip(query, ys)]
-
-    def _logpdf_roots(self, rowid, query, evidence):
-        assert all(c not in self.predictors for c in query)
-        queries, evidences = vu.partition_query_evidence(
-            self.Zv(), query, evidence)
-        return sum([self.views[v].logpdf(rowid, queries[v], evidences.get(v,{}))
-            for v in queries])
-
-    def _logpdf_leafs(self, rowid, query, evidence):
-        assert all(c in self.predictors for c, x in query)
-        ev_lookup = dict(evidence)
-        ev_set = set(ev_lookup.keys())
-        all(set.issubset(set(self.parents[c]), ev_set) for c, x in query)
-        ys = [[ev_lookup[p] for p in self.parents[c]] for c, x in query]
-        return sum([self.predictors[c].logpdf(rowid, x, y)
-            for (c,x), y in zip(query, ys)])
+        """Loads query evidence from the dataset."""
+        if evidence is None: evidence = {}
+        if self._is_hypothetical(rowid): return evidence
+        data = {c: self.X[c][rowid] for c in self.outputs
+            if c not in evidence and c not in query
+            and not isnan(self.X[c][rowid])}
+        return gu.merged(evidence, data)
 
     # --------------------------------------------------------------------------
     # Bulk operations
@@ -803,7 +707,6 @@ class State(CGpm):
         metadata = dict()
 
         # Dataset.
-        # XXX FIXME
         metadata['X'] = np.asarray(self.X.values()).T.tolist()
         metadata['outputs'] = self.outputs
 
