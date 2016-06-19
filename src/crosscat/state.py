@@ -375,7 +375,7 @@ class State(CGpm):
         # Default order of kernel is important.
         _kernel_functions = [
             ('alpha',
-                lambda : self.transition_alpha()),
+                lambda : self.transition_crp_alpha()),
             ('view_alphas',
                 lambda : self.transition_view_alphas(views=target_views)),
             ('column_params',
@@ -431,7 +431,7 @@ class State(CGpm):
             print 'Completed: %d iterations in %f seconds.' % \
                 (iters, time.time()-start)
 
-    def transition_alpha(self):
+    def transition_crp_alpha(self):
         """Transition CRP concentration of State."""
         self.crp.transition_hypers()
         self.crp.transition_hypers()
@@ -441,7 +441,7 @@ class State(CGpm):
         if views is None:
             views = self.views.keys()
         for v in views:
-            self.views[v].transition_alpha()
+            self.views[v].transition_crp_alpha()
 
     def transition_column_params(self, cols=None):
         """Transition uncollapsed Dim parmaters."""
