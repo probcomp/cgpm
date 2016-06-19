@@ -45,8 +45,6 @@ class State(CGpm):
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, iterations=None,
             rng=None):
-        """Construct State GPM with initial conditions and constraints."""
-
         # -- Seed --------------------------------------------------------------
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -170,13 +168,13 @@ class State(CGpm):
         view.incorporate_dim(D)
         self.crp.incorporate(col, {self.crp_id: v_add}, {-1:0})
         # Transition.
-        self.transition_columns(cols=transition)
-        self.transition_column_hypers(cols=[col])
+        self.transition_dims(cols=transition)
+        self.transition_dim_hypers(cols=[col])
         # Validate.
         self._check_partitions()
 
     def unincorporate_dim(self, col):
-        """Unincorporate the Dim whose output is col."""
+        """Unincorporate the Dim whose output[0] is col."""
         if self.n_cols() == 1:
             raise ValueError('State has only one dim, cannot unincorporate.')
         if col not in self.outputs:
@@ -235,9 +233,9 @@ class State(CGpm):
         assert col in self.outputs
         self.view_for(col).update_cctype(
             col, cctype, distargs=distargs)
-        self.transition_column_hyper_grids(cols=[col])
-        self.transition_column_params(cols=[col])
-        self.transition_column_hypers(cols=[col])
+        self.transition_dim_grids(cols=[col])
+        self.transition_dim_params(cols=[col])
+        self.transition_dim_hypers(cols=[col])
         self._check_partitions()
 
     def update_foreign_predictor(self, predictor, parents):
@@ -260,7 +258,6 @@ class State(CGpm):
     # logscore.
 
     def logpdf_score(self):
-        """Compute the joint density of latents and data p(theta,Z,X|CC)."""
         logp_crp = self.crp.logpdf_score()
         logp_views = sum(v.logpdf_score() for v in self.views.itervalues())
         return logp_crp + logp_views
@@ -269,7 +266,6 @@ class State(CGpm):
     # logpdf
 
     def logpdf(self, rowid, query, evidence=None):
-        """Compute density of query under posterior predictive distirbution."""
         if evidence is None: evidence = {}
         assert isinstance(query, dict)
         assert isinstance(evidence, dict)
@@ -284,7 +280,6 @@ class State(CGpm):
     # Simulate
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        """Simulate from the posterior predictive distirbution."""
         if evidence is None: evidence = {}
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
@@ -305,7 +300,7 @@ class State(CGpm):
             rng=self.rng)
 
     def _populate_evidence(self, rowid, query, evidence):
-        """Loads query evidence from the dataset."""
+        """Loads evidence for a query from the dataset."""
         if evidence is None: evidence = {}
         if self._is_hypothetical(rowid): return evidence
         data = {c: self.X[c][rowid] for c in self.outputs
@@ -335,7 +330,6 @@ class State(CGpm):
     # Mutual information
 
     def mutual_information(self, col0, col1, evidence=None, N=None):
-        """Computes the mutual information MI(col0:col1|evidence)."""
         if N is None: N = 1000
         if evidence is None: evidence = {}
         def samples_logpdf(samples, evidence):
@@ -355,7 +349,6 @@ class State(CGpm):
 
     def conditional_mutual_information(self, col0, col1, evidence, T=None,
             N=None):
-        """Computes conditional mutual information MI(col0:col1|evidence)."""
         if T is None: T = 100
         samples = self.simulate(-1, evidence, N=T)
         mi = sum(self.mutual_information(
@@ -368,7 +361,6 @@ class State(CGpm):
     def transition(self, N=None, S=None, kernels=None, target_rows=None,
             target_cols=None, target_views=None, do_plot=False,
             do_progress=True):
-        """Run targeted inference kernels."""
         if N is None and S is None:
             N = 1
 
@@ -379,14 +371,14 @@ class State(CGpm):
             ('view_alphas',
                 lambda : self.transition_view_alphas(views=target_views)),
             ('column_params',
-                lambda : self.transition_column_params(cols=target_cols)),
+                lambda : self.transition_dim_params(cols=target_cols)),
             ('column_hypers',
-                lambda : self.transition_column_hypers(cols=target_cols)),
+                lambda : self.transition_dim_hypers(cols=target_cols)),
             ('rows',
-                lambda : self.transition_rows(
+                lambda : self.transition_view_rows(
                     views=target_views, rows=target_rows)),
             ('columns' ,
-                lambda : self.transition_columns(cols=target_cols))
+                lambda : self.transition_dims(cols=target_cols))
         ]
 
         _kernel_lookup = dict(_kernel_functions)
@@ -437,35 +429,35 @@ class State(CGpm):
         self.crp.transition_hypers()
 
     def transition_view_alphas(self, views=None):
-        """Transition CRP concentration of the Views."""
+        """Transition CRP concentration of Views."""
         if views is None:
             views = self.views.keys()
         for v in views:
             self.views[v].transition_crp_alpha()
 
-    def transition_column_params(self, cols=None):
-        """Transition uncollapsed Dim parmaters."""
+    def transition_dim_params(self, cols=None):
+        """Transition Dim parmaters."""
         if cols is None:
             cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_params()
 
-    def transition_column_hypers(self, cols=None):
+    def transition_dim_hypers(self, cols=None):
         """Transition Dim hyperparmaters."""
         if cols is None:
             cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_hypers()
 
-    def transition_column_hyper_grids(self, cols=None):
+    def transition_dim_grids(self, cols=None):
         """Transition Dim hyperparameter grids."""
         if cols is None:
             cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_hyper_grids(self.X[c])
 
-    def transition_rows(self, views=None, rows=None):
-        """Transition row CRP assignments in Views."""
+    def transition_view_rows(self, views=None, rows=None):
+        """Transition CRP assignments of rows in Views."""
         if self.n_rows() == 1:
             return
         if views is None:
@@ -473,15 +465,13 @@ class State(CGpm):
         for v in views:
             self.views[v].transition_rows(rows=rows)
 
-    def transition_columns(self, cols=None, m=2):
-        """Transition Dim CRP assignments in State."""
-        # if self.n_cols() == 1:
-        #     return
+    def transition_dims(self, cols=None, m=2):
+        """Transition CRP assignments of Dim in State."""
         if cols is None:
             cols = self.outputs
         cols = self.rng.permutation(cols)
         for c in cols:
-            self._transition_column(c, m)
+            self._gibbs_transition_dim(c, m)
 
     # --------------------------------------------------------------------------
     # Helpers
@@ -542,7 +532,7 @@ class State(CGpm):
 
 
     # --------------------------------------------------------------------------
-    # Temporary internal crp utils.
+    # Internal CRP utils.
 
     def alpha(self):
         return self.crp.hypers['alpha']
@@ -574,7 +564,7 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Inference helpers.
 
-    def _transition_column(self, col, m):
+    def _gibbs_transition_dim(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
         # XXX Disable col transitions if \exists conditional model anywhere.
         if any(d.is_conditional() for d in self.dims()):

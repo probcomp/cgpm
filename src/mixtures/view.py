@@ -194,31 +194,26 @@ class View(CGpm):
     # Inference
 
     def transition(self, N):
-        """Run all the transitions N times."""
         for _ in xrange(N):
             self.transition_rows()
             self.transition_crp_alpha()
-            self.transition_column_hypers()
+            self.transition_dim_hypers()
 
     def transition_crp_alpha(self):
-        """Calculate CRP alpha conditionals over grid and transition."""
         self.crp.transition_hypers()
         self.crp.transition_hypers()
 
-    def transition_column_hypers(self, cols=None):
-        """Calculate column (dim) hyperparameter conditionals over grid and
-        transition."""
+    def transition_dim_hypers(self, cols=None):
         if cols is None:
             cols = self.dims.keys()
         for c in cols:
             self.dims[c].transition_hypers()
 
     def transition_rows(self, rows=None):
-        """Compute row conditions for each cluster and transition."""
         if rows is None:
             rows = self.Zr().keys()
         for rowid in rows:
-            self._transition_row(rowid)
+            self._gibbs_transition_row(rowid)
 
     # --------------------------------------------------------------------------
     # logscore.
@@ -297,7 +292,7 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # Internal row transition.
 
-    def _transition_row(self, rowid):
+    def _gibbs_transition_row(self, rowid):
         # Probability of row crp assignment to each cluster.
         K = self.crp.clusters[0].gibbs_tables(rowid)
         logp_crp = self.crp.clusters[0].gibbs_logps(rowid)
