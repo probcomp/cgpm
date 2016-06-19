@@ -123,11 +123,9 @@ class State(CGpm):
         # -- Iteration metadata-------------------------------------------------
         self.iterations = iterations if iterations is not None else {}
 
-        # -- Children CGpms ----------------------------------------------------
-        self.counter = itertools.count(start=1)
-        self.accuracy = 50
-        self.predictors = {}
-        self.parents = {}
+        # -- Foreign CGpms -----------------------------------------------------
+        self.token_generator = itertools.count(start=57481)
+        self.hooked_cgpms = dict()
 
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
@@ -238,21 +236,18 @@ class State(CGpm):
         self.transition_dim_hypers(cols=[col])
         self._check_partitions()
 
-    def update_foreign_predictor(self, predictor, parents):
-        """XXX REWRITE ME!."""
-        # Foreign predictors indexed from -1, -2, ... no cycles.
-        index = -next(self.counter)
-        if any(p in self.predictors for p in parents):
-            raise ValueError('No chained predictors.')
-        self.predictors[index] = predictor
-        self.parents[index] = parents
-        return index
+    # --------------------------------------------------------------------------
+    # Compositions.
 
-    def remove_foreign_predictor(self, index):
-        """XXX REWRITE ME!."""
-        if index not in self.predictors:
-            raise ValueError('Predictor %s never hooked.' % str(index))
-        del self.predictors[index]
+    def compose_cgpm(self, cgpm):
+        """Returns `token` to be used in the call to decompose_cgpm."""
+        token = next(self.token_generator)
+        self.hooked_cgpms[token] = cgpm
+        self.build_network()
+
+    def decompose_cgpm(self, token):
+        del self.hooked_cgpms[token]
+        self.build_network()
 
     # --------------------------------------------------------------------------
     # logscore.
@@ -294,10 +289,8 @@ class State(CGpm):
     # simulate/logpdf helpers
 
     def build_network(self):
-        return ImportanceNetwork(
-            cgpms=[self.views[v] for v in self.views],
-            accuracy=1,
-            rng=self.rng)
+        cgpms = [self.views[v] for v in self.views] + self.hooked_cgpms.values()
+        return ImportanceNetwork(cgpms, accuracy=1, rng=self.rng)
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads evidence for a query from the dataset."""
