@@ -603,13 +603,13 @@ class State(CGpm):
         # Current view.
         v_a = self.Zv(col)
 
-        # Existing views.
+        # Existing view proposals.
         dprop = [get_prop_dim(self.views[v], self.dim_for(col))
             for v in self.views]
         logp_data = [get_data_logp(self.views[v], dim)
             for (v, dim) in zip(self.views, dprop)]
 
-        # Auxiliary views.
+        # Auxiliary view proposals.
         tables = self.crp.clusters[0].gibbs_tables(col, m=m)
         t_aux = tables[len(self.views):]
         dprop_aux = [get_prop_dim(None, self.dim_for(col))
@@ -625,8 +625,7 @@ class State(CGpm):
 
         # Compute the CRP probabilities.
         logp_crp = self.crp.clusters[0].gibbs_logps(col, m=m)
-        if not len(logp_data) == len(logp_crp):
-            import ipdb; ipdb.set_trace()
+        assert len(logp_data) == len(logp_crp)
 
         # Overall view probabilities.
         p_view = np.add(logp_data, logp_crp)
