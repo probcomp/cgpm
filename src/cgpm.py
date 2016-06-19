@@ -92,7 +92,7 @@ class CGpm(object):
         """Return joint density of all observations and current latent state."""
         raise NotImplementedError
 
-    def infer(self, **kwargs):
+    def transition(self, **kwargs):
         """Apply an inference operator transitioning the internal state of GPM.
 
         program : keyword arguments
