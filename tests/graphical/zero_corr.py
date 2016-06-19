@@ -196,7 +196,7 @@ def retrieve_nice_state(states, transitions=10):
     else:
         state = states[0]
     for _ in xrange(transitions):
-        state.transition_column_hypers()
+        state.transition_dim_hypers()
     return state
 
 def plot_samples(samples, dist, noise, num_samples, timestamp):
