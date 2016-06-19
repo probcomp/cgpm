@@ -75,7 +75,7 @@ class View(CGpm):
         # -- Dataset -----------------------------------------------------------
         self.X = X
 
-         # -- Outputs ----------------------------------------------------------
+        # -- Outputs -----------------------------------------------------------
         if len(outputs) < 1:
             raise ValueError('View needs at least one output.')
         if len(outputs) > 1:
@@ -197,10 +197,10 @@ class View(CGpm):
         """Run all the transitions N times."""
         for _ in xrange(N):
             self.transition_rows()
-            self.transition_alpha()
+            self.transition_crp_alpha()
             self.transition_column_hypers()
 
-    def transition_alpha(self):
+    def transition_crp_alpha(self):
         """Calculate CRP alpha conditionals over grid and transition."""
         self.crp.transition_hypers()
         self.crp.transition_hypers()
