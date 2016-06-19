@@ -558,9 +558,6 @@ class State(CGpm):
     def view_for(self, c):
         return self.views[self.Zv(c)]
 
-    def n_views(self):
-        return len(self.views)
-
     # --------------------------------------------------------------------------
     # Inference helpers.
 
@@ -636,7 +633,7 @@ class State(CGpm):
             delete = self.Nv(v_a) == 1
             self.views[v_a].unincorporate_dim(dprop[index])
             if v_b > max(self.views):
-                self._append_view(vprop_aux[index-self.n_views()], v_b)
+                self._append_view(vprop_aux[index-len(self.views)], v_b)
             self.views[v_b].incorporate_dim(
                 dprop[index], reassign=dprop[index].is_collapsed())
             # Accounting

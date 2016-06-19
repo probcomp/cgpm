@@ -120,9 +120,9 @@ def test_incorporate():
     state.incorporate_dim(
         T[:,5], outputs=[5], cctype=CCTYPES[5], distargs=DISTARGS[5],
         v=target)
-    previous = state.n_views()
+    previous = len(state.views)
     state.unincorporate_dim(5)
-    assert state.n_views() == previous-1
+    assert len(state.views) == previous-1
     state.transition(N=1)
 
     # Reincorporate dim into a singleton view.
