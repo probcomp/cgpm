@@ -264,7 +264,7 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, query, evidence=None, accuracy=None):
         if evidence is None: evidence = {}
         assert isinstance(query, dict)
         assert isinstance(evidence, dict)
@@ -272,13 +272,13 @@ class State(CGpm):
             self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
-        network = self.build_network()
+        network = self.build_network(accuracy=accuracy)
         return network.logpdf(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
     # Simulate
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
         if evidence is None: evidence = {}
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
@@ -286,15 +286,16 @@ class State(CGpm):
             self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
-        network = self.build_network()
+        network = self.build_network(accuracy=accuracy)
         return network.simulate(rowid, query, evidence, N)
 
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
 
-    def build_network(self):
+    def build_network(self, accuracy=None):
+        if accuracy is None: accuracy=1
         cgpms = [self.views[v] for v in self.views] + self.hooked_cgpms.values()
-        return ImportanceNetwork(cgpms, accuracy=1, rng=self.rng)
+        return ImportanceNetwork(cgpms, accuracy=accuracy, rng=self.rng)
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads evidence for a query from the dataset."""

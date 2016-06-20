@@ -43,8 +43,7 @@ class ImportanceNetwork(object):
         return {q: samples[index][q] for q in query}
 
     def logpdf(self, rowid, query, evidence=None):
-        if evidence is None:
-            evidence = {}
+        if evidence is None: evidence = {}
         # Compute joint probability.
         samples_joint, weights_joint = zip(*
             [self.weighted_sample(rowid, [], gu.merged(evidence, query))
