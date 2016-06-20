@@ -18,8 +18,8 @@ from math import log
 
 from scipy.special import betaln
 
-from gpmcc.exponentials.distribution import DistributionGpm
-from gpmcc.utils import general as gu
+from cgpm.exponentials.distribution import DistributionGpm
+from cgpm.utils import general as gu
 
 
 class Bernoulli(DistributionGpm):

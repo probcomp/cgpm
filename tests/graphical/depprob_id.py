@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from gpmcc.crosscat.engine import Engine
-from gpmcc.utils import config as cu
+from cgpm.crosscat.engine import Engine
+from cgpm.utils import config as cu
 
 np.random.seed(0)
 

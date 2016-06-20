@@ -19,7 +19,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 
-from gpmcc.uncorrelated.undirected import UnDirectedXyGpm
+from cgpm.uncorrelated.undirected import UnDirectedXyGpm
 
 
 class Linear(UnDirectedXyGpm):

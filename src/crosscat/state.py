@@ -26,13 +26,13 @@ from math import isnan
 import matplotlib.pyplot as plt
 import numpy as np
 
-from gpmcc.cgpm import CGpm
-from gpmcc.mixtures.dim import Dim
-from gpmcc.mixtures.view import View
-from gpmcc.network.importance import ImportanceNetwork
-from gpmcc.utils import general as gu
-from gpmcc.utils import plots as pu
-from gpmcc.utils import validation as vu
+from cgpm.cgpm import CGpm
+from cgpm.mixtures.dim import Dim
+from cgpm.mixtures.view import View
+from cgpm.network.importance import ImportanceNetwork
+from cgpm.utils import general as gu
+from cgpm.utils import plots as pu
+from cgpm.utils import validation as vu
 
 
 class State(CGpm):
@@ -744,5 +744,5 @@ class State(CGpm):
         return cls.from_metadata(metadata, rng=rng)
 
 
-from gpmcc.crosscat import statedoc
+from cgpm.crosscat import statedoc
 statedoc.load_docstrings(sys.modules[__name__])

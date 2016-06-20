@@ -47,11 +47,11 @@ def readme_contents():
         return unicode(readme_file.read(), 'UTF-8')
 
 setup(
-    name='gpmcc',
+    name='cgpm',
     version='0.0.0',
     description='GPM Crosscat',
     long_description=readme_contents(),
-    url='https://github.com/probcomp/gpmcc',
+    url='https://github.com/probcomp/cgpm',
     license='Apache-2.0',
     maintainer='Feras Saad',
     maintainer_email='fsaad@remove-this-component.mit.edu',
@@ -63,17 +63,17 @@ setup(
         'Topic :: Scientific/Engineering :: Information Analysis',
     ],
     packages=[
-        'gpmcc',
-        'gpmcc.crosscat',
-        'gpmcc.exponentials',
-        'gpmcc.mixtures',
-        'gpmcc.network',
-        'gpmcc.regressions',
-        'gpmcc.uncorrelated',
-        'gpmcc.utils',
+        'cgpm',
+        'cgpm.crosscat',
+        'cgpm.exponentials',
+        'cgpm.mixtures',
+        'cgpm.network',
+        'cgpm.regressions',
+        'cgpm.uncorrelated',
+        'cgpm.utils',
     ],
     package_dir={
-        'gpmcc': 'src',
+        'cgpm': 'src',
     },
     install_requires=[
         'matplotlib>=1.5.0',

@@ -1,10 +1,10 @@
-# Dockerfile that builds, installs, and tests gpmcc. It is for development
+# Dockerfile that builds, installs, and tests cgpm. It is for development
 # only; users should use the python package.
 
 FROM ubuntu
 RUN apt-get update -qq
 
-# Non-python dependencies for gpmcc.
+# Non-python dependencies for cgpm.
 RUN apt-get install -y -qq python-dev python-pip
 
 # Transitive non-python dependencies for matplotlib.
@@ -19,22 +19,22 @@ RUN apt-get install -y -qq liblapack-dev gfortran
 RUN apt-get install -y -qq python-numpy python-scipy python-pandas
 RUN pip install scikit-learn
 
-### Build and install gpmcc.
+### Build and install cgpm.
 
-COPY setup.py pythenv.sh check.sh README.md HACKING /gpmcc/
-COPY src /gpmcc/src
+COPY setup.py pythenv.sh check.sh README.md HACKING /cgpm/
+COPY src /cgpm/src
 # Notably, do not copy build, .eggs, dist, sdist, etc.
-WORKDIR /gpmcc
+WORKDIR /cgpm
 RUN python setup.py bdist_wheel
-RUN pip install dist/gpmcc-*-py2-none-any.whl
+RUN pip install dist/cgpm-*-py2-none-any.whl
 
 
-### Test gpmcc.
+### Test cgpm.
 
 RUN pip install pytest
 # In case setup.py ever develops test_require that are not already satisfied:
 RUN python setup.py test
 # Run tests:
-COPY tests /gpmcc/tests
+COPY tests /cgpm/tests
 RUN find tests -name __pycache__ -o -name "*.pyc" -exec rm -fr {} \;
 RUN ./check.sh tests

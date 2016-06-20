@@ -16,10 +16,10 @@
 
 import pytest
 
-from gpmcc.crosscat.state import State
-from gpmcc.utils import config as cu
-from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
+from cgpm.crosscat.state import State
+from cgpm.utils import config as cu
+from cgpm.utils import general as gu
+from cgpm.utils import test as tu
 
 
 CCTYPES, DISTARGS = cu.parse_distargs([

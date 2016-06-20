@@ -24,10 +24,10 @@ import numpy as np
 
 from matplotlib import cm
 
-from gpmcc.cgpm import CGpm
-from gpmcc.crosscat.state import State
-from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
+from cgpm.cgpm import CGpm
+from cgpm.crosscat.state import State
+from cgpm.utils import general as gu
+from cgpm.utils import test as tu
 
 
 class FourWay(CGpm):

@@ -20,8 +20,8 @@ import numpy as np
 
 from scipy.special import gammaln
 
-from gpmcc.exponentials.distribution import DistributionGpm
-from gpmcc.utils import general as gu
+from cgpm.exponentials.distribution import DistributionGpm
+from cgpm.utils import general as gu
 
 
 class Categorical(DistributionGpm):

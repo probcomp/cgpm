@@ -16,9 +16,9 @@
 
 import numpy as np
 
-from gpmcc.crosscat.engine import Engine
-from gpmcc.utils import config as cu
-from gpmcc.utils import test as tu
+from cgpm.crosscat.engine import Engine
+from cgpm.utils import config as cu
+from cgpm.utils import test as tu
 
 # Set up the data generation.
 n_rows = 200

@@ -17,7 +17,7 @@
 import numpy as np
 import pandas as pd
 
-from gpmcc.utils import config as cu
+from cgpm.utils import config as cu
 
 
 def parse_schema(schema, dataframe):
@@ -69,7 +69,7 @@ def parse_schema(schema, dataframe):
             }
         where 'k' for 'country' has been extracted from the dataset.
 
-    >>> S = gpmcc.crosscat.state.State(D, cctypes=cctypes, distargs=distargs)
+    >>> S = cgpm.crosscat.state.State(D, cctypes=cctypes, distargs=distargs)
     """
     dataframe.replace('NA', np.nan, inplace=True)
     D = []

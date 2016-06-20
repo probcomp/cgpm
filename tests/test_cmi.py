@@ -17,8 +17,8 @@
 
 import numpy as np
 
-from gpmcc.crosscat.state import State
-from gpmcc.utils.general import gen_rng
+from cgpm.crosscat.state import State
+from cgpm.utils.general import gen_rng
 
 
 def test_entropy_bernoulli__ci_():

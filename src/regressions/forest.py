@@ -21,8 +21,8 @@ import numpy as np
 
 from sklearn.ensemble import RandomForestClassifier
 
-from gpmcc.cgpm import CGpm
-from gpmcc.utils import general as gu
+from cgpm.cgpm import CGpm
+from cgpm.utils import general as gu
 
 
 Data = namedtuple('Data', ['x', 'Y'])

@@ -22,19 +22,19 @@ import importlib
 
 
 cctype_class_lookup = {
-    'bernoulli'         : ('gpmcc.exponentials.bernoulli', 'Bernoulli'),
-    'beta_uc'           : ('gpmcc.exponentials.beta_uc', 'BetaUC'),
-    'categorical'       : ('gpmcc.exponentials.categorical', 'Categorical'),
-    'crp'               : ('gpmcc.exponentials.crp', 'Crp'),
-    'exponential'       : ('gpmcc.exponentials.exponential', 'Exponential'),
-    'geometric'         : ('gpmcc.exponentials.geometric', 'Geometric'),
-    'linear_regression' : ('gpmcc.regressions.linreg', 'LinearRegression'),
-    'lognormal'         : ('gpmcc.exponentials.lognormal', 'Lognormal'),
-    'normal'            : ('gpmcc.exponentials.normal', 'Normal'),
-    'normal_trunc'      : ('gpmcc.exponentials.normal_trunc', 'NormalTrunc'),
-    'poisson'           : ('gpmcc.exponentials.poisson', 'Poisson'),
-    'random_forest'     : ('gpmcc.regressions.forest', 'RandomForest'),
-    'vonmises'          : ('gpmcc.exponentials.vonmises', 'Vonmises'),
+    'bernoulli'         : ('cgpm.exponentials.bernoulli', 'Bernoulli'),
+    'beta_uc'           : ('cgpm.exponentials.beta_uc', 'BetaUC'),
+    'categorical'       : ('cgpm.exponentials.categorical', 'Categorical'),
+    'crp'               : ('cgpm.exponentials.crp', 'Crp'),
+    'exponential'       : ('cgpm.exponentials.exponential', 'Exponential'),
+    'geometric'         : ('cgpm.exponentials.geometric', 'Geometric'),
+    'linear_regression' : ('cgpm.regressions.linreg', 'LinearRegression'),
+    'lognormal'         : ('cgpm.exponentials.lognormal', 'Lognormal'),
+    'normal'            : ('cgpm.exponentials.normal', 'Normal'),
+    'normal_trunc'      : ('cgpm.exponentials.normal_trunc', 'NormalTrunc'),
+    'poisson'           : ('cgpm.exponentials.poisson', 'Poisson'),
+    'random_forest'     : ('cgpm.regressions.forest', 'RandomForest'),
+    'vonmises'          : ('cgpm.exponentials.vonmises', 'Vonmises'),
 }
 
 def timestamp():

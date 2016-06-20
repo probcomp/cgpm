@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gpmcc.utils import validation as vu
+from cgpm.utils import validation as vu
 
 
 def test_partition_query_evidence_dict():

@@ -25,11 +25,11 @@ import pytest
 from scipy.stats import chisquare
 from scipy.stats import ks_2samp
 
-from gpmcc.crosscat.engine import Engine
-from gpmcc.crosscat.state import State
-from gpmcc.utils import config as cu
-from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
+from cgpm.crosscat.engine import Engine
+from cgpm.crosscat.state import State
+from cgpm.utils import config as cu
+from cgpm.utils import general as gu
+from cgpm.utils import test as tu
 
 
 NUM_ITERS = 1000

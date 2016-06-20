@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gpmcc.cgpm import CGpm
-from gpmcc.utils.general import gen_rng
+from cgpm.cgpm import CGpm
+from cgpm.utils.general import gen_rng
 
 
 class UnDirectedXyGpm(CGpm):

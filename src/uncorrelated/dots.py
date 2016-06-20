@@ -18,8 +18,8 @@ import numpy as np
 
 from scipy.stats import norm
 
-from gpmcc.uncorrelated.undirected import UnDirectedXyGpm
-from gpmcc.utils import general as gu
+from cgpm.uncorrelated.undirected import UnDirectedXyGpm
+from cgpm.utils import general as gu
 
 
 class Dots(UnDirectedXyGpm):

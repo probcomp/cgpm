@@ -19,8 +19,8 @@ from math import log
 import matplotlib.pyplot as plt
 import numpy as np
 
-from gpmcc.utils import general as gu
-from gpmcc.utils.config import colors
+from cgpm.utils import general as gu
+from cgpm.utils.config import colors
 
 
 _plot_layout = {1: (1,1), 2: (2,1), 3: (3,1), 4: (2,2), 5: (3,2), 6: (3,2),

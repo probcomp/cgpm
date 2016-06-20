@@ -29,15 +29,15 @@ import pytest
 import matplotlib.pyplot as plt
 import numpy as np
 
-from gpmcc.uncorrelated.diamond import Diamond
-from gpmcc.uncorrelated.dots import Dots
-from gpmcc.uncorrelated.linear import Linear
-from gpmcc.uncorrelated.parabola import Parabola
-from gpmcc.uncorrelated.ring import Ring
-from gpmcc.uncorrelated.sin import Sin
-from gpmcc.uncorrelated.xcross import XCross
+from cgpm.uncorrelated.diamond import Diamond
+from cgpm.uncorrelated.dots import Dots
+from cgpm.uncorrelated.linear import Linear
+from cgpm.uncorrelated.parabola import Parabola
+from cgpm.uncorrelated.ring import Ring
+from cgpm.uncorrelated.sin import Sin
+from cgpm.uncorrelated.xcross import XCross
 
-from gpmcc.utils.general import gen_rng
+from cgpm.utils.general import gen_rng
 
 
 NUM_SAMPLES = 200
