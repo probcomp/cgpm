@@ -26,15 +26,13 @@ from math import isnan
 import matplotlib.pyplot as plt
 import numpy as np
 
-import gpmcc.utils.general as gu
-import gpmcc.utils.plots as pu
-import gpmcc.utils.validation as vu
-
 from gpmcc.cgpm import CGpm
 from gpmcc.mixtures.dim import Dim
 from gpmcc.mixtures.view import View
-
 from gpmcc.network.importance import ImportanceNetwork
+from gpmcc.utils import general as gu
+from gpmcc.utils import plots as pu
+from gpmcc.utils import validation as vu
 
 
 class State(CGpm):

@@ -18,10 +18,9 @@ from math import log
 
 import numpy as np
 
-import gpmcc.utils.general as gu
-
 from gpmcc.exponentials.distribution import DistributionGpm
 from gpmcc.exponentials.normal import Normal
+from gpmcc.utils import general as gu
 
 
 class Lognormal(DistributionGpm):

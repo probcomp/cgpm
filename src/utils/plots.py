@@ -19,8 +19,7 @@ from math import log
 import matplotlib.pyplot as plt
 import numpy as np
 
-import gpmcc.utils.general as gu
-
+from gpmcc.utils import general as gu
 from gpmcc.utils.config import colors
 
 

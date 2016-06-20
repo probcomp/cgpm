@@ -15,12 +15,15 @@
 # limitations under the License.
 
 import math
+
 import numpy as np
+
+from matplotlib import pyplot as plt
 from scipy.integrate import trapz
 
-import gpmcc.utils.general as gu
-import gpmcc.utils.sampling as su
-import matplotlib.pyplot as plt
+from gpmcc.utils import general as gu
+from gpmcc.utils import sampling as su
+
 
 def main(num_samples, burn, lag, w):
     alpha = 1.0

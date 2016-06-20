@@ -18,8 +18,6 @@
 data from a mixture, learning, and comparing the posterior predictives.
 """
 
-import unittest
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -27,12 +25,12 @@ import pytest
 from scipy.stats import chisquare
 from scipy.stats import ks_2samp
 
-import gpmcc.utils.config as cu
-import gpmcc.utils.general as gu
-import gpmcc.utils.test as tu
-
 from gpmcc.crosscat.engine import Engine
 from gpmcc.crosscat.state import State
+from gpmcc.utils import config as cu
+from gpmcc.utils import general as gu
+from gpmcc.utils import test as tu
+
 
 NUM_ITERS = 1000
 NUM_SECONDS = 180

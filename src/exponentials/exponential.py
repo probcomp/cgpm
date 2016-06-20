@@ -18,9 +18,8 @@ from math import log
 
 from scipy.special import gammaln
 
-import gpmcc.utils.general as gu
-
 from gpmcc.exponentials.distribution import DistributionGpm
+from gpmcc.utils import general as gu
 
 
 class Exponential(DistributionGpm):

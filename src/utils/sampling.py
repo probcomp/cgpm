@@ -21,7 +21,7 @@ import numpy as np
 
 from scipy.stats import norm
 
-import gpmcc.utils.general as gu
+from gpmcc.utils import general as gu
 
 
 def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1,

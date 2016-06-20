@@ -18,11 +18,10 @@ import math
 
 import numpy as np
 
-import gpmcc.utils.config as cu
-import gpmcc.utils.general as gu
-import gpmcc.utils.plots as pu
-
 from gpmcc.cgpm import CGpm
+from gpmcc.utils import config as cu
+from gpmcc.utils import general as gu
+from gpmcc.utils import plots as pu
 
 
 class Dim(CGpm):
