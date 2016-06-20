@@ -239,7 +239,6 @@ class View(CGpm):
         # Condition on cluster.
         if self.outputs[0] in evidence:
             # XXX DETERMINE ME!
-            if not self.hypothetical(rowid): rowid = -1
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
@@ -258,7 +257,6 @@ class View(CGpm):
         # Condition on cluster.
         if self.outputs[0] in evidence:
             # XXX DETERMINE ME!
-            if not self.hypothetical(rowid): rowid = -1
             return network.simulate(rowid, query, evidence, N)
         # Static query analysis.
         unwrap = N is None
@@ -350,13 +348,13 @@ class View(CGpm):
     def n_rows(self):
         return len(self.X[self.X.keys()[0]])
 
-    def hypothetical(self, rowid):
+    def _is_hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr()))
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
         if evidence is None: evidence = {}
-        if self.hypothetical(rowid): return evidence
+        if self._is_hypothetical(rowid): return evidence
         data = {c: self.X[c][rowid] for c in self.outputs[1:]
             if c not in evidence and c not in query
             and not isnan(self.X[c][rowid])}
