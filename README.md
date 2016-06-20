@@ -1,7 +1,7 @@
 # cgpm
 
 The aim of this project is to provide a unified probabilistic programming
-project to express different models and techniques from statistics, machine
+framework to express different models and techniques from statistics, machine
 learning and non-parametric Bayes.
 
 Conditional generative population models (CGPM) provide a computational
