@@ -242,7 +242,12 @@ class State(CGpm):
         """Returns `token` to be used in the call to decompose_cgpm."""
         token = next(self.token_generator)
         self.hooked_cgpms[token] = cgpm
-        self.build_network()
+        try:
+            self.build_network()
+        except ValueError as e:
+            del self.hooked_cgpms[token]
+            raise e
+        return token
 
     def decompose_cgpm(self, token):
         del self.hooked_cgpms[token]
