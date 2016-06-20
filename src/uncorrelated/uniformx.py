@@ -16,8 +16,8 @@
 
 from scipy.stats import uniform
 
-from gpmcc.cgpm import CGpm
-from gpmcc.utils.general import gen_rng
+from cgpm.cgpm import CGpm
+from cgpm.utils.general import gen_rng
 
 
 class UniformX(CGpm):

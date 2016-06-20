@@ -22,10 +22,10 @@ import unittest
 
 import numpy as np
 
-from gpmcc.crosscat.engine import Engine
-from gpmcc.crosscat.state import State
+from cgpm.crosscat.engine import Engine
+from cgpm.crosscat.state import State
 
-from gpmcc.utils import general as gu
+from cgpm.utils import general as gu
 
 
 class TestSerialize(unittest.TestCase):

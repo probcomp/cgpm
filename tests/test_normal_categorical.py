@@ -34,9 +34,9 @@ import numpy as np
 
 from scipy.stats import ks_2samp
 
-from gpmcc.crosscat.engine import Engine
-from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
+from cgpm.crosscat.engine import Engine
+from cgpm.utils import general as gu
+from cgpm.utils import test as tu
 
 
 N_SAMPLES = 250

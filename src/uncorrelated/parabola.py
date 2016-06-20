@@ -19,11 +19,11 @@ import numpy as np
 from scipy.misc import logsumexp
 from scipy.stats import uniform
 
-from gpmcc.cgpm import CGpm
-from gpmcc.network.importance import ImportanceNetwork
-from gpmcc.uncorrelated.uniformx import UniformX
-from gpmcc.uncorrelated.directed import DirectedXyGpm
-from gpmcc.utils.general import gen_rng
+from cgpm.cgpm import CGpm
+from cgpm.network.importance import ImportanceNetwork
+from cgpm.uncorrelated.uniformx import UniformX
+from cgpm.uncorrelated.directed import DirectedXyGpm
+from cgpm.utils.general import gen_rng
 
 
 class ParabolaY(CGpm):

@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gpmcc.utils import general as gu
-from gpmcc.cgpm import CGpm
+from cgpm.utils import general as gu
+from cgpm.cgpm import CGpm
 
 
 class DistributionGpm(CGpm):

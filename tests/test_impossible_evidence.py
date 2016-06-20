@@ -19,10 +19,10 @@ raises a ValueError."""
 
 import pytest
 
-from gpmcc.crosscat.engine import State
-from gpmcc.utils import config as cu
-from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
+from cgpm.crosscat.engine import State
+from cgpm.utils import config as cu
+from cgpm.utils import general as gu
+from cgpm.utils import test as tu
 
 
 @pytest.fixture(scope='module')

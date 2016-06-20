@@ -18,10 +18,10 @@ import math
 
 import numpy as np
 
-from gpmcc.cgpm import CGpm
-from gpmcc.utils import config as cu
-from gpmcc.utils import general as gu
-from gpmcc.utils import plots as pu
+from cgpm.cgpm import CGpm
+from cgpm.utils import config as cu
+from cgpm.utils import general as gu
+from cgpm.utils import plots as pu
 
 
 class Dim(CGpm):
@@ -39,7 +39,7 @@ class Dim(CGpm):
         Parameters
         ----------
          cctype : str
-             DistributionGpm name see `gpmcc.utils.config`.
+             DistributionGpm name see `cgpm.utils.config`.
         outputs : list<int>
             A singleton list containing the identifier of the output variable.
         inputs : list<int>

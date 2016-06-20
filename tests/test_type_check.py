@@ -18,7 +18,7 @@ from collections import namedtuple
 
 import pytest
 
-from gpmcc.utils import config as cu
+from cgpm.utils import config as cu
 
 
 Case = namedtuple(

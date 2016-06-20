@@ -20,11 +20,11 @@ from math import log
 
 import numpy as np
 
-from gpmcc.mixtures.dim import Dim
-from gpmcc.regressions.forest import RandomForest
-from gpmcc.utils import config as cu
-from gpmcc.utils import general as gu
-from gpmcc.utils import test as tu
+from cgpm.mixtures.dim import Dim
+from cgpm.regressions.forest import RandomForest
+from cgpm.utils import config as cu
+from cgpm.utils import general as gu
+from cgpm.utils import test as tu
 
 
 cctypes, distargs = cu.parse_distargs([

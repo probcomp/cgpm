@@ -20,8 +20,8 @@ from collections import namedtuple
 
 import pytest
 
-from gpmcc.network import helpers
-from gpmcc.network.importance import ImportanceNetwork
+from cgpm.network import helpers
+from cgpm.network.importance import ImportanceNetwork
 
 
 CGpm = namedtuple('CGpm', ['outputs', 'inputs'])

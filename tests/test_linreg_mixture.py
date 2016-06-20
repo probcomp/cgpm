@@ -19,8 +19,8 @@ import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 
-from gpmcc.crosscat.state import State
-from gpmcc.utils import general as gu
+from cgpm.crosscat.state import State
+from cgpm.utils import general as gu
 
 
 def _compute_y(x):

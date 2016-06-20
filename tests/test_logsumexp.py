@@ -17,7 +17,7 @@
 import math
 import pytest
 
-from gpmcc.utils import general as gu
+from cgpm.utils import general as gu
 
 def relerr(expected, actual):
     """Relative error between `expected` and `actual`: ``abs((a - e)/e)``."""

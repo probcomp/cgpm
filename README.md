@@ -1,54 +1,15 @@
-# gpmcc
+# cgpm
 
-Implementation of [crossat](http://probcomp.csail.mit.edu/crosscat/) from
-the lens of generative population models (GPMs). The goal is to express the
-hierarchial generative process that defines crosscat as a composition of
-modules that follow the GPM interface.
+The aim of this project is to provide a unified probabilistic programming
+project to express different models and techniques from statistics, machine
+learning and non-parametric Bayes.
 
-## Research Goals
-
-gpmcc aims to implement all the features that exist in current crosscat
-implementations, as well as new features not available in vanilla crosscat.
-Key ideas on the development roadmap are:
-
-- Interface that permits key constructs of the Metamodeling Language (MML),
-  such as:
-  - Suggesting column dependencies.
-  - Suggesting row dependencies, with respect to a subset of columns.
-  - Sequential incorporate/unincorporate of (partial) observations
-    interleaved with analysis.
-  - Targeted analysis over the crosscat inference kernels.
-  - Column-specific datatype constraints (`REAL`, `POSITIVE`,
-  `IN-RANGE(min,max)`, `CATEGORICAL`, `ORDINAL`, etc).
-
-- Sequential Monte Carlo (SMC) implementation of the posterior inference
-  algorithm described in [Mansinghka, et
-  al.](http://arxiv.org/pdf/1512.01272.pdf) Section 2.4, as opposed to
-  observe-all then Gibbs forever.
-
-- Interface for the Bayesian Query Language (BQL) and
-  [bayeslite](https://github.com/probcomp/bayeslite) integration, with new
-  BQL additions such as:
-  - Conditional mutual information.
-  - KL-divergence of predictive distribution against synthetic GPMs.
-  - Marginal likelihood estimates of real datasets.
-
-- Interface for foreign GPMs that are jointly analyzed with crosscat.
-  Current implementations only allow foreign GPMs to be composed at query,
-  not analysis, time.
-
-- Subsampling, where each model is responsible for a subset of data from an
-  overlapping partition of the overall dataset.
-
-- Multiprocessing for analysis. Distributed?
-
-- Several DistributionGpms for the different MML data-types, not just
-  Normal and Multinomial.
-
-## Required Modules
-- numpy
-- scipy
-- matplotlib
+Conditional generative population models (CGPM) provide a computational
+abstraction for probabilistic objects. They provide an interface that explicitly
+differentiates between the _sampler_ of a random variable from its conditional
+distribution and the _assessor_ of its conditional density. By encapsulating
+models as probabilistic programs that implement CGPMs, complex models can be
+built as compositions of sub-CGPMs.
 
 ## Installing
 ```
@@ -57,8 +18,11 @@ pip install .
 
 ## Static Example
 
-The simplest example is creating a synthetic dataset where each variable is
-a mixture of one of the available DistributionGpms. Try
+The simplest example is creating a synthetic dataset where each variable is a
+mixture of one of the available DistributionGpms. Inference is run using
+`gpmcc`, an implementation of
+[crosscat](http://probcomp.csail.mit.edu/crosscat/) from the lens of
+compositions of conditional generative population models (see `src/crosscat/`).
 
 ```
 $ python -i examples/one_view.py
@@ -68,8 +32,8 @@ A plot similar to ![images/one_view.png](images/one_view.png) should appear.
 
 ## Interactive Example (Experimental)
 
-Single-particle SMC is currently available for a dataset with a single
-variable. To view an interactive example, try the following
+Single-particle SMC in a DP Mixture with Normal-InverseGamma base measure and
+normal obervations can be run interactively:
 
 ```
 $ cd experiments/univariate_crp
@@ -99,15 +63,6 @@ Running check.sh will run the tests that are considered complete and
 stable. There are more tests in the tests/ directory, but those that
 do not start with ```test_``` or do start with ```disabled_``` are not
 considered ready.
-
-See the open [issue](https://github.com/probcomp/gpmcc/issues/8).
-
-## Acknowledgements
-
-This repository was originally forked off
-[BaxCat](https://github.com/BaxterEaves/BaxCat/). Most of the source has been
-significantly rewritten, and copyright rights have been transferred with
-permission.
 
 ## License
 

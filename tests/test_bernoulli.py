@@ -17,8 +17,8 @@
 
 import numpy as np
 
-from gpmcc.crosscat.engine import Engine
-from gpmcc.utils import general as gu
+from cgpm.crosscat.engine import Engine
+from cgpm.utils import general as gu
 
 
 DATA_NUM_0 = 100

@@ -19,8 +19,8 @@
 import itertools
 import pytest
 
-from gpmcc.utils import general as gu
-from gpmcc.utils import validation as vu
+from cgpm.utils import general as gu
+from cgpm.utils import validation as vu
 
 
 # Tests for validate_crp_constrained.

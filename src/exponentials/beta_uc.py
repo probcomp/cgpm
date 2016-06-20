@@ -19,8 +19,8 @@ from math import log
 import numpy as np
 import scipy
 
-from gpmcc.utils import sampling as su
-from gpmcc.exponentials.distribution import DistributionGpm
+from cgpm.utils import sampling as su
+from cgpm.exponentials.distribution import DistributionGpm
 
 
 class BetaUC(DistributionGpm):

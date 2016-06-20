@@ -24,7 +24,7 @@ import numpy as np
 from scipy.special import gammaln
 from scipy.special import i0 as bessel_0
 
-from gpmcc.utils import validation as vu
+from cgpm.utils import validation as vu
 
 
 colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',

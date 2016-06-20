@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from gpmcc.uncorrelated.undirected import UnDirectedXyGpm
+from cgpm.uncorrelated.undirected import UnDirectedXyGpm
 
 
 class Ring(UnDirectedXyGpm):

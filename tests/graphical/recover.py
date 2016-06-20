@@ -17,9 +17,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from gpmcc.utils import test as tu
-from gpmcc.utils import sampling as su
-from gpmcc.crosscat.engine import Engine
+from cgpm.utils import test as tu
+from cgpm.utils import sampling as su
+from cgpm.crosscat.engine import Engine
 
 shapes = ['x', 'sin', 'ring', 'dots']
 gen_function = {

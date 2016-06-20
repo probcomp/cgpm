@@ -20,8 +20,8 @@ import pickle
 
 import numpy as np
 
-from gpmcc.crosscat.state import State
-from gpmcc.utils import general as gu
+from cgpm.crosscat.state import State
+from cgpm.utils import general as gu
 
 
 # Multiprocessing functions.

@@ -19,9 +19,9 @@ import unittest
 
 import numpy as np
 
-from gpmcc.crosscat.state import State
-from gpmcc.utils import general as gu
-from gpmcc.utils import validation as vu
+from cgpm.crosscat.state import State
+from cgpm.utils import general as gu
+from cgpm.utils import validation as vu
 
 
 def test_naive_bayes():

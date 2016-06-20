@@ -19,8 +19,8 @@ import sys
 
 import numpy as np
 
-from gpmcc.crosscat.state import State
-from gpmcc.utils import sampling as su
+from cgpm.crosscat.state import State
+from cgpm.utils import sampling as su
 
 _all_kernels = ['column_hypers','view_alphas','row_z','state_alpha','column_z']
 

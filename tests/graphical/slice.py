@@ -21,8 +21,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import trapz
 
-from gpmcc.utils import general as gu
-from gpmcc.utils import sampling as su
+from cgpm.utils import general as gu
+from cgpm.utils import sampling as su
 
 
 def main(num_samples, burn, lag, w):

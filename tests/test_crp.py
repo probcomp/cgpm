@@ -20,8 +20,8 @@ import pytest
 
 import numpy as np
 
-from gpmcc.exponentials.crp import Crp
-from gpmcc.utils import general as gu
+from cgpm.exponentials.crp import Crp
+from cgpm.utils import general as gu
 
 
 def simulate_crp_gpm(N, alpha, rng):

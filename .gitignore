@@ -70,7 +70,6 @@ docs/_build/
 *.pdf
 
 # specific directories
-src/utils/xy_gpm/images
 examples/malawi/resources/
 examples/satellites/splits/
 examples/swallows/resources/
@@ -78,7 +77,7 @@ examples/swallows/splits/
 examples/swallows/univariate.py
 experiments/resources/
 experiments/*/resources/
-gpmcc
+cgpm
 src/debug
 notes/gpm/vs/vsgpm.pdf
 
