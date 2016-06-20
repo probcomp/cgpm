@@ -33,7 +33,6 @@ import gpmcc.utils.validation as vu
 from gpmcc.cgpm import CGpm
 from gpmcc.mixtures.dim import Dim
 from gpmcc.mixtures.view import View
-from gpmcc.utils.general import logmeanexp
 
 from gpmcc.network.importance import ImportanceNetwork
 
@@ -531,9 +530,8 @@ class State(CGpm):
         return self.crp.hypers['alpha']
 
     def Nv(self, v=None):
-        if v is not None:
-            return self.crp.clusters[0].counts[v]
-        return {v: self.Nv(v) for v in self.views}
+        Nv = self.crp.clusters[0].counts
+        return Nv[v] if v is not None else Nv
 
     def Zv(self, c=None):
         Zv = self.crp.clusters[0].data
