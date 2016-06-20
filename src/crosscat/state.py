@@ -193,7 +193,7 @@ class State(CGpm):
 
     def incorporate(self, rowid, query, evidence=None):
         # XXX Only allow new rows for now.
-        if not self.hypothetical(rowid):
+        if not self._is_hypothetical(rowid):
             raise ValueError('Cannot incorporate non-hypothetical: %d' % rowid)
         if evidence:
             raise ValueError('Cannot incoroprate with evidence: %s' % evidence)
@@ -208,7 +208,7 @@ class State(CGpm):
         for c in self.outputs:
                 self.X[c].append(query.get(c, float('nan')))
         # Pick a fresh rowid.
-        if self.hypothetical(rowid):
+        if self._is_hypothetical(rowid):
             rowid = self.n_rows()-1
         # Tell the views.
         for v in self.views:
@@ -264,7 +264,7 @@ class State(CGpm):
         assert isinstance(query, dict)
         assert isinstance(evidence, dict)
         vu.validate_query_evidence(
-            self.X, rowid, self.hypothetical(rowid),
+            self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network()
@@ -278,7 +278,7 @@ class State(CGpm):
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
         vu.validate_query_evidence(
-            self.X, rowid, self.hypothetical(rowid),
+            self.X, rowid, self._is_hypothetical(rowid),
             query, evidence=evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network()
@@ -294,7 +294,7 @@ class State(CGpm):
     def _populate_evidence(self, rowid, query, evidence):
         """Loads evidence for a query from the dataset."""
         if evidence is None: evidence = {}
-        if self.hypothetical(rowid): return evidence
+        if self._is_hypothetical(rowid): return evidence
         data = {c: self.X[c][rowid] for c in self.outputs
             if c not in evidence and c not in query
             and not isnan(self.X[c][rowid])}
@@ -648,7 +648,7 @@ class State(CGpm):
         assert len(view.dims) == 0
         self.views[identity] = view
 
-    def hypothetical(self, rowid):
+    def _is_hypothetical(self, rowid):
         return not 0 <= rowid < self.n_rows()
 
     # --------------------------------------------------------------------------

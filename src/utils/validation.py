@@ -117,11 +117,10 @@ def validate_query_evidence(X, rowid, hypothetical, query, evidence=None):
     # Disallow evidence overriding non-nan cells.
     if not hypothetical and any(not np.isnan(X[e][rowid]) for e in evidence):
         raise ValueError('Cannot evidence a non-nan observed cell.')
-    # XXX DETERMINE ME!
     # Disallow query of observed cell. It is already observed so Dirac.
-    # if (not hypothetical
-    #         and not simulate and any(not np.isnan(X[q][rowid]) for q in query)):
-    #     raise ValueError('Cannot query a non-nan observed cell.')
+    if (not hypothetical
+            and not simulate and any(not np.isnan(X[q][rowid]) for q in query)):
+        raise ValueError('Cannot query a non-nan observed cell.')
 
 def partition_query_evidence(Z, query, evidence):
     """Returns queries[k], evidences[k] are queries, evidences for cluster k."""
