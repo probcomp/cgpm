@@ -39,6 +39,8 @@ class ImportanceNetwork(object):
         samples, weights = zip(*
             [self.weighted_sample(rowid, query, evidence)
             for i in xrange(self.accuracy)])
+        if all(isinf(l) for l in weights):
+            raise ValueError('Zero density evidence: %s' % (evidence))
         index = gu.log_pflip(weights, rng=self.rng)
         return {q: samples[index][q] for q in query}
 
@@ -53,7 +55,8 @@ class ImportanceNetwork(object):
         samples_marginal, weights_marginal = zip(*
             [self.weighted_sample(rowid, [], evidence)
             for i in xrange(self.accuracy)]) if evidence else ({}, [0.])
-        assert not all(isinf(l) for l in weights_marginal)
+        if all(isinf(l) for l in weights_marginal):
+            raise ValueError('Zero density evidence: %s' % (evidence))
         logp_evidence = gu.logmeanexp(weights_marginal)
         # Return log ratio.
         return logp_joint - logp_evidence

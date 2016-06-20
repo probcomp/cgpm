@@ -124,7 +124,7 @@ def test_logpdf_bulk__ci_(engine):
 def test_simulate_bulk__ci_(engine):
     engine = Engine.from_metadata(engine)
     rowid1, query1, evidence1, N1, = -1, [0,2,4,5], {3:1}, 7
-    rowid2, query2, evidence2, N2 = 5, [1,3], {2:.8}, 3
+    rowid2, query2, evidence2, N2 = 5, [1,3], {2:1}, 3
     rowid3, query3, evidence3, N3 = 8, [0], {4:.8}, 3
     # Bulk.
     rowids = [rowid1, rowid2, rowid3]
