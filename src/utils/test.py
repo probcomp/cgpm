@@ -20,9 +20,8 @@ import numpy as np
 
 from scipy.stats import norm
 
-import gpmcc.utils.general as gu
-
 from gpmcc.mixtures.dim import Dim
+from gpmcc.utils import general as gu
 
 
 def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,

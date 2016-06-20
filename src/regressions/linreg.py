@@ -22,11 +22,10 @@ import numpy as np
 from scipy.special import gammaln
 from scipy.stats import invgamma
 
-import gpmcc.utils.config as cu
-import gpmcc.utils.data as du
-import gpmcc.utils.general as gu
-
 from gpmcc.cgpm import CGpm
+from gpmcc.utils import config as cu
+from gpmcc.utils import data as du
+from gpmcc.utils import general as gu
 
 
 Data = namedtuple('Data', ['x', 'Y'])

@@ -16,8 +16,8 @@
 
 from math import isinf
 
-import gpmcc.network.helpers as hu
-import gpmcc.utils.general as gu
+from gpmcc.network import helpers as hu
+from gpmcc.utils import general as gu
 
 
 class ImportanceNetwork(object):

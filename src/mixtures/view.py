@@ -20,14 +20,12 @@ from math import isnan
 
 import numpy as np
 
-import gpmcc.utils.general as gu
-
 from gpmcc.cgpm import CGpm
 from gpmcc.mixtures.dim import Dim
+from gpmcc.network.importance import ImportanceNetwork
+from gpmcc.utils import general as gu
 from gpmcc.utils.config import cctype_class
 from gpmcc.utils.general import merged
-
-from gpmcc.network.importance import ImportanceNetwork
 
 
 class View(CGpm):
