@@ -108,10 +108,10 @@ class Engine(object):
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def logpdf(self, rowid, query, evidence=None, multithread=1):
+    def logpdf(self, rowid, query, evidence=None, accuracy=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('logpdf', self.states[i],
-                (rowid, query, evidence))
+                (rowid, query, evidence, accuracy))
             for i in xrange(self.num_states())]
         logpdfs = mapper(_evaluate, args)
         self._close_mapper(pool)
@@ -135,10 +135,11 @@ class Engine(object):
         self._close_mapper(pool)
         return logpdf_scores
 
-    def simulate(self, rowid, query, evidence=None, N=None, multithread=1):
+    def simulate(self, rowid, query, evidence=None, N=None, accuracy=None,
+            multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('simulate', self.states[i],
-                (rowid, query, evidence, N))
+                (rowid, query, evidence, N, accuracy))
                 for i in xrange(self.num_states())]
         samples = mapper(_evaluate, args)
         self._close_mapper(pool)
