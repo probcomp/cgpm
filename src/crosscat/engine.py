@@ -20,8 +20,6 @@ import pickle
 
 import numpy as np
 
-from scipy.misc import logsumexp
-
 from gpmcc.crosscat.state import State
 from gpmcc.utils import general as gu
 
@@ -268,7 +266,7 @@ class Engine(object):
         assert len(logpdfs) == len(self.states)
         weights = np.zeros(len(logpdfs)) if not evidence else\
             self.logpdf(rowid, evidence, evidence=None, multithread=multithread)
-        return logsumexp(logpdfs + weights) - logsumexp(weights)
+        return gu.logsumexp(logpdfs + weights) - gu.logsumexp(weights)
 
     def _process_samples(self, samples, rowid, evidence=None, multithread=1):
         assert len(samples) == len(self.states)

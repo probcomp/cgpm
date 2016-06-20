@@ -14,14 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 
 import numpy as np
 
-from scipy.misc import logsumexp
-
 from gpmcc.crosscat.engine import Engine
-from gpmcc.utils.general import gen_rng
+from gpmcc.utils import general as gu
 
 
 DATA_NUM_0 = 100
@@ -40,7 +37,7 @@ def test_bernoulli():
     # Run a single chain for a few iterations.
     engine = Engine(
         data, cctypes=['categorical'], distargs=[{'k': 2}],
-        rng=gen_rng(0), multithread=0)
+        rng=gu.gen_rng(0), multithread=0)
     engine.transition(NUM_ITER, multithread=multithread)
 
     # Simulate from hypothetical row and compute the proportion of ones.
@@ -55,12 +52,12 @@ def test_bernoulli():
     sample = engine.simulate(1, [0], N=1, multithread=multithread)
 
     # Ensure normalized unobserved probabilities.
-    p0_uob = engine.logpdf(-1, {0:0}, multithread=multithread)
-    p1_uob = engine.logpdf(-1, {0:1}, multithread=multithread)
-    assert np.allclose(logsumexp([p0_uob, p1_uob]), 0)
+    p0_uob = engine.logpdf(-1, {0:0}, multithread=multithread)[0]
+    p1_uob = engine.logpdf(-1, {0:1}, multithread=multithread)[0]
+    assert np.allclose(gu.logsumexp([p0_uob, p1_uob]), 0)
 
     # Ensure normalized observed probabilities.
     # XXX DETERMINE ME
-    p0_obs = engine.logpdf(1, {0:0}, multithread=multithread)
-    p1_obs = engine.logpdf(1, {0:1}, multithread=multithread)
-    assert np.allclose(logsumexp([p0_obs, p1_obs]), 0)
+    p0_obs = engine.logpdf(1, {0:0}, multithread=multithread)[0]
+    p1_obs = engine.logpdf(1, {0:1}, multithread=multithread)[0]
+    assert np.allclose(gu.logsumexp([p0_obs, p1_obs]), 0)

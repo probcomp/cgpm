@@ -19,7 +19,6 @@ from collections import namedtuple
 
 import numpy as np
 
-from scipy.misc import logsumexp
 from sklearn.ensemble import RandomForestClassifier
 
 from gpmcc.cgpm import CGpm
@@ -202,6 +201,6 @@ class RandomForest(CGpm):
         else:
             index = list(regressor.classes_).index(x)
             logp_rf = regressor.predict_log_proba([y])[0][index]
-            return logsumexp([
+            return gu.logsumexp([
                 np.log(alpha) + logp_uniform,
                 np.log(1-alpha) + logp_rf])

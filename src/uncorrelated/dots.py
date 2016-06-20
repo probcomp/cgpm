@@ -16,10 +16,10 @@
 
 import numpy as np
 
-from scipy.misc import logsumexp
 from scipy.stats import norm
 
 from gpmcc.uncorrelated.undirected import UnDirectedXyGpm
+from gpmcc.utils import general as gu
 
 
 class Dots(UnDirectedXyGpm):
@@ -38,13 +38,13 @@ class Dots(UnDirectedXyGpm):
         return self.simulate_joint()[0]
 
     def logpdf_joint(self, x, y):
-        return logsumexp([np.log(.25)
+        return gu.logsumexp([np.log(.25)
                 + norm.logpdf(x, loc=mx, scale=self.noise)
                 + norm.logpdf(y, loc=my, scale=self.noise)
             for (mx,my) in zip(self.mx, self.my)])
 
     def logpdf_marginal(self, z):
-        return logsumexp(
+        return gu.logsumexp(
             [np.log(.5) + norm.logpdf(z, loc=mx, scale=self.noise)
             for mx in set(self.mx)])
 

@@ -21,7 +21,6 @@ from math import log
 
 import numpy as np
 
-from scipy.misc import logsumexp
 from scipy.special import gammaln
 from scipy.special import i0 as bessel_0
 
@@ -57,7 +56,7 @@ def log_bessel_0(x):
 
 def log_normalize(logp):
     """Normalizes a np array of log probabilites."""
-    return logp - logsumexp(logp)
+    return np.subtract(logp, logsumexp(logp))
 
 def normalize(p):
     """Normalizes a np array of probabilites."""
@@ -116,12 +115,47 @@ def pflip(p, array=None, size=None, rng=None):
         warnings.warn('pflip probability vector sums to %f.' % sum(p))
     return rng.choice(array, size=size, p=p)
 
-def logmeanexp(array):
-    """log of arithmetic mean of exp(array)."""
+def logsumexp(array):
     if len(array) == 0:
-        return -float('inf')
-    noninfs = [a for a in array if not a == -float('inf')]
-    return logsumexp(noninfs) - log(len(array))
+        return float('-inf')
+    m = max(array)
+
+    # m = +inf means addends are all +inf, hence so are sum and log.
+    # m = -inf means addends are all zero, hence so is sum, and log is
+    # -inf.  But if +inf and -inf are among the inputs, or if input is
+    # NaN, let the usual computation yield a NaN.
+    if math.isinf(m) and min(array) != -m and \
+       all(not math.isnan(a) for a in array):
+        return m
+
+    # Since m = max{a_0, a_1, ...}, it follows that a <= m for all a,
+    # so a - m <= 0; hence exp(a - m) is guaranteed not to overflow.
+    return m + math.log(sum(math.exp(a - m) for a in array))
+
+def logmeanexp(array):
+    inf = float('inf')
+    if len(array) == 0:
+        # logsumexp will DTRT, but math.log(len(array)) will fail.
+        return -inf
+
+    # Treat -inf values as log 0 -- they contribute zero to the sum in
+    # logsumexp, but one to the count.
+    #
+    # If we pass -inf values through to logsumexp, and there are also
+    # +inf values, then we get NaN -- but if we had averaged exp(-inf)
+    # = 0 and exp(+inf) = +inf, we would sensibly get +inf, whose log
+    # is still +inf, not NaN.  So strip -inf values first.
+    #
+    # Can't say `a > -inf' because that excludes NaNs, but we want to
+    # include them so they propagate.
+    noninfs = [a for a in array if not a == -inf]
+
+    # probs = map(exp, logprobs)
+    # log(mean(probs)) = log(sum(probs) / len(probs))
+    #   = log(sum(probs)) - log(len(probs))
+    #   = log(sum(map(exp, logprobs))) - log(len(logprobs))
+    #   = logsumexp(logprobs) - log(len(logprobs))
+    return logsumexp(noninfs) - math.log(len(array))
 
 def log_linspace(a, b, n):
     """linspace from a to b with n entries over log scale."""
