@@ -18,7 +18,7 @@ root=`cd -- "$(dirname -- "$0")" && pwd`
         # their names.  (git grep __ci_ to find these.)
         ./pythenv.sh "$PYTHON" -m pytest -k "not __ci_" tests
     elif [ "docker" = "$1" ]; then
-        docker build -t gpmcc .  # Runs check.sh inside the docker.
+        docker build -t cgpm .  # Runs check.sh inside the docker.
     else
         # If args are specified, run all tests, including continuous
         # integration tests, for the selected components.
