@@ -60,7 +60,7 @@ def test_bernoulli():
     assert np.allclose(logsumexp([p0_uob, p1_uob]), 0)
 
     # Ensure normalized observed probabilities.
-    # XXX These are disabled since cell 1 is not nan.
-    # p0_obs = engine.logpdf(1, {0:0}, multithread=multithread)
-    # p1_obs = engine.logpdf(1, {0:1}, multithread=multithread)
-    # assert np.allclose(logsumexp([p0_obs, p1_obs]), 0)
+    # XXX DETERMINE ME
+    p0_obs = engine.logpdf(1, {0:0}, multithread=multithread)
+    p1_obs = engine.logpdf(1, {0:1}, multithread=multithread)
+    assert np.allclose(logsumexp([p0_obs, p1_obs]), 0)
