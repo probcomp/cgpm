@@ -20,8 +20,6 @@ from math import isnan
 
 import numpy as np
 
-from scipy.misc import logsumexp
-
 import gpmcc.utils.general as gu
 
 from gpmcc.cgpm import CGpm
@@ -247,7 +245,7 @@ class View(CGpm):
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         lp_evidence = gu.log_normalize(lp_evidence_unorm)
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
-        return logsumexp(np.add(lp_evidence, lp_query))
+        return gu.logsumexp(np.add(lp_evidence, lp_query))
 
     # --------------------------------------------------------------------------
     # simulate

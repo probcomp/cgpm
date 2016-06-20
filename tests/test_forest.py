@@ -20,8 +20,6 @@ from math import log
 
 import numpy as np
 
-from scipy.misc import logsumexp
-
 from gpmcc.mixtures.dim import Dim
 from gpmcc.regressions.forest import RandomForest
 from gpmcc.utils import config as cu
@@ -112,7 +110,7 @@ def test_logpdf_normalized():
             evidence = {i: row[i] for i in forest.inputs}
             queries =[{0: x} for x in xrange(NUM_CLASSES)]
             lps = [forest.logpdf(rowid, q, evidence) for q in queries]
-            assert np.allclose(logsumexp(lps), 0)
+            assert np.allclose(gu.logsumexp(lps), 0)
 
     forest = train_on([])
     test_on(forest, [])

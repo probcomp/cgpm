@@ -16,10 +16,10 @@
 
 import numpy as np
 
-from scipy.misc import logsumexp
 from scipy.stats import multivariate_normal
 
 from gpmcc.uncorrelated.undirected import UnDirectedXyGpm
+from gpmcc.utils import general as gu
 
 
 class XCross(UnDirectedXyGpm):
@@ -33,7 +33,7 @@ class XCross(UnDirectedXyGpm):
         return self.rng.multivariate_normal([0,0], cov=cov)
 
     def logpdf_joint(self, x, y):
-        return logsumexp([
+        return gu.logsumexp([
             np.log(.5)+multivariate_normal.logpdf([x,y], [0,0],
                 cov=[[1,1-self.noise],[1-self.noise,1]]),
             np.log(.5)+multivariate_normal.logpdf([x,y], [0,0],
