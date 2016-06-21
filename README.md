@@ -20,9 +20,9 @@ pip install .
 
 The simplest example is creating a synthetic dataset where each variable is a
 mixture of one of the available DistributionGpms. Inference is run using
-`gpmcc`, an implementation of
+[gpmcc](src/crosscat), an extended implementation of
 [crosscat](http://probcomp.csail.mit.edu/crosscat/) from the lens of
-compositions of conditional generative population models (see `src/crosscat/`).
+compositions of conditional generative population models.
 
 ```
 $ python -i examples/one_view.py
@@ -54,15 +54,18 @@ Observation 8.000000: 0.209677
 [-8.0740236375201153]
 ```
 
-means the eigth observation is 0.209677, and the estimated marginal
+means the eighth observation is 0.209677, and the estimated marginal
 log-liklelihood is -8.0740236375201153.
 
 ## Tests
 
-Running check.sh will run the tests that are considered complete and
-stable. There are more tests in the tests/ directory, but those that
-do not start with ```test_``` or do start with ```disabled_``` are not
-considered ready.
+Running `./check.sh` will run a subset of the tests that are considered complete
+and stable. To launch the full test suite, including continuous integration
+tests, run `py.test` in the root directory. There are more tests in the `tests/`
+directory, but those that do not start with `test_` or do start with `disabled_`
+are not considered ready. The tip of every branch merged into master __must__
+pass `./check.sh`, and be consistent with the code conventions outlined in
+HACKING.
 
 ## License
 
