@@ -1,0 +1,52 @@
+; Kepler's law.
+(assume keplers_law
+  (lambda (apogee perigee)
+    (let ((GM 398600.4418) (earth_radius 6378)
+          (a (+ (* .5 (+ (abs apogee) (abs perigee))) earth_radius)))
+      (/ (* (* 2 3.1415) (sqrt (/ (pow a 3) GM))) 60))))
+
+
+; Internal samplers.
+(assume crp_alpha .5)
+
+(assume get_cluster_sampler
+    (make_crp crp_alpha))
+
+(assume get_error_sampler
+    (mem (lambda (cluster)
+        (make_nig_normal 1 1 1 1))))
+
+; Output simulators.
+(assume simulate_cluster_id
+  (mem (lambda (rowid apogee perigee)
+    (tag (atom rowid) (atom 1)
+      (get_cluster_sampler)))))
+
+(assume simulate_error
+  (mem (lambda (rowid apogee perigee)
+      (let ((cluster_id (simulate_cluster_id rowid apogee perigee)))
+        (tag (atom rowid) (atom 2)
+          ((get_error_sampler cluster_id)))))))
+
+(assume simulate_period
+  (mem (lambda (rowid apogee perigee)
+    (+ (keplers_law apogee perigee)
+       (simulate_error rowid apogee perigee)))))
+
+
+; Custom output observers.
+[define observe_period
+  (lambda (token rowid apogee perigee period)
+    (let ((theoretical_period (run (sample (keplers_law ,apogee ,perigee))))
+          (error (- period theoretical_period)))
+      (observe (simulate_error ,rowid ,apogee ,perigee) error ,token)))]
+
+; Simulators.
+(assume simulators (list simulate_period
+                         simulate_cluster_id
+                         simulate_error))
+
+; Overriden observers.
+[define observers (list observe_period
+                        nil
+                        nil)]
