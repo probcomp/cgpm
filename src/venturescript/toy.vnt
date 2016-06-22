@@ -50,3 +50,7 @@
 [define observers (list observe_period
                         nil
                         nil)]
+
+; Required inputs.
+[define inputs (list 'apogee
+                     'perigee)]
