@@ -14,11 +14,16 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import math
+
+from collections import defaultdict
+
+import venture.lite.types as vt
 import venture.shortcuts as vs
 import venture.value.dicts as vd
-import venture.lite.types as vt
 
 from cgpm.cgpm import CGpm
+from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 
 
@@ -27,6 +32,7 @@ class VsCGpm(CGpm):
     def __init__(self, outputs, inputs, ripl=None, source=None, rng=None):
         # Set the rng.
         self.rng = rng if rng is not None else gu.gen_rng(1)
+        seed = self.rng.randint(1, 2**31 - 1)
 
         # Basic input and output checking.
         assert len(set(outputs)) == len(outputs)
@@ -35,7 +41,7 @@ class VsCGpm(CGpm):
         assert all(i not in outputs for i in inputs)
 
         # Retrieve the ripl.
-        self.ripl = ripl if ripl is not None else vs.make_lite_ripl()
+        self.ripl = ripl if ripl is not None else vs.make_lite_ripl(seed=seed)
         self.ripl.set_mode('church_prime')
 
         # Execute the program.
@@ -52,17 +58,25 @@ class VsCGpm(CGpm):
 
         # Check overriden observers.
         assert len(self.outputs) == self.ripl.evaluate('(size observers)')
-        def check_observer_override(o):
-            null = self.ripl.evaluate('(= (lookup observers %s) nil)' % o)
-            return not null
-        self.observers = {o for o in xrange(len(self.outputs))
-            if check_observer_override(o)}
 
         # Labels for incorporate/unincorporate.
-        self.observation_labels = dict()
+        self.labels = defaultdict(dict)
 
     def incorporate(self, rowid, query, evidence=None):
-        raise NotImplementedError
+        # Some validation.
+        if evidence is None: evidence = {}
+        assert set(evidence.keys()) == set(self.inputs)
+        assert not any(math.isnan(evidence[i]) for i in evidence)
+        assert not any(math.isnan(query[i]) for i in query)
+
+        inputs = [evidence[i] for i in self.inputs]
+
+        for q, value in query.iteritems():
+            label = '\'t'+cu.timestamp().replace('-','')
+            args = str.join(' ', map(str, [rowid] + inputs + [value, label]))
+            i = self.outputs.index(q)
+            self.ripl.evaluate('((lookup observers %i) %s)' % (i, args))
+            self.labels[rowid][q] = label
 
     def unincorporate(self, rowid):
         raise NotImplementedError
