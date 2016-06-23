@@ -27,11 +27,11 @@ class CGpm(object):
         Parameters
         ----------
         outputs : list<int>
-            List of variables whose joint distribution is modeled by the GPM.
+            List of variables whose joint distribution is modeled by the CGpm.
         inputs : list<int>, optional
             List of variables that must accompany any observation or query.
         schema : **kwargs
-            An opaque binary parsed by the GPM to initialize itself.
+            An opaque binary parsed by the CGpm to initialize itself.
             Often contains information about hyperparameters, parameters,
             sufficient statistics, configuration settings,
             or metadata about the input variables.
@@ -93,9 +93,18 @@ class CGpm(object):
         raise NotImplementedError
 
     def transition(self, **kwargs):
-        """Apply an inference operator transitioning the internal state of GPM.
+        """Apply an inference operator transitioning the internal state of CGpm.
 
         program : keyword arguments
-            Opaque binary parsed by the GPM to apply inference over its latents.
+            Opaque binary parsed by the CGpm to apply inference over latents.
         """
+        raise NotImplementedError
+
+    def to_metadata(self):
+        """Return the binary representation of the CGpm."""
+        raise NotImplementedError
+
+    @staticmethod
+    def from_metadata(cls, self):
+        """Load CGpm from its binary representation."""
         raise NotImplementedError
