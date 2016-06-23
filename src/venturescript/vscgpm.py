@@ -18,9 +18,7 @@ import math
 
 from collections import defaultdict
 
-import venture.lite.types as vt
 import venture.shortcuts as vs
-import venture.value.dicts as vd
 
 from cgpm.cgpm import CGpm
 from cgpm.utils import config as cu
@@ -28,40 +26,33 @@ from cgpm.utils import general as gu
 
 
 class VsCGpm(CGpm):
+    """CGpm specified by a Venturescript program."""
 
     def __init__(self, outputs, inputs, ripl=None, source=None, rng=None):
         # Set the rng.
         self.rng = rng if rng is not None else gu.gen_rng(1)
         seed = self.rng.randint(1, 2**31 - 1)
-
         # Basic input and output checking.
         assert len(set(outputs)) == len(outputs)
         assert len(set(inputs)) == len(inputs)
         assert all(o not in inputs for o in outputs)
         assert all(i not in outputs for i in inputs)
-
         # Retrieve the ripl.
         self.ripl = ripl if ripl is not None else vs.make_lite_ripl(seed=seed)
         self.ripl.set_mode('church_prime')
-
         # Execute the program.
         if source is not None:
             self.ripl.execute_program_from_file(source)
-
         # Check correct outputs.
         assert len(outputs) == len(self.ripl.sample('simulators'))
         self.outputs = outputs
-
         # Check correct inputs.
         assert len(inputs) == self.ripl.evaluate('(size inputs)')
         self.inputs = inputs
-
         # Check overriden observers.
         assert len(self.outputs) == self.ripl.evaluate('(size observers)')
-
         # Evidence and labels for incorporate/unincorporate.
         self.obs = defaultdict(lambda: defaultdict(dict))
-
 
     def incorporate(self, rowid, query, evidence=None):
         evidence = self._validate_incorporate(rowid, query, evidence)
@@ -80,7 +71,23 @@ class VsCGpm(CGpm):
         raise NotImplementedError
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        pass
+        ev_in, ev_out = self._validate_simulate(rowid, query, evidence)
+        # Observe output variables in evidence.
+        for q,v in ev_out.iteritems():
+            self._observe_cell(rowid, q, v, ev_in)
+        # Run local inference in rowid scope, with 15 steps of MH.
+        if ev_out:
+            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
+        # Retrieve samples, with 5 steps of MH between predict.
+        def retrieve_sample(q):
+            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
+            return self._simulate_cell(rowid, q, ev_in, predict=True)
+        samples = {q: retrieve_sample(q)
+            for q in sorted(query, key=lambda q: self.outputs.index(q))}
+        # Forget output variables in evidence.
+        for q,v in ev_out.iteritems():
+            self._forget_cell(rowid, q)
+        return samples
 
     def logpdf_score(self):
         raise NotImplementedError
@@ -94,8 +101,14 @@ class VsCGpm(CGpm):
     # --------------------------------------------------------------------------
     # Internal helpers.
 
-    def _observe_cell(self, rowid, query, value, evidence=None):
-        if evidence is None: evidence = {}
+    def _simulate_cell(self, rowid, query, evidence, predict=None):
+        simulator = self.ripl.predict if predict else self.ripl.sample
+        inputs = [evidence[i] for i in self.inputs]
+        args = str.join(' ', map(str, [rowid] + inputs))
+        i = self.outputs.index(query)
+        return simulator('((lookup simulators %i) %s)' % (i, args))
+
+    def _observe_cell(self, rowid, query, value, evidence):
         inputs = [evidence[i] for i in self.inputs]
         label = '\'t'+cu.timestamp().replace('-','')
         args = str.join(' ', map(str, [rowid] + inputs + [value, label]))
@@ -112,10 +125,10 @@ class VsCGpm(CGpm):
     def _validate_incorporate(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
         # All evidence present, and no nan values.
-        if set(evidence) != set(self.inputs):
+        if rowid not in self.obs and set(evidence) != set(self.inputs):
             raise ValueError('Miss evidence: %s, %s' % (evidence, self.inputs))
         if not set.issubset(set(query), set(self.outputs)):
-            raise ValueError('Miss query: %s,%s' % (query, self.outputs))
+            raise ValueError('Unknown query: %s,%s' % (query, self.outputs))
         if any(math.isnan(evidence[i]) for i in evidence):
             raise ValueError('Nan evidence: %s' % evidence)
         if any(math.isnan(query[i]) for i in query):
@@ -133,8 +146,8 @@ class VsCGpm(CGpm):
         if evidence is None: evidence = {}
         if any(math.isnan(evidence[i]) for i in evidence):
             raise ValueError('Nan evidence: %s' % evidence)
-        if any(i in self.inputs or i in self.outputs for i in evidence):
-            raise ValueError('Unknown variables: %s' % evidence)
+        if not all(i in self.inputs or i in self.outputs for i in evidence):
+            raise ValueError('Unknown evidence: %s' % evidence)
         ev_in = {q:v for q,v in evidence.iteritems() if q in self.inputs}
         ev_out = {q:v for q,v in evidence.iteritems() if q in self.outputs}
         if rowid in self.obs:
@@ -149,5 +162,6 @@ class VsCGpm(CGpm):
 
     def _check_matched_evidence(self, rowid, evidence):
         if evidence != self.obs[rowid]['evidence']:
-            raise ValueError('Unmatched evidence: %d, %s, %s' %
+            raise ValueError(
+                'Given evidence contradicts dataset: %d, %s, %s' %
                 (rowid, evidence, self.obs[rowid]['evidence']))
