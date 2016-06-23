@@ -37,7 +37,8 @@
 ; Output observers.
 [define observe_cluster_id
   (lambda (rowid apogee perigee value label)
-      (observe (simulate_cluster_id ,rowid ,apogee ,perigee) value ,label))]
+      (observe (simulate_cluster_id ,rowid ,apogee ,perigee)
+               (atom value) ,label))]
 
 [define observe_error
   (lambda (rowid apogee perigee value label)
