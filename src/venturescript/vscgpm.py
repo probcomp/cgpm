@@ -110,7 +110,7 @@ class VsCGpm(CGpm):
 
     def _observe_cell(self, rowid, query, value, evidence):
         inputs = [evidence[i] for i in self.inputs]
-        label = '\'t'+cu.timestamp().replace('-','')
+        label = '\'t'+cu.timestamp().replace('-', str(self.rng.randint(2**30)))
         args = str.join(' ', map(str, [rowid] + inputs + [value, label]))
         i = self.outputs.index(query)
         self.ripl.evaluate('((lookup observers %i) %s)' % (i, args))
