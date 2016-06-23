@@ -51,14 +51,14 @@
       (observe_error rowid apogee perigee error label)))]
 
 ; Simulators.
-(assume simulators (list simulate_period
-                         simulate_cluster_id
-                         simulate_error))
+(assume simulators (list simulate_cluster_id
+                         simulate_error
+                         simulate_period))
 
 ; Overriden observers.
-[define observers (list observe_period
-                        observe_cluster_id
-                        observe_error)]
+[define observers (list observe_cluster_id
+                        observe_error
+                        observe_period)]
 
 ; Required inputs.
 [define inputs (list 'apogee
