@@ -98,6 +98,26 @@ class VsCGpm(CGpm):
             program = '[infer (mh default one %s)]' % steps
         self.ripl.execute_program(program)
 
+    def to_metadata(self):
+        metadata = dict()
+        metadata['outputs'] = self.outputs
+        metadata['inputs'] = self.inputs
+        metadata['obs'] = self.obs
+        metadata['binary'] =  self.ripl.saves()
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        ripl = vs.make_lite_church_prime_ripl()
+        ripl.loads(metadata['binary'])
+        cgpm = VsCGpm(
+            outputs=metadata['outputs'],
+            inputs=metadata['inputs'],
+            ripl=ripl,
+            rng=rng,)
+        cgpm.obs = metadata['obs']
+        return cgpm
+
     # --------------------------------------------------------------------------
     # Internal helpers.
 
