@@ -34,12 +34,20 @@
        (simulate_error rowid apogee perigee)))))
 
 
-; Custom output observers.
+; Output observers.
+[define observe_cluster_id
+  (lambda (rowid apogee perigee value label)
+      (observe (simulate_cluster_id ,rowid ,apogee ,perigee) value ,label))]
+
+[define observe_error
+  (lambda (rowid apogee perigee value label)
+      (observe (simulate_error ,rowid ,apogee ,perigee) value ,label))]
+
 [define observe_period
-  (lambda (token rowid apogee perigee period)
+  (lambda (rowid apogee perigee value label)
     (let ((theoretical_period (run (sample (keplers_law ,apogee ,perigee))))
-          (error (- period theoretical_period)))
-      (observe (simulate_error ,rowid ,apogee ,perigee) error ,token)))]
+          (error (- value theoretical_period)))
+      (observe_error rowid apogee perigee error label)))]
 
 ; Simulators.
 (assume simulators (list simulate_period
@@ -48,8 +56,8 @@
 
 ; Overriden observers.
 [define observers (list observe_period
-                        nil
-                        nil)]
+                        observe_cluster_id
+                        observe_error)]
 
 ; Required inputs.
 [define inputs (list 'apogee
