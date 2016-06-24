@@ -14,14 +14,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import math
 import cPickle
+import importlib
+import math
 
 import numpy as np
 import pandas as pd
 
-from vscgpm import VsCGpm
 from cgpm.utils import config as cu
+from cgpm.venturescript.vscgpm import VsCGpm
 
 
 indices = {
@@ -56,11 +57,11 @@ for rowid, row in satellites.iterrows():
         evidence = {indices['apogee']: A, indices['perigee']: P}
         kepler.incorporate(rowid, query, evidence)
 
-print 'To metadata'
 binary = kepler.to_metadata()
-
-print 'From metadata'
-kepler = VsCGpm.from_metadata(binary)
+modname, attr = binary['factory']
+mod = importlib.import_module(modname)
+builder = getattr(mod, attr)
+kepler = builder.from_metadata(binary)
 
 for rowid, row in satellites.iterrows():
     if rowid > 10: break
