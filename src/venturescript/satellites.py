@@ -52,16 +52,18 @@ for rowid, row in satellites.iterrows():
         query = {indices['period']: T}
         evidence = {indices['apogee']: A, indices['perigee']: P}
         kepler.incorporate(rowid, query, evidence)
-    if rowid > 25:
-        break
 
-for rowid, row in satellites.iterrows():
-    A, P, T = row['Apogee_km'], row['Perigee_km'], row['Period_minutes']
-    if any(math.isnan(v) for v in [A, P, T]):
-        print 'Skipping: %s' % (str((rowid, A, P, T)))
-    else:
-        print 'Checking: %s' % (str((rowid, A, P, T)))
-        sample = kepler.simulate(rowid, [indices['period']])
-        assert np.allclose(sample[indices['period']], T)
-    if rowid > 25:
-        break
+if False:
+    for rowid, row in satellites.iterrows():
+        A, P, T = row['Apogee_km'], row['Perigee_km'], row['Period_minutes']
+        if any(math.isnan(v) for v in [A, P, T]):
+            print 'Skipping: %s' % (str((rowid, A, P, T)))
+        else:
+            print 'Checking: %s' % (str((rowid, A, P, T)))
+            sample = kepler.simulate(rowid, [indices['period']])
+            assert np.allclose(sample[indices['period']], T)
+
+kepler.transition(steps=25000)
+
+clusters = [kepler.simulate(r, [indices['cluster_id'],indices['cluster_id']])
+    for r in kepler.obs.keys()]
