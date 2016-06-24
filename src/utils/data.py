@@ -76,12 +76,14 @@ def parse_schema(schema, dataframe):
     cctypes, distargs = [], []
     valmap = dict()
     columns = []
-    for column, stattype in schema:
+    outputs = []
+    for column, stattype, index in schema:
         if stattype == 'ignore':
             continue
         X = dataframe[column]
         columns.append(column)
         cctypes.append(stattype)
+        outputs.append(index)
         distargs.append(None)
         if stattype in ['bernoulli', 'categorical']:
             mapping = dict()
@@ -105,7 +107,7 @@ def parse_schema(schema, dataframe):
     T = np.asarray(D).T
     assert len(cctypes) == len(distargs) == len(columns)
     assert len(columns)  == T.shape[1]
-    return T, cctypes, distargs, valmap, columns
+    return T, outputs, cctypes, distargs, valmap, columns
 
 def dummy_code(x, discretes):
     """Dummy code a vector of covariates x for ie regression.
