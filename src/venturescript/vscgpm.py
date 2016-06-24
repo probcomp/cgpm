@@ -46,7 +46,7 @@ class VsCGpm(CGpm):
         if self.source is not None:
             self.ripl.execute_program_from_file(self.source)
         if not supress:
-            self.ripl.evaluate('(make_model)')
+            self.ripl.evaluate('(make_cgpm)')
         # Check correct outputs.
         assert len(outputs) == len(self.ripl.sample('simulators'))
         self.outputs = outputs
