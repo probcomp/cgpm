@@ -29,6 +29,7 @@ import numpy as np
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
+from cgpm.network.helpers import retrieve_ancestors
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import general as gu
 from cgpm.utils import plots as pu
@@ -292,8 +293,10 @@ class State(CGpm):
 
     def build_network(self, accuracy=None):
         if accuracy is None: accuracy=1
-        cgpms = [self.views[v] for v in self.views] + self.hooked_cgpms.values()
-        return ImportanceNetwork(cgpms, accuracy=accuracy, rng=self.rng)
+        return ImportanceNetwork(self.build_cgpms(), accuracy, rng=self.rng)
+
+    def build_cgpms(self):
+        return [self.views[v] for v in self.views] + self.hooked_cgpms.values()
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads evidence for a query from the dataset."""
@@ -321,6 +324,26 @@ class State(CGpm):
         assert len(rowids) == len(queries) == len(evidences)
         return [self.logpdf(r, q, e)
             for (r, q, e) in zip(rowids, queries, evidences)]
+
+    # --------------------------------------------------------------------------
+    # Dependence probability.
+
+    def dependence_probability(self, col0, col1):
+        # Both crosscat check views directly.
+        if col0 in self.outputs and col1 in self.outputs:
+            return 1 if self.Zv(col0) == self.Zv(col1) else 0
+        # XXX Assume all outputs of a particular CGPM are dependent.
+        if any(col0 in c.outputs and col1 in c.outputs for c in self.hooked_cgpms):
+            return 1
+        ancestors0 = retrieve_ancestors(self.build_cgpms(), col0)
+        ancestors1 = retrieve_ancestors(self.build_cgpms(), col1)
+        # Direct common ancestor implies dependent.
+        if set.intersection(ancestors0, ancestors1):
+            return 1
+        # Dependent ancestors via crosscat view.
+        cc_ancestors0 = [self.Zv(i) for i in ancestors0 if i in self.outputs]
+        cc_ancestors1 = [self.Zv(i) for i in ancestors1 if i in self.outputs]
+        return 1 if set.intersection(cc_ancestors0, cc_ancestors1) else 0
 
     # --------------------------------------------------------------------------
     # Mutual information
