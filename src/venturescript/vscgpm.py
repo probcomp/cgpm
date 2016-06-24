@@ -164,6 +164,8 @@ class VsCGpm(CGpm):
 
     def _validate_simulate(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
+        if rowid not in self.obs and set(evidence) != set(self.inputs):
+            raise ValueError('Miss evidence: %s, %s' % (evidence, self.inputs))
         if any(math.isnan(evidence[i]) for i in evidence):
             raise ValueError('Nan evidence: %s' % evidence)
         if not all(i in self.inputs or i in self.outputs for i in evidence):
