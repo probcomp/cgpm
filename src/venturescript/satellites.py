@@ -15,11 +15,13 @@
 #   limitations under the License.
 
 import math
+import cPickle
 
 import numpy as np
 import pandas as pd
 
 from vscgpm import VsCGpm
+from cgpm.utils import config as cu
 
 
 indices = {
@@ -30,8 +32,8 @@ indices = {
     'perigee':      4,
     }
 
-satellites = pd.read_csv('../../examples/satellites/satellites.csv')
 
+satellites = pd.read_csv('../../examples/satellites/satellites.csv')
 kepler = VsCGpm(
     outputs=[
         indices['cluster_id'],
@@ -65,5 +67,15 @@ if False:
 
 kepler.transition(steps=25000)
 
-clusters = [kepler.simulate(r, [indices['cluster_id'],indices['cluster_id']])
+clusters = [kepler.simulate(r, [indices['cluster_id']])
     for r in kepler.obs.keys()]
+errors = [kepler.simulate(r, [indices['error']])
+    for r in kepler.obs.keys()]
+X = np.asarray([(a[indices['cluster_id']], b[indices['error']])
+    for a,b in zip(clusters, errors)])
+
+timestamp = cu.timestamp()
+kepler.ripl.save('resources/%s-kepler.ripl' % timestamp)
+cPickle.dump(clusters, file('resources/%s-clusters' % timestamp, 'w'))
+cPickle.dump(errors, file('resources/%s-errors' % timestamp, 'w'))
+np.save(file('resources/%s-clusters_errors' % timestamp, 'w'), X)
