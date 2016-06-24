@@ -56,6 +56,12 @@ def build_cgpms_complex():
         CGpm(outputs=[4, 16], inputs=[5, -12]),]
 
 
+def build_cgpms_fork():
+    return [
+        CGpm(outputs=[0], inputs=[1,2]),
+        CGpm(outputs=[1], inputs=[3]),
+        CGpm(outputs=[2], inputs=[4]),]
+
 
 def test_retrieve_variable_to_cgpm():
     cgpms = [
@@ -222,3 +228,43 @@ def test_validate_cgpms():
         helpers.validate_cgpms([c1, c3])
     with pytest.raises(ValueError):
         helpers.validate_cgpms([c0, c1, c2, c3])
+
+
+def test_retrieve_ancestors():
+    retanc = helpers.retrieve_ancestors
+
+    # No connections.
+    cgpms = build_cgpm_no_connection()
+    assert set(retanc(cgpms, 2)) == set([])
+    assert set(retanc(cgpms, 1)) == set([])
+    assert set(retanc(cgpms, 2)) == set([])
+
+    # V structure.
+    cgpms = build_cgpms_v_structure()
+    assert set(retanc(cgpms, 2)) == set([])
+    assert set(retanc(cgpms, 1)) == set([])
+    assert set(retanc(cgpms, 8)) == set([1,2])
+
+    # Markov chain.
+    cgpms = build_cgpms_markov_chain()
+    assert set(retanc(cgpms, 2)) == set([])
+    assert set(retanc(cgpms, 1)) == set([8,2,5])
+    assert set(retanc(cgpms, 8)) == set([2,5])
+    with pytest.raises(ValueError):
+        retanc(cgpms, 5)
+
+    # Complex.
+    cgpms = build_cgpms_complex()
+    assert set(retanc(cgpms, 2)) == set([-8,4,-12,5,0,-10,-11])
+    assert set(retanc(cgpms, 14)) == set([-8,4,-12,5,0,-10,-11])
+    assert set(retanc(cgpms, 3)) == set([-9,4,-12,5,0,-10,-11])
+    assert set(retanc(cgpms, 15)) == set([-9,4,-12,5,0,-10,-11])
+    assert set(retanc(cgpms, 4)) == set([-12,5,0,-10,-11])
+    assert set(retanc(cgpms, 16)) == set([-12,5,0,-10,-11])
+    assert set(retanc(cgpms, 5)) == set([0,-10,-11])
+    with pytest.raises(ValueError):
+        retanc(cgpms, 0)
+
+    # Two parents
+    cgpms = build_cgpms_fork()
+    assert set(retanc(cgpms, 0)) == set([1,2,3,4])
