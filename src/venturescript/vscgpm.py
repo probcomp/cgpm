@@ -28,7 +28,8 @@ from cgpm.utils import general as gu
 class VsCGpm(CGpm):
     """CGpm specified by a Venturescript program."""
 
-    def __init__(self, outputs, inputs, ripl=None, source=None, rng=None):
+    def __init__(self, outputs, inputs, ripl=None, source=None, supress=None,
+            rng=None):
         # Set the rng.
         self.rng = rng if rng is not None else gu.gen_rng(1)
         seed = self.rng.randint(1, 2**31 - 1)
@@ -41,8 +42,11 @@ class VsCGpm(CGpm):
         self.ripl = ripl if ripl is not None else vs.make_lite_ripl(seed=seed)
         self.ripl.set_mode('church_prime')
         # Execute the program.
-        if source is not None:
-            self.ripl.execute_program_from_file(source)
+        self.source = source
+        if self.source is not None:
+            self.ripl.execute_program_from_file(self.source)
+        if not supress:
+            self.ripl.evaluate('(make_model)')
         # Check correct outputs.
         assert len(outputs) == len(self.ripl.sample('simulators'))
         self.outputs = outputs
@@ -100,6 +104,7 @@ class VsCGpm(CGpm):
 
     def to_metadata(self):
         metadata = dict()
+        metadata['source'] = self.source
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['obs'] = self.obs
@@ -114,6 +119,8 @@ class VsCGpm(CGpm):
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
             ripl=ripl,
+            source=metadata['source'],
+            supress=True,
             rng=rng,)
         cgpm.obs = metadata['obs']
         return cgpm
