@@ -109,9 +109,9 @@ class State(CGpm):
         self.views = OrderedDict()
         for v in set(self.Zv().values()):
             v_outputs = [o for o in self.outputs if self.Zv(o) == v]
-            v_cctypes = [cctypes[c] for c in v_outputs]
-            v_distargs = [distargs[c] for c in v_outputs]
-            v_hypers = [hypers[c] for c in v_outputs]
+            v_cctypes = [cctypes[self.outputs.index(c)] for c in v_outputs]
+            v_distargs = [distargs[self.outputs.index(c)] for c in v_outputs]
+            v_hypers = [hypers[self.outputs.index(c)] for c in v_outputs]
             view = View(
                 self.X, outputs=[10**7+v]+v_outputs, inputs=None, Zr=Zrv[v],
                 alpha=view_alphas[v], cctypes=v_cctypes, distargs=v_distargs,
