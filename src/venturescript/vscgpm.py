@@ -109,6 +109,7 @@ class VsCGpm(CGpm):
         metadata['inputs'] = self.inputs
         metadata['obs'] = self.obs
         metadata['binary'] =  self.ripl.saves()
+        metadata['factory'] = ('cgpm.venturescript.vscgpm', 'VsCGpm')
         return metadata
 
     @classmethod

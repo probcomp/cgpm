@@ -101,7 +101,17 @@ class CGpm(object):
         raise NotImplementedError
 
     def to_metadata(self):
-        """Return the binary representation of the CGpm."""
+        """Return the binary representation of the CGpm.
+
+        The returned B is expected to contain an entry ['factory'] which can
+        be used to deserialize the binary in the following way:
+
+        >> B = C.to_metadata()
+        >> modname, attrname = B['factory']
+        >> mod = importlib.import_module(modname)
+        >> builder = getattr(modname, attrname)
+        >> C = builder.from_metadata(binary)
+        """
         raise NotImplementedError
 
     @staticmethod

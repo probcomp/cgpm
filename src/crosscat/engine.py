@@ -286,6 +286,7 @@ class Engine(object):
         metadata = dict()
         metadata['X'] = self.X.tolist()
         metadata['states'] = self.states
+        metadata['factory'] = ('cgpm.crosscat.engine', 'Engine')
         return metadata
 
     @classmethod

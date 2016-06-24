@@ -16,9 +16,9 @@
 
 """Crash test for serialization of state and engine."""
 
+import importlib
 import json
 import tempfile
-import unittest
 
 import numpy as np
 
@@ -41,10 +41,12 @@ def serialize_generic(Model, additional=None):
     model.transition(N=1)
     # To metadata.
     metadata = model.to_metadata()
-    Model.from_metadata(metadata)
+    modname = importlib.import_module(metadata['factory'][0])
+    builder = getattr(modname, metadata['factory'][1])
+    model = builder.from_metadata(metadata)
     # To JSON.
     json_metadata = json.dumps(model.to_metadata())
-    Model.from_metadata(json.loads(json_metadata))
+    model = builder.from_metadata(json.loads(json_metadata))
     # To pickle.
     with tempfile.NamedTemporaryFile(prefix='gpmcc-serialize') as temp:
         with open(temp.name, 'w') as f:

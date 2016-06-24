@@ -738,6 +738,9 @@ class State(CGpm):
             metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
             metadata['view_alphas'].append((v, view.alpha()))
 
+        # Factory data.
+        metadata['factory'] = ('cgpm.crosscat.state', 'State')
+
         return metadata
 
     def to_pickle(self, fileptr):
