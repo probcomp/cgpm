@@ -60,7 +60,7 @@ schema = [
 
 T, outputs, cctypes, distargs, valmap, columns = du.parse_schema(schema, satellites)
 state = State(T[:10], outputs=outputs, cctypes=cctypes, distargs=distargs)
-state.transition(N=10)
+state.transition(N=1)
 
 kepler = VsCGpm(outputs=[22,23,9], inputs=[7,6], source='toy.vnt')
 
