@@ -46,6 +46,7 @@ kepler = VsCGpm(
 
 
 for rowid, row in satellites.iterrows():
+    if rowid > 10: break
     A, P, T = row['Apogee_km'], row['Perigee_km'], row['Period_minutes']
     if any(math.isnan(v) for v in [A, P, T]):
         print 'Skipping: %s' % (str((rowid, A, P, T)))
@@ -55,17 +56,23 @@ for rowid, row in satellites.iterrows():
         evidence = {indices['apogee']: A, indices['perigee']: P}
         kepler.incorporate(rowid, query, evidence)
 
-if False:
-    for rowid, row in satellites.iterrows():
-        A, P, T = row['Apogee_km'], row['Perigee_km'], row['Period_minutes']
-        if any(math.isnan(v) for v in [A, P, T]):
-            print 'Skipping: %s' % (str((rowid, A, P, T)))
-        else:
-            print 'Checking: %s' % (str((rowid, A, P, T)))
-            sample = kepler.simulate(rowid, [indices['period']])
-            assert np.allclose(sample[indices['period']], T)
+print 'To metadata'
+binary = kepler.to_metadata()
 
-kepler.transition(steps=25000)
+print 'From metadata'
+kepler = VsCGpm.from_metadata(binary)
+
+for rowid, row in satellites.iterrows():
+    if rowid > 10: break
+    A, P, T = row['Apogee_km'], row['Perigee_km'], row['Period_minutes']
+    if any(math.isnan(v) for v in [A, P, T]):
+        print 'Skipping: %s' % (str((rowid, A, P, T)))
+    else:
+        print 'Checking: %s' % (str((rowid, A, P, T)))
+        sample = kepler.simulate(rowid, [indices['period']])
+        assert np.allclose(sample[indices['period']], T)
+
+kepler.transition(steps=25)
 
 clusters = [kepler.simulate(r, [indices['cluster_id']])
     for r in kepler.obs.keys()]
