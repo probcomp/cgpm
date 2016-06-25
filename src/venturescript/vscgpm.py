@@ -17,6 +17,7 @@
 import math
 
 from collections import defaultdict
+from datetime import datetime
 
 import venture.shortcuts as vs
 
@@ -145,7 +146,7 @@ class VsCGpm(CGpm):
 
     def _observe_cell(self, rowid, query, value, evidence):
         inputs = [evidence[i] for i in self.inputs]
-        label = '\'t'+cu.timestamp().replace('-', str(self.rng.randint(2**30)))
+        label = '\''+self._gen_label()
         args = str.join(' ', map(str, [rowid] + inputs + [value, label]))
         i = self.outputs.index(query)
         self.ripl.evaluate('((lookup observers %i) %s)' % (i, args))
@@ -156,6 +157,11 @@ class VsCGpm(CGpm):
         label = self.obs[rowid]['labels'][query]
         self.ripl.forget(label)
         del self.obs[rowid]['labels'][query]
+
+    def _gen_label(self):
+        return 't%s%s' % (
+            self.rng.randint(1,100),
+            datetime.now().strftime('%Y%m%d%H%M%S%f'))
 
     def _validate_incorporate(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
