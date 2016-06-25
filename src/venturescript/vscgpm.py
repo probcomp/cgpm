@@ -44,7 +44,7 @@ class VsCGpm(CGpm):
         # Execute the program.
         self.source = source
         if self.source is not None:
-            self.ripl.execute_program_from_file(self.source)
+            self.ripl.execute_program(self.source)
         if not supress:
             self.ripl.evaluate('(make_cgpm)')
         # Check correct outputs.
@@ -114,7 +114,7 @@ class VsCGpm(CGpm):
 
     @classmethod
     def from_metadata(cls, metadata, rng=None):
-        ripl = vs.make_lite_church_prime_ripl()
+        ripl = vs.make_lite_ripl()
         ripl.loads(metadata['binary'])
         cgpm = VsCGpm(
             outputs=metadata['outputs'],
