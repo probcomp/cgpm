@@ -213,6 +213,12 @@ class View(CGpm):
         for c in cols:
             self.dims[c].transition_hypers()
 
+    def transition_dim_grids(self, cols=None):
+        if cols is None:
+            cols = self.dims.keys()
+        for c in cols:
+            self.dim_for(c).transition_hyper_grids(self.X[c])
+
     def transition_rows(self, rows=None):
         if rows is None:
             rows = self.Zr().keys()
