@@ -71,6 +71,7 @@ setup(
         'cgpm.regressions',
         'cgpm.uncorrelated',
         'cgpm.utils',
+        'cgpm.venturescript',
     ],
     package_dir={
         'cgpm': 'src',
