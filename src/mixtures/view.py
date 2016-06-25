@@ -23,6 +23,7 @@ import numpy as np
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.network.importance import ImportanceNetwork
+from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils.config import cctype_class
 from cgpm.utils.general import merged
@@ -418,6 +419,8 @@ class View(CGpm):
     # Data structure invariants.
 
     def _check_partitions(self):
+        if not cu.check_env_debug():
+            return
         # For debugging only.
         assert self.alpha() > 0.
         # Check that the number of dims actually assigned to the view

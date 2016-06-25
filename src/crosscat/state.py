@@ -31,6 +31,7 @@ from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
 from cgpm.network.helpers import retrieve_ancestors
 from cgpm.network.importance import ImportanceNetwork
+from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import plots as pu
 from cgpm.utils import validation as vu
@@ -682,7 +683,8 @@ class State(CGpm):
     # Data structure invariants.
 
     def _check_partitions(self):
-        # For debugging only.
+        if not cu.check_env_debug():
+            return
         assert self.alpha() > 0.
         assert all(len(self.views[v].dims) == self.crp.clusters[0].counts[v]
                 for v in self.views)
