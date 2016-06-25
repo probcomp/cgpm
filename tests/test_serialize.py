@@ -24,6 +24,7 @@ import numpy as np
 
 from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
+from cgpm.mixtures.view import View
 
 from cgpm.utils import general as gu
 
@@ -69,3 +70,31 @@ def test_engine_serialize():
         s = engine.get_state(0)
         assert 'X' in s.to_metadata()
     serialize_generic(Engine, additional=additional)
+
+def test_view_serialize():
+    data = np.random.normal(size=(100,5))
+    data[:,0] = 0
+    # Run a single chain for a few iterations.
+    outputs = [2,4,6,8,10]
+    X = {c:data[:,i].tolist() for i,c in enumerate(outputs)}
+    model = View(
+        X,
+        cctypes=['bernoulli','normal','normal','normal','normal'],
+        outputs=[1000]+outputs,
+        rng=gu.gen_rng(0))
+    model.transition(N=1)
+    # Pick out some data.
+    # To metadata.
+    metadata = model.to_metadata()
+    modname = importlib.import_module(metadata['factory'][0])
+    builder = getattr(modname, metadata['factory'][1])
+    model2 = builder.from_metadata(metadata)
+    # Pick out some data.
+    assert np.allclose(model.alpha(), model.alpha())
+    assert dict(model2.Zr()) == dict(model.Zr())
+    assert np.allclose(
+        model.logpdf(-1, {0:0, 1:1}, {2:0}),
+        model2.logpdf(-1, {0:0, 1:1}, {2:0}))
+    assert np.allclose(
+        model.logpdf(-1, {0:0, 1:1}),
+        model2.logpdf(-1, {0:0, 1:1}))

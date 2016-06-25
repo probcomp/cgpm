@@ -76,13 +76,20 @@ class View(CGpm):
         if len(outputs) < 1:
             raise ValueError('View needs at least one output.')
         if len(outputs) > 1:
-            assert len(outputs[1:])==len(cctypes)==len(distargs)==len(hypers)
+            if not distargs:
+                distargs = [None]*len(cctypes)
+            if not hypers:
+                hypers = [None]*len(cctypes)
+            assert len(outputs[1:])==len(cctypes)
+            assert len(distargs) == len(cctypes)
+            assert len(hypers) == len(cctypes)
         self.outputs = outputs
 
         # -- Row CRP -----------------------------------------------------------
-        crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp = Dim(
-            [self.outputs[0]], [-1], cctype='crp', hypers=crp_alpha,
+            [self.outputs[0]], [-1],
+            cctype='crp',
+            hypers=None if alpha is None else {'alpha': alpha},
             rng=self.rng)
         self.crp.transition_hyper_grids([1]*self.n_rows())
         if Zr is None:
@@ -444,3 +451,47 @@ class View(CGpm):
                 rowids_nan = np.isnan(
                     [self.X[dim.index][r] for r in rowids if Zr[r]==k])
                 assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
+
+    # --------------------------------------------------------------------------
+    # Metadata
+
+    def to_metadata(self):
+        metadata = dict()
+
+        # Dataset.
+        metadata['X'] = self.X
+        metadata['outputs'] = self.outputs
+
+        # View partition data.
+        rowids = sorted(self.Zr().keys())
+        metadata['Zr'] = [self.Zr(i) for i in rowids]
+        metadata['alpha'] = self.alpha()
+
+        # Column data.
+        metadata['cctypes'] = []
+        metadata['hypers'] = []
+        metadata['distargs'] = []
+        for c in self.outputs[1:]:
+            metadata['cctypes'].append(self.dims[c].cctype)
+            metadata['hypers'].append(self.dims[c].hypers)
+            metadata['distargs'].append(self.dims[c].distargs)
+
+        # Factory data.
+        metadata['factory'] = ('cgpm.mixtures.view', 'View')
+
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None:
+            rng = gu.gen_rng(0)
+        return cls(
+            metadata.get('X'),
+            outputs=metadata.get('outputs', None),
+            inputs=metadata.get('inputs', None),
+            alpha=metadata.get('alpha', None),
+            cctypes=metadata.get('cctypes', None),
+            distargs=metadata.get('distargs', None),
+            hypers=metadata.get('hypers', None),
+            Zr=metadata.get('Zr', None),
+            rng=rng)
