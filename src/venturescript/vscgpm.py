@@ -34,10 +34,14 @@ class VsCGpm(CGpm):
         self.rng = rng if rng is not None else gu.gen_rng(1)
         seed = self.rng.randint(1, 2**31 - 1)
         # Basic input and output checking.
-        assert len(set(outputs)) == len(outputs)
-        assert len(set(inputs)) == len(inputs)
-        assert all(o not in inputs for o in outputs)
-        assert all(i not in outputs for i in inputs)
+        if len(set(outputs)) != len(outputs):
+            raise ValueError('Non unique outputs: %s' % outputs)
+        if len(set(inputs)) != len(inputs):
+            raise ValueError('Non unique inputs: %s' % inputs)
+        if not all(o not in inputs for o in outputs):
+            raise ValueError('Duplicates: %s, %s' % (inputs, outputs))
+        if not all(i not in outputs for i in inputs):
+            raise ValueError('Duplicates: %s, %s' % (inputs, outputs))
         # Retrieve the ripl.
         self.ripl = ripl if ripl is not None else vs.make_lite_ripl(seed=seed)
         self.ripl.set_mode('church_prime')
@@ -48,13 +52,16 @@ class VsCGpm(CGpm):
         if not supress:
             self.ripl.evaluate('(make_cgpm)')
         # Check correct outputs.
-        assert len(outputs) == len(self.ripl.sample('simulators'))
+        if len(outputs) != len(self.ripl.sample('simulators')):
+            raise ValueError('source.simulators list disagrees with outputs.')
         self.outputs = outputs
         # Check correct inputs.
-        assert len(inputs) == self.ripl.evaluate('(size inputs)')
+        if len(inputs) != self.ripl.evaluate('(size inputs)'):
+            raise ValueError('source.inputs list disagrees with inputs.')
         self.inputs = inputs
         # Check overriden observers.
-        assert len(self.outputs) == self.ripl.evaluate('(size observers)')
+        if len(self.outputs) != self.ripl.evaluate('(size observers)'):
+            raise ValueError('source.observers list disagrees with outputs.')
         # Evidence and labels for incorporate/unincorporate.
         self.obs = defaultdict(lambda: defaultdict(dict))
 
