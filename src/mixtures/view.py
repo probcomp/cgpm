@@ -121,8 +121,6 @@ class View(CGpm):
         """Incorporate dim into View. If not reassign, partition should match."""
         dim.inputs[0] = self.outputs[0]
         if reassign:
-            distargs = self._prepare_incorporate(dim.cctype)
-            dim.distargs.update(distargs)
             self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
         self.outputs = self.outputs[:1] + self.dims.keys()
@@ -176,21 +174,19 @@ class View(CGpm):
         if distargs is None:
             distargs = {}
         inputs = []
-        local_distargs = self._prepare_incorporate(cctype)
+        # XXX Horrid hack.
         if cctype_class(cctype).is_conditional():
-            inputs = self._unconditional_dims()
-            # Remove self-refrences when updating unconditional to conditional.
-            if col in inputs:
-                me = inputs.index(col)
-                del local_distargs['cctypes'][me]
-                del local_distargs['ccargs'][me]
-                del inputs[me]
-        inputs = [self.outputs[0]] + inputs
-        distargs.update(local_distargs)
+            if len(self.dims) == 0:
+                raise ValueError('Cannot incorporate single conditional dim.')
+            inputs = filter(
+                lambda d: d != col and not self.dims[d].is_conditional(),
+                sorted(self.dims))
+            distargs['cctypes'] = [self.dims[i].cctype for i in inputs]
+            distargs['ccargs'] = [self.dims[i].get_distargs() for i in inputs]
         D_old = self.dims[col]
         D_new = Dim(
-            outputs=[col], inputs=inputs, cctype=cctype,
-            distargs=distargs, rng=self.rng)
+            outputs=[col], inputs=[self.outputs[0]]+inputs,
+            cctype=cctype, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
 
@@ -392,41 +388,6 @@ class View(CGpm):
                 evidence=self._get_evidence(rowid, dim, k))
         assert merged(dim.Zr, dim.Zi) == self.Zr()
         dim.transition_params()
-
-    def _prepare_incorporate(self, cctype):
-        distargs = {}
-        if cctype_class(cctype).is_conditional():
-            if len(self.dims) == 0:
-                raise ValueError('Cannot incorporate single conditional dim.')
-            distargs['cctypes'] = self._unconditional_cctypes()
-            distargs['ccargs'] = self._unconditional_ccargs()
-        return distargs
-
-    def _conditional_dims(self):
-        """Return conditional dims in sorted order."""
-        return filter(lambda d: self.dims[d].is_conditional(),
-            sorted(self.dims))
-
-    def _unconditional_dims(self):
-        """Return unconditional dims in sorted order."""
-        return filter(lambda d: not self.dims[d].is_conditional(),
-            sorted(self.dims))
-
-    def _unconditional_cctypes(self):
-        dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.cctype for d in dims]
-
-    def _conditional_cctypes(self):
-        dims = [self.dims[i] for i in self._conditional_dims()]
-        return [d.cctype for d in dims]
-
-    def _unconditional_ccargs(self):
-        dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.get_distargs() for d in dims]
-
-    def _conditional_ccargs(self):
-        dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.get_distargs() for d in dims]
 
     # --------------------------------------------------------------------------
     # Data structure invariants.
