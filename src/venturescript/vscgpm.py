@@ -29,8 +29,7 @@ from cgpm.utils import general as gu
 class VsCGpm(CGpm):
     """CGpm specified by a Venturescript program."""
 
-    def __init__(self, outputs, inputs, ripl=None, source=None, supress=None,
-            rng=None):
+    def __init__(self, outputs, inputs, rng=None, **kwargs):
         # Set the rng.
         self.rng = rng if rng is not None else gu.gen_rng(1)
         seed = self.rng.randint(1, 2**31 - 1)
@@ -44,13 +43,14 @@ class VsCGpm(CGpm):
         if not all(i not in outputs for i in inputs):
             raise ValueError('Duplicates: %s, %s' % (inputs, outputs))
         # Retrieve the ripl.
-        self.ripl = ripl if ripl is not None else vs.make_lite_ripl(seed=seed)
+        self.ripl = kwargs.get('ripl', vs.make_lite_ripl(seed=seed))
         self.ripl.set_mode('church_prime')
         # Execute the program.
-        self.source = source
+        self.source = kwargs.get('source', None)
         if self.source is not None:
             self.ripl.execute_program(self.source)
-        if not supress:
+        # Create the CGpm.
+        if not kwargs.get('supress', None):
             self.ripl.evaluate('(make_cgpm)')
         # Check correct outputs.
         if len(outputs) != len(self.ripl.sample('simulators')):
