@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
 import pandas as pd
 
@@ -138,10 +140,11 @@ def dummy_code(x, discretes):
         if float(val) != int(val):
             raise TypeError('Discrete value must be integer: {},{}'.format(x,i))
         k = discretes[i]
-        assert 0 <= val < k
+        if not 0 <= val < k:
+            raise ValueError('Discrete value not in {0..%s}: %d.'% (k-1, val))
         r = [0]*(k-1)
         if val < k-1:
             r[int(val)] = 1
         return r
     xp = [as_code(i, val) for i, val in enumerate(x)]
-    return [v for x in xp for v in x]
+    return list(itertools.chain.from_iterable(xp))
