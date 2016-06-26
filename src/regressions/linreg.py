@@ -55,7 +55,7 @@ class LinearRegression(CGpm):
             *[self._predictor_count(cctype, ccarg)
             for cctype, ccarg in zip(distargs['cctypes'], distargs['ccargs'])])
         self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
-        self.p = sum(p)+1
+        self.p = sum(p)+1   # Plus one for bias term.
         # Dataset.
         self.N = 0
         self.data = Data(x=OrderedDict(), Y=OrderedDict())
@@ -187,10 +187,16 @@ class LinearRegression(CGpm):
 
     @staticmethod
     def _predictor_count(cct, cca):
-        if cu.cctype_class(cct).is_numeric():
+        # XXX Determine statistical types and arguments of inputs.
+        if cct == 'numerical' or cu.cctype_class(cct).is_numeric():
             p, counts = 1, None
-        elif cca is not None and 'k' in cca: # XXX HACK
-            p, counts = cca['k']-1, int(cca['k'])
+        elif cca is not None and 'k' in cca:
+             # In dummy coding, if the category has values {1,...,K} then its
+             # code contains (K-1) entries, where all zeros indicates value K.
+             # However, we are going to treat all zeros indicating the input to
+             # be NaN, so that the code has K entries. This way the queries are
+             # robust to unspecified categorical inputs.
+            p, counts = cca['k'], int(cca['k'])+1
         return int(p), counts
 
     @staticmethod
