@@ -50,12 +50,15 @@ class LinearRegression(CGpm):
         assert len(self.inputs) >= 1
         assert self.outputs[0] not in self.inputs
         assert len(distargs['cctypes']) == len(self.inputs)
-        # Input distargs.
+        # Determine number of covariates (with 1 bias term) and number of
+        # categories for categorical covariates.
         p, counts = zip(
             *[self._predictor_count(cctype, ccarg)
             for cctype, ccarg in zip(distargs['cctypes'], distargs['ccargs'])])
+        self.p = sum(p)+1
         self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
-        self.p = sum(p)+1   # Plus one for bias term.
+        # For numerical covariates, map index in inputs to index in code.
+        self.lookup_numerical_index = self.input_to_code_index()
         # Dataset.
         self.N = 0
         self.data = Data(x=OrderedDict(), Y=OrderedDict())
@@ -166,23 +169,56 @@ class LinearRegression(CGpm):
     # HELPER METHODS #
     ##################
 
+    def input_to_code_index(self):
+        # Convert the index of a numerical variable in self.input to its index
+        # in the dummy code. For instance, if inputs = [1,2,4] and 1 is
+        # categorical with 3 terms, and 2 and 4 are numerical, the code is:
+        # [bias, x1-0, x1-1, x1-3, x1-4, 2, 4]
+        def compute_offset(i):
+            before = [c for c in self.inputs[:i] if c in self.inputs_discrete]
+            offset = sum(self.inputs_discrete[b]-1 for b in before)
+            return 1+offset+i # 1 for the bias term.
+        avoid = [self.inputs[i] for i in self.inputs_discrete]
+        numericals = [c for c,i in enumerate(self.inputs) if i not in avoid]
+        return {c: compute_offset(c) for c in numericals}
+
+
     def preprocess(self, query, evidence):
-        distargs = self.get_distargs()
-        x = query[self.outputs[0]] if query else query
-        y = [evidence[c] for c in self.inputs]
-        inputs_discrete, p = distargs['inputs_discrete'], distargs['p']
-        y = du.dummy_code(y, inputs_discrete)
-        if not set.issubset(set(self.inputs), set(evidence.keys())):
-            raise TypeError(
-                'LinearRegression requires inputs {}: {}'.format(
-                    self.inputs, evidence.keys()))
         if self.outputs[0] in evidence:
-            raise TypeError(
-                'LinearRegression cannot condition on output {}: {}'.format(
+            raise TypeError('Cannot condition on output {}: {}'.format(
                     self.outputs, evidence.keys()))
-        if len(y) != p-1:
-            raise TypeError(
-                'LinearRegression requires input length {}: {}'.format(p, y))
+        # XXX Should crash on missing inputs since it violates a CGPM contract!
+        # However we will impute anyway.
+        # if set(evidence.keys()) != set(self.inputs):
+        #     raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
+        def impute(i, val):
+            # Use the final "wildcard" category for missing values or
+            # unseen categories.
+            def impute_categorical(i, val):
+                k = self.inputs_discrete[i]
+                if (val is None) or (np.isnan(val)) or (not (0<=val<k)):
+                    return k-1
+                else:
+                    return val
+            # Use mean value from the observations, or 0 if not exist.
+            def impute_numerical(i, val):
+                if not (val is None or np.isnan(val)):
+                    return val
+                if self.N == 0:
+                    return 0
+                index = self.lookup_numerical_index[i]
+                observations = [v[index] for v in self.data.Y.values()]
+                assert len(observations) == self.N
+                return sum(observations) / float(self.N)
+            return impute_categorical(i, val) if i in self.inputs_discrete else\
+                impute_numerical(i, val)
+        # Retrieve the covariates.
+        y = [impute(c, evidence.get(i,None)) for c,i in enumerate(self.inputs)]
+        # Dummy code covariates.
+        y = du.dummy_code(y, self.inputs_discrete)
+        assert len(y) == self.p-1
+        # Retrieve the query value.
+        x = query[self.outputs[0]] if query else query
         return x, [1] + y
 
     @staticmethod
@@ -191,11 +227,12 @@ class LinearRegression(CGpm):
         if cct == 'numerical' or cu.cctype_class(cct).is_numeric():
             p, counts = 1, None
         elif cca is not None and 'k' in cca:
-             # In dummy coding, if the category has values {1,...,K} then its
-             # code contains (K-1) entries, where all zeros indicates value K.
-             # However, we are going to treat all zeros indicating the input to
-             # be NaN, so that the code has K entries. This way the queries are
-             # robust to unspecified categorical inputs.
+            # In dummy coding, if the category has values {1,...,K} then its
+            # code contains (K-1) entries, where all zeros indicates value K.
+            # However, we are going to treat all zeros indicating the input to
+            # be a "wildcard" category, so that the code has K entries. This
+            # way the queries are robust to unspecified or misspecified
+            # categories.
             p, counts = cca['k'], int(cca['k'])+1
         return int(p), counts
 
