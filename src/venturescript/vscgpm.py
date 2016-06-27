@@ -165,6 +165,8 @@ class VsCGpm(CGpm):
 
     def _validate_incorporate(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
+        if not query:
+            raise ValueError('No query: %s.' % query)
         # All evidence present, and no nan values.
         if rowid not in self.obs and set(evidence) != set(self.inputs):
             raise ValueError('Miss evidence: %s, %s' % (evidence, self.inputs))
