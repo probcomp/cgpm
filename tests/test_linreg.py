@@ -87,6 +87,7 @@ def test_logpdf_score():
         query = {0: row[0]}
         evidence = {i:row[i] for i in linreg.inputs}
         linreg.incorporate(rowid, query, evidence)
+    linreg.transition_hypers(N=10)
     assert linreg.logpdf_score() < 0
 
 
@@ -101,6 +102,7 @@ def test_logpdf_predictive():
     Dx3 = D[D[:,1]==3]
     for i, row in enumerate(Dx0[1:]):
         linreg.incorporate(i, {0: row[0]}, {i: row[i] for i in linreg.inputs})
+    linreg.transition_hypers(N=10)
     # Ensure can compute predictive for seen class 0.
     linreg.logpdf(-1, {0: Dx0[0,0]}, {i: Dx0[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 1.
@@ -118,6 +120,7 @@ def test_simulate():
         rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:25]):
         linreg.incorporate(rowid, {0:row[0]}, {i:row[i] for i in linreg.inputs})
+    linreg.transition_hypers(N=10)
     _, ax = plt.subplots()
     xpred, xtrue = [], []
     for row in D[25:]:
@@ -173,6 +176,8 @@ def test_missing_inputs():
     rowid = 3
     linreg.incorporate(rowid, {0:4}, {4:1, 6:0})
     assert linreg.data.Y[rowid] == [1, 4, 0, 1, 0, 0, 1]
+
+    linreg.transition_hypers(N=10)
 
     # Missing input 2 without any observations should be imputed to 0.
     rowid = 4
