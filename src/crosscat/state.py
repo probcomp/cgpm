@@ -334,17 +334,19 @@ class State(CGpm):
         if col0 in self.outputs and col1 in self.outputs:
             return 1 if self.Zv(col0) == self.Zv(col1) else 0
         # XXX Assume all outputs of a particular CGPM are dependent.
-        if any(col0 in c.outputs and col1 in c.outputs for c in self.hooked_cgpms):
+        if any(col0 in c.outputs and col1 in c.outputs
+                for c in self.hooked_cgpms.values()):
             return 1
         ancestors0 = retrieve_ancestors(self.build_cgpms(), col0)
         ancestors1 = retrieve_ancestors(self.build_cgpms(), col1)
         # Direct common ancestor implies dependent.
-        if set.intersection(ancestors0, ancestors1):
+        if set.intersection(set(ancestors0), set(ancestors1)):
             return 1
         # Dependent ancestors via crosscat view.
         cc_ancestors0 = [self.Zv(i) for i in ancestors0 if i in self.outputs]
         cc_ancestors1 = [self.Zv(i) for i in ancestors1 if i in self.outputs]
-        return 1 if set.intersection(cc_ancestors0, cc_ancestors1) else 0
+        return 1 if set.intersection(set(cc_ancestors0), set(cc_ancestors1))\
+            else 0
 
     # --------------------------------------------------------------------------
     # Mutual information
