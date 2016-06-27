@@ -85,10 +85,16 @@ def test_incorporate_unincorporate():
     EV = [0, 2]
 
     rowid = 0
+
     # Missing evidence.
     with pytest.raises(ValueError):
         cgpm.incorporate(rowid, {0:OBS[rowid][0], 1:OBS[rowid][1]}, {})
+    # No query.
+    with pytest.raises(ValueError):
+        cgpm.incorporate(rowid, {}, {3:EV[rowid]})
+
     cgpm.incorporate(rowid, {0:OBS[rowid][0]}, {3:EV[rowid]})
+
     # Duplicate observation.
     with pytest.raises(ValueError):
         cgpm.incorporate(rowid, {0:OBS[rowid][0]})
