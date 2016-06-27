@@ -310,3 +310,32 @@ class LinearRegression(CGpm):
         sigma2 = invgamma.rvs(a, scale=b, random_state=rng)
         b = rng.multivariate_normal(mu, sigma2 * V)
         return sigma2, b
+
+
+    ####################
+    # SERLIAZE METHODS #
+    ####################
+
+    def to_metadata(self):
+        metadata = dict()
+        metadata['outputs'] = self.outputs
+        metadata['inputs'] = self.inputs
+        metadata['N'] = self.N
+        metadata['data'] = self.data
+        metadata['distargs'] = self.get_distargs()
+        metadata['hypers'] = self.get_hypers()
+        metadata['factory'] = ('cgpm.regressions.linreg', 'LinearRegression')
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        linreg = cls(
+            outputs=metadata['outputs'],
+            inputs=metadata['inputs'],
+            hypers=metadata['hypers'],
+            distargs=metadata['distargs'],
+            rng=rng)
+        linreg.data = metadata['data']
+        linreg.N = metadata['N']
+        return linreg

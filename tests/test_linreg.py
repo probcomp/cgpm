@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import pytest
 
 import matplotlib.pyplot as plt
@@ -121,6 +122,14 @@ def test_simulate():
     for rowid, row in enumerate(D[:25]):
         linreg.incorporate(rowid, {0:row[0]}, {i:row[i] for i in linreg.inputs})
     linreg.transition_hypers(N=10)
+
+    # Use a deserialized version for simulating.
+    metadata = linreg.to_metadata()
+    builder = getattr(
+        importlib.import_module(metadata['factory'][0]),
+        metadata['factory'][1])
+    linreg = builder.from_metadata(metadata, rng=gu.gen_rng(1))
+
     _, ax = plt.subplots()
     xpred, xtrue = [], []
     for row in D[25:]:

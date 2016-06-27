@@ -66,8 +66,15 @@ def parse_schema(schema, dataframe):
     -   cctypes = ['normal', 'bernoulli', 'categorical', 'categorical']
     -   distargs = [None, None, {'k':2}, {'k':3}]
     -   valmap = {
-            'university': {'mit':0, 'harvard':1},
-            'country': {'usa':0, 'nepal':1, 'lebanon':2}
+            'university': {
+                'mit': 0,
+                'harvard': 1
+                },
+            'country': {
+                'usa': 0,
+                'nepal': 1,
+                'lebanon': 2
+                }
             }
         where 'k' for 'country' has been extracted from the dataset.
 
@@ -110,6 +117,7 @@ def parse_schema(schema, dataframe):
     assert len(cctypes) == len(distargs) == len(columns)
     assert len(columns)  == T.shape[1]
     return T, outputs, cctypes, distargs, valmap, columns
+
 
 def dummy_code(x, discretes):
     """Dummy code a vector of covariates x for ie regression.
