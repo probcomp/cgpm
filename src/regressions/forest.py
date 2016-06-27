@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cPickle
+
 from collections import OrderedDict
 from collections import namedtuple
 
@@ -47,6 +49,7 @@ class RandomForest(CGpm):
         # Number of output categories and input dimension.
         self.k = int(distargs['k'])
         self.p = len(distargs['cctypes'])
+        self.input_cctypes = distargs['cctypes']
         # Sufficient statistics.
         self.N = 0
         self.data = Data(x=OrderedDict(), Y=OrderedDict())
@@ -54,7 +57,7 @@ class RandomForest(CGpm):
         # Outlier and random forest parameters.
         if params is None: params = {}
         self.alpha = params.get('alpha', .1)
-        self.regressor = params.get('regressor', None)
+        self.regressor = params.get('forest', None)
         if self.regressor is None:
             self.regressor = RandomForestClassifier(random_state=self.rng)
 
@@ -131,13 +134,20 @@ class RandomForest(CGpm):
         return {}
 
     def get_params(self):
-        return {'forest': self.regressor, 'alpha': self.alpha}
+        return {
+            'forest': self.regressor,
+            'alpha': self.alpha
+            }
 
     def get_suffstats(self):
         return {}
 
     def get_distargs(self):
-        return {'k': self.k, 'p': self.p}
+        return {
+            'k': self.k,
+            'p': self.p,
+            'cctypes': self.input_cctypes,
+            }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -213,3 +223,42 @@ class RandomForest(CGpm):
             return gu.logsumexp([
                 np.log(alpha) + logp_uniform,
                 np.log(1-alpha) + logp_rf])
+
+
+    def to_metadata(self):
+        metadata = dict()
+        metadata['outputs'] = self.outputs
+        metadata['inputs'] = self.inputs
+        metadata['N'] = self.N
+        metadata['data'] = self.data
+        metadata['counts'] = self.counts
+        metadata['distargs'] = self.get_distargs()
+        metadata['hypers'] = self.get_hypers()
+        metadata['params'] = self.get_params()
+        metadata['factory'] = ('cgpm.regressions.forest', 'RandomForest')
+
+        # Pickle the sklearn forest.
+        forest = metadata['params']['forest']
+        forest_binary = cPickle.dumps(forest)
+        metadata['params']['forest_binary'] = forest_binary
+        del metadata['params']['forest']
+
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        # Unpickle the sklearn forest.
+        forest = cPickle.loads(metadata['params']['forest_binary'])
+        metadata['params']['forest'] = forest
+        forest = cls(
+            outputs=metadata['outputs'],
+            inputs=metadata['inputs'],
+            hypers=metadata['hypers'],
+            params=metadata['params'],
+            distargs=metadata['distargs'],
+            rng=rng)
+        forest.N = metadata['N']
+        forest.data = metadata['data']
+        forest.counts = metadata['counts']
+        return forest

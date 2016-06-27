@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import pytest
 
 from math import log
@@ -142,14 +143,28 @@ def test_logpdf_score():
         evidence = {i: row[i] for i in forest.inputs}
         forest.incorporate(rowid, query, evidence)
     forest.transition_params()
-    assert forest.logpdf_score() < 0
+    forest.transition_params()
 
+    logscore = forest.logpdf_score()
+    assert logscore < 0
+
+    # Use a deserialized version for simulating.
+    metadata = forest.to_metadata()
+    builder = getattr(
+        importlib.import_module(metadata['factory'][0]),
+        metadata['factory'][1])
+    forest2 = builder.from_metadata(metadata, rng=gu.gen_rng(1))
+
+    assert forest2.alpha == forest.alpha
+    assert np.allclose(forest2.counts, forest.counts)
+    assert np.allclose(forest2.logpdf_score(), logscore)
 
 def test_transition_hypers():
     forest = Dim(
         outputs=RF_OUTPUTS, inputs=[-1]+RF_INPUTS, cctype='random_forest',
         distargs=RF_DISTARGS, rng=gu.gen_rng(0))
     forest.transition_hyper_grids(D[:,0])
+
     # Create two clusters.
     Zr = np.zeros(len(D), dtype=int)
     Zr[len(D)/2:] = 1
@@ -158,9 +173,6 @@ def test_transition_hypers():
         evidence = gu.merged(
             {i: row[i] for i in forest.inputs}, {-1: Zr[rowid]})
         forest.incorporate(rowid, query, evidence)
-    # Transitions.
-    forest.transition_params()
-    forest.transition_hypers()
 
 
 def test_simulate():
