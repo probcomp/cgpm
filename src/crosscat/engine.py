@@ -176,12 +176,16 @@ class Engine(object):
         self._close_mapper(pool)
         return mis
 
-    def dependence_probability(self, col0, col1, states=None):
+    def dependence_probability(self, col0, col1, states=None, multithread=1):
         """Compute dependence probability between col0 and col1 as float."""
         if states is None: states = xrange(self.num_states())
-        Zvs = [dict(self.states[s]['Zv']) for s in states]
-        counts = [Zv[col0]==Zv[col1] for Zv in Zvs]
-        return sum(counts) / float(len(states))
+        pool, mapper = self._get_mapper(multithread)
+        args = [('dependence_probability', self.states[i],
+                (col0, col1))
+                for i in xrange(states)]
+        depprobs = mapper(_evaluate, args)
+        self._close_mapper(pool)
+        return sum(depprobs) / float(len(states))
 
     def dependence_probability_pairwise(self, states=None):
         """Compute dependence probability between all pairs as matrix."""
