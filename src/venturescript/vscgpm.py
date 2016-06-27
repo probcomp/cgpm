@@ -104,10 +104,10 @@ class VsCGpm(CGpm):
     def logpdf_score(self):
         raise NotImplementedError
 
-    def transition(self, program=None, steps=None):
+    def transition(self, program=None, N=None):
         if program is None:
-            if steps is None: steps = 1000
-            program = '[infer (mh default one %s)]' % steps
+            if N is None: N = 1000
+            program = '[infer (mh default one %s)]' % N
         self.ripl.execute_program(program)
 
     def to_metadata(self):

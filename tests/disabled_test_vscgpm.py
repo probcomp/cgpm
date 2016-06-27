@@ -116,14 +116,14 @@ def test_incorporate_unincorporate():
         assert sample[0] == OBS[rowid][0]
 
     test_samples_match()
-    cgpm.transition(steps=10)
+    cgpm.transition(N=10)
     test_samples_match()
 
     # Test observations resampled after transition.
     cgpm.unincorporate(1)
     with pytest.raises(ValueError):
         cgpm.simulate(1, [0,1])
-    cgpm.transition(steps=10)
+    cgpm.transition(N=10)
     sample = cgpm.simulate(1, [0,1], {3:EV[rowid]})
     assert not np.allclose(sample[0], OBS[rowid][0])
     assert not np.allclose(sample[1], OBS[rowid][1])
@@ -133,7 +133,7 @@ def test_serialize():
     cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=source)
     cgpm.incorporate(0, {0:1, 1:2}, {3:0})
     cgpm.incorporate(1, {1:15}, {3:10})
-    cgpm.transition(steps=2)
+    cgpm.transition(N=2)
 
     binary = cgpm.to_metadata()
     modname, attrname = binary['factory']
