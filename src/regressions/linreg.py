@@ -23,6 +23,7 @@ from scipy.special import gammaln
 from scipy.stats import invgamma
 
 from cgpm.cgpm import CGpm
+from cgpm.mixtures.dim import Dim
 from cgpm.utils import config as cu
 from cgpm.utils import data as du
 from cgpm.utils import general as gu
@@ -50,6 +51,8 @@ class LinearRegression(CGpm):
         assert len(self.inputs) >= 1
         assert self.outputs[0] not in self.inputs
         assert len(distargs['cctypes']) == len(self.inputs)
+        self.input_cctypes = distargs['cctypes']
+        self.input_ccargs = distargs['ccargs']
         # Determine number of covariates (with 1 bias term) and number of
         # categories for categorical covariates.
         p, counts = zip(
@@ -113,6 +116,18 @@ class LinearRegression(CGpm):
     # NON-GPM METHOD #
     ##################
 
+    def transition_hypers(self, N=None):
+        if N is None:
+            N = 1
+        dim = Dim(
+            self.outputs, [-10**8]+self.inputs,
+            cctype=self.name(), hypers=self.get_hypers(),
+            distargs=self.get_distargs(), rng=self.rng)
+        dim.clusters[0] = self
+        dim.transition_hyper_grids(X=self.data.x.values())
+        for i in xrange(N):
+            dim.transition_hypers()
+
     def transition_params(self):
         return
 
@@ -132,7 +147,12 @@ class LinearRegression(CGpm):
         return {}
 
     def get_distargs(self):
-        return {'inputs_discrete': self.inputs_discrete, 'p': self.p}
+        return {
+            'cctypes': self.input_cctypes,
+            'ccargs': self.input_ccargs,
+            'inputs_discrete': self.inputs_discrete,
+            'p': self.p,
+            }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=300):
