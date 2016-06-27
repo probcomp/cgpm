@@ -94,29 +94,30 @@ def parse_schema(schema, dataframe):
         cctypes.append(stattype)
         outputs.append(index)
         distargs.append(None)
+        # XXX Should check for is_numeric!
         if stattype in ['bernoulli', 'categorical']:
-            mapping = dict()
-            k = 0
-            for val in sorted(X.unique()):
-                if not pd.isnull(val):
-                    mapping[val] = k
-                    k += 1
+            mapping = build_valmap(X)
             X = X.replace(mapping)
             valmap[column] = mapping
             if stattype == 'bernoulli':
                 assert len(mapping) == 2
             else:
                 # Did user specify categorical mapping?
-                _, k = cu.parse_distargs([column])
-                if k == [None]:
-                    distargs[-1] = {'k':len(mapping)}
+                dist, k_user = cu.parse_distargs([column])
+                if k_user == [None]:
+                    distargs[-1] = {'k': len(mapping)}
                 else:
-                    assert k >= len(mapping)
+                    assert len(mapping) <= k_user
         D.append(X)
     T = np.asarray(D).T
     assert len(cctypes) == len(distargs) == len(columns)
     assert len(columns)  == T.shape[1]
     return T, outputs, cctypes, distargs, valmap, columns
+
+
+def build_valmap(column):
+    uniques = [u for u in sorted(column.unique()) if not pd.isnull(u)]
+    return {u:k for k,u in enumerate(uniques)}
 
 
 def dummy_code(x, discretes):
