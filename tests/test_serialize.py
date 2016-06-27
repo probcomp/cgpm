@@ -126,7 +126,7 @@ def test_serialize_composite_cgpm():
     # Create GPMCC.
     state = State(
         D[:,2:], outputs=[2,3,4,5], cctypes=cctypes[2:],
-        distargs=distargs[2:])
+        distargs=distargs[2:], rng=rng)
 
     # Create a Forest.
     forest = RandomForest(
@@ -187,3 +187,11 @@ def test_serialize_composite_cgpm():
     assert np.allclose(
         state.hooked_cgpms[token_linreg].logpdf_score(),
         state2.hooked_cgpms[token_linreg].logpdf_score())
+
+    e = Engine(
+        D[:,2:], outputs=[2,3,4,5], cctypes=cctypes[2:],
+        distargs=distargs[2:], num_states=1, rng=rng)
+    e.states = [state.to_metadata()]    # XXX MASSIVE HACK!
+    e.dependence_probability(0,1)
+    e.simulate(-1, [0,1], {2:1})
+    e.logpdf(-1, {1:1}, {2:1, 0:0}, multithread=0)
