@@ -119,6 +119,9 @@ class LinearRegression(CGpm):
     # NON-GPM METHOD #
     ##################
 
+    def transition(self, N=None):
+        self.transition_hypers(N=N)
+
     def transition_hypers(self, N=None):
         if N is None:
             N = 1
