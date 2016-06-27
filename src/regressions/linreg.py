@@ -335,7 +335,7 @@ class LinearRegression(CGpm):
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['N'] = self.N
-        metadata['data'] = self.data
+        metadata['data'] = {'x': self.data.x, 'Y': self.data.Y}
         metadata['distargs'] = self.get_distargs()
         metadata['hypers'] = self.get_hypers()
         metadata['factory'] = ('cgpm.regressions.linreg', 'LinearRegression')
@@ -350,6 +350,9 @@ class LinearRegression(CGpm):
             hypers=metadata['hypers'],
             distargs=metadata['distargs'],
             rng=rng)
-        linreg.data = metadata['data']
+        linreg.data = Data(
+            x=OrderedDict(metadata['data']['x']),
+            Y=OrderedDict(metadata['data']['Y']),
+        )
         linreg.N = metadata['N']
         return linreg
