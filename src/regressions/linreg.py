@@ -204,9 +204,19 @@ class LinearRegression(CGpm):
 
 
     def preprocess(self, query, evidence):
+        # Retrieve the value x of the query variable.
         if self.outputs[0] in evidence:
-            raise TypeError('Cannot condition on output {}: {}'.format(
+            raise ValueError('Cannot condition on output {}: {}'.format(
                     self.outputs, evidence.keys()))
+        if query:
+            x = query.get(self.outputs[0], 'missing')
+            if x == 'missing':
+                raise ValueError(
+                    'No observation: %s, %s.' % (self.outputs, query))
+            elif x is None or np.isnan(x):
+                raise ValueError('Invalid observation: %s.' % query)
+        else:
+            x = None
         # XXX Should crash on missing inputs since it violates a CGPM contract!
         # However we will impute anyway.
         # if set(evidence.keys()) != set(self.inputs):
@@ -237,8 +247,6 @@ class LinearRegression(CGpm):
         # Dummy code covariates.
         y = du.dummy_code(y, self.inputs_discrete)
         assert len(y) == self.p-1
-        # Retrieve the query value.
-        x = query[self.outputs[0]] if query else query
         return x, [1] + y
 
     @staticmethod

@@ -68,8 +68,18 @@ def test_incorporate():
     with pytest.raises(KeyError):
         linreg.unincorporate(0)
     # Incorporating with wrong covariate dimensions should raise.
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         query = {0: D[0,0]}
+        evidence = {i:v for (i, v) in enumerate(D[0])}
+        linreg.incorporate(0, query, evidence)
+    # Incorporating with missing query should raise.
+    with pytest.raises(ValueError):
+        query = {0: None}
+        evidence = {i:v for (i, v) in enumerate(D[0])}
+        linreg.incorporate(0, query, evidence)
+    # Incorporating with wrong query should raise.
+    with pytest.raises(ValueError):
+        query = {1: 2}
         evidence = {i:v for (i, v) in enumerate(D[0])}
         linreg.incorporate(0, query, evidence)
     # Incorporate some more rows.
@@ -112,7 +122,12 @@ def test_logpdf_predictive():
     linreg.logpdf(-1, {0: Dx2[0,0]}, {i: Dx2[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 3.
     linreg.logpdf(-1, {0: Dx3[0,0]}, {i: Dx3[0,i] for i in linreg.inputs})
-
+    # Ensure can compute predictive for nan.
+    with pytest.raises(ValueError):
+        linreg.logpdf(-1, {0: np.nan}, {i: Dx0[0,i] for i in linreg.inputs})
+    # Ensure can compute predictive for missing query.
+    with pytest.raises(ValueError):
+        linreg.logpdf(-1, {7: 10}, {i: Dx0[0,i] for i in linreg.inputs})
 
 def test_simulate():
     linreg = LinearRegression(
