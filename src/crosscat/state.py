@@ -16,6 +16,7 @@
 
 import cPickle as pickle
 import copy
+import importlib
 import itertools
 import sys
 import time
@@ -742,6 +743,11 @@ class State(CGpm):
             metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
             metadata['view_alphas'].append((v, view.alpha()))
 
+        # Hooked CGPMs.
+        metadata['hooked_cgpms'] = dict()
+        for token, cgpm in self.hooked_cgpms.iteritems():
+            metadata['hooked_cgpms'][token] = cgpm.to_metadata()
+
         # Factory data.
         metadata['factory'] = ('cgpm.crosscat.state', 'State')
 
@@ -755,7 +761,8 @@ class State(CGpm):
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
         to_dict = lambda val: None if val is None else dict(val)
-        return cls(
+        # Build the State.
+        state = cls(
             np.asarray(metadata['X']),
             outputs=metadata.get('outputs', None),
             cctypes=metadata.get('cctypes', None),
@@ -767,6 +774,14 @@ class State(CGpm):
             hypers=metadata.get('hypers', None),
             iterations=metadata.get('iterations', None),
             rng=rng)
+        # Hook up the composed CGPMs.
+        for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():
+            builder = getattr(
+                importlib.import_module(cgpm_metadata['factory'][0]),
+                cgpm_metadata['factory'][1])
+            cgpm = builder.from_metadata(cgpm_metadata, rng=rng)
+            state.compose_cgpm(cgpm)
+        return state
 
     @classmethod
     def from_pickle(cls, fileptr, rng=None):
