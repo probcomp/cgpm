@@ -58,18 +58,23 @@ def test_incorporate():
         evidence = {i: row[i] for i in forest.inputs}
         forest.incorporate(rowid, query, evidence)
     # Unincorporating row 20 should raise.
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         forest.unincorporate(20)
     # Unincorporate all rows.
     for rowid in xrange(20):
         forest.unincorporate(rowid)
     # Unincorporating row 0 should raise.
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         forest.unincorporate(0)
     # Incorporating with wrong covariate dimensions should raise.
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         query = {0: D[0,0]}
         evidence = {i: v for (i, v) in enumerate(D[0])}
+        forest.incorporate(0, query, evidence)
+    # Incorporating with wrong output categorical value should raise.
+    with pytest.raises(IndexError):
+        query = {0: 100}
+        evidence = {i: D[0,i] for i in forest.inputs}
         forest.incorporate(0, query, evidence)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):
