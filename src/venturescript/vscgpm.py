@@ -106,9 +106,11 @@ class VsCGpm(CGpm):
 
     def transition(self, program=None, N=None):
         if program is None:
-            if N is None: N = 1000
-            program = '[infer (mh default one %s)]' % N
-        self.ripl.execute_program(program)
+            if N is None: N = 1
+            for i in xrange(N):
+                self.ripl.infer('(transition %d)' % N)
+        else:
+            self.ripl.execute_program(program)
 
     def to_metadata(self):
         metadata = dict()

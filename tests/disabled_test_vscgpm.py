@@ -58,6 +58,10 @@ source = """
                         observe_y)]
 
 [define inputs (list 'w)]
+
+[define transition
+  (lambda (N)
+    (mh default one N))]
 """
 
 
