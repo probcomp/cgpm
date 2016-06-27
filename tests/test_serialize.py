@@ -108,6 +108,7 @@ def test_view_serialize():
 
 def test_serialize_composite_cgpm():
     rng = gu.gen_rng(2)
+
     # Generate the data.
     cctypes, distargs = cu.parse_distargs([
         'categorical(k=3)',     # RandomForest          0
@@ -121,10 +122,12 @@ def test_serialize_composite_cgpm():
         35, [.4, .6], [[.33, .33, .34], [.5, .5]],
         cctypes, distargs, [.2]*len(cctypes), rng=rng)
     D = np.transpose(T)
+
     # Create GPMCC.
     state = State(
         D[:,2:], outputs=[2,3,4,5], cctypes=cctypes[2:],
         distargs=distargs[2:])
+
     # Create a Forest.
     forest = RandomForest(
         outputs=[0],
@@ -135,6 +138,7 @@ def test_serialize_composite_cgpm():
             'k': distargs[0]['k']
             },
         rng=rng)
+
     # Create a Regression.
     linreg = LinearRegression(
         outputs=[1],
@@ -144,6 +148,7 @@ def test_serialize_composite_cgpm():
             'ccargs': [distargs[i] for i in [3,4,5]],
             },
         rng=rng)
+
     # Incorporate the data.
     def incorporate_data(cgpm, rowid, row):
         cgpm.incorporate(
@@ -153,22 +158,28 @@ def test_serialize_composite_cgpm():
     for rowid, row in enumerate(D):
         incorporate_data(forest, rowid, row)
         incorporate_data(linreg, rowid, row)
+
     # Compose the CGPMs.
     token_forest = state.compose_cgpm(forest)
     token_linreg = state.compose_cgpm(linreg)
+
     # Run transitions.
     forest.transition(N=10)
     linreg.transition(N=10)
     state.transition(N=10, do_progress=False)
+
     # Now run the serialization.
     metadata = state.to_metadata()
     state2 = State.from_metadata(metadata)
+
     # Check that the tokens are in state2.
     assert token_forest in state2.hooked_cgpms
     assert token_linreg in state2.hooked_cgpms
+
     # The hooked cgpms must be unique objects after serialize/deserialize.
     assert state.hooked_cgpms[token_forest] != state2.hooked_cgpms[token_forest]
     assert state.hooked_cgpms[token_linreg] != state2.hooked_cgpms[token_linreg]
+
     # Check that the log scores of the hooked cgpms agree.
     assert np.allclose(
         state.hooked_cgpms[token_forest].logpdf_score(),
