@@ -87,7 +87,7 @@ class RandomForest(CGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
         if rowid in self.data.x:
-            return self.data.x[rowid]
+            return {self.outputs[0]: self.data.x[rowid]}
         logps = [self.logpdf(rowid, {query[0]: x}, evidence)
             for x in xrange(self.k)]
         x = gu.log_pflip(logps, rng=self.rng)

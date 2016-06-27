@@ -97,7 +97,7 @@ class LinearRegression(CGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
         if rowid in self.data.x:
-            return self.data.x[rowid]
+            return {self.outputs[0]: self.data.x[rowid]}
         xt, yt = self.preprocess(None, evidence)
         an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
             self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
