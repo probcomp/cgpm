@@ -183,12 +183,15 @@ class RandomForest(CGpm):
                 'RandomForest requires inputs {}: {}'.format(
                     self.inputs, evidence.keys()))
         y = [evidence[c] for c in sorted(evidence)]
+        if any(np.isnan(v) for v in y):
+            raise ValueError(
+                'Random Forest cannot accept nan inputs: %s.' % evidence)
         if len(y) != self.p:
             raise ValueError(
-                'RandomForest requires input length {}: {}'.format(self.p, y))
+                'RandomForest requires input length %s: %s' % (self.p, y))
         if not (x % 1 == 0 and 0 <= x < self.k):
             raise IndexError(
-                'RandomForest category not in [0..{}): {}'.format(self.k, x))
+                'RandomForest category not in [0..%s): %s.' % (self.k, x))
         return int(x), y
 
     @staticmethod

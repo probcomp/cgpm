@@ -76,6 +76,12 @@ def test_incorporate():
         query = {0: 100}
         evidence = {i: D[0,i] for i in forest.inputs}
         forest.incorporate(0, query, evidence)
+    # Incorporating with nan evidence value should raise.
+    with pytest.raises(ValueError):
+        query = {0: 100}
+        evidence = {i: D[0,i] for i in forest.inputs}
+        evidence[evidence.keys()[0]] = np.nan
+        forest.incorporate(0, query, evidence)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):
         query = {0: row[0]}
