@@ -81,8 +81,11 @@ class LinearRegression(CGpm):
         self.data.Y[rowid] = y
 
     def unincorporate(self, rowid):
-        del self.data.x[rowid]
-        del self.data.Y[rowid]
+        try:
+            del self.data.x[rowid]
+            del self.data.Y[rowid]
+        except KeyError:
+            raise ValueError('No such observation: %d' % rowid)
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
@@ -212,9 +215,9 @@ class LinearRegression(CGpm):
             x = query.get(self.outputs[0], 'missing')
             if x == 'missing':
                 raise ValueError(
-                    'No observation: %s, %s.' % (self.outputs, query))
+                    'No query: %s, %s.' % (self.outputs, query))
             elif x is None or np.isnan(x):
-                raise ValueError('Invalid observation: %s.' % query)
+                raise ValueError('Invalid query: %s.' % query)
         else:
             x = None
         # XXX Should crash on missing inputs since it violates a CGPM contract!

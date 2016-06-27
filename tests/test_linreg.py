@@ -59,13 +59,13 @@ def test_incorporate():
         evidence = {i:row[i] for i in linreg.inputs}
         linreg.incorporate(rowid, query, evidence)
     # Unincorporating row 20 should raise.
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         linreg.unincorporate(20)
     # Unincorporate all rows.
     for rowid in xrange(20):
         linreg.unincorporate(rowid)
     # Unincorporating row 0 should raise.
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         linreg.unincorporate(0)
     # Incorporating with wrong covariate dimensions should raise.
     with pytest.raises(ValueError):

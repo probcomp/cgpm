@@ -68,8 +68,11 @@ class RandomForest(CGpm):
         self.data.Y[rowid] = y
 
     def unincorporate(self, rowid):
-        del self.data.x[rowid]
-        del self.data.Y[rowid]
+        try:
+            del self.data.x[rowid]
+            del self.data.Y[rowid]
+        except KeyError:
+            raise ValueError('No such observation: %d' % rowid)
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
@@ -77,7 +80,7 @@ class RandomForest(CGpm):
         assert rowid not in self.data.x
         try:
             x, y = self.preprocess(query, evidence)
-        except ValueError:
+        except IndexError:
             return -float('inf')
         return RandomForest.calc_predictive_logp(
             x, y, self.regressor, self.counts, self.alpha)
@@ -161,29 +164,26 @@ class RandomForest(CGpm):
     ##################
 
     def preprocess(self, query, evidence):
-        x = query[self.outputs[0]]
-        y = [evidence[c] for c in sorted(evidence)]
-        distargs = self.get_distargs()
-        p, k = distargs['p'], distargs['k']
+        # Retrieve the value x of the query variable.
+        if self.outputs[0] in evidence:
+            raise ValueError('Cannot condition on output {}: {}'.format(
+                    self.outputs, evidence.keys()))
+        x = query.get(self.outputs[0], None)
+        if x is None or np.isnan(x):
+            raise ValueError('Invalid query: %s.' % query)
+        # Retrieve the evidence values.
         if not set.issubset(set(self.inputs), set(evidence.keys())):
-            raise TypeError(
+            raise ValueError(
                 'RandomForest requires inputs {}: {}'.format(
                     self.inputs, evidence.keys()))
-        if self.outputs[0] in evidence:
-            raise TypeError(
-                'RandomForest cannot condition on output {}: {}'.format(
-                    self.outputs, evidence.keys()))
-        if len(y) != p:
-            raise TypeError(
-                'RandomForest requires input length {}: {}'.format(p, y))
-        if not (x % 1 == 0 and 0 <= x < distargs['k']):
+        y = [evidence[c] for c in sorted(evidence)]
+        if len(y) != self.p:
             raise ValueError(
-                'RandomForest requires output in [0..{}): {}'.format(k, x))
+                'RandomForest requires input length {}: {}'.format(self.p, y))
+        if not (x % 1 == 0 and 0 <= x < self.k):
+            raise IndexError(
+                'RandomForest category not in [0..{}): {}'.format(self.k, x))
         return int(x), y
-
-    @staticmethod
-    def validate(x, K):
-        return int(x) == float(x) and 0 <= x < K
 
     @staticmethod
     def calc_log_likelihood(X, Y, regressor, counts, alpha):
