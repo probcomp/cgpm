@@ -117,7 +117,7 @@ class VsCGpm(CGpm):
         metadata['source'] = self.source
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
-        metadata['obs'] = self.obs
+        metadata['obs'] = {k: dict(v) for k, v in self.obs.iteritems()}
         metadata['binary'] =  base64.b64encode(self.ripl.saves())
         metadata['factory'] = ('cgpm.venturescript.vscgpm', 'VsCGpm')
         return metadata
@@ -133,7 +133,10 @@ class VsCGpm(CGpm):
             source=metadata['source'],
             supress=True,
             rng=rng,)
-        cgpm.obs = metadata['obs']
+        # Restore the observations.
+        for k0, v0 in metadata['obs'].iteritems():
+            for k1, v1 in v0.iteritems():
+                cgpm.obs[k0][k1] = v1
         return cgpm
 
     # --------------------------------------------------------------------------
