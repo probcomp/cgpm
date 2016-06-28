@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import base64
 import math
 
 from collections import defaultdict
@@ -117,14 +118,14 @@ class VsCGpm(CGpm):
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['obs'] = self.obs
-        metadata['binary'] =  self.ripl.saves()
+        metadata['binary'] =  base64.b64encode(self.ripl.saves())
         metadata['factory'] = ('cgpm.venturescript.vscgpm', 'VsCGpm')
         return metadata
 
     @classmethod
     def from_metadata(cls, metadata, rng=None):
         ripl = vs.make_lite_ripl()
-        ripl.loads(metadata['binary'])
+        ripl.loads(base64.b64decode(metadata['binary']))
         cgpm = VsCGpm(
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
