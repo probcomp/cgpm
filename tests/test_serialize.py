@@ -160,13 +160,12 @@ def test_serialize_composite_cgpm():
         incorporate_data(linreg, rowid, row)
 
     # Compose the CGPMs.
-    token_forest = state.compose_cgpm(forest)
-    token_linreg = state.compose_cgpm(linreg)
 
-    # Run transitions.
-    forest.transition(N=10)
-    linreg.transition(N=10)
+    # Run state transitions.
     state.transition(N=10, do_progress=False)
+    # Compose CGPMs, instructing State to run the transitions.
+    token_forest = state.compose_cgpm(forest, N=10)
+    token_linreg = state.compose_cgpm(linreg, N=10)
 
     # Now run the serialization.
     metadata = state.to_metadata()
