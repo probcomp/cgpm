@@ -239,18 +239,22 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Compositions.
 
-    def compose_cgpm(self, cgpm):
-        """Returns `token` to be used in the call to decompose_cgpm."""
+    def compose_cgpm(self, cgpm, N=None):
+        """Returns `token` to be used in the call to decompose_cgpm.
+        N is optional number of times to run cgpm.transition, if any."""
         token = next(self.token_generator)
         self.hooked_cgpms[token] = cgpm
         try:
             self.build_network()
+            if N:
+                cgpm.transition(N=N)
         except ValueError as e:
             del self.hooked_cgpms[token]
             raise e
         return token
 
     def decompose_cgpm(self, token):
+        """Remove the composed cgpm with identifier `token`."""
         del self.hooked_cgpms[token]
         self.build_network()
 
