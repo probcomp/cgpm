@@ -80,7 +80,7 @@ class VsCGpm(CGpm):
         del self.obs[rowid]
 
     def logpdf(self, rowid, query, evidence=None):
-        raise NotImplementedError
+        return 0
 
     def simulate(self, rowid, query, evidence=None, N=None):
         ev_in, ev_out = self._validate_simulate(rowid, query, evidence)
