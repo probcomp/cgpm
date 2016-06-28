@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import cPickle
 
 from collections import OrderedDict
@@ -36,7 +37,7 @@ class RandomForest(CGpm):
     p(x|Y,D) = \alpha*(1/k) + (1-\alpha)*RF(x|Y,D)
     """
 
-    def __init__(self, outputs, inputs, hypers=None, params=None,
+    def __init__(self, outputs, inputs, k=None, hypers=None, params=None,
             distargs=None, rng=None):
         self.rng = gu.gen_rng() if rng is None else rng
         self.outputs = outputs
@@ -47,13 +48,14 @@ class RandomForest(CGpm):
         assert self.outputs[0] not in self.inputs
         assert len(distargs['cctypes']) == len(self.inputs)
         # Number of output categories and input dimension.
-        self.k = int(distargs['k'])
+        # XXX WHATTA HACK
+        self.k = k if k is not None else int(distargs['k'])
         self.p = len(distargs['cctypes'])
         self.input_cctypes = distargs['cctypes']
         # Sufficient statistics.
         self.N = 0
         self.data = Data(x=OrderedDict(), Y=OrderedDict())
-        self.counts = np.zeros(self.k)
+        self.counts = [0] * self.k
         # Outlier and random forest parameters.
         if params is None: params = {}
         self.alpha = params.get('alpha', .1)
@@ -230,7 +232,7 @@ class RandomForest(CGpm):
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['N'] = self.N
-        metadata['data'] = self.data
+        metadata['data'] = {'x': self.data.x, 'Y': self.data.Y}
         metadata['counts'] = self.counts
         metadata['distargs'] = self.get_distargs()
         metadata['hypers'] = self.get_hypers()
@@ -239,7 +241,7 @@ class RandomForest(CGpm):
 
         # Pickle the sklearn forest.
         forest = metadata['params']['forest']
-        forest_binary = cPickle.dumps(forest)
+        forest_binary = base64.b64encode(cPickle.dumps(forest))
         metadata['params']['forest_binary'] = forest_binary
         del metadata['params']['forest']
 
@@ -249,7 +251,8 @@ class RandomForest(CGpm):
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
         # Unpickle the sklearn forest.
-        forest = cPickle.loads(metadata['params']['forest_binary'])
+        forest = cPickle.loads(
+            base64.b64decode(metadata['params']['forest_binary']))
         metadata['params']['forest'] = forest
         forest = cls(
             outputs=metadata['outputs'],
@@ -258,7 +261,10 @@ class RandomForest(CGpm):
             params=metadata['params'],
             distargs=metadata['distargs'],
             rng=rng)
+        forest.data = Data(
+            x=OrderedDict(metadata['data']['x']),
+            Y=OrderedDict(metadata['data']['Y']),
+        )
         forest.N = metadata['N']
-        forest.data = metadata['data']
         forest.counts = metadata['counts']
         return forest
