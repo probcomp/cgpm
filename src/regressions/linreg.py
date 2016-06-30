@@ -352,7 +352,7 @@ class LinearRegression(CGpm):
             rng=rng)
         # json keys are strings -- convert back to integers.
         x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
-        Y = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
-        linreg.data = Data(x=x, Y=Y)
+        Y = ((int(k), v) for k, v in metadata['data']['Y'].iteritems())
+        linreg.data = Data(x=OrderedDict(x), Y=OrderedDict(Y))
         linreg.N = metadata['N']
         return linreg
