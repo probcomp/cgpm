@@ -40,7 +40,7 @@ def _compose((method, metadata, cgpm_metadata, args)):
     builder = getattr(
         importlib.import_module(cgpm_metadata['factory'][0]),
         cgpm_metadata['factory'][1])
-    cgpm = builder.from_metadata(cgpm_metadata)
+    cgpm = builder.from_metadata(cgpm_metadata, rng=metadata['rng'])
     state = State.from_metadata(metadata, rng=metadata['rng'])
     getattr(state, method)(cgpm, *args)
     return state.to_metadata()
