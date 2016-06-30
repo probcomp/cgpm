@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import itertools
 import multiprocessing
 import pickle
@@ -33,6 +34,15 @@ def _intialize((X, rng, kwargs)):
 def _modify((method, metadata, args)):
     state = State.from_metadata(metadata, rng=metadata['rng'])
     getattr(state, method)(*args)
+    return state.to_metadata()
+
+def _compose((method, metadata, cgpm_metadata, args)):
+    builder = getattr(
+        importlib.import_module(cgpm_metadata['factory'][0]),
+        cgpm_metadata['factory'][1])
+    cgpm = builder.from_metadata(cgpm_metadata)
+    state = State.from_metadata(metadata, rng=metadata['rng'])
+    getattr(state, method)(cgpm, *args)
     return state.to_metadata()
 
 def _evaluate((method, metadata, args)):
@@ -104,6 +114,14 @@ class Engine(object):
                 (col, cctype, distargs))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
+        self._close_mapper(pool)
+
+    def compose_cgpm(self, cgpms, N=None, multithread=1):
+        pool, mapper = self._get_mapper(multithread)
+        args = [('compose_cgpm', self.states[i], cgpms[i].to_metadata(),
+                (N,))
+                for i in xrange(self.num_states())]
+        self.states = mapper(_compose, args)
         self._close_mapper(pool)
 
     def logpdf(self, rowid, query, evidence=None, accuracy=None, multithread=1):
