@@ -30,7 +30,7 @@ from cgpm.utils import general as gu
 class VsCGpm(CGpm):
     """CGpm specified by a Venturescript program."""
 
-    def __init__(self, outputs, inputs, rng=None, **kwargs):
+    def __init__(self, outputs, inputs, rng=None, sp=None, **kwargs):
         # Set the rng.
         self.rng = rng if rng is not None else gu.gen_rng(1)
         seed = self.rng.randint(1, 2**31 - 1)
@@ -52,7 +52,7 @@ class VsCGpm(CGpm):
             self.ripl.execute_program(self.source)
         # Create the CGpm.
         if not kwargs.get('supress', None):
-            self.ripl.evaluate('(make_cgpm)')
+            self.ripl.evaluate('(%s)' % ('make_cgpm' if sp is None else sp,))
         # Check correct outputs.
         if len(outputs) != len(self.ripl.sample('simulators')):
             raise ValueError('source.simulators list disagrees with outputs.')
