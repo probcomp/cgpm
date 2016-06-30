@@ -187,10 +187,20 @@ def test_serialize_composite_cgpm():
         state.hooked_cgpms[token_linreg].logpdf_score(),
         state2.hooked_cgpms[token_linreg].logpdf_score())
 
+    # Now run some tests for the engine.
     e = Engine(
         D[:,2:], outputs=[2,3,4,5], cctypes=cctypes[2:],
         distargs=distargs[2:], num_states=1, rng=rng)
-    e.states = [state.to_metadata()]    # XXX MASSIVE HACK!
+    e.compose_cgpm([forest], N=10, multithread=1)
+    e.compose_cgpm([linreg], N=10, multithread=1)
     e.dependence_probability(0,1)
     e.simulate(-1, [0,1], {2:1})
     e.logpdf(-1, {1:1}, {2:1, 0:0}, multithread=0)
+
+    state3 = e.get_state(0)
+
+    # Check that the log scores of the hooked cgpms agree.
+    assert state.hooked_cgpms[token_forest].logpdf_score() < \
+        state3.hooked_cgpms[token_forest].logpdf_score()
+    assert state.hooked_cgpms[token_linreg].logpdf_score() < \
+        state3.hooked_cgpms[token_linreg].logpdf_score()
