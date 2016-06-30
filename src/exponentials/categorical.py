@@ -50,7 +50,7 @@ class Categorical(DistributionGpm):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
         if not (x % 1 == 0 and 0 <= x < self.k):
-            raise ValueError('Invalid Categorical(%d): %s') % (self.k, x)
+            raise ValueError('Invalid Categorical(%d): %s' % (self.k, x))
         x = int(x)
         self.N += 1
         self.counts[x] += 1
