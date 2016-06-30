@@ -350,9 +350,9 @@ class LinearRegression(CGpm):
             hypers=metadata['hypers'],
             distargs=metadata['distargs'],
             rng=rng)
-        linreg.data = Data(
-            x=OrderedDict(metadata['data']['x']),
-            Y=OrderedDict(metadata['data']['Y']),
-        )
+        # json keys are strings -- convert back to integers.
+        x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
+        Y = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
+        linreg.data = Data(x=x, Y=Y)
         linreg.N = metadata['N']
         return linreg
