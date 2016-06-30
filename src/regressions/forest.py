@@ -261,10 +261,10 @@ class RandomForest(CGpm):
             params=metadata['params'],
             distargs=metadata['distargs'],
             rng=rng)
-        forest.data = Data(
-            x=OrderedDict(metadata['data']['x']),
-            Y=OrderedDict(metadata['data']['Y']),
-        )
+        # json keys are strings -- convert back to integers.
+        x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
+        Y = ((int(k), v) for k, v in metadata['data']['Y'].iteritems())
+        forest.data = Data(x=OrderedDict(x), Y=OrderedDict(Y))
         forest.N = metadata['N']
         forest.counts = metadata['counts']
         return forest
