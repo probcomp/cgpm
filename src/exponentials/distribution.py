@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cgpm.utils import general as gu
 from cgpm.cgpm import CGpm
+from cgpm.mixtures.dim import Dim
+from cgpm.utils import general as gu
 
 
 class DistributionGpm(CGpm):
@@ -64,6 +65,19 @@ class DistributionGpm(CGpm):
     # NON-GPM METHOD #
     ##################
 
+    def transition_hypers(self, N=None):
+        if N is None:
+            N = 1
+        dim = Dim(
+            self.outputs, [-10**8]+self.inputs, cctype=self.name(),
+            hypers=self.get_hypers(), distargs=self.get_distargs(),
+            rng=self.rng)
+        dim.clusters[0] = self
+        dim.transition_hyper_grids(X=self.data.values())
+        for i in xrange(N):
+            dim.transition_hypers()
+
+
     def transition_params(self):
         """Resample the parameters Q conditioned on all observations X
         from an approximate posterior P(Q|X,H)."""
@@ -99,6 +113,7 @@ class DistributionGpm(CGpm):
         heuristics from X to create better grids.
         """
         raise NotImplementedError
+
 
     @staticmethod
     def name():

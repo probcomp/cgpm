@@ -79,5 +79,6 @@ experiments/resources/
 experiments/*/resources/
 cgpm
 src/debug
+src/venturescript/resources
 notes/gpm/vs/vsgpm.pdf
 

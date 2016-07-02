@@ -16,6 +16,7 @@
 
 import cPickle as pickle
 import copy
+import importlib
 import itertools
 import sys
 import time
@@ -29,7 +30,9 @@ import numpy as np
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
+from cgpm.network.helpers import retrieve_ancestors
 from cgpm.network.importance import ImportanceNetwork
+from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import plots as pu
 from cgpm.utils import validation as vu
@@ -108,9 +111,9 @@ class State(CGpm):
         self.views = OrderedDict()
         for v in set(self.Zv().values()):
             v_outputs = [o for o in self.outputs if self.Zv(o) == v]
-            v_cctypes = [cctypes[c] for c in v_outputs]
-            v_distargs = [distargs[c] for c in v_outputs]
-            v_hypers = [hypers[c] for c in v_outputs]
+            v_cctypes = [cctypes[self.outputs.index(c)] for c in v_outputs]
+            v_distargs = [distargs[self.outputs.index(c)] for c in v_outputs]
+            v_hypers = [hypers[self.outputs.index(c)] for c in v_outputs]
             view = View(
                 self.X, outputs=[10**7+v]+v_outputs, inputs=None, Zr=Zrv[v],
                 alpha=view_alphas[v], cctypes=v_cctypes, distargs=v_distargs,
@@ -292,8 +295,10 @@ class State(CGpm):
 
     def build_network(self, accuracy=None):
         if accuracy is None: accuracy=1
-        cgpms = [self.views[v] for v in self.views] + self.hooked_cgpms.values()
-        return ImportanceNetwork(cgpms, accuracy=accuracy, rng=self.rng)
+        return ImportanceNetwork(self.build_cgpms(), accuracy, rng=self.rng)
+
+    def build_cgpms(self):
+        return [self.views[v] for v in self.views] + self.hooked_cgpms.values()
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads evidence for a query from the dataset."""
@@ -321,6 +326,28 @@ class State(CGpm):
         assert len(rowids) == len(queries) == len(evidences)
         return [self.logpdf(r, q, e)
             for (r, q, e) in zip(rowids, queries, evidences)]
+
+    # --------------------------------------------------------------------------
+    # Dependence probability.
+
+    def dependence_probability(self, col0, col1):
+        # Both crosscat check views directly.
+        if col0 in self.outputs and col1 in self.outputs:
+            return 1 if self.Zv(col0) == self.Zv(col1) else 0
+        # XXX Assume all outputs of a particular CGPM are dependent.
+        if any(col0 in c.outputs and col1 in c.outputs
+                for c in self.hooked_cgpms.values()):
+            return 1
+        ancestors0 = retrieve_ancestors(self.build_cgpms(), col0)
+        ancestors1 = retrieve_ancestors(self.build_cgpms(), col1)
+        # Direct common ancestor implies dependent.
+        if set.intersection(set(ancestors0), set(ancestors1)):
+            return 1
+        # Dependent ancestors via crosscat view.
+        cc_ancestors0 = [self.Zv(i) for i in ancestors0 if i in self.outputs]
+        cc_ancestors1 = [self.Zv(i) for i in ancestors1 if i in self.outputs]
+        return 1 if set.intersection(set(cc_ancestors0), set(cc_ancestors1))\
+            else 0
 
     # --------------------------------------------------------------------------
     # Mutual information
@@ -659,7 +686,8 @@ class State(CGpm):
     # Data structure invariants.
 
     def _check_partitions(self):
-        # For debugging only.
+        if not cu.check_env_debug():
+            return
         assert self.alpha() > 0.
         assert all(len(self.views[v].dims) == self.crp.clusters[0].counts[v]
                 for v in self.views)
@@ -715,6 +743,14 @@ class State(CGpm):
             metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
             metadata['view_alphas'].append((v, view.alpha()))
 
+        # Hooked CGPMs.
+        metadata['hooked_cgpms'] = dict()
+        for token, cgpm in self.hooked_cgpms.iteritems():
+            metadata['hooked_cgpms'][token] = cgpm.to_metadata()
+
+        # Factory data.
+        metadata['factory'] = ('cgpm.crosscat.state', 'State')
+
         return metadata
 
     def to_pickle(self, fileptr):
@@ -725,7 +761,8 @@ class State(CGpm):
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
         to_dict = lambda val: None if val is None else dict(val)
-        return cls(
+        # Build the State.
+        state = cls(
             np.asarray(metadata['X']),
             outputs=metadata.get('outputs', None),
             cctypes=metadata.get('cctypes', None),
@@ -737,6 +774,14 @@ class State(CGpm):
             hypers=metadata.get('hypers', None),
             iterations=metadata.get('iterations', None),
             rng=rng)
+        # Hook up the composed CGPMs.
+        for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():
+            builder = getattr(
+                importlib.import_module(cgpm_metadata['factory'][0]),
+                cgpm_metadata['factory'][1])
+            cgpm = builder.from_metadata(cgpm_metadata, rng=rng)
+            state.compose_cgpm(cgpm)
+        return state
 
     @classmethod
     def from_pickle(cls, fileptr, rng=None):

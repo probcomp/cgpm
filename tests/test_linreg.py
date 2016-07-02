@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import pytest
 
 import matplotlib.pyplot as plt
@@ -58,17 +59,27 @@ def test_incorporate():
         evidence = {i:row[i] for i in linreg.inputs}
         linreg.incorporate(rowid, query, evidence)
     # Unincorporating row 20 should raise.
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         linreg.unincorporate(20)
     # Unincorporate all rows.
     for rowid in xrange(20):
         linreg.unincorporate(rowid)
     # Unincorporating row 0 should raise.
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         linreg.unincorporate(0)
     # Incorporating with wrong covariate dimensions should raise.
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         query = {0: D[0,0]}
+        evidence = {i:v for (i, v) in enumerate(D[0])}
+        linreg.incorporate(0, query, evidence)
+    # Incorporating with missing query should raise.
+    with pytest.raises(ValueError):
+        query = {0: None}
+        evidence = {i:v for (i, v) in enumerate(D[0])}
+        linreg.incorporate(0, query, evidence)
+    # Incorporating with wrong query should raise.
+    with pytest.raises(ValueError):
+        query = {1: 2}
         evidence = {i:v for (i, v) in enumerate(D[0])}
         linreg.incorporate(0, query, evidence)
     # Incorporate some more rows.
@@ -87,6 +98,7 @@ def test_logpdf_score():
         query = {0: row[0]}
         evidence = {i:row[i] for i in linreg.inputs}
         linreg.incorporate(rowid, query, evidence)
+    linreg.transition_hypers(N=10)
     assert linreg.logpdf_score() < 0
 
 
@@ -101,6 +113,7 @@ def test_logpdf_predictive():
     Dx3 = D[D[:,1]==3]
     for i, row in enumerate(Dx0[1:]):
         linreg.incorporate(i, {0: row[0]}, {i: row[i] for i in linreg.inputs})
+    linreg.transition_hypers(N=10)
     # Ensure can compute predictive for seen class 0.
     linreg.logpdf(-1, {0: Dx0[0,0]}, {i: Dx0[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 1.
@@ -109,7 +122,12 @@ def test_logpdf_predictive():
     linreg.logpdf(-1, {0: Dx2[0,0]}, {i: Dx2[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 3.
     linreg.logpdf(-1, {0: Dx3[0,0]}, {i: Dx3[0,i] for i in linreg.inputs})
-
+    # Ensure can compute predictive for nan.
+    with pytest.raises(ValueError):
+        linreg.logpdf(-1, {0: np.nan}, {i: Dx0[0,i] for i in linreg.inputs})
+    # Ensure can compute predictive for missing query.
+    with pytest.raises(ValueError):
+        linreg.logpdf(-1, {7: 10}, {i: Dx0[0,i] for i in linreg.inputs})
 
 def test_simulate():
     linreg = LinearRegression(
@@ -118,6 +136,15 @@ def test_simulate():
         rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:25]):
         linreg.incorporate(rowid, {0:row[0]}, {i:row[i] for i in linreg.inputs})
+    linreg.transition_hypers(N=10)
+
+    # Use a deserialized version for simulating.
+    metadata = linreg.to_metadata()
+    builder = getattr(
+        importlib.import_module(metadata['factory'][0]),
+        metadata['factory'][1])
+    linreg = builder.from_metadata(metadata, rng=gu.gen_rng(1))
+
     _, ax = plt.subplots()
     xpred, xtrue = [], []
     for row in D[25:]:
@@ -133,3 +160,54 @@ def test_simulate():
     ax.fill_between(range(len(xtrue)), xlow, xhigh, color='g', alpha='.3')
     ax.scatter(range(len(xtrue)), xtrue, color='r')
     # plt.close('all')
+
+
+def test_missing_inputs():
+    outputs = [0]
+    inputs = [2, 4, 6]
+    distargs = {
+        'cctypes': ['normal', 'categorical', 'categorical'],
+        'ccargs': [None, {'k': 4}, {'k': 1}]
+        }
+    linreg = LinearRegression(
+        outputs=outputs,
+        inputs=inputs,
+        distargs=distargs,
+        rng=gu.gen_rng(1))
+
+    # Incorporate invalid cateogry 4:100. The first term is the bias, the second
+    # terms is {2:1}, the next four terms are the dummy code of {4:100}, and the
+    # last term is the code for {6:0}
+    rowid = 0
+    linreg.incorporate(rowid, {0:1}, {2:1, 4:100, 6:0})
+    assert linreg.data.Y[rowid] == [1, 1, 0, 0, 0, 0, 1]
+
+    # Incorporate invalid cateogry 6:1. The first term is the bias, the second
+    # terms is {2:5}, the next four terms are the dummy code of {4:3}, and the
+    # last term is the code for {6:0}
+    rowid = 1
+    linreg.incorporate(rowid, {0:2}, {2:5, 4:3, 6:1})
+    assert linreg.data.Y[rowid] == [1, 5, 0, 0, 0, 1, 0]
+
+    # Incorporate missing cateogry for input 6. The first term is the bias, the
+    # second terms is {2:5}, the next four terms are the dummy code of {4:0}
+    # and the last term is the code for {6:missing}.
+    rowid = 2
+    linreg.incorporate(rowid, {0:5}, {2:6, 4:0})
+    assert linreg.data.Y[rowid] == [1, 6, 1, 0, 0, 0, 0]
+
+    # Missing input 2 should be imputed to av(1,5,7) == 4.
+    rowid = 3
+    linreg.incorporate(rowid, {0:4}, {4:1, 6:0})
+    assert linreg.data.Y[rowid] == [1, 4, 0, 1, 0, 0, 1]
+
+    linreg.transition_hypers(N=10)
+
+    # Missing input 2 without any observations should be imputed to 0.
+    rowid = 4
+    linreg.unincorporate(0)
+    linreg.unincorporate(1)
+    linreg.unincorporate(2)
+    linreg.unincorporate(3)
+    linreg.incorporate(rowid, {0:4}, {4:1, 6:0})
+    assert linreg.data.Y[rowid] == [1, 0, 0, 1, 0, 0, 1]
