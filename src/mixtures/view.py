@@ -23,6 +23,7 @@ import numpy as np
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.network.importance import ImportanceNetwork
+from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils.config import cctype_class
 from cgpm.utils.general import merged
@@ -75,13 +76,20 @@ class View(CGpm):
         if len(outputs) < 1:
             raise ValueError('View needs at least one output.')
         if len(outputs) > 1:
-            assert len(outputs[1:])==len(cctypes)==len(distargs)==len(hypers)
+            if not distargs:
+                distargs = [None]*len(cctypes)
+            if not hypers:
+                hypers = [None]*len(cctypes)
+            assert len(outputs[1:])==len(cctypes)
+            assert len(distargs) == len(cctypes)
+            assert len(hypers) == len(cctypes)
         self.outputs = outputs
 
         # -- Row CRP -----------------------------------------------------------
-        crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp = Dim(
-            [self.outputs[0]], [-1], cctype='crp', hypers=crp_alpha,
+            [self.outputs[0]], [-1],
+            cctype='crp',
+            hypers=None if alpha is None else {'alpha': alpha},
             rng=self.rng)
         self.crp.transition_hyper_grids([1]*self.n_rows())
         if Zr is None:
@@ -113,8 +121,6 @@ class View(CGpm):
         """Incorporate dim into View. If not reassign, partition should match."""
         dim.inputs[0] = self.outputs[0]
         if reassign:
-            distargs = self._prepare_incorporate(dim.cctype)
-            dim.distargs.update(distargs)
             self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
         self.outputs = self.outputs[:1] + self.dims.keys()
@@ -168,21 +174,19 @@ class View(CGpm):
         if distargs is None:
             distargs = {}
         inputs = []
-        local_distargs = self._prepare_incorporate(cctype)
+        # XXX Horrid hack.
         if cctype_class(cctype).is_conditional():
-            inputs = self._unconditional_dims()
-            # Remove self-refrences when updating unconditional to conditional.
-            if col in inputs:
-                me = inputs.index(col)
-                del local_distargs['cctypes'][me]
-                del local_distargs['ccargs'][me]
-                del inputs[me]
-        inputs = [self.outputs[0]] + inputs
-        distargs.update(local_distargs)
+            if len(self.dims) == 0:
+                raise ValueError('Cannot incorporate single conditional dim.')
+            inputs = filter(
+                lambda d: d != col and not self.dims[d].is_conditional(),
+                sorted(self.dims))
+            distargs['cctypes'] = [self.dims[i].cctype for i in inputs]
+            distargs['ccargs'] = [self.dims[i].get_distargs() for i in inputs]
         D_old = self.dims[col]
         D_new = Dim(
-            outputs=[col], inputs=inputs, cctype=cctype,
-            distargs=distargs, rng=self.rng)
+            outputs=[col], inputs=[self.outputs[0]]+inputs,
+            cctype=cctype, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
 
@@ -204,6 +208,12 @@ class View(CGpm):
             cols = self.dims.keys()
         for c in cols:
             self.dims[c].transition_hypers()
+
+    def transition_dim_grids(self, cols=None):
+        if cols is None:
+            cols = self.dims.keys()
+        for c in cols:
+            self.dim_for(c).transition_hyper_grids(self.X[c])
 
     def transition_rows(self, rows=None):
         if rows is None:
@@ -379,45 +389,12 @@ class View(CGpm):
         assert merged(dim.Zr, dim.Zi) == self.Zr()
         dim.transition_params()
 
-    def _prepare_incorporate(self, cctype):
-        distargs = {}
-        if cctype_class(cctype).is_conditional():
-            if len(self.dims) == 0:
-                raise ValueError('Cannot incorporate single conditional dim.')
-            distargs['cctypes'] = self._unconditional_cctypes()
-            distargs['ccargs'] = self._unconditional_ccargs()
-        return distargs
-
-    def _conditional_dims(self):
-        """Return conditional dims in sorted order."""
-        return filter(lambda d: self.dims[d].is_conditional(),
-            sorted(self.dims))
-
-    def _unconditional_dims(self):
-        """Return unconditional dims in sorted order."""
-        return filter(lambda d: not self.dims[d].is_conditional(),
-            sorted(self.dims))
-
-    def _unconditional_cctypes(self):
-        dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.cctype for d in dims]
-
-    def _conditional_cctypes(self):
-        dims = [self.dims[i] for i in self._conditional_dims()]
-        return [d.cctype for d in dims]
-
-    def _unconditional_ccargs(self):
-        dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.get_distargs() for d in dims]
-
-    def _conditional_ccargs(self):
-        dims = [self.dims[i] for i in self._unconditional_dims()]
-        return [d.get_distargs() for d in dims]
-
     # --------------------------------------------------------------------------
     # Data structure invariants.
 
     def _check_partitions(self):
+        if not cu.check_env_debug():
+            return
         # For debugging only.
         assert self.alpha() > 0.
         # Check that the number of dims actually assigned to the view
@@ -441,3 +418,47 @@ class View(CGpm):
                 rowids_nan = np.isnan(
                     [self.X[dim.index][r] for r in rowids if Zr[r]==k])
                 assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
+
+    # --------------------------------------------------------------------------
+    # Metadata
+
+    def to_metadata(self):
+        metadata = dict()
+
+        # Dataset.
+        metadata['X'] = self.X
+        metadata['outputs'] = self.outputs
+
+        # View partition data.
+        rowids = sorted(self.Zr().keys())
+        metadata['Zr'] = [self.Zr(i) for i in rowids]
+        metadata['alpha'] = self.alpha()
+
+        # Column data.
+        metadata['cctypes'] = []
+        metadata['hypers'] = []
+        metadata['distargs'] = []
+        for c in self.outputs[1:]:
+            metadata['cctypes'].append(self.dims[c].cctype)
+            metadata['hypers'].append(self.dims[c].hypers)
+            metadata['distargs'].append(self.dims[c].distargs)
+
+        # Factory data.
+        metadata['factory'] = ('cgpm.mixtures.view', 'View')
+
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None:
+            rng = gu.gen_rng(0)
+        return cls(
+            metadata.get('X'),
+            outputs=metadata.get('outputs', None),
+            inputs=metadata.get('inputs', None),
+            alpha=metadata.get('alpha', None),
+            cctypes=metadata.get('cctypes', None),
+            distargs=metadata.get('distargs', None),
+            hypers=metadata.get('hypers', None),
+            Zr=metadata.get('Zr', None),
+            rng=rng)

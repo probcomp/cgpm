@@ -1,48 +1,91 @@
-Notes For Anyone Hacking gpmcc
+Notes For cgpm Hackers
 
 * Branches
 
-Should be [month][day]-[username]-[branch-description...], for example a
-well named branch is 1226-fsaad-dist-sampling.
+Should be [year][month][day]-[username]-[branch-description...], for example a
+well named branch is 20160621-fsaad-update-hacking.
 
 Please do not delete branches, history should be maintained.
 
 * Python coding style
 
-Generally follow PEP 8, with these exceptions:
+Generally follow PEP 8, 80-char max, with these exceptions:
 
-- Single line between top-level definitions.
-  => Two blank lines are needlessly verbose.
-- Four spaces, instead of alignment, for continuation lines.
-  => Using alignment penalizes descriptive function names and renaming.
+- New line, instead of alignment, for continuation lines. For function
+definitions, no new line and use eight spaces.
 
-- Prefer single-quoted strings, except use """ for docstrings.
+    Example: Yes
+    model = cgpm.crosscat.state.State(
+        X, outputs=[1,2,3,4], inputs=None,
+        cctypes=['normal', 'bernoulli', 'poisson', 'lognormal'],
+        rng=np.random.RandomState(0))
+
+    Example: No
+    model = cgpm.crosscat.state.State(X, outputs=[1,2,3], inputs=None,
+                                      cctypes=['normal', 'bernoulli', 'poisson',
+                                        'lognormal'],
+                                      rng=np.random.RandomState(0))
+
+    Example: Yes
+    def generate_mh_sample(x, logpdf_target, jump_std, D, num_samples=1,
+            num_burn=1, num_chains=7 num_lag=1, rng=None):
+        ...body...
+
+    Example: Possible, not preferable.
+    def generate_mh_sample(
+            x, logpdf_target, jump_std, D, num_samples=1,
+            num_burn=1, num_chains=7 num_lag=1, rng=None):
+        ...body...
+
+    Example: No
+    def generate_mh_sample(x, logpdf_target, jump_std, D, num_samples=1,
+                           num_burn=1, num_chains=7 num_lag=1, rng=None):
+        ...body...
+
+- Generally use single-quoted strings, except use """ for doc strings.
 
 * Python imports
 
 Should be organized as follows:
 
-    [Standard library imports]
+    [standard library imports]
     - blank line -
-    [Third party library imports]
+    [third-party library imports]
     - blank line -
-    [Sister projects library imports]
+    [sister projects library imports]
     - blank line -
-    [gpmcc module imports]
+    [cgpm module imports]
 
-Each import block should be organized alphabetically, first all unqualified
+Each import block should be organized alphabetically: first all unqualified
 imports (import baz), then all named imports (from foo import nix).
 For example
 
 import math
 import multiprocessing as mp
+
 from array import ArrayType
 from struct import pack
 
 import numpy as np
-from scipy.stats import geom, norm, laplace
-... etc ...
+
+from scipy.misc import logsumexp
+from scipy.stats import geom
+from scipy.stats import norm
+
+import bayeslite.core
+import bayeslite.math_util
+
+from gpmcc.crosscat.state import State
+from gpmcc.utils import general as gu
 
 * Testing
 
-Before pushing any changes, run check.sh.
+The tip of every branch merged into master __must__ pass ./check.sh, and be
+consistent with the code conventions here. New functionality must always be
+associated with test -- fixing bugs should preferably include a test as well
+(less strict).
+
+* Entropy
+
+Please, never, ever used global random state. Every source of random bits must
+be managed explicitly.

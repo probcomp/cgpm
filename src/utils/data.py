@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
 import pandas as pd
 
@@ -64,8 +66,15 @@ def parse_schema(schema, dataframe):
     -   cctypes = ['normal', 'bernoulli', 'categorical', 'categorical']
     -   distargs = [None, None, {'k':2}, {'k':3}]
     -   valmap = {
-            'university': {'mit':0, 'harvard':1},
-            'country': {'usa':0, 'nepal':1, 'lebanon':2}
+            'university': {
+                'mit': 0,
+                'harvard': 1
+                },
+            'country': {
+                'usa': 0,
+                'nepal': 1,
+                'lebanon': 2
+                }
             }
         where 'k' for 'country' has been extracted from the dataset.
 
@@ -76,36 +85,40 @@ def parse_schema(schema, dataframe):
     cctypes, distargs = [], []
     valmap = dict()
     columns = []
-    for column, stattype in schema:
+    outputs = []
+    for column, stattype, index in schema:
         if stattype == 'ignore':
             continue
         X = dataframe[column]
         columns.append(column)
         cctypes.append(stattype)
+        outputs.append(index)
         distargs.append(None)
+        # XXX Should check for is_numeric!
         if stattype in ['bernoulli', 'categorical']:
-            mapping = dict()
-            k = 0
-            for val in sorted(X.unique()):
-                if not pd.isnull(val):
-                    mapping[val] = k
-                    k += 1
+            mapping = build_valmap(X)
             X = X.replace(mapping)
             valmap[column] = mapping
             if stattype == 'bernoulli':
                 assert len(mapping) == 2
             else:
                 # Did user specify categorical mapping?
-                _, k = cu.parse_distargs([column])
-                if k == [None]:
-                    distargs[-1] = {'k':len(mapping)}
+                dist, k_user = cu.parse_distargs([column])
+                if k_user == [None]:
+                    distargs[-1] = {'k': len(mapping)}
                 else:
-                    assert k >= len(mapping)
+                    assert len(mapping) <= k_user
         D.append(X)
     T = np.asarray(D).T
     assert len(cctypes) == len(distargs) == len(columns)
     assert len(columns)  == T.shape[1]
-    return T, cctypes, distargs, valmap, columns
+    return T, outputs, cctypes, distargs, valmap, columns
+
+
+def build_valmap(column):
+    uniques = [u for u in sorted(column.unique()) if not pd.isnull(u)]
+    return {u:k for k,u in enumerate(uniques)}
+
 
 def dummy_code(x, discretes):
     """Dummy code a vector of covariates x for ie regression.
@@ -136,10 +149,11 @@ def dummy_code(x, discretes):
         if float(val) != int(val):
             raise TypeError('Discrete value must be integer: {},{}'.format(x,i))
         k = discretes[i]
-        assert 0 <= val < k
+        if not 0 <= val < k:
+            raise ValueError('Discrete value not in {0..%s}: %d.'% (k-1, val))
         r = [0]*(k-1)
         if val < k-1:
             r[int(val)] = 1
         return r
     xp = [as_code(i, val) for i, val in enumerate(x)]
-    return [v for x in xp for v in x]
+    return list(itertools.chain.from_iterable(xp))

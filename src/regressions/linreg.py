@@ -23,6 +23,7 @@ from scipy.special import gammaln
 from scipy.stats import invgamma
 
 from cgpm.cgpm import CGpm
+from cgpm.mixtures.dim import Dim
 from cgpm.utils import config as cu
 from cgpm.utils import data as du
 from cgpm.utils import general as gu
@@ -50,12 +51,17 @@ class LinearRegression(CGpm):
         assert len(self.inputs) >= 1
         assert self.outputs[0] not in self.inputs
         assert len(distargs['cctypes']) == len(self.inputs)
-        # Input distargs.
+        self.input_cctypes = distargs['cctypes']
+        self.input_ccargs = distargs['ccargs']
+        # Determine number of covariates (with 1 bias term) and number of
+        # categories for categorical covariates.
         p, counts = zip(
             *[self._predictor_count(cctype, ccarg)
             for cctype, ccarg in zip(distargs['cctypes'], distargs['ccargs'])])
-        self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
         self.p = sum(p)+1
+        self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
+        # For numerical covariates, map index in inputs to index in code.
+        self.lookup_numerical_index = self.input_to_code_index()
         # Dataset.
         self.N = 0
         self.data = Data(x=OrderedDict(), Y=OrderedDict())
@@ -75,8 +81,11 @@ class LinearRegression(CGpm):
         self.data.Y[rowid] = y
 
     def unincorporate(self, rowid):
-        del self.data.x[rowid]
-        del self.data.Y[rowid]
+        try:
+            del self.data.x[rowid]
+            del self.data.Y[rowid]
+        except KeyError:
+            raise ValueError('No such observation: %d' % rowid)
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
@@ -91,7 +100,7 @@ class LinearRegression(CGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
         if rowid in self.data.x:
-            return self.data.x[rowid]
+            return {self.outputs[0]: self.data.x[rowid]}
         xt, yt = self.preprocess(None, evidence)
         an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
             self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
@@ -109,6 +118,21 @@ class LinearRegression(CGpm):
     ##################
     # NON-GPM METHOD #
     ##################
+
+    def transition(self, N=None):
+        self.transition_hypers(N=N)
+
+    def transition_hypers(self, N=None):
+        if N is None:
+            N = 1
+        dim = Dim(
+            self.outputs, [-10**8]+self.inputs,
+            cctype=self.name(), hypers=self.get_hypers(),
+            distargs=self.get_distargs(), rng=self.rng)
+        dim.clusters[0] = self
+        dim.transition_hyper_grids(X=self.data.x.values())
+        for i in xrange(N):
+            dim.transition_hypers()
 
     def transition_params(self):
         return
@@ -129,7 +153,12 @@ class LinearRegression(CGpm):
         return {}
 
     def get_distargs(self):
-        return {'inputs_discrete': self.inputs_discrete, 'p': self.p}
+        return {
+            'cctypes': self.input_cctypes,
+            'ccargs': self.input_ccargs,
+            'inputs_discrete': self.inputs_discrete,
+            'p': self.p,
+            }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=300):
@@ -166,31 +195,79 @@ class LinearRegression(CGpm):
     # HELPER METHODS #
     ##################
 
+    def input_to_code_index(self):
+        # Convert the index of a numerical variable in self.input to its index
+        # in the dummy code. For instance, if inputs = [1,2,4] and 1 is
+        # categorical with 3 terms, and 2 and 4 are numerical, the code is:
+        # [bias, x1-0, x1-1, x1-3, x1-4, 2, 4]
+        def compute_offset(i):
+            before = [c for c in self.inputs[:i] if c in self.inputs_discrete]
+            offset = sum(self.inputs_discrete[b]-1 for b in before)
+            return 1+offset+i # 1 for the bias term.
+        avoid = [self.inputs[i] for i in self.inputs_discrete]
+        numericals = [c for c,i in enumerate(self.inputs) if i not in avoid]
+        return {c: compute_offset(c) for c in numericals}
+
+
     def preprocess(self, query, evidence):
-        distargs = self.get_distargs()
-        x = query[self.outputs[0]] if query else query
-        y = [evidence[c] for c in self.inputs]
-        inputs_discrete, p = distargs['inputs_discrete'], distargs['p']
-        y = du.dummy_code(y, inputs_discrete)
-        if not set.issubset(set(self.inputs), set(evidence.keys())):
-            raise TypeError(
-                'LinearRegression requires inputs {}: {}'.format(
-                    self.inputs, evidence.keys()))
+        # Retrieve the value x of the query variable.
         if self.outputs[0] in evidence:
-            raise TypeError(
-                'LinearRegression cannot condition on output {}: {}'.format(
+            raise ValueError('Cannot condition on output {}: {}'.format(
                     self.outputs, evidence.keys()))
-        if len(y) != p-1:
-            raise TypeError(
-                'LinearRegression requires input length {}: {}'.format(p, y))
+        if query:
+            x = query.get(self.outputs[0], 'missing')
+            if x == 'missing':
+                raise ValueError(
+                    'No query: %s, %s.' % (self.outputs, query))
+            elif x is None or np.isnan(x):
+                raise ValueError('Invalid query: %s.' % query)
+        else:
+            x = None
+        # XXX Should crash on missing inputs since it violates a CGPM contract!
+        # However we will impute anyway.
+        # if set(evidence.keys()) != set(self.inputs):
+        #     raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
+        def impute(i, val):
+            # Use the final "wildcard" category for missing values or
+            # unseen categories.
+            def impute_categorical(i, val):
+                k = self.inputs_discrete[i]
+                if (val is None) or (np.isnan(val)) or (not (0<=val<k)):
+                    return k-1
+                else:
+                    return val
+            # Use mean value from the observations, or 0 if not exist.
+            def impute_numerical(i, val):
+                if not (val is None or np.isnan(val)):
+                    return val
+                if self.N == 0:
+                    return 0
+                index = self.lookup_numerical_index[i]
+                observations = [v[index] for v in self.data.Y.values()]
+                assert len(observations) == self.N
+                return sum(observations) / float(self.N)
+            return impute_categorical(i, val) if i in self.inputs_discrete else\
+                impute_numerical(i, val)
+        # Retrieve the covariates.
+        y = [impute(c, evidence.get(i,None)) for c,i in enumerate(self.inputs)]
+        # Dummy code covariates.
+        y = du.dummy_code(y, self.inputs_discrete)
+        assert len(y) == self.p-1
         return x, [1] + y
 
     @staticmethod
     def _predictor_count(cct, cca):
-        if cu.cctype_class(cct).is_numeric():
+        # XXX Determine statistical types and arguments of inputs.
+        if cct == 'numerical' or cu.cctype_class(cct).is_numeric():
             p, counts = 1, None
-        elif cca is not None and 'k' in cca: # XXX HACK
-            p, counts = cca['k']-1, int(cca['k'])
+        elif cca is not None and 'k' in cca:
+            # In dummy coding, if the category has values {1,...,K} then its
+            # code contains (K-1) entries, where all zeros indicates value K.
+            # However, we are going to treat all zeros indicating the input to
+            # be a "wildcard" category, so that the code has K entries. This
+            # way the queries are robust to unspecified or misspecified
+            # categories.
+            p, counts = cca['k'], int(cca['k'])+1
         return int(p), counts
 
     @staticmethod
@@ -247,3 +324,32 @@ class LinearRegression(CGpm):
         sigma2 = invgamma.rvs(a, scale=b, random_state=rng)
         b = rng.multivariate_normal(mu, sigma2 * V)
         return sigma2, b
+
+
+    ####################
+    # SERLIAZE METHODS #
+    ####################
+
+    def to_metadata(self):
+        metadata = dict()
+        metadata['outputs'] = self.outputs
+        metadata['inputs'] = self.inputs
+        metadata['N'] = self.N
+        metadata['data'] = self.data
+        metadata['distargs'] = self.get_distargs()
+        metadata['hypers'] = self.get_hypers()
+        metadata['factory'] = ('cgpm.regressions.linreg', 'LinearRegression')
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        linreg = cls(
+            outputs=metadata['outputs'],
+            inputs=metadata['inputs'],
+            hypers=metadata['hypers'],
+            distargs=metadata['distargs'],
+            rng=rng)
+        linreg.data = metadata['data']
+        linreg.N = metadata['N']
+        return linreg

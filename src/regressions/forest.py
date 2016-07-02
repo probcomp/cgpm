@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cPickle
+
 from collections import OrderedDict
 from collections import namedtuple
 
@@ -47,6 +49,7 @@ class RandomForest(CGpm):
         # Number of output categories and input dimension.
         self.k = int(distargs['k'])
         self.p = len(distargs['cctypes'])
+        self.input_cctypes = distargs['cctypes']
         # Sufficient statistics.
         self.N = 0
         self.data = Data(x=OrderedDict(), Y=OrderedDict())
@@ -54,7 +57,7 @@ class RandomForest(CGpm):
         # Outlier and random forest parameters.
         if params is None: params = {}
         self.alpha = params.get('alpha', .1)
-        self.regressor = params.get('regressor', None)
+        self.regressor = params.get('forest', None)
         if self.regressor is None:
             self.regressor = RandomForestClassifier(random_state=self.rng)
 
@@ -68,8 +71,11 @@ class RandomForest(CGpm):
         self.data.Y[rowid] = y
 
     def unincorporate(self, rowid):
-        del self.data.x[rowid]
-        del self.data.Y[rowid]
+        try:
+            del self.data.x[rowid]
+            del self.data.Y[rowid]
+        except KeyError:
+            raise ValueError('No such observation: %d' % rowid)
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
@@ -77,7 +83,7 @@ class RandomForest(CGpm):
         assert rowid not in self.data.x
         try:
             x, y = self.preprocess(query, evidence)
-        except ValueError:
+        except IndexError:
             return -float('inf')
         return RandomForest.calc_predictive_logp(
             x, y, self.regressor, self.counts, self.alpha)
@@ -87,7 +93,7 @@ class RandomForest(CGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert query == self.outputs
         if rowid in self.data.x:
-            return self.data.x[rowid]
+            return {self.outputs[0]: self.data.x[rowid]}
         logps = [self.logpdf(rowid, {query[0]: x}, evidence)
             for x in xrange(self.k)]
         x = gu.log_pflip(logps, rng=self.rng)
@@ -102,7 +108,12 @@ class RandomForest(CGpm):
     # NON-GPM METHOD #
     ##################
 
-    def transition_params(self):
+    def transition(self, N=None):
+        self.transition_params(N=N)
+
+    def transition_params(self, N=None):
+        if N is None:
+            N = 1
         # Transition noise parameter.
         alphas = np.linspace(0.01, 0.99, 30)
         alpha_logps = [
@@ -110,7 +121,8 @@ class RandomForest(CGpm):
                 self.data.x.values(), self.data.Y.values(), self.regressor,
                 self.counts, a)
             for a in alphas]
-        self.alpha = gu.log_pflip(alpha_logps, array=alphas, rng=self.rng)
+        for i in xrange(N):
+            self.alpha = gu.log_pflip(alpha_logps, array=alphas, rng=self.rng)
         # Transition forest.
         if len(self.data.Y) > 0:
             self.regressor.fit(self.data.Y.values(), self.data.x.values())
@@ -122,13 +134,20 @@ class RandomForest(CGpm):
         return {}
 
     def get_params(self):
-        return {'forest': self.regressor, 'alpha': self.alpha}
+        return {
+            'forest': self.regressor,
+            'alpha': self.alpha
+            }
 
     def get_suffstats(self):
         return {}
 
     def get_distargs(self):
-        return {'k': self.k, 'p': self.p}
+        return {
+            'k': self.k,
+            'p': self.p,
+            'cctypes': self.input_cctypes,
+            }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
@@ -161,29 +180,29 @@ class RandomForest(CGpm):
     ##################
 
     def preprocess(self, query, evidence):
-        x = query[self.outputs[0]]
-        y = [evidence[c] for c in sorted(evidence)]
-        distargs = self.get_distargs()
-        p, k = distargs['p'], distargs['k']
+        # Retrieve the value x of the query variable.
+        if self.outputs[0] in evidence:
+            raise ValueError('Cannot condition on output {}: {}'.format(
+                    self.outputs, evidence.keys()))
+        x = query.get(self.outputs[0], None)
+        if x is None or np.isnan(x):
+            raise ValueError('Invalid query: %s.' % query)
+        # Retrieve the evidence values.
         if not set.issubset(set(self.inputs), set(evidence.keys())):
-            raise TypeError(
+            raise ValueError(
                 'RandomForest requires inputs {}: {}'.format(
                     self.inputs, evidence.keys()))
-        if self.outputs[0] in evidence:
-            raise TypeError(
-                'RandomForest cannot condition on output {}: {}'.format(
-                    self.outputs, evidence.keys()))
-        if len(y) != p:
-            raise TypeError(
-                'RandomForest requires input length {}: {}'.format(p, y))
-        if not (x % 1 == 0 and 0 <= x < distargs['k']):
+        y = [evidence[c] for c in sorted(evidence)]
+        if any(np.isnan(v) for v in y):
             raise ValueError(
-                'RandomForest requires output in [0..{}): {}'.format(k, x))
+                'Random Forest cannot accept nan inputs: %s.' % evidence)
+        if len(y) != self.p:
+            raise ValueError(
+                'RandomForest requires input length %s: %s' % (self.p, y))
+        if not (x % 1 == 0 and 0 <= x < self.k):
+            raise IndexError(
+                'RandomForest category not in [0..%s): %s.' % (self.k, x))
         return int(x), y
-
-    @staticmethod
-    def validate(x, K):
-        return int(x) == float(x) and 0 <= x < K
 
     @staticmethod
     def calc_log_likelihood(X, Y, regressor, counts, alpha):
@@ -204,3 +223,42 @@ class RandomForest(CGpm):
             return gu.logsumexp([
                 np.log(alpha) + logp_uniform,
                 np.log(1-alpha) + logp_rf])
+
+
+    def to_metadata(self):
+        metadata = dict()
+        metadata['outputs'] = self.outputs
+        metadata['inputs'] = self.inputs
+        metadata['N'] = self.N
+        metadata['data'] = self.data
+        metadata['counts'] = self.counts
+        metadata['distargs'] = self.get_distargs()
+        metadata['hypers'] = self.get_hypers()
+        metadata['params'] = self.get_params()
+        metadata['factory'] = ('cgpm.regressions.forest', 'RandomForest')
+
+        # Pickle the sklearn forest.
+        forest = metadata['params']['forest']
+        forest_binary = cPickle.dumps(forest)
+        metadata['params']['forest_binary'] = forest_binary
+        del metadata['params']['forest']
+
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None: rng = gu.gen_rng(0)
+        # Unpickle the sklearn forest.
+        forest = cPickle.loads(metadata['params']['forest_binary'])
+        metadata['params']['forest'] = forest
+        forest = cls(
+            outputs=metadata['outputs'],
+            inputs=metadata['inputs'],
+            hypers=metadata['hypers'],
+            params=metadata['params'],
+            distargs=metadata['distargs'],
+            rng=rng)
+        forest.N = metadata['N']
+        forest.data = metadata['data']
+        forest.counts = metadata['counts']
+        return forest

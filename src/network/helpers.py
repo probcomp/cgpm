@@ -43,6 +43,17 @@ def retrieve_extraneous_inputs(cgpms, v_to_c):
     return list(it.chain.from_iterable(extraneous))
 
 
+def retrieve_ancestors(cgpms, q):
+    """Return list of all variables that are ancestors of q."""
+    v_to_c = retrieve_variable_to_cgpm(cgpms)
+    if q not in v_to_c: raise ValueError('Invalid node: %s, %s' % (q, v_to_c))
+    def ancestors(v):
+        parents = cgpms[v_to_c[v]].inputs if v in v_to_c else []
+        parent_ancestors = [ancestors(v) for v in parents]
+        return list(it.chain.from_iterable(parent_ancestors)) + parents
+    return ancestors(q)
+
+
 def topological_sort(graph):
     """Topologically sort a directed graph represented as an adjacency list.
 
