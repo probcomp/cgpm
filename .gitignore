@@ -63,11 +63,14 @@ docs/_build/
 *.aux
 *.bbl
 *.blg
+*.dvi
 *.fdb_latexmk
 *.fls
+*.out
 *.synctex.gz
 *_minted-*
 *.pdf
+*.pyg
 
 # specific directories
 examples/malawi/resources/
@@ -81,4 +84,3 @@ cgpm
 src/debug
 src/venturescript/resources
 notes/gpm/vs/vsgpm.pdf
-
