@@ -461,7 +461,24 @@ class State(CGpm):
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
 
-    def _transition_generic(self, kernels, N=None, S=None, progress=True):
+    def transition_foreign(self, cols=None, N=None, S=None, progress=None):
+        if cols is None:
+            cols = list(itertools.chain.from_iterable(
+                c.outputs for c in self.hooked_cgpms.values()))
+        if any(c in self.outputs for c in cols):
+            raise ValueError('Only foreign variables allowed: %s' % cols)
+        def build_kernel(token):
+            def kernel():
+                self.hooked_cgpms[token].transition()
+                self._increment_iterations('foreign-%s'%token)
+            return kernel
+        tokens = filter(
+            lambda tok: any(i in self.hooked_cgpms[tok].outputs for i in cols),
+            self.hooked_cgpms)
+        kernels = map(build_kernel, tokens)
+        self._transition_generic(kernels, N=N, S=S, progress=progress)
+
+    def _transition_generic(self, kernels, N=None, S=None, progress=None):
         def _progress(percentage):
             progress = ' ' * 30
             fill = int(percentage * len(progress))
@@ -482,6 +499,9 @@ class State(CGpm):
 
         if N is None and S is None:
             N = 1
+        if progress is None:
+            progress = True
+
         iters = 0
         start = time.time()
 
