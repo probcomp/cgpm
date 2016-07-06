@@ -46,11 +46,9 @@ def test_individual_kernels():
         'column_hypers':1})
 
 def check_expected_counts(actual, expected):
-    for k, n in actual.iteritems():
-        if k in expected:
-            assert n == expected[k]
-        else:
-            assert n == 0
+    print actual, expected
+    for k, n in expected.iteritems():
+        assert n == actual[k]
 
 if __name__ == '__main__':
     unittest.main()
