@@ -432,7 +432,6 @@ class State(CGpm):
                 if p >= 1.:
                     break
                 _kernel_lookup[k]()
-                self.iterations[k] = self.iterations.get(k,0) + 1
             else:
                 iters += 1
                 continue
@@ -445,6 +444,7 @@ class State(CGpm):
         """Transition CRP concentration of State."""
         self.crp.transition_hypers()
         self.crp.transition_hypers()
+        self._increment_iterations('alpha')
 
     def transition_view_alphas(self, views=None):
         """Transition CRP concentration of Views."""
@@ -452,6 +452,7 @@ class State(CGpm):
             views = self.views.keys()
         for v in views:
             self.views[v].transition_crp_alpha()
+        self._increment_iterations('view_alphas')
 
     def transition_dim_params(self, cols=None):
         """Transition Dim parmaters."""
@@ -459,6 +460,7 @@ class State(CGpm):
             cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_params()
+        self._increment_iterations('column_params')
 
     def transition_dim_hypers(self, cols=None):
         """Transition Dim hyperparmaters."""
@@ -466,6 +468,7 @@ class State(CGpm):
             cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_hypers()
+        self._increment_iterations('column_hypers')
 
     def transition_dim_grids(self, cols=None):
         """Transition Dim hyperparameter grids."""
@@ -473,6 +476,7 @@ class State(CGpm):
             cols = self.outputs
         for c in cols:
             self.dim_for(c).transition_hyper_grids(self.X[c])
+        self._increment_iterations('column_grids')
 
     def transition_view_rows(self, views=None, rows=None):
         """Transition CRP assignments of rows in Views."""
@@ -482,6 +486,7 @@ class State(CGpm):
             views = self.views.keys()
         for v in views:
             self.views[v].transition_rows(rows=rows)
+        self._increment_iterations('rows')
 
     def transition_dims(self, cols=None, m=2):
         """Transition CRP assignments of Dim in State."""
@@ -490,6 +495,10 @@ class State(CGpm):
         cols = self.rng.permutation(cols)
         for c in cols:
             self._gibbs_transition_dim(c, m)
+        self._increment_iterations('columns')
+
+    def _increment_iterations(self, kernel, N=1):
+        self.iterations[kernel] = self.iterations.get(kernel, 0) + N
 
     # --------------------------------------------------------------------------
     # Helpers
