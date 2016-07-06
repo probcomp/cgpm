@@ -26,92 +26,10 @@ from matplotlib import cm
 
 from cgpm.cgpm import CGpm
 from cgpm.crosscat.state import State
+from cgpm.dummy.fourway import FourWay
+from cgpm.dummy.twoway import TwoWay
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
-
-
-class FourWay(CGpm):
-    """Generates categorical(4) output on R2 valued input."""
-
-    def __init__(self, outputs, inputs, rng):
-        self.rng = rng
-        self.probabilities =[
-            [.7, .1, .05, .05],
-            [.1, .8, .1, .1],
-            [.1, .15, .65, .1],
-            [.1, .05, .1, .75]]
-        assert len(outputs) == 1
-        assert len(inputs) == 2
-        self.outputs = list(outputs)
-        self.inputs = list(inputs)
-
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        regime = self.lookup_quadrant(
-            evidence[self.inputs[0]], evidence[self.inputs[1]])
-        x = gu.pflip(self.probabilities[regime], rng=self.rng)
-        return {self.outputs[0]: x}
-
-    def logpdf(self, rowid, query, evidence=None):
-        x = query[self.outputs[0]]
-        if not (0 <= x <= 3): return -float('inf')
-        regime = self.lookup_quadrant(
-            evidence[self.inputs[0]], evidence[self.inputs[1]])
-        return np.log(self.probabilities[regime][x])
-
-    @staticmethod
-    def lookup_quadrant(y0, y1):
-        if y0 > 0 and y1 > 0: return 0
-        if y0 < 0 and y1 > 0: return 1
-        if y0 > 0 and y1 < 0: return 2
-        if y0 < 0 and y1 < 0: return 3
-        raise ValueError('Invalid value: %s' % str((y0, y1)))
-
-    @staticmethod
-    def retrieve_y_for_x(x):
-        if x == 0: return [2, 2]
-        if x == 1: return [-2, 2]
-        if x == 2: return [2, -2]
-        if x == 3: return [-2, -2]
-        raise ValueError('Invalid value: %s' % str(x))
-
-
-class TwoWay(object):
-    """Generates {0,1} output on {0,1} valued input."""
-
-    def __init__(self, outputs, inputs, rng):
-        self.rng = rng
-        self.probabilities =[
-            [.9, .1],
-            [.3, .7]]
-        assert len(outputs) == 1
-        assert len(inputs) == 1
-        self.outputs = list(outputs)
-        self.inputs = list(inputs)
-
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        y = evidence[self.inputs[0]]
-        assert int(y) == float(y)
-        assert y in [0, 1]
-        x = gu.pflip(self.probabilities[y], rng=self.rng)
-        return {self.outputs[0]: x}
-
-    def logpdf(self, rowid, query, evidence=None):
-        y = evidence[self.inputs[0]]
-        assert int(y) == float(y)
-        assert y in [0, 1]
-        x = query[self.outputs[0]]
-        if x not in [0, 1]: return -float('inf')
-        return np.log(self.probabilities[y][x])
-
-    @staticmethod
-    def retrieve_y_for_x(x):
-        if x == 0: return 0
-        if x == 1: return 1
-        raise ValueError('Invalid value: %s' % str(x))
 
 
 def generate_quadrants(rows, rng):
@@ -136,14 +54,14 @@ def compute_quadrant_counts(T):
 
 @pytest.fixture(scope='module')
 def state():
-    rng = gu.gen_rng(1)
+    rng = gu.gen_rng(5)
     rows = 120
     cctypes = ['normal', 'bernoulli', 'normal']
     G = generate_quadrants(rows, rng)
     B, Zv, Zrv = tu.gen_data_table(
         rows, [1], [[.5,.5]], ['bernoulli'], [None], [.95], rng=rng)
     T = np.column_stack((G, B.T))[:,[0,2,1]]
-    state = State(T, outputs=[0,1,2], cctypes=cctypes)
+    state = State(T, outputs=[0,1,2], cctypes=cctypes, rng=rng)
     state.transition(N=20)
     return state
 

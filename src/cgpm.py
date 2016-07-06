@@ -115,6 +115,6 @@ class CGpm(object):
         raise NotImplementedError
 
     @staticmethod
-    def from_metadata(cls, self, rng=None):
+    def from_metadata(cls, metadata, rng=None):
         """Load CGpm from its binary representation."""
         raise NotImplementedError
