@@ -65,12 +65,12 @@ class Engine(object):
     # External
 
     def transition(self, N=None, S=None, kernels=None, target_views=None,
-            target_rows=None, target_cols=None, do_plot=False, do_progress=True,
+            target_rows=None, target_cols=None, do_progress=True,
             multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('transition', self.states[i],
                 (N, S, kernels, target_views, target_rows, target_cols,
-                    do_plot, do_progress))
+                    do_progress))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)

@@ -386,8 +386,7 @@ class State(CGpm):
     # Inference
 
     def transition(self, N=None, S=None, kernels=None, target_rows=None,
-            target_cols=None, target_views=None, do_plot=False,
-            do_progress=True):
+            target_cols=None, target_views=None, do_progress=True):
         if N is None and S is None:
             N = 1
 
@@ -405,7 +404,7 @@ class State(CGpm):
                 lambda : self.transition_view_rows(
                     views=target_views, rows=target_rows)),
             ('columns' ,
-                lambda : self.transition_dims(cols=target_cols))
+                lambda : self.transition_dims(cols=target_cols)),
         ]
 
         _kernel_lookup = dict(_kernel_functions)
@@ -423,25 +422,17 @@ class State(CGpm):
                 p_iters = float(iters)/N
             return max(p_iters, p_seconds)
 
-        if do_plot:
-            fig, layout = self.plot()
-
         iters = 0
         start = time.time()
         while True:
             for k in kernels:
                 p = _proportion_done(N, S, iters, start)
+                if do_progress:
+                    self._do_progress(p)
                 if p >= 1.:
-                    if do_progress:
-                        self._do_progress(p)
                     break
                 _kernel_lookup[k]()
                 self.iterations[k] = self.iterations.get(k,0) + 1
-                if do_progress:
-                    self._do_progress(p)
-                if do_plot:
-                    self._do_plot(fig, layout)
-                    plt.pause(1e-4)
             else:
                 iters += 1
                 continue
