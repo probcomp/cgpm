@@ -387,11 +387,9 @@ class State(CGpm):
 
     def transition(self, N=None, S=None, kernels=None, target_rows=None,
             target_cols=None, target_views=None, do_progress=True):
-        if N is None and S is None:
-            N = 1
 
         # Default order of kernel is important.
-        _kernel_functions = [
+        _kernel_lookup = OrderedDict([
             ('alpha',
                 lambda : self.transition_crp_alpha()),
             ('view_alphas',
@@ -405,11 +403,71 @@ class State(CGpm):
                     views=target_views, rows=target_rows)),
             ('columns' ,
                 lambda : self.transition_dims(cols=target_cols)),
-        ]
+        ])
 
-        _kernel_lookup = dict(_kernel_functions)
         if kernels is None:
-            kernels = [k[0] for k in _kernel_functions]
+            kernels = _kernel_lookup.keys()
+
+        kernel_funcs = [_kernel_lookup[k] for k in kernels]
+        self._transition_generic(kernel_funcs, N=N, S=S, progress=do_progress)
+
+    def transition_crp_alpha(self):
+        self.crp.transition_hypers()
+        self.crp.transition_hypers()
+        self._increment_iterations('alpha')
+
+    def transition_view_alphas(self, views=None):
+        if views is None:
+            views = self.views.keys()
+        for v in views:
+            self.views[v].transition_crp_alpha()
+        self._increment_iterations('view_alphas')
+
+    def transition_dim_params(self, cols=None):
+        if cols is None:
+            cols = self.outputs
+        for c in cols:
+            self.dim_for(c).transition_params()
+        self._increment_iterations('column_params')
+
+    def transition_dim_hypers(self, cols=None):
+        if cols is None:
+            cols = self.outputs
+        for c in cols:
+            self.dim_for(c).transition_hypers()
+        self._increment_iterations('column_hypers')
+
+    def transition_dim_grids(self, cols=None):
+        if cols is None:
+            cols = self.outputs
+        for c in cols:
+            self.dim_for(c).transition_hyper_grids(self.X[c])
+        self._increment_iterations('column_grids')
+
+    def transition_view_rows(self, views=None, rows=None):
+        if self.n_rows() == 1:
+            return
+        if views is None:
+            views = self.views.keys()
+        for v in views:
+            self.views[v].transition_rows(rows=rows)
+        self._increment_iterations('rows')
+
+    def transition_dims(self, cols=None, m=2):
+        if cols is None:
+            cols = self.outputs
+        cols = self.rng.permutation(cols)
+        for c in cols:
+            self._gibbs_transition_dim(c, m)
+        self._increment_iterations('columns')
+
+    def _transition_generic(self, kernels, N=None, S=None, progress=True):
+        def _progress(percentage):
+            progress = ' ' * 30
+            fill = int(percentage * len(progress))
+            progress = '[' + '=' * fill + progress[fill:] + ']'
+            print '\r{} {:1.2f}%'.format(progress, 100 * percentage),
+            sys.stdout.flush()
 
         def _proportion_done(N, S, iters, start):
             if S is None:
@@ -422,80 +480,27 @@ class State(CGpm):
                 p_iters = float(iters)/N
             return max(p_iters, p_seconds)
 
+        if N is None and S is None:
+            N = 1
         iters = 0
         start = time.time()
+
         while True:
-            for k in kernels:
+            for kernel in kernels:
                 p = _proportion_done(N, S, iters, start)
-                if do_progress:
-                    self._do_progress(p)
+                if progress:
+                    _progress(p)
                 if p >= 1.:
                     break
-                _kernel_lookup[k]()
+                kernel()
             else:
                 iters += 1
                 continue
             break
-        if do_progress:
-            print 'Completed: %d iterations in %f seconds.' % \
+
+        if progress:
+            print '\rCompleted: %d iterations in %f seconds.' % \
                 (iters, time.time()-start)
-
-    def transition_crp_alpha(self):
-        """Transition CRP concentration of State."""
-        self.crp.transition_hypers()
-        self.crp.transition_hypers()
-        self._increment_iterations('alpha')
-
-    def transition_view_alphas(self, views=None):
-        """Transition CRP concentration of Views."""
-        if views is None:
-            views = self.views.keys()
-        for v in views:
-            self.views[v].transition_crp_alpha()
-        self._increment_iterations('view_alphas')
-
-    def transition_dim_params(self, cols=None):
-        """Transition Dim parmaters."""
-        if cols is None:
-            cols = self.outputs
-        for c in cols:
-            self.dim_for(c).transition_params()
-        self._increment_iterations('column_params')
-
-    def transition_dim_hypers(self, cols=None):
-        """Transition Dim hyperparmaters."""
-        if cols is None:
-            cols = self.outputs
-        for c in cols:
-            self.dim_for(c).transition_hypers()
-        self._increment_iterations('column_hypers')
-
-    def transition_dim_grids(self, cols=None):
-        """Transition Dim hyperparameter grids."""
-        if cols is None:
-            cols = self.outputs
-        for c in cols:
-            self.dim_for(c).transition_hyper_grids(self.X[c])
-        self._increment_iterations('column_grids')
-
-    def transition_view_rows(self, views=None, rows=None):
-        """Transition CRP assignments of rows in Views."""
-        if self.n_rows() == 1:
-            return
-        if views is None:
-            views = self.views.keys()
-        for v in views:
-            self.views[v].transition_rows(rows=rows)
-        self._increment_iterations('rows')
-
-    def transition_dims(self, cols=None, m=2):
-        """Transition CRP assignments of Dim in State."""
-        if cols is None:
-            cols = self.outputs
-        cols = self.rng.permutation(cols)
-        for c in cols:
-            self._gibbs_transition_dim(c, m)
-        self._increment_iterations('columns')
 
     def _increment_iterations(self, kernel, N=1):
         self.iterations[kernel] = self.iterations.get(kernel, 0) + N
@@ -549,14 +554,6 @@ class State(CGpm):
                 verticalalignment='top')
             ax.grid()
         plt.draw()
-
-    def _do_progress(self, percentage):
-        progress = ' ' * 30
-        fill = int(percentage * len(progress))
-        progress = '[' + '=' * fill + progress[fill:] + ']'
-        print '{} {:1.2f}%\r'.format(progress, 100 * percentage),
-        sys.stdout.flush()
-
 
     # --------------------------------------------------------------------------
     # Internal CRP utils.
