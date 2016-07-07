@@ -388,19 +388,39 @@ class State(CGpm):
     def transition(self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True):
 
+        target_views = None
+        target_cols = None
+
+        if cols is not None:
+            implied_views = list(set([self.Zv(c) for c in cols]))
+            if views is None:
+                target_views = implied_views
+            else:
+                target_views = list(set(itertools.chain.from_iterable(
+                    views, implied_views)))
+
+        if views is not None:
+            implied_cols = list(itertools.chain.from_iterable(
+                [self.views[v].outputs[1:] for v in views]))
+            if cols is None:
+                target_cols = implied_cols
+            else:
+                target_cols = list(set(itertools.chain.from_iterable(
+                    cols, implied_cols)))
+
         # Default order of kernel is important.
         _kernel_lookup = OrderedDict([
             ('alpha',
                 lambda : self.transition_crp_alpha()),
             ('view_alphas',
-                lambda : self.transition_view_alphas(views=views)),
+                lambda : self.transition_view_alphas(views=target_views)),
             ('column_params',
-                lambda : self.transition_dim_params(cols=cols)),
+                lambda : self.transition_dim_params(cols=target_cols)),
             ('column_hypers',
-                lambda : self.transition_dim_hypers(cols=cols)),
+                lambda : self.transition_dim_hypers(cols=target_cols)),
             ('rows',
                 lambda : self.transition_view_rows(
-                    views=views, rows=rowids)),
+                    views=target_views, rows=rowids)),
             ('columns' ,
                 lambda : self.transition_dims(cols=cols)),
         ])
