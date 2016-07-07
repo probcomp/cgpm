@@ -187,11 +187,11 @@ def generate_gpmcc_posteriors(cctype, distargs, D_train, iters, seconds):
     engine = Engine(
         D_train, cctypes=[cctype], distargs=[distargs],
         num_states=64, rng=gu.gen_rng(1))
-    engine.transition(N=iters, S=seconds, do_progress=0)
+    engine.transition(N=iters, S=seconds, progress=0)
     if iters:
         kernel = 'column_params' if cu.cctype_class(cctype).is_conditional()\
             else 'column_hypers'
-        engine.transition(N=100, kernels=[kernel], do_progress=0)
+        engine.transition(N=100, kernels=[kernel], progress=0)
     samples = engine.simulate(-1, [0], N=NUM_TEST)
     marginals = engine.logpdf_score()
     ranking = np.argsort(marginals)[::-1]
