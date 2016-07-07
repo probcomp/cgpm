@@ -109,7 +109,7 @@ def test_categorical_forest():
     # Run valid transitions.
     state.transition(
         N=2, kernels=['rows','column_params','column_hypers'],
-        target_views=[state.Zv(cat_id)])
+        views=[state.Zv(cat_id)])
 
     # Running column transition should raise.
     with pytest.raises(ValueError):

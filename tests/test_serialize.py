@@ -162,7 +162,7 @@ def test_serialize_composite_cgpm():
     # Compose the CGPMs.
 
     # Run state transitions.
-    state.transition(N=10, do_progress=False)
+    state.transition(N=10, progress=False)
     # Compose CGPMs, instructing State to run the transitions.
     token_forest = state.compose_cgpm(forest, N=10)
     token_linreg = state.compose_cgpm(linreg, N=10)

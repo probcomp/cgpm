@@ -240,10 +240,10 @@ def load_docstrings(module):
         kernels : list<{'alpha', 'view_alphas', 'column_params', 'column_hypers'
             'rows', 'columns'}>, optional
             List of inference kernels to run in this transition. Default all.
-        target_views, target_rows, target_cols : list<int>, optional
-            Views, rows and columns to apply the kernels. Default all.
+        views, rows, cols : list<int>, optional
+            View, row and column numbers to apply the kernels. Default all.
         do_plot : boolean, optional
             Plot the state of the sampler (real-time), 24 columns max. Unstable.
-        do_progress : boolean, optional
+        progress : boolean, optional
             Show a progress bar for number of target iterations or elapsed time.
         """

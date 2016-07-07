@@ -385,31 +385,31 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Inference
 
-    def transition(self, N=None, S=None, kernels=None, target_rows=None,
-            target_cols=None, target_views=None, do_progress=True):
+    def transition(self, N=None, S=None, kernels=None, rowids=None,
+            cols=None, views=None, progress=True):
 
         # Default order of kernel is important.
         _kernel_lookup = OrderedDict([
             ('alpha',
                 lambda : self.transition_crp_alpha()),
             ('view_alphas',
-                lambda : self.transition_view_alphas(views=target_views)),
+                lambda : self.transition_view_alphas(views=views)),
             ('column_params',
-                lambda : self.transition_dim_params(cols=target_cols)),
+                lambda : self.transition_dim_params(cols=cols)),
             ('column_hypers',
-                lambda : self.transition_dim_hypers(cols=target_cols)),
+                lambda : self.transition_dim_hypers(cols=cols)),
             ('rows',
                 lambda : self.transition_view_rows(
-                    views=target_views, rows=target_rows)),
+                    views=views, rows=rowids)),
             ('columns' ,
-                lambda : self.transition_dims(cols=target_cols)),
+                lambda : self.transition_dims(cols=cols)),
         ])
 
         if kernels is None:
             kernels = _kernel_lookup.keys()
 
         kernel_funcs = [_kernel_lookup[k] for k in kernels]
-        self._transition_generic(kernel_funcs, N=N, S=S, progress=do_progress)
+        self._transition_generic(kernel_funcs, N=N, S=S, progress=progress)
 
     def transition_crp_alpha(self):
         self.crp.transition_hypers()

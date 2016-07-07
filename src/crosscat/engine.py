@@ -64,22 +64,20 @@ class Engine(object):
     # --------------------------------------------------------------------------
     # External
 
-    def transition(self, N=None, S=None, kernels=None, target_views=None,
-            target_rows=None, target_cols=None, do_progress=True,
-            multithread=1):
+    def transition(self, N=None, S=None, kernels=None, rowids=None,
+            cols=None, views=None, progress=True, multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('transition', self.states[i],
-                (N, S, kernels, target_views, target_rows, target_cols,
-                    do_progress))
+                (N, S, kernels, rowids, cols, views, progress))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def transition_foreign(self, cols=None, N=None, S=None, do_progress=None,
+    def transition_foreign(self, cols=None, N=None, S=None, progress=None,
             multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('transition_foreign', self.states[i],
-                (cols, N, S, do_progress))
+                (cols, N, S, progress))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
