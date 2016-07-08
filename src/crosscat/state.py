@@ -388,9 +388,13 @@ class State(CGpm):
     def transition(self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True):
         # XXX Many combinations of the above kwargs will cause havoc.
+        # Moreover if cols contains a value that is neither modeled by gpmcc or
+        # a foreign the transition will proceed silently without throwing an
+        # error.
 
         cols_gpmcc = None
         cols_foreign = None
+
         if cols is not None:
             # Filter out the gpmcc from foreign variables.
             cols_gpmcc = [c for c in cols if c in self.outputs]
@@ -407,15 +411,23 @@ class State(CGpm):
             ('column_hypers',
                 lambda : self.transition_dim_hypers(cols=cols_gpmcc)),
             ('rows',
-                lambda : self.transition_view_rows(
-                    views=views, rows=rowids)),
+                lambda : self.transition_view_rows(views=views, rows=rowids)),
             ('columns' ,
                 lambda : self.transition_dims(cols=cols_gpmcc)),
         ])
 
-        # Build the foreign kernels.
+        # Build foreign kernels.
         f_kernels = self._build_foreign_transition(cols_foreign)
         _kernel_lookup.update([('k%d'%i, fk) for i, fk in enumerate(f_kernels)])
+
+        # If only transitioning foreign, ignore gpmcc kernels.
+        if cols_foreign and (cols_gpmcc is not None and len(cols_gpmcc) == 0):
+            del _kernel_lookup['alpha']
+            del _kernel_lookup['view_alphas']
+            del _kernel_lookup['column_params']
+            del _kernel_lookup['column_hypers']
+            del _kernel_lookup['rows']
+            del _kernel_lookup['columns']
 
         # Run all kernels by default.
         if kernels is None:
