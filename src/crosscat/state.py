@@ -388,43 +388,54 @@ class State(CGpm):
     def transition(self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True):
 
-        target_views = None
-        target_cols = None
+        views_gpmcc = None
+        cols_gpmcc = None
+        cols_foreign = None
 
         if cols is not None:
-            implied_views = list(set([self.Zv(c) for c in cols]))
+            # Filter out the gpmcc from foreign variables.
+            cols_gpmcc = [c for c in cols if c in self.outputs]
+            cols_foreign = [c for c in cols if c not in self.outputs]
+            # Extract the views implied by the gpmcc variables.
+            implied_views = list(set([self.Zv(c) for c in cols_gpmcc]))
             if views is None:
-                target_views = implied_views
+                views_gpmcc = implied_views
             else:
-                target_views = list(set(itertools.chain.from_iterable(
+                views_gpmcc = list(set(itertools.chain.from_iterable(
                     views, implied_views)))
 
         if views is not None:
+            # Extract the gpmcc variables implied by the gpmcc views.
             implied_cols = list(itertools.chain.from_iterable(
                 [self.views[v].outputs[1:] for v in views]))
             if cols is None:
-                target_cols = implied_cols
+                cols_gpmcc = implied_cols
             else:
-                target_cols = list(set(itertools.chain.from_iterable(
+                cols_gpmcc = list(set(itertools.chain.from_iterable(
                     cols, implied_cols)))
 
-        # Default order of kernel is important.
+        # Default order of crosscat kernels is important.
         _kernel_lookup = OrderedDict([
             ('alpha',
                 lambda : self.transition_crp_alpha()),
             ('view_alphas',
-                lambda : self.transition_view_alphas(views=target_views)),
+                lambda : self.transition_view_alphas(views=views_gpmcc)),
             ('column_params',
-                lambda : self.transition_dim_params(cols=target_cols)),
+                lambda : self.transition_dim_params(cols=cols_gpmcc)),
             ('column_hypers',
-                lambda : self.transition_dim_hypers(cols=target_cols)),
+                lambda : self.transition_dim_hypers(cols=cols_gpmcc)),
             ('rows',
                 lambda : self.transition_view_rows(
-                    views=target_views, rows=rowids)),
+                    views=views_gpmcc, rows=rowids)),
             ('columns' ,
-                lambda : self.transition_dims(cols=cols)),
+                lambda : self.transition_dims(cols=cols_gpmcc)),
         ])
 
+        # Build the foreign kernels.
+        f_kernels = self._build_foreign_transition(cols_foreign)
+        _kernel_lookup.update([('k%d'%i, fk) for i, fk in enumerate(f_kernels)])
+
+        # Run all kernels by default.
         if kernels is None:
             kernels = _kernel_lookup.keys()
 
@@ -481,23 +492,6 @@ class State(CGpm):
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
 
-    def transition_foreign(self, cols=None, N=None, S=None, progress=None):
-        if cols is None:
-            cols = list(itertools.chain.from_iterable(
-                c.outputs for c in self.hooked_cgpms.values()))
-        if any(c in self.outputs for c in cols):
-            raise ValueError('Only foreign variables allowed: %s' % cols)
-        def build_kernel(token):
-            def kernel():
-                self.hooked_cgpms[token].transition()
-                self._increment_iterations('foreign-%s'%token)
-            return kernel
-        tokens = filter(
-            lambda tok: any(i in self.hooked_cgpms[tok].outputs for i in cols),
-            self.hooked_cgpms)
-        kernels = map(build_kernel, tokens)
-        self._transition_generic(kernels, N=N, S=S, progress=progress)
-
     def _transition_generic(self, kernels, N=None, S=None, progress=None):
         def _progress(percentage):
             progress = ' ' * 30
@@ -541,6 +535,23 @@ class State(CGpm):
         if progress:
             print '\rCompleted: %d iterations in %f seconds.' % \
                 (iters, time.time()-start)
+
+    def _build_foreign_transition(self, cols=None):
+        if cols is None:
+            cols = list(itertools.chain.from_iterable(
+                c.outputs for c in self.hooked_cgpms.values()))
+        if any(c in self.outputs for c in cols):
+            raise ValueError('Only foreign variables allowed: %s' % cols)
+        def build_transition(token):
+            def kernel():
+                self.hooked_cgpms[token].transition()
+                self._increment_iterations('foreign-%s'%token)
+            return kernel
+        tokens = filter(
+            lambda tok: any(i in self.hooked_cgpms[tok].outputs for i in cols),
+            self.hooked_cgpms)
+        kernels = map(build_transition, tokens)
+        return kernels
 
     def _increment_iterations(self, kernel, N=1):
         self.iterations[kernel] = self.iterations.get(kernel, 0) + N

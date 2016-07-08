@@ -73,15 +73,6 @@ class Engine(object):
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def transition_foreign(self, cols=None, N=None, S=None, progress=None,
-            multithread=1):
-        pool, mapper = self._get_mapper(multithread)
-        args = [('transition_foreign', self.states[i],
-                (cols, N, S, progress))
-                for i in xrange(self.num_states())]
-        self.states = mapper(_modify, args)
-        self._close_mapper(pool)
-
     def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
             distargs=None, v=None, multithread=1):
         pool, mapper = self._get_mapper(multithread)
