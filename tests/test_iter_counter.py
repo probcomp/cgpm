@@ -57,35 +57,31 @@ def test_transition_foreign():
     state = State(X, cctypes=['normal']*5)
 
     token_a = state.compose_cgpm(FourWay(outputs=[12], inputs=[0,1], rng=rng))
-    state.transition_foreign(cols=[12], N=5)
+    state.transition(cols=[12], N=5)
     check_expected_counts(
         state.iterations,
         {'foreign-%s'%token_a: 5})
 
     token_b = state.compose_cgpm(TwoWay(outputs=[22], inputs=[2], rng=rng))
-    state.transition_foreign(cols=[22], N=1)
+    state.transition(cols=[22], N=1)
     check_expected_counts(
         state.iterations,
         {'foreign-%s'%token_a: 5, 'foreign-%s'%token_b: 1})
 
 
-    state.transition_foreign(N=3)
+    state.transition(N=3)
     check_expected_counts(
         state.iterations,
         {'foreign-%s'%token_a: 8, 'foreign-%s'%token_b: 4})
 
     start = time.time()
-    state.transition_foreign(S=2)
+    state.transition(S=2)
     assert time.time() - start >= 2
 
-    for o in state.outputs:
-        with pytest.raises(ValueError):
-            state.transition_foreign(N=3, cols=[o]+[12,22])
-
-    # Crash test for engine.
+    # Crash test for engine to transition everyone.
     engine = Engine(X, cctypes=['normal']*5)
     engine.compose_cgpm([FourWay(outputs=[12],inputs=[0,1],rng=rng)])
-    engine.transition_foreign(N=4)
+    engine.transition(N=4)
 
 
 def check_expected_counts(actual, expected):
