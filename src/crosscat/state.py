@@ -387,46 +387,28 @@ class State(CGpm):
 
     def transition(self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True):
+        # XXX Many combinations of the above kwargs will cause havoc.
 
-        views_gpmcc = None
         cols_gpmcc = None
         cols_foreign = None
-
         if cols is not None:
             # Filter out the gpmcc from foreign variables.
             cols_gpmcc = [c for c in cols if c in self.outputs]
             cols_foreign = [c for c in cols if c not in self.outputs]
-            # Extract the views implied by the gpmcc variables.
-            implied_views = list(set([self.Zv(c) for c in cols_gpmcc]))
-            if views is None:
-                views_gpmcc = implied_views
-            else:
-                views_gpmcc = list(set(itertools.chain.from_iterable(
-                    views, implied_views)))
-
-        if views is not None:
-            # Extract the gpmcc variables implied by the gpmcc views.
-            implied_cols = list(itertools.chain.from_iterable(
-                [self.views[v].outputs[1:] for v in views]))
-            if cols is None:
-                cols_gpmcc = implied_cols
-            else:
-                cols_gpmcc = list(set(itertools.chain.from_iterable(
-                    cols, implied_cols)))
 
         # Default order of crosscat kernels is important.
         _kernel_lookup = OrderedDict([
             ('alpha',
                 lambda : self.transition_crp_alpha()),
             ('view_alphas',
-                lambda : self.transition_view_alphas(views=views_gpmcc)),
+                lambda : self.transition_view_alphas(views=views)),
             ('column_params',
                 lambda : self.transition_dim_params(cols=cols_gpmcc)),
             ('column_hypers',
                 lambda : self.transition_dim_hypers(cols=cols_gpmcc)),
             ('rows',
                 lambda : self.transition_view_rows(
-                    views=views_gpmcc, rows=rowids)),
+                    views=views, rows=rowids)),
             ('columns' ,
                 lambda : self.transition_dims(cols=cols_gpmcc)),
         ])
