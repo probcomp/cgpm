@@ -75,6 +75,8 @@ class LinearRegression(CGpm):
     def incorporate(self, rowid, query, evidence=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
+        if self.outputs[0] not in query:
+            raise ValueError('No query in incorporate: %s.' % query)
         x, y = self.preprocess(query, evidence)
         self.N += 1
         self.data.x[rowid] = x
