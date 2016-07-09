@@ -65,6 +65,7 @@ setup(
     packages=[
         'cgpm',
         'cgpm.crosscat',
+        'cgpm.dummy',
         'cgpm.exponentials',
         'cgpm.mixtures',
         'cgpm.network',
