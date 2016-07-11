@@ -92,13 +92,16 @@ class VsCGpm(CGpm):
         if ev_out:
             self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
         # Retrieve samples, with 5 steps of MH between predict.
-        def retrieve_sample(q):
+        def retrieve_sample(q, l):
             self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
-            return self._simulate_cell(rowid, q, ev_in, predict=True)
-        samples = {q: retrieve_sample(q)
-            for q in sorted(query, key=lambda q: self.outputs.index(q))}
+            return self._predict_cell(rowid, q, ev_in, l)
+        labels = [self._gen_label() for q in query]
+        samples = {q: retrieve_sample(q, l) for q, l in zip(query, labels)}
+        # Forget predicted query variables.
+        for label in labels:
+            self.ripl.forget(label)
         # Forget output variables in evidence.
-        for q,v in ev_out.iteritems():
+        for q, v in ev_out.iteritems():
             self._forget_cell(rowid, q)
         return samples
 
@@ -142,12 +145,12 @@ class VsCGpm(CGpm):
     # --------------------------------------------------------------------------
     # Internal helpers.
 
-    def _simulate_cell(self, rowid, query, evidence, predict=None):
-        simulator = self.ripl.predict if predict else self.ripl.sample
+    def _predict_cell(self, rowid, query, evidence, label):
         inputs = [evidence[i] for i in self.inputs]
         args = str.join(' ', map(str, [rowid] + inputs))
         i = self.outputs.index(query)
-        return simulator('((lookup simulators %i) %s)' % (i, args))
+        return self.ripl.predict(
+            '((lookup simulators %i) %s)' % (i, args), label=label)
 
     def _observe_cell(self, rowid, query, value, evidence):
         inputs = [evidence[i] for i in self.inputs]

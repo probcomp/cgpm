@@ -129,6 +129,11 @@ def test_incorporate_unincorporate():
     cgpm.transition(N=10)
     test_samples_match()
 
+    # Test that simulating a hypothetical twice is different.
+    first = cgpm.simulate(-100, [0, 1], {3:4})
+    second = cgpm.simulate(-100, [0, 1], {3:4})
+    assert first != second
+
     # Test observations resampled after transition.
     cgpm.unincorporate(1)
     with pytest.raises(ValueError):
