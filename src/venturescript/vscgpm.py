@@ -93,7 +93,8 @@ class VsCGpm(CGpm):
             self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
         # Retrieve samples, with 5 steps of MH between predict.
         def retrieve_sample(q, l):
-            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
+            # XXX Only run inference on the latent variables in the block.
+            # self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
             return self._predict_cell(rowid, q, ev_in, l)
         labels = [self._gen_label() for q in query]
         samples = {q: retrieve_sample(q, l) for q, l in zip(query, labels)}
