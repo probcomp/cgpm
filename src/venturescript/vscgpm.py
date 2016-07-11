@@ -196,14 +196,14 @@ class VsCGpm(CGpm):
 
     def _validate_simulate(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
-        if rowid not in self.obs and set(evidence) != set(self.inputs):
-            raise ValueError('Miss evidence: %s, %s' % (evidence, self.inputs))
+        ev_in = {q:v for q,v in evidence.iteritems() if q in self.inputs}
+        ev_out = {q:v for q,v in evidence.iteritems() if q in self.outputs}
+        if rowid not in self.obs and set(ev_in) != set(self.inputs):
+            raise ValueError('Missing evidence: %s, %s' % (ev_in, self.inputs))
         if any(math.isnan(evidence[i]) for i in evidence):
             raise ValueError('Nan evidence: %s' % evidence)
         if not all(i in self.inputs or i in self.outputs for i in evidence):
             raise ValueError('Unknown evidence: %s' % evidence)
-        ev_in = {q:v for q,v in evidence.iteritems() if q in self.inputs}
-        ev_out = {q:v for q,v in evidence.iteritems() if q in self.outputs}
         if rowid in self.obs:
             if ev_out and any(q in self.obs[rowid]['labels'] for q in ev_out):
                 raise ValueError('Observation exists: %d, %s' % (rowid, query))
