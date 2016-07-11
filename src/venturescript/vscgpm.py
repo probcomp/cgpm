@@ -92,13 +92,17 @@ class VsCGpm(CGpm):
         if ev_out:
             self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
         # Retrieve samples, with 5 steps of MH between predict.
-        def retrieve_sample(q):
-            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
-            return self._simulate_cell(rowid, q, ev_in, predict=True)
-        samples = {q: retrieve_sample(q)
-            for q in sorted(query, key=lambda q: self.outputs.index(q))}
+        def retrieve_sample(q, l):
+            # XXX Only run inference on the latent variables in the block.
+            # self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
+            return self._predict_cell(rowid, q, ev_in, l)
+        labels = [self._gen_label() for q in query]
+        samples = {q: retrieve_sample(q, l) for q, l in zip(query, labels)}
+        # Forget predicted query variables.
+        for label in labels:
+            self.ripl.forget(label)
         # Forget output variables in evidence.
-        for q,v in ev_out.iteritems():
+        for q, v in ev_out.iteritems():
             self._forget_cell(rowid, q)
         return samples
 
@@ -142,12 +146,12 @@ class VsCGpm(CGpm):
     # --------------------------------------------------------------------------
     # Internal helpers.
 
-    def _simulate_cell(self, rowid, query, evidence, predict=None):
-        simulator = self.ripl.predict if predict else self.ripl.sample
+    def _predict_cell(self, rowid, query, evidence, label):
         inputs = [evidence[i] for i in self.inputs]
         args = str.join(' ', map(str, [rowid] + inputs))
         i = self.outputs.index(query)
-        return simulator('((lookup simulators %i) %s)' % (i, args))
+        return self.ripl.predict(
+            '((lookup simulators %i) %s)' % (i, args), label=label)
 
     def _observe_cell(self, rowid, query, value, evidence):
         inputs = [evidence[i] for i in self.inputs]
@@ -192,14 +196,14 @@ class VsCGpm(CGpm):
 
     def _validate_simulate(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
-        if rowid not in self.obs and set(evidence) != set(self.inputs):
-            raise ValueError('Miss evidence: %s, %s' % (evidence, self.inputs))
+        ev_in = {q:v for q,v in evidence.iteritems() if q in self.inputs}
+        ev_out = {q:v for q,v in evidence.iteritems() if q in self.outputs}
+        if rowid not in self.obs and set(ev_in) != set(self.inputs):
+            raise ValueError('Missing evidence: %s, %s' % (ev_in, self.inputs))
         if any(math.isnan(evidence[i]) for i in evidence):
             raise ValueError('Nan evidence: %s' % evidence)
         if not all(i in self.inputs or i in self.outputs for i in evidence):
             raise ValueError('Unknown evidence: %s' % evidence)
-        ev_in = {q:v for q,v in evidence.iteritems() if q in self.inputs}
-        ev_out = {q:v for q,v in evidence.iteritems() if q in self.outputs}
         if rowid in self.obs:
             if ev_out and any(q in self.obs[rowid]['labels'] for q in ev_out):
                 raise ValueError('Observation exists: %d, %s' % (rowid, query))
