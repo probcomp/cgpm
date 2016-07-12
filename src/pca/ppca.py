@@ -43,63 +43,63 @@ class PPCA(object):
         valid_series = np.sum(~np.isnan(Y), axis=1) >= min_obs
         Y = Y[valid_series].copy()
 
-        D2 = Y.shape[0]
-        N2 = Y.shape[1]
+        D = Y.shape[0]
+        N = Y.shape[1]
 
-        mean2 = np.reshape(np.nanmean(Y, axis=1), (-1,1))
-        std2 = np.reshape(np.nanstd(Y, axis=1), (-1,1))
+        mean = np.reshape(np.nanmean(Y, axis=1), (-1,1))
+        std = np.reshape(np.nanstd(Y, axis=1), (-1,1))
 
-        Y = (Y-mean2)/std2
-        observed2 = ~np.isnan(Y)
-        missing2 = np.sum(~observed2)
-        Y[~observed2] = 0
+        Y = (Y-mean)/std
+        observed = ~np.isnan(Y)
+        missing = np.sum(~observed)
+        Y[~observed] = 0
 
         # Number of components.
         if d is None:
-            d = D2
+            d = D
 
         # Weight matrix.
         if self.W is None:
-            W = self.rng.randn(D2, d)
+            W = self.rng.randn(D, d)
         else:
             W = self.W
 
         # Weight matrix.
         WW = np.dot(W.T, W)
-        Z = np.dot(np.linalg.inv(WW), np.dot(W.T, Y))
-        recon2 = np.dot(W, Z)
-        recon2[~observed2] = 0
-        ss2 = np.sum((recon2 - Y)**2)/(N2*D2 - missing2)
+        X = np.dot(np.linalg.inv(WW), np.dot(W.T, Y))
+        recon = np.dot(W, X)
+        recon[~observed] = 0
+        ss = np.sum((recon - Y)**2)/(N*D - missing)
 
-        v02 = np.inf
+        v0 = np.inf
 
         counter = 0
 
         while True:
-            Sx2 = np.linalg.inv(np.eye(d) + WW/ss2)
+            Sx = np.linalg.inv(np.eye(d) + WW/ss)
 
             # E-step.
-            ss02 = ss2
-            if missing2 > 0:
-                proj2 = np.dot(W, Z)
-                Y[~observed2] = proj2[~observed2]
-            Z = np.dot(Sx2, np.dot(W.T, Y)) / ss2
+            ss0 = ss
+            if missing > 0:
+                proj = np.dot(W, X)
+                Y[~observed] = proj[~observed]
+            X = np.dot(Sx, np.dot(W.T, Y)) / ss
 
             # M-step.
-            ZZ = np.dot(Z, Z.T)
-            W = np.dot(np.dot(Y, Z.T), np.linalg.pinv(ZZ + N2*Sx2))
+            XX = np.dot(X, X.T)
+            W = np.dot(np.dot(Y, X.T), np.linalg.pinv(XX + N*Sx))
             WW = np.dot(W.T, W)
-            recon2 = np.dot(W, Z)
-            recon2[~observed2] = 0
-            ss2 = (np.sum((recon2-Y)**2) + N2*np.sum(WW*Sx2) + missing2*ss02)/(N2*D2)
+            recon = np.dot(W, X)
+            recon[~observed] = 0
+            ss = (np.sum((recon-Y)**2) + N*np.sum(WW*Sx) + missing*ss0)/(N*D)
 
             # Calculate difference in log likelihood for convergence.
-            det2 = np.log(np.linalg.det(Sx2))
-            if np.isinf(det2):
-                det2 = abs(np.linalg.slogdet(Sx2)[1])
-            v12 = N2*(D2*np.log(ss2) + np.trace(Sx2) - det2) \
-                + np.trace(ZZ) - missing2*np.log(ss02)
-            diff2 = abs(v12/v02 - 1)
+            det = np.log(np.linalg.det(Sx))
+            if np.isinf(det):
+                det = abs(np.linalg.slogdet(Sx)[1])
+            v1 = N*(D*np.log(ss) + np.trace(Sx) - det) \
+                + np.trace(XX) - missing*np.log(ss0)
+            diff2 = abs(v1/v0 - 1)
 
             print diff2
             if verbose:
@@ -107,24 +107,23 @@ class PPCA(object):
             if (diff2 < tol) and (counter > 5):
                 break
 
-            v02 = v12
+            v0 = v1
 
             # Increment counter and proceed.
             counter += 1
 
         W = orth(W)
-        vals2, vecs2 = np.linalg.eig(np.cov(np.dot(W.T, Y)))
-        order2 = np.flipud(np.argsort(vals2))
-        vecs2 = vecs2[:,order2]
-        vals2 = vals2[order2]
+        vals, vecs = np.linalg.eig(np.cov(np.dot(W.T, Y)))
+        order = np.flipud(np.argsort(vals))
+        vecs = vecs[:,order]
+        vals = vals[order]
 
-        W = np.dot(W, vecs2)
-
+        W = np.dot(W, vecs)
 
         # Attach objects to class.
         self.W = W
         self.Y = Y
-        self.eig_vals2 = vals2
+        self.eig_vals = vals
         self._calc_var()
 
     def transform(self, data=None):
@@ -143,7 +142,7 @@ class PPCA(object):
         # variance calc
         var = np.nanvar(self.Y, axis=1)
         total_var = var.sum()
-        self.var_exp = self.eig_vals2.cumsum() / total_var
+        self.var_exp = self.eig_vals.cumsum() / total_var
 
     def save(self, fpath):
         np.save(fpath, self.W)
