@@ -20,6 +20,13 @@ import numpy as np
 
 from scipy.linalg import orth
 
+# Implements a variation of the PPCA algorithm for missing data.
+
+# Ilin, Alexander, and Tapani Raiko. "Practical approaches to principal
+# component analysis in the presence of missing values." Journal of Machine
+# Learning Research 11.Jul (2010): 1957-2000.
+# url: http://www.jmlr.org/papers/volume11/ilin10a/ilin10a.pdf#page=11
+
 
 class PPCA(object):
     def __init__(self, rng):
@@ -71,40 +78,46 @@ class PPCA(object):
 
         # Initial values of params and latents.
         WW = np.dot(W.T, W)
-        X = np.dot(np.linalg.inv(WW), np.dot(W.T, Y))
-        recon = np.dot(W, X)
+        X = np.dot(np.linalg.inv(WW), np.dot(W.T, Y))                   # (6)
+        # Compute reconstruction by orthogonal projection.
+        recon = np.dot(W, X)                                            # (2)
         recon[~observed] = 0
-        ss = np.sum((recon - Y)**2)/(N*D - missing)
+        # Compute reconstruction variance.
+        ss = np.sum((recon - Y)**2)/(N*D - missing)                     # (2)
 
         # Initial log likelihood.
         ll0 = np.inf
 
         # Iteration counter.
+        MAX_ITER = 10000
         counter = 0
 
-        while True:
+        while counter < MAX_ITER:
             # Covariance matrix for Gaussian p(X|Y,W).
-            Sx = np.linalg.inv(np.eye(d) + WW/ss)
+            Sx = np.linalg.inv(np.eye(d) + WW/ss)                       # (15)
 
             # E-step.
             ss0 = ss
             if missing:
                 proj = np.dot(W, X)
                 Y[~observed] = proj[~observed]
-            X = np.dot(Sx, np.dot(W.T, Y)) / ss
+            X = np.dot(Sx, np.dot(W.T, Y)) / ss                         # (15)
 
             # M-step.
             XX = np.dot(X, X.T)
-            W = np.dot(np.dot(Y, X.T), np.linalg.pinv(XX + N*Sx))
+            W = np.dot(np.dot(Y, X.T), np.linalg.pinv(XX + N*Sx))       # (16)
             WW = np.dot(W.T, W)
             recon = np.dot(W, X)
             recon[~observed] = 0
-            ss = (np.sum((recon-Y)**2) + N*np.sum(WW*Sx) + missing*ss0)/(N*D)
+            ss = (np.sum((recon-Y)**2)
+                + N*np.sum(WW*Sx)
+                + missing*ss0)/(N*D)
 
             # Calculate log likelihood.
             det = np.log(np.linalg.det(Sx))
             if np.isinf(det):
                 det = abs(np.linalg.slogdet(Sx)[1])
+
             ll1 = N*(D*np.log(ss) + np.trace(Sx) - det) \
                 + np.trace(XX) - missing*np.log(ss0)
 
@@ -120,6 +133,8 @@ class PPCA(object):
 
             # Increment counter.
             counter += 1
+        else:
+            raise ValueError('Did not converge.')
 
         W = orth(W)
         eig_vals, eig_vecs = np.linalg.eig(np.cov(np.dot(W.T, Y)))
