@@ -104,13 +104,15 @@ class PPCA(object):
         assert np.allclose(recon2, recon.T)
         assert np.allclose(ss, ss2)
 
-        import ipdb; ipdb.set_trace()
-
         v0 = np.inf
         counter = 0
 
         while True:
             Sx = np.linalg.inv(np.eye(d) + CC/ss)
+
+            Sx2 = np.linalg.inv(np.eye(d) + WW/ss)
+
+            assert np.allclose(Sx, Sx2)
 
             # E-step.
             ss0 = ss
@@ -118,6 +120,19 @@ class PPCA(object):
                 proj = np.dot(X, C.T)
                 data[~observed] = proj[~observed]
             X = np.dot(np.dot(data, C), Sx) / ss
+
+            ss02 = ss2
+            if missing2 > 0:
+                proj2 = np.dot(W, Z)
+                Y[~observed2] = proj2[~observed2]
+            Z = np.dot(Sx, np.dot(W.T, Y)) / ss
+
+            assert np.allclose(ss0, ss02)
+            assert np.allclose(proj2, proj.T)
+            assert np.allclose(Y, data.T)
+            assert np.allclose(X.T, Z)
+
+            import ipdb; ipdb.set_trace()
 
             # M-step.
             XX = np.dot(X.T, X)
