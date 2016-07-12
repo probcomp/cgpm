@@ -105,6 +105,8 @@ class PPCA(object):
         assert np.allclose(ss, ss2)
 
         v0 = np.inf
+        v02 = np.inf
+
         counter = 0
 
         while True:
@@ -145,13 +147,14 @@ class PPCA(object):
             WW = np.dot(W.T, W)
             recon2 = np.dot(W, Z)
             recon2[~observed2] = 0
+            ss2 = (np.sum((recon2-Y)**2) + N2*np.sum(WW*Sx2) + missing*ss02)/(N2*D2)
 
             assert np.allclose(Z, X.T)
             assert np.allclose(ZZ, XX)
             assert np.allclose(W, C)
             assert np.allclose(WW, CC)
-            import ipdb; ipdb.set_trace()
             assert np.allclose(recon2, recon.T)
+            assert np.allclose(ss2, ss)
 
             # Calculate difference in log likelihood for convergence.
             det = np.log(np.linalg.det(Sx))
@@ -160,6 +163,20 @@ class PPCA(object):
             v1 = N*(D*np.log(ss) + np.trace(Sx) - det) \
                 + np.trace(XX) - missing*np.log(ss0)
             diff = abs(v1/v0 - 1)
+
+            # Calculate difference in log likelihood for convergence.
+            det2 = np.log(np.linalg.det(Sx2))
+            if np.isinf(det2):
+                det2 = abs(np.linalg.slogdet(Sx2)[1])
+            v12 = N2*(D2*np.log(ss2) + np.trace(Sx2) - det) \
+                + np.trace(ZZ) - missing2*np.log(ss02)
+            diff2 = abs(v12/v02 - 1)
+
+            assert np.allclose(v1, v12)
+            assert np.allclose(diff, diff2)
+            # import ipdb; ipdb.set_trace()
+
+            print diff
             if verbose:
                 print diff
             if (diff < tol) and (counter > 5):
@@ -168,6 +185,8 @@ class PPCA(object):
             # Increment counter and proceed.
             counter += 1
             v0 = v1
+
+            v02 = v12
 
         C = orth(C)
         vals, vecs = np.linalg.eig(np.cov(np.dot(data, C).T))
