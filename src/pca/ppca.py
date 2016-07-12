@@ -24,7 +24,6 @@ from scipy.linalg import orth
 class PPCA(object):
     def __init__(self, rng):
         self.rng = rng
-        self.raw = None
         self.data = None
         self.C = None
         self.means = None
@@ -36,12 +35,13 @@ class PPCA(object):
         return (X - self.means) / self.stds
 
     def fit(self, data, d=None, tol=1e-4, min_obs=10, verbose=False):
-        self.raw = data
-        self.raw[np.isinf(self.raw)] = np.max(self.raw[np.isfinite(self.raw)])
+        data = np.copy(data)
 
-        valid_series = np.sum(~np.isnan(self.raw), axis=0) >= min_obs
+        data[np.isinf(data)] = np.max(data[np.isfinite(data)])
 
-        data = self.raw[:, valid_series].copy()
+        valid_series = np.sum(~np.isnan(data), axis=0) >= min_obs
+        data = data[:, valid_series].copy()
+
         N = data.shape[0]
         D = data.shape[1]
 
@@ -52,8 +52,6 @@ class PPCA(object):
         observed = ~np.isnan(data)
         missing = np.sum(~observed)
         data[~observed] = 0
-
-        # Initial conditions.
 
         # Number of components.
         if d is None:
