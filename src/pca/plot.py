@@ -56,8 +56,8 @@ if __name__ == '__main__':
     iris_y = iris.target
     timestamp = cu.timestamp()
 
-    # for p in np.linspace(0, .7, 9):
-    for p in [0.2]:
+    for p in np.linspace(0, .7, 9):
+    # for p in [0.2]:
         data = fillna(iris_x, p)
         pca = PPCA(rng=gu.gen_rng(2))
         pca.fit(data=data, d=2)
