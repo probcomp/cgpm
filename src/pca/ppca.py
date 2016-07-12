@@ -36,14 +36,22 @@ class PPCA(object):
 
     def fit(self, data, d=None, tol=1e-4, min_obs=10, verbose=False):
         data = np.copy(data)
+        Y = np.copy(data.T)
 
         data[np.isinf(data)] = np.max(data[np.isfinite(data)])
+        Y[np.isinf(Y)] = np.max(Y[np.isfinite(Y)])
 
         valid_series = np.sum(~np.isnan(data), axis=0) >= min_obs
         data = data[:, valid_series].copy()
 
+        valid_series = np.sum(~np.isnan(Y), axis=1) >= min_obs
+        Y = Y[valid_series].copy()
+
         N = data.shape[0]
         D = data.shape[1]
+
+        D_y = Y.shape[0]
+        N_y = Y.shape[1]
 
         self.means = np.nanmean(data, axis=0)
         self.stds = np.nanstd(data, axis=0)
@@ -52,6 +60,17 @@ class PPCA(object):
         observed = ~np.isnan(data)
         missing = np.sum(~observed)
         data[~observed] = 0
+
+        mean_y = np.reshape(np.nanmean(Y, axis=1), (-1,1))
+        std_y = np.reshape(np.nanstd(Y, axis=1), (-1,1))
+
+        import ipdb; ipdb.set_trace()
+        Y = (Y-mean_y)/std_y
+        observed_y = ~np.isnan(Y)
+        missing_y = np.sum(~observed_y)
+        Y[~observed_y] = 0
+
+        assert np.allclose(Y, data.T)
 
         # Number of components.
         if d is None:
