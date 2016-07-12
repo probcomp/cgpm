@@ -64,7 +64,6 @@ class PPCA(object):
         mean_y = np.reshape(np.nanmean(Y, axis=1), (-1,1))
         std_y = np.reshape(np.nanstd(Y, axis=1), (-1,1))
 
-        import ipdb; ipdb.set_trace()
         Y = (Y-mean_y)/std_y
         observed_y = ~np.isnan(Y)
         missing_y = np.sum(~observed_y)
@@ -75,6 +74,9 @@ class PPCA(object):
         # Number of components.
         if d is None:
             d = data.shape[1]
+
+        if d is None:
+            d = D_y
 
         # Weight matrix.
         if self.C is None:
@@ -87,6 +89,22 @@ class PPCA(object):
         recon = np.dot(X, C.T)
         recon[~observed] = 0
         ss = np.sum((recon - data)**2)/(N*D - missing)
+
+        # Weight matrix.
+        W = C
+        WW = np.dot(W.T, W)
+        Z = np.dot(np.linalg.inv(WW), np.dot(C.T, Y))
+        recon2 = np.dot(W, Z)
+        recon2[~observed_y] = 0
+        ss2 = np.sum((recon2 - Y)**2)/(N*D - missing)
+
+        assert np.allclose(W, C)
+        assert np.allclose(WW, CC)
+        assert np.allclose(X.T, Z)
+        assert np.allclose(recon2, recon.T)
+        assert np.allclose(ss, ss2)
+
+        import ipdb; ipdb.set_trace()
 
         v0 = np.inf
         counter = 0
