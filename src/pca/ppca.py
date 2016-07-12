@@ -194,6 +194,15 @@ class PPCA(object):
         vecs = vecs[:, order]
         vals = vals[order]
 
+        W = orth(W)
+        vals2, vecs2 = np.linalg.eig(np.cov(np.dot(W.T, Y)))
+        assert np.allclose(W, C)
+        assert np.allclose(vals2, vals)
+        assert np.allclose(vecs2, vecs)
+        order2 = np.flipud(np.argsort(vals))
+        vecs2 = vecs2[:, order2]
+        vals2 = vals2[order2]
+
         C = np.dot(C, vecs)
 
         # Attach objects to class.
