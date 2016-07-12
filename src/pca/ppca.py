@@ -50,24 +50,24 @@ class PPCA(object):
         N = data.shape[0]
         D = data.shape[1]
 
-        D_y = Y.shape[0]
-        N_y = Y.shape[1]
+        D2 = Y.shape[0]
+        N2 = Y.shape[1]
 
         self.means = np.nanmean(data, axis=0)
         self.stds = np.nanstd(data, axis=0)
+
+        mean2 = np.reshape(np.nanmean(Y, axis=1), (-1,1))
+        std2 = np.reshape(np.nanstd(Y, axis=1), (-1,1))
 
         data = self._standardize(data)
         observed = ~np.isnan(data)
         missing = np.sum(~observed)
         data[~observed] = 0
 
-        mean_y = np.reshape(np.nanmean(Y, axis=1), (-1,1))
-        std_y = np.reshape(np.nanstd(Y, axis=1), (-1,1))
-
-        Y = (Y-mean_y)/std_y
-        observed_y = ~np.isnan(Y)
-        missing_y = np.sum(~observed_y)
-        Y[~observed_y] = 0
+        Y = (Y-mean2)/std2
+        observed2 = ~np.isnan(Y)
+        missing2 = np.sum(~observed2)
+        Y[~observed2] = 0
 
         assert np.allclose(Y, data.T)
 
@@ -76,7 +76,7 @@ class PPCA(object):
             d = data.shape[1]
 
         if d is None:
-            d = D_y
+            d = D2
 
         # Weight matrix.
         if self.C is None:
@@ -95,8 +95,8 @@ class PPCA(object):
         WW = np.dot(W.T, W)
         Z = np.dot(np.linalg.inv(WW), np.dot(C.T, Y))
         recon2 = np.dot(W, Z)
-        recon2[~observed_y] = 0
-        ss2 = np.sum((recon2 - Y)**2)/(N*D - missing)
+        recon2[~observed2] = 0
+        ss2 = np.sum((recon2 - Y)**2)/(N2*D2 - missing)
 
         assert np.allclose(W, C)
         assert np.allclose(WW, CC)
