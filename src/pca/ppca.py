@@ -141,8 +141,10 @@ class PPCA(object):
             ss = (np.sum((recon-data)**2) + N*np.sum(CC*Sx) + missing*ss0)/(N*D)
 
             ZZ = np.dot(Z, Z.T)
+            W = np.dot(np.dot(Y, Z.T), np.linalg.pinv(ZZ + N2*Sx2))
 
             assert np.allclose(ZZ, XX)
+            assert np.allclose(W, C)
             import ipdb; ipdb.set_trace()
 
             # Calculate difference in log likelihood for convergence.
