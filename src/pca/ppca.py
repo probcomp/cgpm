@@ -23,63 +23,74 @@ from scipy.linalg import orth
 
 class PPCA(object):
     def __init__(self, rng):
+        # Random seed.
         self.rng = rng
-        self.Y = None
+        # Principal component vectors.
         self.W = None
-        self.means = None
-        self.stds = None
-
-    def _standardize(self, X):
-        if self.means is None or self.stds is None:
-            raise RuntimeError("Fit model first")
-        return (X - self.means) / self.stds
+        # Dataset and metadata.
+        self.Y = None
+        self.mean = None
+        self.std = None
+        # Eigenvalues and eigenvectors of covariance.
+        self.eig_vals = None
+        self.eig_vecs = None
 
     def fit(self, data, d=None, tol=1e-4, min_obs=10, verbose=False):
+        # Defensive copy.
         Y = np.copy(data.T)
 
+        # Convert infinite values to their maximum.
         Y[np.isinf(Y)] = np.max(Y[np.isfinite(Y)])
 
+        # Drop dimensions which have <= min_obs entries.
         valid_series = np.sum(~np.isnan(Y), axis=1) >= min_obs
         Y = Y[valid_series].copy()
 
-        D = Y.shape[0]
-        N = Y.shape[1]
+        # Extract number of dimensions, and number of data points.
+        D, N = Y.shape
 
-        mean = np.reshape(np.nanmean(Y, axis=1), (-1,1))
-        std = np.reshape(np.nanstd(Y, axis=1), (-1,1))
+        # Compute dataset statistics.
+        self.mean = np.reshape(np.nanmean(Y, axis=1), (-1,1))
+        self.std = np.reshape(np.nanstd(Y, axis=1), (-1,1))
 
-        Y = (Y-mean)/std
+        # Standard the dataset.
+        Y = self._standardize(Y)
+
+        # Replace nan with zeros.
         observed = ~np.isnan(Y)
         missing = np.sum(~observed)
         Y[~observed] = 0
 
-        # Number of components.
+        # Number of principal component vectors.
         if d is None:
             d = D
 
-        # Weight matrix.
+        # Matrix of principal componetn vectors.
         if self.W is None:
             W = self.rng.randn(D, d)
         else:
             W = self.W
 
-        # Weight matrix.
+        # Initial values of params and latents.
         WW = np.dot(W.T, W)
         X = np.dot(np.linalg.inv(WW), np.dot(W.T, Y))
         recon = np.dot(W, X)
         recon[~observed] = 0
         ss = np.sum((recon - Y)**2)/(N*D - missing)
 
-        v0 = np.inf
+        # Initial log likelihood.
+        ll0 = np.inf
 
+        # Iteration counter.
         counter = 0
 
         while True:
+            # Covariance matrix for Gaussian p(X|Y,W).
             Sx = np.linalg.inv(np.eye(d) + WW/ss)
 
             # E-step.
             ss0 = ss
-            if missing > 0:
+            if missing:
                 proj = np.dot(W, X)
                 Y[~observed] = proj[~observed]
             X = np.dot(Sx, np.dot(W.T, Y)) / ss
@@ -92,37 +103,39 @@ class PPCA(object):
             recon[~observed] = 0
             ss = (np.sum((recon-Y)**2) + N*np.sum(WW*Sx) + missing*ss0)/(N*D)
 
-            # Calculate difference in log likelihood for convergence.
+            # Calculate log likelihood.
             det = np.log(np.linalg.det(Sx))
             if np.isinf(det):
                 det = abs(np.linalg.slogdet(Sx)[1])
-            v1 = N*(D*np.log(ss) + np.trace(Sx) - det) \
+            ll1 = N*(D*np.log(ss) + np.trace(Sx) - det) \
                 + np.trace(XX) - missing*np.log(ss0)
-            diff2 = abs(v1/v0 - 1)
 
-            print diff2
+            # Break at convergence.
+            delta = abs(ll1/ll0 - 1)
             if verbose:
-                print diff2
-            if (diff2 < tol) and (counter > 5):
+                print delta
+            if (delta < tol) and (counter > 5):
                 break
 
-            v0 = v1
-
             # Increment counter and proceed.
+            ll0 = ll1
+
+            # Increment counter.
             counter += 1
 
         W = orth(W)
-        vals, vecs = np.linalg.eig(np.cov(np.dot(W.T, Y)))
-        order = np.flipud(np.argsort(vals))
-        vecs = vecs[:,order]
-        vals = vals[order]
+        eig_vals, eig_vecs = np.linalg.eig(np.cov(np.dot(W.T, Y)))
+        order = np.flipud(np.argsort(eig_vals))
+        eig_vecs = eig_vecs[:,order]
+        eig_vals = eig_vals[order]
 
-        W = np.dot(W, vecs)
+        W = np.dot(W, eig_vecs)
 
         # Attach objects to class.
         self.W = W
         self.Y = Y
-        self.eig_vals = vals
+        self.eig_vals = eig_vals
+        self.eig_vecs = eig_vecs
         self._calc_var()
 
     def transform(self, data=None):
@@ -131,12 +144,17 @@ class PPCA(object):
         data = self.Y if data is None else data.T
         return np.dot(self.W.T, data).T
 
+    def _standardize(self, X):
+        if self.mean is None or self.std is None:
+            raise RuntimeError("Fit model first")
+        return (X - self.mean) / self.std
+
     def _calc_var(self):
         if self.Y is None:
-            raise RuntimeError('Fit the data model first.')
+            raise RuntimeError('Fit model first.')
         var = np.nanvar(self.Y, axis=1)
-        total_var = var.sum()
-        self.var_exp = self.eig_vals.cumsum() / total_var
+        total_var = np.sum(var)
+        return np.cumsum(self.eig_vals) / total_var
 
     def save(self, fpath):
         np.save(fpath, self.W)
