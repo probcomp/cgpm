@@ -26,6 +26,7 @@ class PPCA(object):
         self.rng = rng
         self.data = None
         self.C = None
+        self.W = None
         self.means = None
         self.stds = None
 
@@ -35,203 +36,118 @@ class PPCA(object):
         return (X - self.means) / self.stds
 
     def fit(self, data, d=None, tol=1e-4, min_obs=10, verbose=False):
-        data = np.copy(data)
         Y = np.copy(data.T)
 
-        data[np.isinf(data)] = np.max(data[np.isfinite(data)])
         Y[np.isinf(Y)] = np.max(Y[np.isfinite(Y)])
-
-        valid_series = np.sum(~np.isnan(data), axis=0) >= min_obs
-        data = data[:, valid_series].copy()
 
         valid_series = np.sum(~np.isnan(Y), axis=1) >= min_obs
         Y = Y[valid_series].copy()
 
-        N = data.shape[0]
-        D = data.shape[1]
-
         D2 = Y.shape[0]
         N2 = Y.shape[1]
 
-        self.means = np.nanmean(data, axis=0)
-        self.stds = np.nanstd(data, axis=0)
-
         mean2 = np.reshape(np.nanmean(Y, axis=1), (-1,1))
         std2 = np.reshape(np.nanstd(Y, axis=1), (-1,1))
-
-        data = self._standardize(data)
-        observed = ~np.isnan(data)
-        missing = np.sum(~observed)
-        data[~observed] = 0
 
         Y = (Y-mean2)/std2
         observed2 = ~np.isnan(Y)
         missing2 = np.sum(~observed2)
         Y[~observed2] = 0
 
-        assert np.allclose(Y, data.T)
-
         # Number of components.
-        if d is None:
-            d = data.shape[1]
-
         if d is None:
             d = D2
 
         # Weight matrix.
-        if self.C is None:
-            C = self.rng.randn(D, d)
+        if self.W is None:
+            W = self.rng.randn(D2, d)
         else:
-            C = self.C
-
-        CC = np.dot(C.T, C)
-        X = np.dot(np.dot(data, C), np.linalg.inv(CC))
-        recon = np.dot(X, C.T)
-        recon[~observed] = 0
-        ss = np.sum((recon - data)**2)/(N*D - missing)
+            W = self.W
 
         # Weight matrix.
-        W = C
         WW = np.dot(W.T, W)
-        Z = np.dot(np.linalg.inv(WW), np.dot(C.T, Y))
+        Z = np.dot(np.linalg.inv(WW), np.dot(W.T, Y))
         recon2 = np.dot(W, Z)
         recon2[~observed2] = 0
-        ss2 = np.sum((recon2 - Y)**2)/(N2*D2 - missing)
+        ss2 = np.sum((recon2 - Y)**2)/(N2*D2 - missing2)
 
-        assert np.allclose(W, C)
-        assert np.allclose(WW, CC)
-        assert np.allclose(X.T, Z)
-        assert np.allclose(recon2, recon.T)
-        assert np.allclose(ss, ss2)
-
-        v0 = np.inf
         v02 = np.inf
 
         counter = 0
 
         while True:
-            Sx = np.linalg.inv(np.eye(d) + CC/ss)
-
-            Sx2 = np.linalg.inv(np.eye(d) + WW/ss)
-
-            assert np.allclose(Sx, Sx2)
+            Sx2 = np.linalg.inv(np.eye(d) + WW/ss2)
 
             # E-step.
-            ss0 = ss
-            if missing > 0:
-                proj = np.dot(X, C.T)
-                data[~observed] = proj[~observed]
-            X = np.dot(np.dot(data, C), Sx) / ss
-
             ss02 = ss2
             if missing2 > 0:
                 proj2 = np.dot(W, Z)
                 Y[~observed2] = proj2[~observed2]
-            Z = np.dot(Sx, np.dot(W.T, Y)) / ss
-
-            assert np.allclose(ss0, ss02)
-            assert np.allclose(proj2, proj.T)
-            assert np.allclose(Y, data.T)
-            assert np.allclose(X.T, Z)
+            Z = np.dot(Sx2, np.dot(W.T, Y)) / ss2
 
             # M-step.
-            XX = np.dot(X.T, X)
-            C = np.dot(np.dot(data.T, X), np.linalg.pinv(XX + N*Sx))
-            CC = np.dot(C.T, C)
-            recon = np.dot(X, C.T)
-            recon[~observed] = 0
-            ss = (np.sum((recon-data)**2) + N*np.sum(CC*Sx) + missing*ss0)/(N*D)
-
             ZZ = np.dot(Z, Z.T)
             W = np.dot(np.dot(Y, Z.T), np.linalg.pinv(ZZ + N2*Sx2))
             WW = np.dot(W.T, W)
             recon2 = np.dot(W, Z)
             recon2[~observed2] = 0
-            ss2 = (np.sum((recon2-Y)**2) + N2*np.sum(WW*Sx2) + missing*ss02)/(N2*D2)
-
-            assert np.allclose(Z, X.T)
-            assert np.allclose(ZZ, XX)
-            assert np.allclose(W, C)
-            assert np.allclose(WW, CC)
-            assert np.allclose(recon2, recon.T)
-            assert np.allclose(ss2, ss)
-
-            # Calculate difference in log likelihood for convergence.
-            det = np.log(np.linalg.det(Sx))
-            if np.isinf(det):
-                det = abs(np.linalg.slogdet(Sx)[1])
-            v1 = N*(D*np.log(ss) + np.trace(Sx) - det) \
-                + np.trace(XX) - missing*np.log(ss0)
-            diff = abs(v1/v0 - 1)
+            ss2 = (np.sum((recon2-Y)**2) + N2*np.sum(WW*Sx2) + missing2*ss02)/(N2*D2)
 
             # Calculate difference in log likelihood for convergence.
             det2 = np.log(np.linalg.det(Sx2))
             if np.isinf(det2):
                 det2 = abs(np.linalg.slogdet(Sx2)[1])
-            v12 = N2*(D2*np.log(ss2) + np.trace(Sx2) - det) \
+            v12 = N2*(D2*np.log(ss2) + np.trace(Sx2) - det2) \
                 + np.trace(ZZ) - missing2*np.log(ss02)
             diff2 = abs(v12/v02 - 1)
 
-            assert np.allclose(v1, v12)
-            assert np.allclose(diff, diff2)
-            # import ipdb; ipdb.set_trace()
-
-            print diff
+            print diff2
             if verbose:
-                print diff
-            if (diff < tol) and (counter > 5):
+                print diff2
+            if (diff2 < tol) and (counter > 5):
                 break
-
-            # Increment counter and proceed.
-            counter += 1
-            v0 = v1
 
             v02 = v12
 
-        C = orth(C)
-        vals, vecs = np.linalg.eig(np.cov(np.dot(data, C).T))
-        order = np.flipud(np.argsort(vals))
-        vecs = vecs[:, order]
-        vals = vals[order]
+            # Increment counter and proceed.
+            counter += 1
 
         W = orth(W)
         vals2, vecs2 = np.linalg.eig(np.cov(np.dot(W.T, Y)))
-        assert np.allclose(W, C)
-        assert np.allclose(vals2, vals)
-        assert np.allclose(vecs2, vecs)
-        order2 = np.flipud(np.argsort(vals))
-        vecs2 = vecs2[:, order2]
+        order2 = np.flipud(np.argsort(vals2))
+        vecs2 = vecs2[:,order2]
         vals2 = vals2[order2]
 
-        C = np.dot(C, vecs)
+        W = np.dot(W, vecs2)
+
 
         # Attach objects to class.
-        self.C = C
-        self.data = data
-        self.eig_vals = vals
+        self.W = W
+        self.Y = Y
+        self.eig_vals2 = vals2
         self._calc_var()
 
     def transform(self, data=None):
-        if self.C is None:
+        if self.W is None:
             raise RuntimeError('Fit the data model first.')
         if data is None:
-            return np.dot(self.data, self.C)
-        return np.dot(data, self.C)
+            return np.dot(self.W.T, self.Y).T
+        return np.dot(self.W, data).T
 
     def _calc_var(self):
-        if self.data is None:
+        if self.Y is None:
             raise RuntimeError('Fit the data model first.')
 
-        data = self.data.T
+        # data = self.data.T
 
         # variance calc
-        var = np.nanvar(data, axis=1)
+        var = np.nanvar(self.Y, axis=1)
         total_var = var.sum()
-        self.var_exp = self.eig_vals.cumsum() / total_var
+        self.var_exp = self.eig_vals2.cumsum() / total_var
 
     def save(self, fpath):
-        np.save(fpath, self.C)
+        np.save(fpath, self.W)
 
     def load(self, fpath):
         assert os.path.isfile(fpath)
-        self.C = np.load(fpath)
+        self.W = np.load(fpath)
