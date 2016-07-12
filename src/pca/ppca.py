@@ -132,8 +132,6 @@ class PPCA(object):
             assert np.allclose(Y, data.T)
             assert np.allclose(X.T, Z)
 
-            import ipdb; ipdb.set_trace()
-
             # M-step.
             XX = np.dot(X.T, X)
             C = np.dot(np.dot(data.T, X), np.linalg.pinv(XX + N*Sx))
@@ -141,6 +139,11 @@ class PPCA(object):
             recon = np.dot(X, C.T)
             recon[~observed] = 0
             ss = (np.sum((recon-data)**2) + N*np.sum(CC*Sx) + missing*ss0)/(N*D)
+
+            ZZ = np.dot(Z, Z.T)
+
+            assert np.allclose(ZZ, XX)
+            import ipdb; ipdb.set_trace()
 
             # Calculate difference in log likelihood for convergence.
             det = np.log(np.linalg.det(Sx))
