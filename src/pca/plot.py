@@ -57,10 +57,9 @@ if __name__ == '__main__':
     timestamp = cu.timestamp()
 
     for p in np.linspace(0, .7, 9):
-    # for p in [0.2]:
         data = fillna(iris_x, p)
         pca = PPCA(rng=gu.gen_rng(2))
-        pca.fit(data=data, d=2)
+        pca.fit(data=data, d=2, verbose=True)
         ax = scatter_classes(pca.transform(), iris_y)
         ax.get_figure().savefig('figures/%s-%1.2f.png' % (timestamp, p))
         plt.close('all')

@@ -40,7 +40,8 @@ class PPCA(object):
         Y = np.copy(data.T)
 
         # Convert infinite values to their maximum.
-        Y[np.isinf(Y)] = np.max(Y[np.isfinite(Y)])
+        Y[np.isposinf(Y)] = np.max(Y[np.isfinite(Y)])
+        Y[np.isneginf(Y)] = np.min(Y[np.isfinite(Y)])
 
         # Drop dimensions which have <= min_obs entries.
         valid_series = np.sum(~np.isnan(Y), axis=1) >= min_obs
@@ -65,11 +66,8 @@ class PPCA(object):
         if d is None:
             d = D
 
-        # Matrix of principal componetn vectors.
-        if self.W is None:
-            W = self.rng.randn(D, d)
-        else:
-            W = self.W
+        # Matrix of principal component vectors.
+        W = self.rng.randn(D, d) if self.W is None else self.W
 
         # Initial values of params and latents.
         WW = np.dot(W.T, W)
