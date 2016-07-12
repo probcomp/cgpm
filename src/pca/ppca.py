@@ -109,9 +109,7 @@ class PPCA(object):
             WW = np.dot(W.T, W)
             recon = np.dot(W, X)
             recon[~observed] = 0
-            ss = (np.sum((recon-Y)**2)
-                + N*np.sum(WW*Sx)
-                + missing*ss0)/(N*D)
+            ss = 1./(N*D)*(np.sum((recon-Y)**2) + N*np.sum(WW*Sx) + missing*ss0)
 
             # Calculate log likelihood.
             det = np.log(np.linalg.det(Sx))
