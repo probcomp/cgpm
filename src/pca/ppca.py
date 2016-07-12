@@ -24,8 +24,7 @@ from scipy.linalg import orth
 class PPCA(object):
     def __init__(self, rng):
         self.rng = rng
-        self.data = None
-        self.C = None
+        self.Y = None
         self.W = None
         self.means = None
         self.stds = None
@@ -129,17 +128,12 @@ class PPCA(object):
     def transform(self, data=None):
         if self.W is None:
             raise RuntimeError('Fit the data model first.')
-        if data is None:
-            return np.dot(self.W.T, self.Y).T
-        return np.dot(self.W, data).T
+        data = self.Y if data is None else data.T
+        return np.dot(self.W.T, data).T
 
     def _calc_var(self):
         if self.Y is None:
             raise RuntimeError('Fit the data model first.')
-
-        # data = self.data.T
-
-        # variance calc
         var = np.nanvar(self.Y, axis=1)
         total_var = var.sum()
         self.var_exp = self.eig_vals.cumsum() / total_var
