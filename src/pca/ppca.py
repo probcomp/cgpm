@@ -22,7 +22,8 @@ from scipy.linalg import orth
 
 
 class PPCA(object):
-    def __init__(self):
+    def __init__(self, rng):
+        self.rng = rng
         self.raw = None
         self.data = None
         self.C = None
@@ -60,7 +61,7 @@ class PPCA(object):
 
         # Weight matrix.
         if self.C is None:
-            C = np.random.randn(D, d)
+            C = self.rng.randn(D, d)
         else:
             C = self.C
 
