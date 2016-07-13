@@ -124,8 +124,11 @@ class FactorAnalysis(CGpm):
         if any(q in self.latents for q in query):
             raise ValueError('Cannot incorporate latent vars: (%s,%s,%s).'
                 % (query, self.outputs, self.latents))
+        # Reindex the query variables.
         query_r = self.reindex(query)
+        # Incorporate observed variables.
         x = [query_r.get(i, np.nan) for i in xrange(self.D)]
+        # Update dataset and counts.
         self.data[rowid] = x
         self.N += 1
 
@@ -137,6 +140,7 @@ class FactorAnalysis(CGpm):
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
+        # XXX Deal with observed rowids.
         if evidence is None:
             evidence = {}
         if any(q not in self.outputs for q in query):
@@ -147,24 +151,25 @@ class FactorAnalysis(CGpm):
         # Reindex variables.
         query_r = self.reindex(query.keys)
         evidence_r = self.reindex(evidence)
-        # Retrieve conditioanl distribution.
+        # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
             self.mu, self.cov, query_r.keys(), evidence_r)
         # Compute log density.
         return multivariate_normal.logpdf(query_r.values(), mean=muG, cov=covG)
 
     def simulate(self, rowid, query, evidence=None, N=None):
+        # XXX Deal with observed rowids.
         if evidence is None:
             evidence = {}
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         # Reindex variables.
-        query_r = self.reindex(query.keys)
+        query_r = self.reindex(query.keys())
         evidence_r = self.reindex(evidence)
         # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
             self.mu, self.cov, query_r, evidence_r)
-        # Retrieve samples.
+        # Generate samples.
         sample = multivariate_normal.rvs(
             mean=muG, cov=covG, size=N, random_state=self.rng)
         def get_sample(s):
@@ -180,9 +185,11 @@ class FactorAnalysis(CGpm):
 
     def transition(self, N=None):
         X = np.asarray(self.data.values())
+        # Only run inference on observations without missing entries.
         fa = sklearn.decomposition.FactorAnalysis(n_components=self.L)
         fa.fit(X[~np.any(np.isnan(X), axis=1)])
         assert self.L, self.D == fa.components_.shape
+        # Update parameters of Factor Analysis.
         self.Psi = np.diag(fa.noise_variance_)
         self.mux = fa.mean_
         self.W = np.transpose(fa.components_)
@@ -222,9 +229,6 @@ class FactorAnalysis(CGpm):
     # --------------------------------------------------------------------------
     # Helper.
 
-    def preprocess(self, query, evidence):
-        pass
-
     def reindex(self, query, reverse=False):
         func = lambda q: self.outputs[q] if reverse else self.outputs.index
         if isinstance(query, list):
@@ -237,7 +241,7 @@ class FactorAnalysis(CGpm):
         cov = np.row_stack((
             np.column_stack((np.eye(self.L), self.W.T)),
             np.column_stack((self.W, np.dot(self.W, self.W.T) + self.Psi))
-            ))
+        ))
         return mean, cov
 
     @staticmethod
