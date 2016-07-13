@@ -24,6 +24,8 @@ from cgpm.pca.ppca import PPCA
 from cgpm.utils import general as gu
 from cgpm.utils import config as cu
 
+from scipy.stats import multivariate_normal
+
 rng = gu.gen_rng(12)
 
 # Number of datapoints.
@@ -60,6 +62,7 @@ from sklearn.decomposition import FactorAnalysis
 fa = FactorAnalysis(n_components=2)
 fa.fit(Y.T)
 
+
 def transform(fa, x):
     dot, inv = np.dot, np.linalg.inv
     L, D = fa.components_.shape
@@ -74,8 +77,62 @@ def transform(fa, x):
     m = dot(S, dot(W.T, dot(inv(Phi), (x-mu))))
     return m
 
+def logp(fa, x):
+    dot, inv = np.dot, np.linalg.inv
+    L, D = fa.components_.shape
+    mu = fa.mean_
+    assert mu.shape == (D,)
+    Phi = np.diag(fa.noise_variance_)
+    assert Phi.shape == (D, D)
+    W = fa.components_.T
+    assert W.shape == (D, L)
+    return multivariate_normal.logpdf(x, mu, Phi + np.dot(W, W.T))
+
 for x in Y.T:
     print x
-    result_a = fa.transform([x])
-    result_b = transform(fa, x)
-    assert np.allclose(result_a, result_b)
+
+    # Compute the latent variables z.
+    z_a = fa.transform(np.asarray([x]))
+    z_b = transform(fa, x)
+    assert np.allclose(z_a, z_b)
+
+    # Compute the probability p(x), marginalizing over the latent variables.
+    lp_a = fa.score(np.asarray([x]))
+    lp_b = logp(fa, x)
+    assert np.allclose(lp_a, lp_b)
+
+
+def mvn_marginalize(mu, cov, query, evidence):
+    # Q = [0]
+    # E = [1,3,4]
+    # QE = Q+E
+    mu = np.random.rand(5)
+    cov = np.outer(mu, mu)
+    # Query and evidence indices.
+    Q = query
+    E = evidence
+    # QE = Q+E
+    # muQ = mu[Q]
+    # muE = mu[E]
+    # muQE = mu[Q+E]
+    covQ = cov[Q][:,Q]
+    covE = cov[E][:,E]
+    covJ = cov[Q][:,E]
+    top = np.column_stack((covQ, covJ))
+    bottom = np.column_stack((covJ.T, covE))
+    covQE = np.row_stack((top, bottom))
+    assert np.allclose(covQE, covQE.T)
+    return mu[Q], mu[E], covQ, covE, covJ
+
+
+def mvn_condition(mu, cov, query, evidence):
+    # assert isinstance(query, list)
+    # assert isinstance(evidence, dict)
+    # assert len(mu) == cov.shape[0] == cov.shape[1]
+    # assert len(query) + len(evidence) <= len(mu)
+    Q, E = sorted(query), sorted(evidence.keys())
+    Ev = np.asarray([evidence[e] for e in E])
+    muQ, muE, covQ, covE, covJ = mvn_marginalize(mu, cov, Q, E)
+    P = np.dot(covJ, np.linalg.inv(covE))
+    muZ = muQ + np.dot(P, Ev - muE)
+    covZ = covQ - np.dot(P, covJ.T)
