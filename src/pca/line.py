@@ -30,36 +30,28 @@ rng = gu.gen_rng(12)
 
 # Number of datapoints.
 N = 100
-
 # First principal component vector.
 W = np.asarray([
     [3.,],
     [20.],
     [-4.],])
-
 # First principal component scores.
 X = rng.normal(size=(1,N))
-
 # Mean vector.
 m = np.asarray([
     [1],
     [2],
     [-3],])
 M = np.repeat(m, repeats=N, axis=1)
-
 # Noise vector
 sigma = 1.9
 e = rng.normal(scale=sigma, size=(3,N))
-
 # Observations.
 Y = np.dot(W,X) + M + e
-
 assert Y.shape == (3, N)
 
-fig, ax = plt.subplots()
-
 from sklearn.decomposition import FactorAnalysis
-fa = FactorAnalysis(n_components=2)
+fa = FactorAnalysis(n_components=1)
 fa.fit(Y.T)
 
 # Hard code posterior.
@@ -135,12 +127,45 @@ def mvn_condition(mu, cov, query, evidence):
     # assert isinstance(evidence, dict)
     # assert len(mu) == cov.shape[0] == cov.shape[1]
     # assert len(query) + len(evidence) <= len(mu)
-
     Q, E = sorted(query), sorted(evidence.keys())
     Ev = np.asarray([evidence[e] for e in E])
     muQ, muE, covQ, covE, covJ = mvn_marginalize(mu, cov, Q, E)
-
     P = np.dot(covJ, np.linalg.inv(covE))
-
     muZ = muQ + np.dot(P, Ev - muE)
     covZ = covQ - np.dot(P, covJ.T)
+
+
+# Number of datapoints.
+N = 100
+# First principal component vector.
+W = np.asarray([
+    [3.,],
+    [20.]])
+# First principal component scores.
+X = rng.normal(size=(1,N))
+# Mean vector.
+m = np.asarray([
+    [1],
+    [2]])
+M = np.repeat(m, repeats=N, axis=1)
+# Noise vector
+e = np.column_stack((
+    rng.normal(scale=1.9, size=N), rng.normal(scale=3, size=N))).T
+# Observations.
+Y = np.dot(W,X) + M + e
+assert Y.shape == (2, N)
+
+# Plot the raw data.
+fig, ax = plt.subplots()
+ax.scatter(Y.T[:,0], Y.T[:,1], color='b')
+ax.grid()
+
+from sklearn.decomposition import FactorAnalysis
+fa = FactorAnalysis(n_components=1)
+fa.fit(Y.T)
+
+# Plot the components
+xs = np.asarray(ax.get_xlim())
+w0, w1 = fa.components_[0]
+ys = w1/w0*xs
+ax.plot(xs, ys, color='r')
