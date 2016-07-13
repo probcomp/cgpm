@@ -18,39 +18,37 @@ from collections import OrderedDict
 
 import numpy as np
 
+import sklearn.decomposition
+
 from scipy.stats import multivariate_normal
-from sklearn.decomposition import FactorAnalysis
 
 from cgpm.cgpm import CGpm
-from cgpm.mixtures.dim import Dim
-from cgpm.utils import config as cu
-from cgpm.utils import data as du
 from cgpm.utils import general as gu
 
 
-class LowDimensionalMvn(CGpm):
+class FactorAnalysis(CGpm):
     """Factor analysis model with continuous latent variables z in a low
     dimensional space. The generative model for a vector x is
 
     z ~ Normal(0, I)    where z \in R^L.
     e ~ Normal(0, Psi)  where Psi = diag(v_1,...,v_D)
-    x = W.z + mu + e    where W \in R^(DxL) and mu \in R^D, learning by EM.
+    x = W.z + mux + e    where W \in R^(DxL) and mux \in R^D, learning by EM.
 
     From standard results (Murphy Section 12.1)
 
         z ~ Normal(0, I)                Prior.
 
-        x|z ~ Normal(W.z + mu, Psi)     Likelihood.
+        x|z ~ Normal(W.z + mux, Psi)     Likelihood.
 
-        x ~ Normal(mu, W.W'+Psi)        Marginal.
+        x ~ Normal(mux, W.W'+Psi)        Marginal.
 
         z|x ~ Normal(m, S)              Posterior.
             S = inv(I + W'.inv(Psi).W)      (covariance)
-            m = S(W'.inv(Psi).(x-mu))       (mean)
+            m = S(W'.inv(Psi).(x-mux))       (mean)
 
     The full joint distribution over [z,x] is then
 
-    The mean of [z,x] is [0, mu]
+    The mean of [z,x] is [0, mux]
     The covariance of [z,x] is (in block form)
 
         I           W'
@@ -60,8 +58,8 @@ class LowDimensionalMvn(CGpm):
       (DxL)       (DxD)
 
     where the covariance W' is computed directly
-    cov(z,x)    = cov(z, W.z + mu + e)
-                = cov(z, W.z) + cov(z, mu) + cov(z, e)
+    cov(z,x)    = cov(z, W.z + mux + e)
+                = cov(z, W.z) + cov(z, mux) + cov(z, e)
                 = cov(z, W.z)
                 = cov(z,z).W'
                 = W'
@@ -74,10 +72,11 @@ class LowDimensionalMvn(CGpm):
     incorporated.
     """
 
-    def __init__(self, outputs, inputs, hypers=None, params=None, distargs=None,
-            rng=None):
+    def __init__(self, outputs, inputs, params=None, distargs=None, rng=None):
+        # Default parameter settings.
         if params is None:
             params = {}
+        # Entropy.
         if rng is None:
             rng = gu.gen_rng(1)
         # No inputs.
@@ -95,55 +94,102 @@ class LowDimensionalMvn(CGpm):
                 % (outputs[:-L], outputs[-L:]))
         # Build the object.
         self.rng = rng
+        # Dimensions.
         self.L = L
         self.D = D
+        # Varible indexes.
         self.outputs = outputs
-        self.obseravble = outputs[:-self.L]
         self.latents = outputs[-self.L:]
-        self.mu = params.get('mu', np.zeros(D))
+        # Dataset.
+        self.data = OrderedDict()
+        # Parameters of Factor Analysis.
+        self.mux = params.get('mux', np.zeros(D))
         self.Psi = params.get('Psi', np.eye(D))
         self.W = params.get('W', np.zeros((D,L)))
-        self.data = OrderedDict()
+        # Parameters of joint distribution [x,z].
+        self.mu, self.cov = self.joint_parameters()
 
     def incorporate(self, rowid, query, evidence=None):
+        # No duplicate observation.
         if rowid in self.data:
             raise ValueError('Already observed: %d.' % rowid)
+        # No inputs.
         if evidence:
             raise ValueError('No evidence allowed: %s.' % evidence)
+        # No unknown variables.
+        if any(q not in self.outputs for q in query):
+            raise ValueError('Unknown variables: (%s,%s).'
+                % (query, self.outputs))
+        # No incorporation of latent variables.
         if any(q in self.latents for q in query):
-            raise ValueError('Cannot incorporate latents: %s.' % query)
-        x = self.preprocess(query, evidence)
-        self.N += 1
+            raise ValueError('Cannot incorporate latent vars: (%s,%s,%s).'
+                % (query, self.outputs, self.latents))
+        query_r = self.reindex(query)
+        x = [query_r.get(i, np.nan) for i in xrange(self.D)]
         self.data[rowid] = x
+        self.N += 1
 
     def unincorporate(self, rowid):
         try:
             del self.data.x[rowid]
         except KeyError:
-            raise ValueError('No such observation: %d' % rowid)
+            raise ValueError('No such observation: %d.' % rowid)
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
-        pass
+        if evidence is None:
+            evidence = {}
+        if any(q not in self.outputs for q in query):
+            raise ValueError('Unknown variables: (%s,%s).'
+                % (query, self.outputs))
+        if any(q in evidence for q in query):
+            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
+        # Reindex variables.
+        query_r = self.reindex(query.keys)
+        evidence_r = self.reindex(evidence)
+        # Retrieve conditioanl distribution.
+        muG, covG = FactorAnalysis.mvn_condition(
+            self.mu, self.cov, query_r.keys(), evidence_r)
+        # Compute log density.
+        return multivariate_normal.logpdf(query_r.values(), mean=muG, cov=covG)
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        pass
+        if evidence is None:
+            evidence = {}
+        if any(q in evidence for q in query):
+            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
+        # Reindex variables.
+        query_r = self.reindex(query.keys)
+        evidence_r = self.reindex(evidence)
+        # Retrieve conditional distribution.
+        muG, covG = FactorAnalysis.mvn_condition(
+            self.mu, self.cov, query_r, evidence_r)
+        # Retrieve samples.
+        sample = multivariate_normal.rvs(
+            mean=muG, cov=covG, size=N, random_state=self.rng)
+        def get_sample(s):
+            return dict(zip(query, s))
+        return get_sample(sample) if N is None else map(get_sample, sample)
 
     def logpdf_score(self):
-        pass
-
-    ##################
-    # NON-GPM METHOD #
-    ##################
+        def compute_logpdf(x):
+            assert len(x) == self.D
+            query = {i:v for i,v in enumerate(x) if not np.isnan(v)}
+            return self.logpdf(-1, query, evidence=None)
+        return sum(compute_logpdf(x) for x in self.data)
 
     def transition(self, N=None):
         X = np.asarray(self.data.values())
-        fa = FactorAnalysis(n_components=self.L)
+        fa = sklearn.decomposition.FactorAnalysis(n_components=self.L)
         fa.fit(X[~np.any(np.isnan(X), axis=1)])
         assert self.L, self.D == fa.components_.shape
         self.Psi = np.diag(fa.noise_variance_)
-        self.mu = fa.mean_
+        self.mux = fa.mean_
         self.W = np.transpose(fa.components_)
+        self.mu, self.cov = self.joint_parameters()
+
+    # --------------------------------------------------------------------------
+    # Internal.
 
     def get_params(self):
         return {
@@ -153,7 +199,9 @@ class LowDimensionalMvn(CGpm):
         }
 
     def get_distargs(self):
-        return {'L': self.L}
+        return {
+            'L': self.L
+        }
 
     @staticmethod
     def name():
@@ -171,9 +219,8 @@ class LowDimensionalMvn(CGpm):
     def is_numeric():
         return True
 
-    ##################
-    # HELPER METHODS #
-    ##################
+    # --------------------------------------------------------------------------
+    # Helper.
 
     def preprocess(self, query, evidence):
         pass
@@ -185,13 +232,21 @@ class LowDimensionalMvn(CGpm):
         else:
             return {func(q): query[q] for q in query}
 
+    def joint_parameters(self):
+        mean = np.concatenate((np.zeros(self.L), self.mu))
+        cov = np.row_stack((
+            np.column_stack((np.eye(self.L), self.W.T)),
+            np.column_stack((self.W, np.dot(self.W, self.W.T) + self.Psi))
+            ))
+        return mean, cov
+
     @staticmethod
     def mvn_marginalize(mu, cov, query, evidence):
         Q, E = query, evidence
-        # Extract means.
+        # Retrieve means.
         muQ = mu[Q]
         muE = mu[E]
-        # Extract covariances.
+        # Retrieve covariances.
         covQ = cov[Q][:,Q]
         covE = cov[E][:,E]
         covJ = cov[Q][:,E]
@@ -210,18 +265,17 @@ class LowDimensionalMvn(CGpm):
         assert len(query) + len(evidence) <= len(mu)
         # Extract indexes and values from evidence.
         Ei, Ev = zip(*evidence.items())
-        muQ, muE, covQ, covE, covJ = LowDimensionalMvn.mvn_marginalize(
-            mu, cov, query, Ei)
-        # Invoke Fact 4 from
+        muQ, muE, covQ, covE, covJ = \
+            FactorAnalysis.mvn_marginalize(mu, cov, query, Ei)
+        # Invoke Fact 4 from, where G means given.
         # http://web4.cs.ucl.ac.uk/staff/C.Bracegirdle/bayesTheoremForGaussians.pdf
         P = np.dot(covJ, np.linalg.inv(covE))
         muG = muQ + np.dot(P, Ev - muE)
         covG = covQ - np.dot(P, covJ.T)
         return muG, covG
 
-    ####################
-    # SERLIAZE METHODS #
-    ####################
+    # --------------------------------------------------------------------------
+    # Serialization.
 
     def to_metadata(self):
         metadata = dict()
@@ -231,7 +285,7 @@ class LowDimensionalMvn(CGpm):
         metadata['data'] = {self.data}
         metadata['distargs'] = self.get_distargs()
         metadata['params'] = self.get_params()
-        metadata['factory'] = ('cgpm.pca.factor', 'LowDimensionalMvn')
+        metadata['factory'] = ('cgpm.pca.factor', 'FactorAnalysis')
         return metadata
 
     @classmethod
