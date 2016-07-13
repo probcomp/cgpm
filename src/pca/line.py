@@ -62,7 +62,7 @@ from sklearn.decomposition import FactorAnalysis
 fa = FactorAnalysis(n_components=2)
 fa.fit(Y.T)
 
-
+# Hard code posterior.
 def transform(fa, x):
     dot, inv = np.dot, np.linalg.inv
     L, D = fa.components_.shape
@@ -73,9 +73,16 @@ def transform(fa, x):
     W = fa.components_.T
     assert W.shape == (D, L)
     I = np.eye(L)
-    S = inv((I + dot(W.T, dot(inv(Phi), W))))
-    m = dot(S, dot(W.T, dot(inv(Phi), (x-mu))))
-    return m
+    # Compute using Murphy.
+    S1 = inv((I + dot(W.T, dot(inv(Phi), W))))
+    m1 = dot(S1, dot(W.T, dot(inv(Phi), (x-mu))))
+    # Compute using the Schur complement.
+    S2 = I - dot(dot(W.T, inv(dot(W,W.T) + Phi)), W)
+    m2 = dot(dot(W.T, inv(dot(W, W.T)+Phi)), (x-mu))
+    assert np.allclose(m1, m2)
+    assert np.allclose(S1, S2)
+    print m1, m2
+    return m1
 
 def logp(fa, x):
     dot, inv = np.dot, np.linalg.inv
@@ -90,12 +97,10 @@ def logp(fa, x):
 
 for x in Y.T:
     print x
-
     # Compute the latent variables z.
     z_a = fa.transform(np.asarray([x]))
     z_b = transform(fa, x)
     assert np.allclose(z_a, z_b)
-
     # Compute the probability p(x), marginalizing over the latent variables.
     lp_a = fa.score(np.asarray([x]))
     lp_b = logp(fa, x)
@@ -130,9 +135,12 @@ def mvn_condition(mu, cov, query, evidence):
     # assert isinstance(evidence, dict)
     # assert len(mu) == cov.shape[0] == cov.shape[1]
     # assert len(query) + len(evidence) <= len(mu)
+
     Q, E = sorted(query), sorted(evidence.keys())
     Ev = np.asarray([evidence[e] for e in E])
     muQ, muE, covQ, covE, covJ = mvn_marginalize(mu, cov, Q, E)
+
     P = np.dot(covJ, np.linalg.inv(covE))
+
     muZ = muQ + np.dot(P, Ev - muE)
     covZ = covQ - np.dot(P, covJ.T)
