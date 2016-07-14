@@ -67,6 +67,7 @@ setup(
         'cgpm.crosscat',
         'cgpm.dummy',
         'cgpm.exponentials',
+        'cgpm.factor',
         'cgpm.mixtures',
         'cgpm.network',
         'cgpm.regressions',
