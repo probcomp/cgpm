@@ -157,9 +157,8 @@ class FactorAnalysis(CGpm):
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
-        # XXX Deal with observed rowids.
-        if evidence is None:
-            evidence = {}
+        # XXX Deal with observed rowid.
+        evidence = self.populate_evidence(rowid, query, evidence)
         if not query:
             raise ValueError('No query: %s.' % query)
         if any(q not in self.outputs for q in query):
@@ -177,9 +176,8 @@ class FactorAnalysis(CGpm):
         return multivariate_normal.logpdf(query_r.values(), mean=muG, cov=covG)
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        # XXX Deal with observed rowids.
-        if evidence is None:
-            evidence = {}
+        # XXX Deal with observed rowid.
+        evidence = self.populate_evidence(rowid, query, evidence)
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         # Reindex variables.
@@ -213,6 +211,18 @@ class FactorAnalysis(CGpm):
         self.mux = self.fa.mean_
         self.W = np.transpose(self.fa.components_)
         self.mu, self.cov = self.joint_parameters()
+
+    def populate_evidence(self, rowid, query, evidence):
+        if evidence is None:
+            evidence = {}
+        if rowid in self.data:
+            values = self.data[rowid]
+            evidence_obs = {
+                e:v for e,v in zip(self.outputs[:self.D], values)
+                if not np.isnan(v) and e not in query and e not in evidence
+            }
+            evidence = gu.merged(evidence, evidence_obs)
+        return evidence
 
     # --------------------------------------------------------------------------
     # Internal.
