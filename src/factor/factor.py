@@ -189,7 +189,7 @@ class FactorAnalysis(CGpm):
         sample = multivariate_normal.rvs(
             mean=muG, cov=covG, size=N, random_state=self.rng)
         def get_sample(s):
-            return dict(zip(query, s))
+            return {query[0]:s} if isinstance(s, float) else dict(zip(query, s))
         return get_sample(sample) if N is None else map(get_sample, sample)
 
     def logpdf_score(self):
