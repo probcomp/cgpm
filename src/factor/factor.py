@@ -118,6 +118,8 @@ class FactorAnalysis(CGpm):
         self.W = params.get('W', np.zeros((D,L)))
         # Parameters of joint distribution [x,z].
         self.mu, self.cov = self.joint_parameters()
+        # Internal factor analysis model.
+        self.fa = None
 
     def incorporate(self, rowid, query, evidence=None):
         # No duplicate observation.
@@ -137,7 +139,7 @@ class FactorAnalysis(CGpm):
             raise ValueError('Cannot incorporate latent vars: (%s,%s,%s).'
                 % (query, self.outputs, self.latents))
         # Reindex the query variables.
-        query_r = self.reindex(query)
+        query_r = {self.outputs.index(q): query[q] for q in query}
         # Incorporate observed variables.
         x = [query_r.get(i, np.nan) for i in xrange(self.D)]
         # Update dataset and counts.
@@ -161,7 +163,7 @@ class FactorAnalysis(CGpm):
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         # Reindex variables.
-        query_r = self.reindex(query.keys)
+        query_r = self.reindex(query.keys())
         evidence_r = self.reindex(evidence)
         # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
@@ -176,7 +178,7 @@ class FactorAnalysis(CGpm):
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         # Reindex variables.
-        query_r = self.reindex(query.keys())
+        query_r = self.reindex(query)
         evidence_r = self.reindex(evidence)
         # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
@@ -198,13 +200,13 @@ class FactorAnalysis(CGpm):
     def transition(self, N=None):
         X = np.asarray(self.data.values())
         # Only run inference on observations without missing entries.
-        fa = sklearn.decomposition.FactorAnalysis(n_components=self.L)
-        fa.fit(X[~np.any(np.isnan(X), axis=1)])
-        assert self.L, self.D == fa.components_.shape
+        self.fa = sklearn.decomposition.FactorAnalysis(n_components=self.L)
+        self.fa.fit(X[~np.any(np.isnan(X), axis=1)])
+        assert self.L, self.D == self.fa.components_.shape
         # Update parameters of Factor Analysis.
-        self.Psi = np.diag(fa.noise_variance_)
-        self.mux = fa.mean_
-        self.W = np.transpose(fa.components_)
+        self.Psi = np.diag(self.fa.noise_variance_)
+        self.mux = self.fa.mean_
+        self.W = np.transpose(self.fa.components_)
         self.mu, self.cov = self.joint_parameters()
 
     # --------------------------------------------------------------------------
@@ -242,10 +244,19 @@ class FactorAnalysis(CGpm):
     # Helper.
 
     def reindex(self, query):
-        if isinstance(query, list):
-            return [self.outputs.index(q) for q in query]
-        else:
-            return {self.outputs.index(q): query[q] for q in query}
+        # Reindex an output variable to its index in self.mu
+        # self.mu has as the first L items the last L items of self.outputs
+        # and as the remaining D items the first D items of self.outputs.
+        # The following diagram is useful:
+        # self.outputs:  12 14 -7 5 |  11 4  3
+        #                <---D=4--->|<--L=3-->
+        # raw indices:   0  1  2  3 |  4  5  6
+        # reindexed:     3  4  5  6 |  0  1  2
+        assert isinstance(query, list)
+        def convert(q):
+            i = self.outputs.index(q)
+            return self.D - i if q in self.latents else i + self.L
+        return [convert(q) for q in query]
 
     def joint_parameters(self):
         mean = np.concatenate((np.zeros(self.L), self.mux))
@@ -279,7 +290,7 @@ class FactorAnalysis(CGpm):
         assert len(mu) == cov.shape[0] == cov.shape[1]
         assert len(query) + len(evidence) <= len(mu)
         # Extract indexes and values from evidence.
-        Ei, Ev = zip(*evidence.items())
+        Ei, Ev = evidence.keys(), evidence.values()
         muQ, muE, covQ, covE, covJ = \
             FactorAnalysis.mvn_marginalize(mu, cov, query, Ei)
         # Invoke Fact 4 from, where G means given.

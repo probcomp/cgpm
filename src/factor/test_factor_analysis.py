@@ -128,3 +128,64 @@ def test_incorporate():
 
     with pytest.raises(ValueError):
         fa.unincorporate(23)
+
+
+# def retrieve_iris():
+#     rng = gu.gen_rng(12)
+#     iris = sklearn.datasets.load_iris()
+
+#     cgpm = FactorAnalysis([0,1,2], None, distargs={'L':1})
+#     for i, row in enumerate(iris.data):
+#         # Cannot incorporate
+#         with pytest.raises(ValueError):
+#             cgpm.incorporate(i, {0:row[0], 1: row[1], 2:1})
+#         cgpm.incorporate(i, {0:row[0], 1: row[1]})
+
+
+def test_logpdf_rigorous():
+    # Direct factor anaysis
+    rng = gu.gen_rng(12)
+    iris = sklearn.datasets.load_iris()
+
+    fact = FactorAnalysis([5,8,10,12,-1], None, distargs={'L':1}, rng=rng)
+    for i, row in enumerate(iris.data):
+        fact.incorporate(i, {q:v for q,v in zip(fact.outputs, row)})
+
+    fact.transition()
+
+    for row in iris.data:
+        # TEST 1: Posterior mean of the latent variable.
+        dot, inv = np.dot, np.linalg.inv
+        L, D = fact.fa.components_.shape
+        mu = fact.fa.mean_
+        assert mu.shape == (D,)
+        Phi = np.diag(fact.fa.noise_variance_)
+        assert Phi.shape == (D, D)
+        W = fact.fa.components_.T
+        assert W.shape == (D, L)
+        I = np.eye(L)
+        # Compute using Murphy explicitly.
+        S1 = inv((I + dot(W.T, dot(inv(Phi), W))))
+        m1 = dot(S1, dot(W.T, dot(inv(Phi), (row-mu))))
+        # Compute using the Schur complement explicitly.
+        S2 = I - dot(dot(W.T, inv(dot(W,W.T) + Phi)), W)
+        m2 = dot(dot(W.T, inv(dot(W, W.T)+Phi)), (row-mu))
+        # Compute the mean using the factor analyzer.
+        m3 = fact.fa.transform([row])
+        # Compute using the marginalize features of fact.fa.
+        mG, covG = FactorAnalysis.mvn_condition(
+            fact.mu, fact.cov,
+            query=fact.reindex([-1]),
+            evidence={
+                fact.reindex([5])[0]: row[0],
+                fact.reindex([8])[0]: row[1],
+                fact.reindex([10])[0]: row[2],
+                fact.reindex([12])[0]: row[3],
+            })
+        assert np.allclose(m1, m2)
+        assert np.allclose(m2, m3)
+        assert np.allclose(m3, mG)
+        assert np.allclose(S1, S2)
+        assert np.allclose(S2, covG)
+
+        # TEST 2: Log density of observation.
