@@ -23,6 +23,8 @@ import numpy as np
 import sklearn.datasets
 import sklearn.decomposition
 
+from scipy.stats import multivariate_normal
+
 from cgpm.utils import general as gu
 from cgpm.factor.factor import FactorAnalysis
 
@@ -186,3 +188,13 @@ def test_logpdf_rigorous(outputs, L):
         assert np.allclose(S2, covG)
 
         # TEST 2: Log density of observation.
+        # Compue using the factor analyzer.
+        logp1 = fact.fa.score(np.asarray([row]))
+        # Compute manually.
+        logp2 = multivariate_normal.logpdf(row, mu, Phi + np.dot(W, W.T))
+        # Compute using fact.
+        logp3 = fact.logpdf(
+            rowid=-1,
+            query={o: row[i] for i,o in enumerate(outputs[:-L])})
+        assert np.allclose(logp1, logp2)
+        assert np.allclose(logp2, logp3)
