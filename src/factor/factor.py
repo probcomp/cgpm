@@ -255,7 +255,7 @@ class FactorAnalysis(CGpm):
         assert isinstance(query, list)
         def convert(q):
             i = self.outputs.index(q)
-            return self.D - i if q in self.latents else i + self.L
+            return i - self.D if q in self.latents else i + self.L
         return [convert(q) for q in query]
 
     def joint_parameters(self):
