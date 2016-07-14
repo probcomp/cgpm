@@ -376,10 +376,12 @@ class State(CGpm):
 
     def conditional_mutual_information(self, col0, col1, evidence, T=None,
             N=None):
-        if T is None: T = 100
+        if T is None:
+            T = 100
+        if not evidence:
+            raise ValueError('No evidence: %s' % evidence)
         samples = self.simulate(-1, evidence, N=T)
-        mi = sum(self.mutual_information(
-            col0, col1, evidence=zip(evidence, s), N=N) for s in samples)
+        mi = sum(self.mutual_information(col0, col1, s, N=N) for s in samples)
         return mi / T
 
     # --------------------------------------------------------------------------
