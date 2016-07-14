@@ -60,46 +60,46 @@ def fillna(X, p, rng):
 def test_invalid_initialize():
     # No inputs.
     with pytest.raises(ValueError):
-        FactorAnalysis([1,2,6], [0], distargs={'L':1})
+        FactorAnalysis([1,2,6], [0], L=1)
     # Missing L
     with pytest.raises(ValueError):
-        FactorAnalysis([1,2,6], None, distargs=None)
+        FactorAnalysis([1,2,6], None, L=None)
     # Wrong dimensionality: no observables.
     with pytest.raises(ValueError):
-        FactorAnalysis([1,2], None, distargs={'L':2})
+        FactorAnalysis([1,2], None, L=2)
     # Wrong dimensionality: latent space too big.
     with pytest.raises(ValueError):
-        FactorAnalysis([1,2,3], None, distargs={'L':2})
+        FactorAnalysis([1,2,3], None, L=2)
     # Wrong dimensionality: latent space too small.
     with pytest.raises(ValueError):
-        FactorAnalysis([1,2,3], None, distargs={'L':0})
+        FactorAnalysis([1,2,3], None, L=0)
     # Wrong dimensionality: not enough outputs.
     with pytest.raises(ValueError):
-        FactorAnalysis([2], None, distargs={'L':1})
+        FactorAnalysis([2], None, L=1)
     # Duplicate outputs.
     with pytest.raises(ValueError):
-        FactorAnalysis([2,2], None, distargs={'L':1})
+        FactorAnalysis([2,2], None, L=1)
 
 
 def test_valid_initialize():
     # One latent dimension.
-    fa = FactorAnalysis([4,2], None, distargs={'L':1})
+    fa = FactorAnalysis([4,2], None, L=1)
     assert fa.D == 1
     assert fa.L == 1
 
     # Four latent dimensions.
-    fa = FactorAnalysis(range(12), None, distargs={'L':4})
+    fa = FactorAnalysis(range(12), None, L=4)
     assert fa.D == 8
     assert fa.L == 4
 
     # Latent dimension equal to observable dimensions.
-    fa = FactorAnalysis([4,2,1,0,6,7], None, distargs={'L':3})
+    fa = FactorAnalysis([4,2,1,0,6,7], None, L=3)
     assert fa.D == 3
     assert fa.L == 3
 
 
 def test_incorporate():
-    fa = FactorAnalysis([4,5,9,2], None, distargs={'L':1})
+    fa = FactorAnalysis([4,5,9,2], None, L=1)
     # Cannot incorporate a latent variable.
     with pytest.raises(ValueError):
         fa.incorporate(0, {4:1, 5:1, 9:1, 0:0})
@@ -148,7 +148,7 @@ def test_logpdf_simulate_rigorous(outputs, L):
     rng = gu.gen_rng(12)
     iris = sklearn.datasets.load_iris()
 
-    fact = FactorAnalysis(outputs, None, distargs={'L':L}, rng=rng)
+    fact = FactorAnalysis(outputs, None, L=L, rng=rng)
     for i, row in enumerate(iris.data):
         fact.incorporate(i, {q:v for q,v in zip(fact.outputs, row)})
 
@@ -226,7 +226,7 @@ def test_serialize():
     rng = gu.gen_rng(12)
     iris = sklearn.datasets.load_iris()
 
-    fact = FactorAnalysis([1,2,3,4,-5,47], None, distargs={'L':2}, rng=rng)
+    fact = FactorAnalysis([1,2,3,4,-5,47], None, L=2, rng=rng)
     for i, row in enumerate(iris.data):
         fact.incorporate(i, {q:v for q,v in zip(fact.outputs, row)})
 
