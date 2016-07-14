@@ -63,3 +63,11 @@ def test_cmi_different_views__ci_():
         state.mutual_information(0, 2, evidence={1:0}), mi02)
     assert np.allclose(
         state.mutual_information(1, 2, evidence={0:-2}), mi12)
+
+def test_engine_cmi_simple():
+    df = pd.DataFrame(np.eye(10))
+    cctypes = ['normal'] * df.shape[1]
+    e = Engine(df.values, cctypes=cctypes, num_states=2)
+    e.transition(N=2)
+    e.conditional_mutual_information(0,1,[2],T=1) #error
+    return e
