@@ -252,11 +252,15 @@ class FactorAnalysis(CGpm):
         #                <---D=4--->|<--L=3-->
         # raw indices:   0  1  2  3 |  4  5  6
         # reindexed:     3  4  5  6 |  0  1  2
-        assert isinstance(query, list)
+        assert isinstance(query, (list, dict))
         def convert(q):
             i = self.outputs.index(q)
             return i - self.D if q in self.latents else i + self.L
-        return [convert(q) for q in query]
+        indexes = [convert(q) for q in query]
+        if isinstance(query, list):
+            return indexes
+        else:
+            return dict(zip(indexes, query.values()))
 
     def joint_parameters(self):
         mean = np.concatenate((np.zeros(self.L), self.mux))
