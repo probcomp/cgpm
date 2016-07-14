@@ -111,6 +111,7 @@ class FactorAnalysis(CGpm):
         self.latents = outputs[-self.L:]
         # Dataset.
         self.data = OrderedDict()
+        self.N = 0
         # Parameters of Factor Analysis.
         self.mux = params.get('mux', np.zeros(D))
         self.Psi = params.get('Psi', np.eye(D))
@@ -125,6 +126,8 @@ class FactorAnalysis(CGpm):
         # No inputs.
         if evidence:
             raise ValueError('No evidence allowed: %s.' % evidence)
+        if not query:
+            raise ValueError('No query specified: %s.' % query)
         # No unknown variables.
         if any(q not in self.outputs for q in query):
             raise ValueError('Unknown variables: (%s,%s).'
@@ -143,7 +146,7 @@ class FactorAnalysis(CGpm):
 
     def unincorporate(self, rowid):
         try:
-            del self.data.x[rowid]
+            del self.data[rowid]
         except KeyError:
             raise ValueError('No such observation: %d.' % rowid)
         self.N -= 1
@@ -238,12 +241,11 @@ class FactorAnalysis(CGpm):
     # --------------------------------------------------------------------------
     # Helper.
 
-    def reindex(self, query, reverse=False):
-        func = lambda q: self.outputs[q] if reverse else self.outputs.index
+    def reindex(self, query):
         if isinstance(query, list):
-            return [func(q) for q in query]
+            return [self.outputs.index(q) for q in query]
         else:
-            return {func(q): query[q] for q in query}
+            return {self.outputs.index(q): query[q] for q in query}
 
     def joint_parameters(self):
         mean = np.concatenate((np.zeros(self.L), self.mux))

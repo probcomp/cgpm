@@ -92,3 +92,39 @@ def test_valid_initialize():
     fa = FactorAnalysis([4,2,1,0,6,7], None, distargs={'L':3})
     assert fa.D == 3
     assert fa.L == 3
+
+
+def test_incorporate():
+    fa = FactorAnalysis([4,5,9,2], None, distargs={'L':1})
+    # Cannot incorporate a latent variable.
+    with pytest.raises(ValueError):
+        fa.incorporate(0, {4:1, 5:1, 9:1, 0:0})
+    # Cannot incorporate with evidence.
+    with pytest.raises(ValueError):
+        fa.incorporate(0, {4:1, 5:1, 9:1}, {0:0})
+    # Need a query variable.
+    with pytest.raises(ValueError):
+        fa.incorporate(0, {})
+    # Unknown variable.
+    with pytest.raises(ValueError):
+        fa.incorporate(0, {1:0})
+    # Incorporate a full row.
+    fa.incorporate(0, {4:1, 5:1, 9:1})
+    assert fa.data[0] == [1,1,1]
+    # Incorporate rows with missing data.
+    fa.incorporate(2, {5:1, 9:1})
+    assert fa.data[2] == [np.nan,1,1]
+    # And another one.
+    fa.incorporate(4, {9:1})
+    assert fa.data[4] == [np.nan,np.nan,1]
+    # And another one.
+    fa.incorporate(6, {4:-1})
+    assert fa.data[6] == [-1,np.nan,np.nan]
+
+    for rowid in [0, 2, 4, 6]:
+        fa.unincorporate(rowid)
+    assert fa.N == 0
+    assert fa.data == {}
+
+    with pytest.raises(ValueError):
+        fa.unincorporate(23)
