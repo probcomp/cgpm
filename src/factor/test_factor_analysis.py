@@ -130,24 +130,21 @@ def test_incorporate():
         fa.unincorporate(23)
 
 
-# def retrieve_iris():
-#     rng = gu.gen_rng(12)
-#     iris = sklearn.datasets.load_iris()
-
-#     cgpm = FactorAnalysis([0,1,2], None, distargs={'L':1})
-#     for i, row in enumerate(iris.data):
-#         # Cannot incorporate
-#         with pytest.raises(ValueError):
-#             cgpm.incorporate(i, {0:row[0], 1: row[1], 2:1})
-#         cgpm.incorporate(i, {0:row[0], 1: row[1]})
+outputs = [
+    [5,8,10,12,-1],
+    [5,8,10,12,-1,-2],
+    [5,8,10,12,-1,-2,-3],
+    [5,8,10,12,-1,-2,-3,-4]]
+L = [1,2,3,4]
 
 
-def test_logpdf_rigorous():
+@pytest.mark.parametrize('outputs, L', zip(outputs, L))
+def test_logpdf_rigorous(outputs, L):
     # Direct factor anaysis
     rng = gu.gen_rng(12)
     iris = sklearn.datasets.load_iris()
 
-    fact = FactorAnalysis([5,8,10,12,-1], None, distargs={'L':1}, rng=rng)
+    fact = FactorAnalysis(outputs, None, distargs={'L':L}, rng=rng)
     for i, row in enumerate(iris.data):
         fact.incorporate(i, {q:v for q,v in zip(fact.outputs, row)})
 
@@ -175,12 +172,12 @@ def test_logpdf_rigorous():
         # Compute using the marginalize features of fact.fa.
         mG, covG = FactorAnalysis.mvn_condition(
             fact.mu, fact.cov,
-            query=fact.reindex([-1]),
+            query=fact.reindex(outputs[-L:]),
             evidence={
-                fact.reindex([5])[0]: row[0],
-                fact.reindex([8])[0]: row[1],
-                fact.reindex([10])[0]: row[2],
-                fact.reindex([12])[0]: row[3],
+                fact.reindex([outputs[0]])[0]: row[0],
+                fact.reindex([outputs[1]])[0]: row[1],
+                fact.reindex([outputs[2]])[0]: row[2],
+                fact.reindex([outputs[3]])[0]: row[3],
             })
         assert np.allclose(m1, m2)
         assert np.allclose(m2, m3)
