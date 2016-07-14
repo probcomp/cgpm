@@ -14,19 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
+import importlib
+import json
 
 import matplotlib.cm
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 import sklearn.datasets
 import sklearn.decomposition
 
 from scipy.stats import multivariate_normal
 
-from cgpm.utils import general as gu
 from cgpm.factor.factor import FactorAnalysis
+from cgpm.utils import general as gu
 
 
 def scatter_classes(x, classes, ax=None):
@@ -141,7 +143,7 @@ L = [1,2,3,4]
 
 
 @pytest.mark.parametrize('outputs, L', zip(outputs, L))
-def test_logpdf_rigorous(outputs, L):
+def test_logpdf_simulate_rigorous(outputs, L):
     # Direct factor anaysis
     rng = gu.gen_rng(12)
     iris = sklearn.datasets.load_iris()
@@ -218,3 +220,36 @@ def test_logpdf_rigorous(outputs, L):
         assert np.allclose(np.mean(X, axis=0), mG, atol=.1)
         # Check the sample covariance.
         assert np.allclose(np.cov(X.T), covG, atol=.1)
+
+def test_serialize():
+    # Direct factor anaysis
+    rng = gu.gen_rng(12)
+    iris = sklearn.datasets.load_iris()
+
+    fact = FactorAnalysis([1,2,3,4,-5,47], None, distargs={'L':2}, rng=rng)
+    for i, row in enumerate(iris.data):
+        fact.incorporate(i, {q:v for q,v in zip(fact.outputs, row)})
+
+    metadata = json.dumps(fact.to_metadata())
+    metadata = json.loads(metadata)
+
+
+    modname = importlib.import_module(metadata['factory'][0])
+    builder = getattr(modname, metadata['factory'][1])
+    fact2 = builder.from_metadata(metadata, rng=rng)
+
+    assert fact2.L == fact.L
+    assert fact2.D == fact.D
+    # Varible indexes.
+    assert fact2.outputs == fact.outputs
+    assert fact2.latents == fact.latents
+    # Dataset.
+    assert fact2.data == fact.data
+    assert fact2.N == fact.N
+    # Parameters of Factor Analysis.
+    assert np.allclose(fact2.mux, fact.mux)
+    assert np.allclose(fact2.Psi, fact.Psi)
+    assert np.allclose(fact2.W, fact.W)
+    # Parameters of joint distribution [x,z].
+    assert np.allclose(fact2.mu, fact.mu)
+    assert np.allclose(fact2.cov, fact.cov)
