@@ -19,10 +19,10 @@ import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.datasets
+import sklearn.decomposition
 
-from cgpm.pca.ppca import PPCA
-from cgpm.utils import general as gu
 from cgpm.utils import config as cu
+from cgpm.utils import general as gu
 
 
 rng = gu.gen_rng(12)
@@ -50,16 +50,8 @@ def fillna(X, p):
         X[i,j] = np.nan
     return X
 
-if __name__ == '__main__':
-    iris = sklearn.datasets.load_iris()
-    iris_x = iris.data
-    iris_y = iris.target
-    timestamp = cu.timestamp()
+iris = sklearn.datasets.load_iris()
 
-    for p in np.linspace(0, .7, 9):
-        data = fillna(iris_x, p)
-        pca = PPCA(rng=gu.gen_rng(2))
-        pca.fit(data=data, d=2, verbose=True)
-        ax = scatter_classes(pca.transform(), iris_y)
-        ax.get_figure().savefig('figures/%s-%1.2f.png' % (timestamp, p))
-        plt.close('all')
+fa = sklearn.decomposition.FactorAnalysis(n_components=2)
+fa.fit(iris.data)
+ax = scatter_classes(fa.transform(iris.data), iris.target)
