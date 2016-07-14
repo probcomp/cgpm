@@ -157,13 +157,15 @@ class FactorAnalysis(CGpm):
         # XXX Deal with observed rowids.
         if evidence is None:
             evidence = {}
+        if not query:
+            raise ValueError('No query: %s.' % query)
         if any(q not in self.outputs for q in query):
             raise ValueError('Unknown variables: (%s,%s).'
                 % (query, self.outputs))
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         # Reindex variables.
-        query_r = self.reindex(query.keys())
+        query_r = self.reindex(query)
         evidence_r = self.reindex(evidence)
         # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
