@@ -154,7 +154,7 @@ def test_logpdf_simulate_rigorous(outputs, L):
 
     fact.transition()
 
-    for row in iris.data:
+    for rowid, row in enumerate(iris.data):
         # TEST 1: Posterior mean of the latent variable.
         dot, inv = np.dot, np.linalg.inv
         L, D = fact.fa.components_.shape
@@ -194,15 +194,31 @@ def test_logpdf_simulate_rigorous(outputs, L):
         logp1 = fact.fa.score(np.asarray([row]))
         # Compute manually.
         logp2 = multivariate_normal.logpdf(row, mu, Phi + np.dot(W, W.T))
-        # Compute using fact.
+        # Compute using fact with rowid=-1.
         logp3 = fact.logpdf(
             rowid=-1,
             query={o: row[i] for i,o in enumerate(outputs[:-L])})
+        # Compute using fact with rowid=r.
+        logp4 = fact.logpdf(
+            rowid=rowid,
+            query={o: row[i] for i,o in enumerate(outputs[:-L])})
         assert np.allclose(logp1, logp2)
         assert np.allclose(logp2, logp3)
+        assert np.allclose(logp3, logp4)
 
         # TEST 3: Posterior simulation of latent variables.
-        samples = fact.simulate(
+        # For each sampled dimension check mean and variance match.
+        def check_mean_covariance_match(samples):
+            X = np.zeros((2000, len(outputs[-L:])))
+            # Build the matrix of samples.
+            for i, s in enumerate(samples):
+                X[i] = [s[o] for o in outputs[-L:]]
+            # Check mean of each variable.
+            assert np.allclose(np.mean(X, axis=0), mG, atol=.1)
+            # Check the sample covariance.
+            assert np.allclose(np.cov(X.T), covG, atol=.1)
+        # Using a hypothetical rowid.
+        samples_a = fact.simulate(
             rowid=-1,
             query=outputs[-L:],
             evidence={
@@ -211,15 +227,13 @@ def test_logpdf_simulate_rigorous(outputs, L):
                 outputs[2]: row[2],
                 outputs[3]: row[3]},
             N=2000)
-        # For each sampled dimension check mean and variance match.
-        X = np.zeros((2000, len(outputs[-L:])))
-        # Build the matrix of samples.
-        for i, s in enumerate(samples):
-            X[i] = [s[o] for o in outputs[-L:]]
-        # Check mean of each variable.
-        assert np.allclose(np.mean(X, axis=0), mG, atol=.1)
-        # Check the sample covariance.
-        assert np.allclose(np.cov(X.T), covG, atol=.1)
+        check_mean_covariance_match(samples_a)
+        # Using observed rowid.
+        samples_b = fact.simulate(
+            rowid=rowid,
+            query=outputs[-L:],
+            N=2000)
+        check_mean_covariance_match(samples_b)
 
 def test_serialize():
     # Direct factor anaysis
