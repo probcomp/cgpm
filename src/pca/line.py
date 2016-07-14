@@ -14,17 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import matplotlib.cm
-import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
-import sklearn.datasets
-
-from cgpm.pca.ppca import PPCA
-from cgpm.utils import general as gu
-from cgpm.utils import config as cu
 
 from scipy.stats import multivariate_normal
+
+from cgpm.utils import config as cu
+from cgpm.utils import general as gu
+
 
 rng = gu.gen_rng(12)
 
