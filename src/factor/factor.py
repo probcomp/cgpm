@@ -101,6 +101,10 @@ class FactorAnalysis(CGpm):
             raise ValueError(
                 'Latent dimension exceeds observed dimension: (%s,%s)'
                 % (outputs[:-L], outputs[-L:]))
+        # Parameters.
+        mux = params.get('mux', np.zeros(D))
+        Psi = params.get('Psi', np.eye(D))
+        W = params.get('W', np.zeros((D,L)))
         # Build the object.
         self.rng = rng
         # Dimensions.
@@ -109,13 +113,14 @@ class FactorAnalysis(CGpm):
         # Varible indexes.
         self.outputs = outputs
         self.latents = outputs[-self.L:]
+        self.inputs = []
         # Dataset.
         self.data = OrderedDict()
         self.N = 0
         # Parameters of Factor Analysis.
-        self.mux = params.get('mux', np.zeros(D))
-        self.Psi = params.get('Psi', np.eye(D))
-        self.W = params.get('W', np.zeros((D,L)))
+        self.mux = np.asarray(mux)
+        self.Psi = np.asarray(Psi)
+        self.W = np.asarray(W)
         # Parameters of joint distribution [x,z].
         self.mu, self.cov = self.joint_parameters()
         # Internal factor analysis model.
@@ -314,22 +319,29 @@ class FactorAnalysis(CGpm):
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['N'] = self.N
-        metadata['data'] = {self.data}
+        metadata['data'] = self.data.items()
         metadata['distargs'] = self.get_distargs()
-        metadata['params'] = self.get_params()
-        metadata['factory'] = ('cgpm.pca.factor', 'FactorAnalysis')
+
+        # Store paramters as list for JSON.
+        metadata['params'] = dict()
+        metadata['params']['mux'] = self.mux.tolist()
+        metadata['params']['Psi'] = self.Psi.tolist()
+        metadata['params']['W'] = self.W.tolist()
+
+        metadata['factory'] = ('cgpm.factor.factor', 'FactorAnalysis')
         return metadata
+
 
     @classmethod
     def from_metadata(cls, metadata, rng=None):
         if rng is None:
             rng = gu.gen_rng(0)
-        ldmvn = cls(
+        fact = cls(
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
             distargs=metadata['distargs'],
             params=metadata['params'],
             rng=rng)
-        ldmvn.data = metadata['data']
-        ldmvn.N = metadata['N']
-        return ldmvn
+        fact.data = OrderedDict(metadata['data'])
+        fact.N = metadata['N']
+        return fact
