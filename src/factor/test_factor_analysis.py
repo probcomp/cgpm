@@ -198,3 +198,23 @@ def test_logpdf_rigorous(outputs, L):
             query={o: row[i] for i,o in enumerate(outputs[:-L])})
         assert np.allclose(logp1, logp2)
         assert np.allclose(logp2, logp3)
+
+        # TEST 3: Posterior simulation of latent variables.
+        samples = fact.simulate(
+            rowid=-1,
+            query=outputs[-L:],
+            evidence={
+                outputs[0]: row[0],
+                outputs[1]: row[1],
+                outputs[2]: row[2],
+                outputs[3]: row[3]},
+            N=2000)
+        # For each sampled dimension check mean and variance match.
+        X = np.zeros((2000, len(outputs[-L:])))
+        # Build the matrix of samples.
+        for i, s in enumerate(samples):
+            X[i] = [s[o] for o in outputs[-L:]]
+        # Check mean of each variable.
+        assert np.allclose(np.mean(X, axis=0), mG, atol=.1)
+        # Check the sample covariance.
+        assert np.allclose(np.cov(X.T), covG, atol=.1)
