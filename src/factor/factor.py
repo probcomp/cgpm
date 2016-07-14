@@ -76,16 +76,25 @@ class FactorAnalysis(CGpm):
         # Default parameter settings.
         if params is None:
             params = {}
+        if distargs is None:
+            distargs = {}
         # Entropy.
         if rng is None:
             rng = gu.gen_rng(1)
         # No inputs.
         if inputs:
             raise ValueError('FactorAnalysis rejects inputs: %s.' % inputs)
+        # Correct outputs.
+        if len(outputs) < 2:
+            raise ValueError('FactorAnalysis needs >= 2 outputs: %s.' % outputs)
+        if len(set(outputs)) != len(outputs):
+            raise ValueError('Duplicate outputs: %s.' % outputs)
         # Find low dimensional space.
         L = distargs.get('L', None)
         if L is None:
             raise ValueError('Specify latent dimension L: %s.' % distargs)
+        if L == 0:
+            raise ValueError('Latent dimension at least 1: %s.' % distargs)
         # Observable and latent variable indexes.
         D = len(outputs[:-L])
         if D < L:
@@ -237,7 +246,7 @@ class FactorAnalysis(CGpm):
             return {func(q): query[q] for q in query}
 
     def joint_parameters(self):
-        mean = np.concatenate((np.zeros(self.L), self.mu))
+        mean = np.concatenate((np.zeros(self.L), self.mux))
         cov = np.row_stack((
             np.column_stack((np.eye(self.L), self.W.T)),
             np.column_stack((self.W, np.dot(self.W, self.W.T) + self.Psi))
