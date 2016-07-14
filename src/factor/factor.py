@@ -72,12 +72,10 @@ class FactorAnalysis(CGpm):
     incorporated.
     """
 
-    def __init__(self, outputs, inputs, params=None, distargs=None, rng=None):
+    def __init__(self, outputs, inputs, L=None, params=None, rng=None):
         # Default parameter settings.
         if params is None:
             params = {}
-        if distargs is None:
-            distargs = {}
         # Entropy.
         if rng is None:
             rng = gu.gen_rng(1)
@@ -90,11 +88,10 @@ class FactorAnalysis(CGpm):
         if len(set(outputs)) != len(outputs):
             raise ValueError('Duplicate outputs: %s.' % outputs)
         # Find low dimensional space.
-        L = distargs.get('L', None)
         if L is None:
-            raise ValueError('Specify latent dimension L: %s.' % distargs)
+            raise ValueError('Specify latent dimension L: %s.' % L)
         if L == 0:
-            raise ValueError('Latent dimension at least 1: %s.' % distargs)
+            raise ValueError('Latent dimension at least 1: %s.' % L)
         # Observable and latent variable indexes.
         D = len(outputs[:-L])
         if D < L:
@@ -226,11 +223,6 @@ class FactorAnalysis(CGpm):
             'W': self.W
         }
 
-    def get_distargs(self):
-        return {
-            'L': self.L
-        }
-
     @staticmethod
     def name():
         return 'low_dimensional_mvn'
@@ -319,8 +311,8 @@ class FactorAnalysis(CGpm):
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['N'] = self.N
+        metadata['L'] = self.L
         metadata['data'] = self.data.items()
-        metadata['distargs'] = self.get_distargs()
 
         # Store paramters as list for JSON.
         metadata['params'] = dict()
@@ -339,7 +331,7 @@ class FactorAnalysis(CGpm):
         fact = cls(
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
-            distargs=metadata['distargs'],
+            L=metadata['L'],
             params=metadata['params'],
             rng=rng)
         fact.data = OrderedDict(metadata['data'])
