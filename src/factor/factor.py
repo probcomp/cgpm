@@ -72,7 +72,8 @@ class FactorAnalysis(CGpm):
     incorporated.
     """
 
-    def __init__(self, outputs, inputs, L=None, params=None, rng=None):
+    def __init__(self, outputs, inputs, L=None, distargs=None, params=None,
+            rng=None):
         # Default parameter settings.
         if params is None:
             params = {}
