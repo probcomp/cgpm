@@ -114,10 +114,10 @@ class Engine(object):
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def compose_cgpm(self, cgpms, N=None, multithread=1):
+    def compose_cgpm(self, cgpms, multithread=1):
         pool, mapper = self._get_mapper(multithread)
         args = [('compose_cgpm', self.states[i], cgpms[i].to_metadata(),
-                (N,))
+                ())
                 for i in xrange(self.num_states())]
         self.states = mapper(_compose, args)
         self._close_mapper(pool)
