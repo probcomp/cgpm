@@ -53,10 +53,10 @@ def _evaluate((method, metadata, args)):
 class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel States."""
 
-    def __init__(self, X, num_states=1, rng=None, multithread=1, **kwargs):
+    def __init__(self, X, num_states=1, rng=None, multiprocess=1, **kwargs):
         self.rng = gu.gen_rng(1) if rng is None else rng
         self.X = np.asarray(X)
-        pool, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multiprocess)
         args = ((X, rng, kwargs) for rng in self._get_rngs(num_states))
         self.states = mapper(_intialize, args)
         self._close_mapper(pool)
@@ -65,8 +65,8 @@ class Engine(object):
     # External
 
     def transition(self, N=None, S=None, kernels=None, rowids=None,
-            cols=None, views=None, progress=True, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+            cols=None, views=None, progress=True, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('transition', self.states[i],
                 (N, S, kernels, rowids, cols, views, progress))
                 for i in xrange(self.num_states())]
@@ -74,56 +74,56 @@ class Engine(object):
         self._close_mapper(pool)
 
     def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
-            distargs=None, v=None, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+            distargs=None, v=None, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('incorporate_dim', self.states[i],
                 (T, outputs, inputs, cctype, distargs, v))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def unincorporate_dim(self, col, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def unincorporate_dim(self, col, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('unincorporate_dim', self.states[i],
                 (col,))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def incorporate(self, rowid, query, evidence=None, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def incorporate(self, rowid, query, evidence=None, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('incorporate', self.states[i],
                 (rowid, query, evidence))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def unincorporate(self, rowid, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def unincorporate(self, rowid, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('unincorporate', self.states[i],
                 (rowid,))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def update_cctype(self, col, cctype, distargs=None, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def update_cctype(self, col, cctype, distargs=None, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('update_cctype', self.states[i],
                 (col, cctype, distargs))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
-    def compose_cgpm(self, cgpms, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def compose_cgpm(self, cgpms, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('compose_cgpm', self.states[i], cgpms[i].to_metadata(),
                 ())
                 for i in xrange(self.num_states())]
         self.states = mapper(_compose, args)
         self._close_mapper(pool)
 
-    def logpdf(self, rowid, query, evidence=None, accuracy=None, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def logpdf(self, rowid, query, evidence=None, accuracy=None, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('logpdf', self.states[i],
                 (rowid, query, evidence, accuracy))
             for i in xrange(self.num_states())]
@@ -131,8 +131,8 @@ class Engine(object):
         self._close_mapper(pool)
         return logpdfs
 
-    def logpdf_bulk(self, rowids, queries, evidences=None, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def logpdf_bulk(self, rowids, queries, evidences=None, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('logpdf_bulk', self.states[i],
                 (rowids, queries, evidences))
                 for i in xrange(self.num_states())]
@@ -140,8 +140,8 @@ class Engine(object):
         self._close_mapper(pool)
         return logpdfs
 
-    def logpdf_score(self, multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+    def logpdf_score(self, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('logpdf_score', self.states[i],
                 ())
                 for i in xrange(self.num_states())]
@@ -150,8 +150,8 @@ class Engine(object):
         return logpdf_scores
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None,
-            multithread=1):
-        pool, mapper = self._get_mapper(multithread)
+            multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('simulate', self.states[i],
                 (rowid, query, evidence, N, accuracy))
                 for i in xrange(self.num_states())]
@@ -160,9 +160,9 @@ class Engine(object):
         return samples
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
-            multithread=1):
+            multiprocess=1):
         """Returns list of simualate_bulk, one for each state."""
-        pool, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('simulate_bulk', self.states[i],
                 (rowids, queries, evidences, Ns))
                 for i in xrange(self.num_states())]
@@ -171,9 +171,9 @@ class Engine(object):
         return samples
 
     def mutual_information(self, col0, col1, evidence=None, N=None,
-            multithread=1):
+            multiprocess=1):
         """Returns list of mutual information estimates, one for each state."""
-        pool, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('mutual_information', self.states[i],
                 (col0, col1, evidence, N))
                 for i in xrange(self.num_states())]
@@ -182,9 +182,9 @@ class Engine(object):
         return mis
 
     def conditional_mutual_information(self, col0, col1, evidence, T=None,
-            N=None, multithread=1):
+            N=None, multiprocess=1):
         """Returns list of mutual information estimates, one for each state."""
-        pool, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('conditional_mutual_information', self.states[i],
                 (col0, col1, evidence, T, N))
                 for i in xrange(self.num_states())]
@@ -192,10 +192,10 @@ class Engine(object):
         self._close_mapper(pool)
         return mis
 
-    def dependence_probability(self, col0, col1, states=None, multithread=1):
+    def dependence_probability(self, col0, col1, states=None, multiprocess=1):
         """Compute dependence probability between col0 and col1 as float."""
         if states is None: states = xrange(self.num_states())
-        pool, mapper = self._get_mapper(multithread)
+        pool, mapper = self._get_mapper(multiprocess)
         args = [('dependence_probability', self.states[i],
                 (col0, col1))
                 for i in states]
@@ -251,10 +251,10 @@ class Engine(object):
     # --------------------------------------------------------------------------
     # Internal
 
-    def _get_mapper(self, multithread):
+    def _get_mapper(self, multiprocess):
         self._populate_metadata() # XXX Right place?
         pool, mapper = None, map
-        if multithread:
+        if multiprocess:
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
             mapper = pool.map
         return pool, mapper
@@ -282,18 +282,18 @@ class Engine(object):
         seeds = self.rng.randint(low=1, high=2**32-1, size=num_states)
         return [gu.gen_rng(s) for s in seeds]
 
-    def _process_logpdfs(self, logpdfs, rowid, evidence=None, multithread=1):
+    def _process_logpdfs(self, logpdfs, rowid, evidence=None, multiprocess=1):
         assert len(logpdfs) == len(self.states)
         weights = np.zeros(len(logpdfs)) if not evidence else\
-            self.logpdf(rowid, evidence, evidence=None, multithread=multithread)
+            self.logpdf(rowid, evidence, evidence=None, multiprocess=multiprocess)
         return gu.logsumexp(logpdfs + weights) - gu.logsumexp(weights)
 
-    def _process_samples(self, samples, rowid, evidence=None, multithread=1):
+    def _process_samples(self, samples, rowid, evidence=None, multiprocess=1):
         assert len(samples) == len(self.states)
         assert all(len(s) == len(samples[0]) for s in samples[1:])
         N = len(samples[0])
         weights = np.zeros(len(samples)) if not evidence else\
-            self.logpdf(rowid, evidence, multithread=multithread)
+            self.logpdf(rowid, evidence, multiprocess=multiprocess)
         n_model = np.bincount(gu.log_pflip(weights, size=N, rng=self.rng))
         resamples = [s[:n] for s,n in zip(samples, n_model) if n]
         return list(itertools.chain.from_iterable(resamples))
