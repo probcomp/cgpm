@@ -54,4 +54,4 @@ cctypes, distargs = cu.parse_distargs(cctypes)
 
 engine = Engine(
     T.T, cctypes=cctypes, distargs=distargs, num_states=8)
-engine.transition(N=1000, multithread=True)
+engine.transition(N=1000, multiprocess=True)
