@@ -25,7 +25,9 @@ from cgpm.utils import general as gu
 class FourWay(CGpm):
     """Outputs categorical(4) (quadrant indicator) on R2 valued input."""
 
-    def __init__(self, outputs, inputs, rng):
+    def __init__(self, outputs, inputs, distargs=None, rng=None):
+        if rng is None:
+            rng = gu.gen_rng(1)
         self.rng = rng
         self.probabilities =[
             [.7, .1, .05, .05],
