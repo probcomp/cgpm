@@ -69,7 +69,7 @@ def state():
 def test_duplicated_outputs(state):
     """This test ensures that foreign cgpms cannot collide on outputs."""
     for o in state.outputs:
-        fourway = FourWay([o], [0,2], state.rng)
+        fourway = FourWay([o], [0,2], rng=state.rng)
         with pytest.raises(ValueError):
             state.compose_cgpm(fourway)
             assert len(state.hooked_cgpms) == 0
@@ -78,8 +78,8 @@ def test_duplicated_outputs(state):
 def test_decompose_cgpm(state):
     """This test ensures that foreign cgpms can be composed and decomposing
     using the returned tokens."""
-    four = FourWay([15], [0,2], state.rng)
-    two = TwoWay([10], [1], state.rng)
+    four = FourWay([15], [0,2], rng=state.rng)
+    two = TwoWay([10], [1], rng=state.rng)
     four_token = state.compose_cgpm(four)
     two_token = state.compose_cgpm(two)
     assert state.hooked_cgpms[four_token] == four
@@ -101,8 +101,8 @@ def test_same_logpdf(state):
     simulate_before_two = state.simulate(-1, [1,2], {0:1})
 
     # Compose the CGPMs.
-    four_index = state.compose_cgpm(FourWay([5], [0,2], state.rng))
-    two_index = state.compose_cgpm(TwoWay([10], [1], state.rng))
+    four_index = state.compose_cgpm(FourWay([5], [0,2], rng=state.rng))
+    two_index = state.compose_cgpm(TwoWay([10], [1], rng=state.rng))
 
     # Get some logpdfs and samples after composing with cgpms.
     logp_after_one = state.logpdf(-1, {0: 1, 1: 1})
@@ -122,8 +122,8 @@ def test_same_logpdf(state):
 def crash_test_simulate_logpdf(state):
     """This crash test ensures foreign cgpms can be composed and queried."""
 
-    four_token = state.compose_cgpm(FourWay([5], [0,2], state.rng))
-    two_token = state.compose_cgpm(FourWay([5], [0,2], state.rng))
+    four_token = state.compose_cgpm(FourWay([5], [0,2], rng=state.rng))
+    two_token = state.compose_cgpm(FourWay([5], [0,2], rng=state.rng))
 
     state.simulate(-1, [0, 1, 2, 5, 10], N=10)
     state.logpdf(-1, {0:1, 1:0, 2:-1, 5:3, 10:0})
@@ -139,8 +139,8 @@ def crash_test_simulate_logpdf(state):
 def test_inference_quality__ci_(state):
     """This test explores inference quality for simulate/logpdf invesrion."""
     # Build CGPMs.
-    fourway = FourWay([5], [0,2], state.rng)
-    twoway = TwoWay([10], [1], state.rng)
+    fourway = FourWay([5], [0,2], rng=state.rng)
+    twoway = TwoWay([10], [1], rng=state.rng)
 
     # Compose.
     four_token = state.compose_cgpm(fourway)

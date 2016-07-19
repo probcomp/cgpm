@@ -28,7 +28,9 @@ from cgpm.utils import general as gu
 class TwoWay(CGpm):
     """Generates {0,1} output on {0,1} valued input with given CPT."""
 
-    def __init__(self, outputs, inputs, rng):
+    def __init__(self, outputs, inputs, distargs=None, rng=None):
+        if rng is None:
+            rng = gu.gen_rng(1)
         self.rng = rng
         self.probabilities =[
             [.9, .1],
