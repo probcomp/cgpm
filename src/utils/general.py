@@ -17,11 +17,11 @@
 import math
 import warnings
 
+from math import lgamma
 from math import log
 
 import numpy as np
 
-from scipy.special import gammaln
 from scipy.special import i0 as bessel_0
 
 from cgpm.utils import validation as vu
@@ -67,15 +67,15 @@ def logp_crp(N, Nk, alpha):
     customers and K is the number of tables.
     https://www.cs.princeton.edu/~blei/papers/GershmanBlei2012.pdf#page=4 (eq 8)
     """
-    return len(Nk)*log(alpha) + np.sum(gammaln(Nk)) \
-        + gammaln(alpha) - gammaln(N+alpha)
+    return len(Nk)*log(alpha) + np.sum(lgamma(c) for c in Nk) \
+        + lgamma(alpha) - lgamma(N+alpha)
 
 def logp_crp_unorm(N, K, alpha):
     """Returns the log unnormalized P(N,K|alpha), where N is the number of
     customers and K is the number of tables. Use for effeciency to avoid
     computing terms that are not a function of alpha.
     """
-    return K*log(alpha) + gammaln(alpha) - gammaln(N+alpha)
+    return K*log(alpha) + lgamma(alpha) - lgamma(N+alpha)
 
 def logp_crp_gibbs(Nk, Z, i, alpha, m):
     """Compute the CRP probabilities for a Gibbs transition of customer i,
@@ -165,7 +165,7 @@ def log_nCk(n, k):
     """log(choose(n,k)) with overflow protection."""
     if n == 0 or k == 0 or n == k:
         return 0
-    return log(n) + gammaln(n) - log(k) - gammaln(k) - log(n-k) - gammaln(n-k)
+    return log(n) + lgamma(n) - log(k) - lgamma(k) - log(n-k) - lgamma(n-k)
 
 def simulate_crp(N, alpha, rng=None):
     """Generates random N-length partition from the CRP with parameter alpha."""
