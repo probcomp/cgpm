@@ -19,8 +19,6 @@ from math import log
 
 import numpy as np
 
-from scipy.stats import norm
-
 from cgpm.utils import general as gu
 
 
@@ -97,8 +95,9 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1,
                 if D[0] < x_prime < D[1]:
                     return x_prime
             raise RuntimeError('MH failed to rejection sample the proposal.')
-        # XXX DISABLED.
+        # XXX DISABLED, actually the mh function needs rewriting issue #56.
         def log_correction(x, x_prime, jstd):
+            from scipy.stats import norm
             if D[0] == float('inf') and D[1] == float('inf'):
                 return 0
             return norm.logcdf((D[1]-x)/jump_std-(D[0]-x)/jump_std) \
