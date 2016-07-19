@@ -14,10 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+from math import lgamma
 
-from scipy.special import gammaln
-from scipy.stats import t
+import numpy as np
 
 from cgpm.exponentials.distribution import DistributionGpm
 from cgpm.utils import general as gu
@@ -190,14 +189,7 @@ class Normal(DistributionGpm):
             + .5 * np.log(np.pi)
             - .5 * np.log(r)
             - (nu/2.) * np.log(s)
-            + gammaln(nu/2.0))
-
-    @staticmethod
-    def posterior_logcdf(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        mn, rn, sn, nun = Normal.posterior_hypers(
-            N, sum_x, sum_x_sq, m, r, s, nu)
-        scalesq = sn/2.*(rn+1) / (nun/2.*rn)
-        return t.logcdf(x, 2*nun/2., loc=mn, scale=np.sqrt(scalesq))
+            + lgamma(nu/2.0))
 
     @staticmethod
     def sample_parameters(m, r, s, nu, rng):
