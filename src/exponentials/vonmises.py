@@ -16,6 +16,9 @@
 
 from math import atan2
 from math import cos
+from math import isinf
+from math import isnan
+from math import log
 from math import pi
 from math import sin
 
@@ -171,7 +174,7 @@ class Vonmises(DistributionGpm):
             sum_cos_x + cos(x), a, b, k)
         ZN = Vonmises.calc_log_Z(an)
         ZM = Vonmises.calc_log_Z(am)
-        return - np.log(2*pi) - gu.log_bessel_0(k) + ZM - ZN
+        return - np.log(2*pi) - log_bessel_0(k) + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, sum_sin_x, sum_cos_x, a, b, k):
@@ -182,8 +185,8 @@ class Vonmises(DistributionGpm):
         an, _ = Vonmises.posterior_hypers(N, sum_sin_x, sum_cos_x, a, b, k)
         Z0 = Vonmises.calc_log_Z(a)
         ZN = Vonmises.calc_log_Z(an)
-        lp = float(-N) * (np.log(2*pi) + gu.log_bessel_0(k)) + ZN - Z0
-        if np.isnan(lp) or np.isinf(lp):
+        lp = float(-N) * (np.log(2*pi) + log_bessel_0(k)) + ZN - Z0
+        if isnan(lp) or isinf(lp):
             import ipdb; ipdb.set_trace()
         return lp
 
@@ -202,7 +205,7 @@ class Vonmises(DistributionGpm):
     @staticmethod
     def calc_log_Z(a):
         assert a > 0
-        return gu.log_bessel_0(a)
+        return log_bessel_0(a)
 
     @staticmethod
     def estimate_kappa(N, ssx, scx):
@@ -226,7 +229,17 @@ class Vonmises(DistributionGpm):
         Apk = A_p(kappa_1)
         kappa = kappa_1 - (Apk - rbar)/(1. - Apk**2 - (1. / kappa_1) * Apk)
 
-        if np.isnan(kappa):
+        if isnan(kappa):
             return 10.**-6
         else:
-            return np.abs(kappa)
+            return abs(kappa)
+
+def log_bessel_0(x):
+    besa = bessel_0(x)
+    # If bessel_0(a) is inf, then use the exponential approximation to
+    # prevent numerical overflow.
+    if isinf(besa):
+        I0 = x - .5*log(2*pi*x)
+    else:
+        I0 = log(besa)
+    return I0

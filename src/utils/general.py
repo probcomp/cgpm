@@ -22,8 +22,6 @@ from math import log
 
 import numpy as np
 
-from scipy.special import i0 as bessel_0
-
 from cgpm.utils import validation as vu
 
 
@@ -43,16 +41,6 @@ def merged(*dicts):
     for d in dicts:
         result.update(d)
     return result
-
-def log_bessel_0(x):
-    besa = bessel_0(x)
-    # If bessel_0(a) is inf, then use the exponential approximation to
-    # prevent numerical overflow.
-    if math.isinf(besa):
-        I0 = x - .5*log(2*math.pi*x)
-    else:
-        I0 = log(besa)
-    return I0
 
 def log_normalize(logp):
     """Normalizes a np array of log probabilites."""
