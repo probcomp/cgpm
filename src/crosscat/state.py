@@ -24,7 +24,6 @@ import time
 from collections import OrderedDict
 from math import isnan
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from cgpm.cgpm import CGpm
@@ -574,16 +573,12 @@ class State(CGpm):
 
     def plot(self):
         """Plots observation histogram and posterior distirbution of Dims."""
+        import matplotlib.pyplot as plt
         layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(
             num=None,
             figsize=(layout['plot_inches_y'], layout['plot_inches_x']), dpi=75,
             facecolor='w', edgecolor='k', frameon=False, tight_layout=True)
-        self._do_plot(fig, layout)
-        plt.ion(); plt.show()
-        return fig, layout
-
-    def _do_plot(self, fig, layout):
         # Do not plot more than 6 by 4.
         if self.n_cols() > 24:
             return
@@ -599,6 +594,9 @@ class State(CGpm):
                 verticalalignment='top')
             ax.grid()
         plt.draw()
+        plt.ion()
+        plt.show()
+        return fig
 
     # --------------------------------------------------------------------------
     # Internal CRP utils.
