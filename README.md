@@ -25,7 +25,7 @@ mixture of one of the available DistributionGpms. Inference is run using
 compositions of conditional generative population models.
 
 ```
-$ python -i examples/one_view.py
+$ python -i tests/graphical/one_view.py
 ```
 
 A plot similar to ![images/one_view.png](images/one_view.png) should appear.
@@ -36,8 +36,7 @@ Single-particle SMC in a DP Mixture with Normal-InverseGamma base measure and
 normal obervations can be run interactively:
 
 ```
-$ cd experiments/univariate_crp
-$ python -i crp.py
+$ python -i tests/graphical/dpmm_nignormal.py
 ```
 
 Click on the graph to produce observations and watch, the Gibbs kernel cycle
@@ -65,7 +64,7 @@ tests, run `py.test` in the root directory. There are more tests in the `tests/`
 directory, but those that do not start with `test_` or do start with `disabled_`
 are not considered ready. The tip of every branch merged into master __must__
 pass `./check.sh`, and be consistent with the code conventions outlined in
-HACKING.
+[HACKING](HACKING).
 
 ## License
 
