@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import time
 
 import numpy as np
@@ -88,23 +89,48 @@ class PieceWise(CGpm):
         if evidence.keys() == self.inputs:
             # Case 1.1: z in the query and x in the query.
             if self.outputs[0] in query and self.outputs[1] in query:
-                logp = 0
+                z, x = query[self.outputs[1]], query[self.outputs[1]]
+                # XXX Check if z in [0, 1]
+                logp_z = np.log(self.flip) if z == 0 else np.log(1-self.flip)
+                logp_x = logpdf_normal(x, y + (2*z-1), self.sigma)
+                logp = logp_x + logp_z
             # Case 1.2: z in the query only.
             elif self.outputs[1] in query:
-                logp = 0
+                z = query[self.outputs[1]]
+                logp_z = np.log(self.flip) if z == 0 else np.log(1-self.flip)
+                logp = logp_z
             # Case 1.2: x in the query only.
             elif self.outputs[0] in query:
-                logp = 0
+                x = query[self.outputs[0]]
+                logp_xz0 = self.logpdf(
+                    rowid, {self.outputs[0]: x, self.outputs[1]: 0}, evidence)
+                logp_xz1 = self.logpdf(
+                    rowid, {self.outputs[0]: x, self.outputs[1]: 1}, evidence)
+                logp = gu.logsumexp([logp_xz0, logp_xz1])
             else:
                 raise ValueError('Misunderstood query: %s.' % query)
         # Case 2: logpdf of x given the z.
         elif self.outputs[1] in evidence:
             assert query.keys() == [self.outputs[0]]
-            logp = 0
+            z = evidence[self.outputs[1]]
+            x = query[self.outputs[0]]
+            logp_xz = self.logpdf(
+                rowid, {self.outputs[0]: x, self.outputs[1]: z},
+                {self.inputs[0]: y})
+            logp_z = self.logpdf(rowid, {self.outputs[1]: z},
+                {self.inputs[0]: y})
+            logp = logp_xz - logp_z
         # Case 2: logpdf of z given the x.
         elif self.outputs[0] in evidence:
             assert query.keys() == [self.outputs[1]]
-            logp = 0
+            z = query[self.outputs[1]]
+            x = evidence[self.outputs[0]]
+            logp_xz = self.logpdf(
+                rowid, {self.outputs[0]: x, self.outputs[1]: z},
+                {self.inputs[0]: y})
+            logp_x = self.logpdf(rowid, {self.outputs[0]: x},
+                {self.inputs[0]: y})
+            logp = logp_xz - logp_x
         else:
             raise ValueError('Misunderstood query: %s.' % query)
         return logp
@@ -131,3 +157,10 @@ class PieceWise(CGpm):
             sigma=metadata['sigma'],
             flip=metadata['flip'],
             rng=rng)
+
+
+def logpdf_normal(x, mu, sigma):
+    HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
+    deviation = x - mu
+    return - math.log(sigma) - HALF_LOG2PI \
+        - (0.5 * deviation * deviation / (sigma * sigma))
