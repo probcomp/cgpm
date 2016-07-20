@@ -54,7 +54,7 @@ class PieceWise(CGpm):
         y = evidence[self.inputs[0]]
         # Case 1: No evidence on outputs.
         if evidence.keys() == self.inputs:
-            z = self.rng.choice([-1, 1], p=[self.flip])
+            z = self.rng.choice([-1, 1], p=[self.flip, 1-self.flip])
             x = y + z + self.rng.normal(0, self.sigma)
             sample = {}
             if self.outputs[0] in query:
