@@ -95,6 +95,7 @@ class PieceWise(CGpm):
             # Case 1.2: x in the query only.
             elif self.outputs[0] in query:
                 logp = 0
+            else:
                 raise ValueError('Misunderstood query: %s.' % query)
         # Case 2: logpdf of x given the z.
         elif self.outputs[1] in evidence:
