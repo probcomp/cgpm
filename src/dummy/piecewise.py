@@ -54,8 +54,8 @@ class PieceWise(CGpm):
         y = evidence[self.inputs[0]]
         # Case 1: No evidence on outputs.
         if evidence.keys() == self.inputs:
-            z = self.rng.choice([-1, 1], p=[self.flip, 1-self.flip])
-            x = y + z + self.rng.normal(0, self.sigma)
+            z = self.rng.choice([0, 1], p=[self.flip, 1-self.flip])
+            x = y + (2*z-1) + self.rng.normal(0, self.sigma)
             sample = {}
             if self.outputs[0] in query:
                 sample[self.outputs[0]] = x
@@ -65,7 +65,7 @@ class PieceWise(CGpm):
         elif self.outputs[1] in evidence:
             assert query == [self.outputs[0]]
             z = evidence[self.outputs[1]]
-            x = y + z + self.rng.normal(0, self.sigma)
+            x = y + (2*z-1) + self.rng.normal(0, self.sigma)
             sample = {self.outputs[0]: x}
         # Case 3: Simulating latent given data.
         elif self.outputs[0] in evidence:
@@ -73,7 +73,7 @@ class PieceWise(CGpm):
             # Compute probabilities for z | x,y
             p_z0 = self.logpdf(rowid, {self.outputs[1]: 0}, evidence)
             p_z1 = self.logpdf(rowid, {self.outputs[1]: 1}, evidence)
-            z = self.rng.choice([-1, 1], p=[np.exp(p_z0), np.exp(p_z1)])
+            z = self.rng.choice([0, 1], p=[np.exp(p_z0), np.exp(p_z1)])
             sample = {self.outputs[1]: z}
         else:
             raise ValueError('Misunderstood query: %s' % query)
