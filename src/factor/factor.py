@@ -20,10 +20,9 @@ import numpy as np
 
 import sklearn.decomposition
 
-from scipy.stats import multivariate_normal
-
 from cgpm.cgpm import CGpm
 from cgpm.utils import general as gu
+from cgpm.utils import mvnormal as multivariate_normal
 
 
 class FactorAnalysis(CGpm):
@@ -178,7 +177,8 @@ class FactorAnalysis(CGpm):
         muG, covG = FactorAnalysis.mvn_condition(
             self.mu, self.cov, query_r.keys(), evidence_r)
         # Compute log density.
-        return multivariate_normal.logpdf(query_r.values(), mean=muG, cov=covG)
+        x = np.array(query_r.values())
+        return multivariate_normal.logpdf(x, muG, covG)
 
     def simulate(self, rowid, query, evidence=None, N=None):
         # XXX Deal with observed rowid.
@@ -192,8 +192,7 @@ class FactorAnalysis(CGpm):
         muG, covG = FactorAnalysis.mvn_condition(
             self.mu, self.cov, query_r, evidence_r)
         # Generate samples.
-        sample = multivariate_normal.rvs(
-            mean=muG, cov=covG, size=N, random_state=self.rng)
+        sample = self.rng.multivariate_normal(mean=muG, cov=covG, size=N)
         def get_sample(s):
             return {query[0]:s} if isinstance(s, float) else dict(zip(query, s))
         return get_sample(sample) if N is None else map(get_sample, sample)

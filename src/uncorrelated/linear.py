@@ -16,17 +16,17 @@
 
 import numpy as np
 
-from scipy.stats import multivariate_normal
 from scipy.stats import norm
 
 from cgpm.uncorrelated.undirected import UnDirectedXyGpm
+from cgpm.utils import mvnormal as multivariate_normal
 
 
 class Linear(UnDirectedXyGpm):
 
     def simulate_joint(self):
         return self.rng.multivariate_normal(
-            [0,0], cov=[[1,1-self.noise],[1-self.noise,1]])
+            [0,0], [[1,1-self.noise],[1-self.noise,1]])
 
     def simulate_conditional(self, z):
         mean = self.conditional_mean(z)
@@ -35,8 +35,8 @@ class Linear(UnDirectedXyGpm):
 
     def logpdf_joint(self, x, y):
         return multivariate_normal.logpdf(
-            [x,y], [0,0],
-            cov=[[1,1-self.noise],[1-self.noise,1]])
+            np.array([x,y]), np.array([0,0]),
+            np.array([[1,1-self.noise],[1-self.noise,1]]))
 
     def logpdf_marginal(self, z):
         return norm.logpdf(z, scale=1)
