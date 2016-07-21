@@ -26,7 +26,6 @@ Moreover a wider set of test cases for _conditional_ simulate are required.
 import itertools
 import pytest
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from cgpm.uncorrelated.diamond import Diamond
@@ -38,6 +37,9 @@ from cgpm.uncorrelated.sin import Sin
 from cgpm.uncorrelated.xcross import XCross
 
 from cgpm.utils.general import gen_rng
+
+
+PLOT = False
 
 
 NUM_SAMPLES = 200
@@ -80,17 +82,21 @@ def simulate_dataset(dist, noise, size=200):
     return np.asarray(D)
 
 def plot_synthetic(dist, noise, size=1000):
-    fig, ax = plt.subplots()
+    if PLOT:
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
     T = simulate_dataset(dist, noise, size=size)
-    ax.set_title('%s Distribution (Noise %1.2f)' % (dist, noise))
-    ax.scatter(T[:,0], T[:,1], color='k', alpha=.5, label='True Distribution')
-    ax.set_xlabel('x1')
-    ax.set_ylabel('x2')
-    ax.grid()
-    ax.set_xlim(simulator_limits[dist][0])
-    ax.set_ylim(simulator_limits[dist][1])
-    fig.savefig('/tmp/synth_%s_%1.2f.png' % (dist, noise))
-    plt.close('all')
+    if PLOT:
+        ax.set_title('%s Distribution (Noise %1.2f)' % (dist, noise))
+        ax.scatter(T[:,0], T[:,1], color='k', alpha=.5,
+            label='True Distribution')
+        ax.set_xlabel('x1')
+        ax.set_ylabel('x2')
+        ax.grid()
+        ax.set_xlim(simulator_limits[dist][0])
+        ax.set_ylim(simulator_limits[dist][1])
+        fig.savefig('/tmp/synth_%s_%1.2f.png' % (dist, noise))
+        plt.close('all')
 
 @pytest.mark.parametrize('dist, noise', itertools.product(simulators, NOISES))
 def test_dist_noise__ci_(dist, noise):
