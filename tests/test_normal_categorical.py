@@ -29,7 +29,6 @@ Simulations are compared to synthetic data at indicator subpopulations.
 
 import pytest
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from scipy.stats import ks_2samp
@@ -37,6 +36,9 @@ from scipy.stats import ks_2samp
 from cgpm.crosscat.engine import Engine
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
+
+
+PLOT = False
 
 
 N_SAMPLES = 250
@@ -72,60 +74,77 @@ def state():
 def test_joint(state):
     # Simulate from the joint distribution of (x,z).
     joint_samples = state.simulate(-1, [0,1], N=N_SAMPLES)
-    _, ax = plt.subplots()
-    ax.set_title('Joint Simulation')
+    if PLOT:
+        import matplotlib.pyplot as plt
+        _, ax = plt.subplots()
+        ax.set_title('Joint Simulation')
     for t in INDICATORS:
         # Plot original data.
         data_subpop = DATA[DATA[:,1] == t]
-        ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
+        if PLOT:
+            ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
         # Plot simulated data for indicator t.
         samples_subpop = [j[0] for j in joint_samples if j[1] == t]
-        ax.scatter(
-            np.add([t]*len(samples_subpop), .25), samples_subpop,
-            color=gu.colors[t])
+        if PLOT:
+            ax.scatter(
+                np.add([t]*len(samples_subpop), .25), samples_subpop,
+                color=gu.colors[t])
         # KS test.
         pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
         assert .05 < pvalue
-    ax.set_xlabel('Indicator')
-    ax.set_ylabel('x')
-    ax.grid()
+    if PLOT:
+        ax.set_xlabel('Indicator')
+        ax.set_ylabel('x')
+        ax.grid()
 
 
 def test_conditional_indicator(state):
     # Simulate from the conditional X|Z
-    _, ax = plt.subplots()
-    ax.set_title('Conditional Simulation Of Data X Given Indicator Z')
+    if PLOT:
+        import matplotlib.pyplot as plt
+        _, ax = plt.subplots()
+        ax.set_title('Conditional Simulation Of Data X Given Indicator Z')
     for t in INDICATORS:
         # Plot original data.
         data_subpop = DATA[DATA[:,1] == t]
-        ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
+        if PLOT:
+            ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
         # Plot simulated data.
         samples_subpop = [s[0] for s in
             state.simulate(-1, [0], evidence={1:t}, N=len(data_subpop))]
-        ax.scatter(
-            np.repeat(t, len(data_subpop)) + .25,
-            samples_subpop, color=gu.colors[t])
+        if PLOT:
+            ax.scatter(
+                np.repeat(t, len(data_subpop)) + .25,
+                samples_subpop, color=gu.colors[t])
         # KS test.
         pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
         assert .1 < pvalue
-    ax.set_xlabel('Indicator')
-    ax.set_ylabel('x')
-    ax.grid()
+    if PLOT:
+        ax.set_xlabel('Indicator')
+        ax.set_ylabel('x')
+        ax.grid()
 
 
 def test_conditional_real(state):
     # Simulate from the conditional Z|X
-    fig, axes = plt.subplots(2,3)
-    fig.suptitle('Conditional Simulation Of Indicator Z Given Data X')
+    if PLOT:
+        import matplotlib.pyplot as plt
+        fig, axes = plt.subplots(2,3)
+        fig.suptitle('Conditional Simulation Of Indicator Z Given Data X')
     # Compute representative data sample for each dindicator.
     means = [np.mean(DATA[DATA[:,1]==t], axis=0)[0] for t in INDICATORS]
-    for mean, indicator, ax in zip(means, INDICATORS, axes.ravel('F')):
-        samples_subpop = [s[1] for s in
-            state.simulate(-1, [1], evidence={0:mean}, N=N_SAMPLES)]
-        ax.hist(samples_subpop, color='g', alpha=.4)
-        ax.set_title('True Indicator %d' % indicator)
-        ax.set_xlabel('Simulated Indicator')
-        ax.set_xticks(INDICATORS)
-        ax.set_ylabel('Frequency')
-        ax.set_ylim([0, ax.get_ylim()[1]+10])
-        ax.grid()
+    if PLOT:
+        for mean, indicator, ax in zip(means, INDICATORS, axes.ravel('F')):
+            samples_subpop = [s[1] for s in
+                state.simulate(-1, [1], evidence={0:mean}, N=N_SAMPLES)]
+            ax.hist(samples_subpop, color='g', alpha=.4)
+            ax.set_title('True Indicator %d' % indicator)
+            ax.set_xlabel('Simulated Indicator')
+            ax.set_xticks(INDICATORS)
+            ax.set_ylabel('Frequency')
+            ax.set_ylim([0, ax.get_ylim()[1]+10])
+            ax.grid()
+    else:
+        for mean, indicator in zip(means, INDICATORS):
+            samples_subpop = [s[1] for s in
+                state.simulate(-1, [1], evidence={0:mean}, N=N_SAMPLES)]

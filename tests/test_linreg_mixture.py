@@ -17,10 +17,12 @@
 
 import numpy as np
 import matplotlib.cm as cm
-import matplotlib.pyplot as plt
 
 from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
+
+
+PLOT = False
 
 
 def _compute_y(x):
@@ -61,6 +63,7 @@ def generate_regression_samples():
     return [replace_key(s, view.outputs[0], -1) for s in samples]
 
 def plot_samples(samples, title):
+    import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     clusters = set(s[-1] for s in samples)
     colors = iter(cm.gist_rainbow(np.linspace(0, 1, len(clusters)+2)))
@@ -79,6 +82,7 @@ def plot_samples(samples, title):
 def test_regression_plot_crash__ci_():
     samples_a = generate_gaussian_samples()
     samples_b = generate_regression_samples()
-    plot_samples(samples_a, 'Model: Mixture of 2D Gaussians')
-    plot_samples(samples_b, 'Model: Mixture of Linear Regression')
-    # plt.close('all')
+    if PLOT:
+        plot_samples(samples_a, 'Model: Mixture of 2D Gaussians')
+        plot_samples(samples_b, 'Model: Mixture of Linear Regression')
+        # plt.close('all')

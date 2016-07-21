@@ -19,10 +19,7 @@ features of State."""
 
 import pytest
 
-import matplotlib.pyplot as plt
 import numpy as np
-
-from matplotlib import cm
 
 from cgpm.cgpm import CGpm
 from cgpm.crosscat.state import State
@@ -32,15 +29,21 @@ from cgpm.utils import general as gu
 from cgpm.utils import test as tu
 
 
+PLOT = False
+
+
 def generate_quadrants(rows, rng):
     Q0 = rng.multivariate_normal([2,2], cov=[[.5,0],[0,.5]], size=rows/4)
     Q1 = rng.multivariate_normal([-2,2], cov=[[.5,0],[0,.5]], size=rows/4)
     Q2 = rng.multivariate_normal([-2,-2], cov=[[.5,0],[0,.5]], size=rows/4)
     Q3 = rng.multivariate_normal([2,-2], cov=[[.5,0],[0,.5]], size=rows/4)
-    colors = iter(cm.gist_rainbow(np.linspace(0, 1, 4)))
-    for q in [Q0, Q1, Q2, Q3]:
-        plt.scatter(q[:,0], q[:,1], color=next(colors))
-    plt.close('all')
+    if PLOT:
+        import matplotlib.pyplot as plt
+        from matplotlib import cm
+        colors = iter(cm.gist_rainbow(np.linspace(0, 1, 4)))
+        for q in [Q0, Q1, Q2, Q3]:
+            plt.scatter(q[:,0], q[:,1], color=next(colors))
+        plt.close('all')
     return np.row_stack((Q0, Q1, Q2, Q3))
 
 
@@ -152,13 +155,16 @@ def test_inference_quality__ci_(state):
         simulate_fourway_constrain = np.transpose(
             np.asarray([[s[0] for s in samples], [s[2] for s in samples]]))
 
-        fig, ax = plt.subplots()
-        ax.scatter(
-            simulate_fourway_constrain[:,0],
-            simulate_fourway_constrain[:,1])
-        ax.hlines(0, *ax.get_xlim(),color='red', linewidth=2)
-        ax.vlines(0, *ax.get_ylim(),color='red', linewidth=2)
-        ax.grid()
+        if PLOT:
+            import matplotlib.pyplot as plt
+            from matplotlib import cm
+            fig, ax = plt.subplots()
+            ax.scatter(
+                simulate_fourway_constrain[:,0],
+                simulate_fourway_constrain[:,1])
+            ax.hlines(0, *ax.get_xlim(),color='red', linewidth=2)
+            ax.vlines(0, *ax.get_ylim(),color='red', linewidth=2)
+            ax.grid()
 
         x0, x1 = FourWay.retrieve_y_for_x(v)
         simulate_ideal = np.asarray([[x0, x1]])
