@@ -20,7 +20,6 @@ from collections import namedtuple
 import numpy as np
 
 from scipy.special import gammaln
-from scipy.stats import invgamma
 
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
@@ -323,7 +322,7 @@ class LinearRegression(CGpm):
 
     @staticmethod
     def sample_parameters(a, b, mu, V, rng):
-        sigma2 = invgamma.rvs(a, scale=b, random_state=rng)
+        sigma2 = 1./rng.gamma(a, scale=1./b)
         b = rng.multivariate_normal(mu, sigma2 * V)
         return sigma2, b
 
