@@ -17,13 +17,15 @@
 import importlib
 import pytest
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from cgpm.regressions.linreg import LinearRegression
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
+
+
+PLOT = False
 
 
 CCTYPES, DISTARGS = cu.parse_distargs([
@@ -145,7 +147,9 @@ def test_simulate():
         metadata['factory'][1])
     linreg = builder.from_metadata(metadata, rng=gu.gen_rng(1))
 
-    _, ax = plt.subplots()
+    if PLOT:
+        import matplotlib.pyplot as plt
+        _, ax = plt.subplots()
     xpred, xtrue = [], []
     for row in D[25:]:
         xtrue.append(row[0])
@@ -156,10 +160,11 @@ def test_simulate():
     xmeans = np.mean(xpred, axis=1)
     xlow = np.percentile(xpred, 25, axis=1)
     xhigh = np.percentile(xpred, 75, axis=1)
-    ax.plot(range(len(xtrue)), xmeans, color='g')
-    ax.fill_between(range(len(xtrue)), xlow, xhigh, color='g', alpha='.3')
-    ax.scatter(range(len(xtrue)), xtrue, color='r')
-    # plt.close('all')
+    if PLOT:
+        ax.plot(range(len(xtrue)), xmeans, color='g')
+        ax.fill_between(range(len(xtrue)), xlow, xhigh, color='g', alpha='.3')
+        ax.scatter(range(len(xtrue)), xtrue, color='r')
+        # plt.close('all')
 
 
 def test_missing_inputs():
