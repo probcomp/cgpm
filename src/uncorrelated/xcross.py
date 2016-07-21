@@ -16,10 +16,9 @@
 
 import numpy as np
 
-from scipy.stats import multivariate_normal
-
 from cgpm.uncorrelated.undirected import UnDirectedXyGpm
 from cgpm.utils import general as gu
+from cgpm.utils import mvnormal as multivariate_normal
 
 
 class XCross(UnDirectedXyGpm):
