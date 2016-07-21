@@ -50,7 +50,7 @@ class SinY(CGpm):
         assert query == self.outputs
         assert evidence.keys() == self.inputs
         x = evidence[self.inputs[0]]
-        noise = self.uniform.rvs(random_state=self.rng)
+        noise = self.rng.uniform(high=self.noise)
         if np.cos(x) < 0:
             y = np.cos(x) + noise
         else:

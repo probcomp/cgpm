@@ -49,7 +49,7 @@ class ParabolaY(CGpm):
         assert evidence.keys() == self.inputs
         x = evidence[self.inputs[0]]
         u = self.rng.rand()
-        noise = self.uniform.rvs(random_state=self.rng)
+        noise = self.rng.uniform(low=-self.noise, high=self.noise)
         if u < .5:
             y = x**2 + noise
         else:

@@ -40,7 +40,7 @@ class UniformX(CGpm):
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         assert not evidence
         assert query == self.outputs
-        x = self.uniform.rvs(random_state=self.rng)
+        x = self.rng.uniform(low=self.low, high=self.high)
         return {self.outputs[0]: x}
 
     def logpdf(self, rowid, query, evidence=None):
