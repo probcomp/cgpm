@@ -18,7 +18,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from statsmodels.nonparameteric import kernel_density
+from statsmodels.nonparametric import kernel_density
+from statsmodels.nonparametric import _kernel_base
 
 from cgpm.cgpm import CGpm
 from cgpm.utils import general as gu
@@ -64,7 +65,11 @@ class MultivariateKde(CGpm):
         self.outputs = outputs
         self.inputs = []
         # Distargs.
-        self.distargs = distargs['outputs']['stattypes']
+        self.stattypes = distargs['outputs']['stattypes']
+        self.statargs = distargs['outputs']['statargs']
+        self.nominals = [i for i in self.outputs
+            if self.stattypes[i] != 'numerical']
+        self.levels = {i:1 for i in outputs if i in self.nominals}
         # Dataset.
         self.data = OrderedDict()
         self.N = 0
@@ -126,7 +131,40 @@ class MultivariateKde(CGpm):
         return np.log(pdf)
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        pass
+        evidence = self.populate_evidence(rowid, query, evidence)
+        if not query:
+            raise ValueError('No query: %s.' % query)
+        if any(q not in self.outputs for q in query):
+            raise ValueError('Unknown variables: (%s,%s).'
+                % (query, self.outputs))
+        if any(q in evidence for q in query):
+            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
+        members = self._dataset(query)
+        weights = _kernel_base.gpke(
+            self._bw(evidence), self._dataset(evidence),
+            evidence.values(), self._stattypes(evidence),
+            tosum=False) if evidence else [0.] * len(members)
+        assert len(weights) == len(members)
+        indexes = gu.logp_pflip(weights, size=N, rng=self.rng)
+        samples = [self._simulate_member(members[i], query) for i in indexes]
+        return np.log(pdf)
+
+    def _simulate_member(self, row, query):
+        sample = {
+            q: _simulate_gaussian_kernel(q, row)
+        }
+
+    def _simulate_gaussian_kernel(self, q, Xi):
+        assert self.stattypes[q] == 'numerical'
+        return self.rng.normal(loc=Xi, scale=self.bw[q])
+
+    def _simulate_aitchison_aitken_kernel(self, q, Xi):
+        assert self.stattypes[q] == 'categorical'
+        c = self.levels(q)
+        xs = range(c)
+        def _compute_probabilities(s):
+            return self.bw[q] if s == Xi else (1. - self.bw[q]) / (c - 1)
+        return self.rng.choice(xs, p=map(_compute_probabilities, xs))
 
     def logpdf_score(self):
         def compute_logpdf(x):
@@ -136,11 +174,18 @@ class MultivariateKde(CGpm):
         return sum(compute_logpdf(x) for x in self.data)
 
     def transition(self, N=None):
-        kde = kernel_density.KDEMultivariate(
-            self._dataset(self.outputs),
-            self._stattypes(self.outputs),
-            bw='cv_ml')
+        dataset = self._dataset(self.outputs)
+        stattypes = self._stattypes(self.outputs)
+        # Learn the kernel bandwidths.
+        kde = kernel_density.KDEMultivariate(dataset, stattypes, bw='cv_ml')
         self.bw = kde.bw.tolist()
+        # Extract the nominal levels.
+        def _levels(i):
+            levels = None
+            if self.stattypes[i] == 'categorical':
+                levels = np.unique(dataset[:,i]).size
+            return levels
+        self.levels = {i: _levels(i) for i in xrange(len(self.outputs))}
 
     # --------------------------------------------------------------------------
     # Internal.
@@ -158,7 +203,7 @@ class MultivariateKde(CGpm):
         indexes = [self.outputs.index(q) for q in query]
         lookup = {
             'c': 'numerical',
-            'u': 'nominal',
+            'u': 'categorical',
         }
         return str.join(',', [lookup[self.stattypes[q]] for q in query])
 
