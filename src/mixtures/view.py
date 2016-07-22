@@ -181,8 +181,10 @@ class View(CGpm):
             inputs = filter(
                 lambda d: d != col and not self.dims[d].is_conditional(),
                 sorted(self.dims))
-            distargs['cctypes'] = [self.dims[i].cctype for i in inputs]
-            distargs['ccargs'] = [self.dims[i].get_distargs() for i in inputs]
+            distargs['inputs'] = {
+                'stattypes': [self.dims[i].cctype for i in inputs],
+                'statargs': [self.dims[i].get_distargs() for i in inputs]
+            }
         D_old = self.dims[col]
         D_new = Dim(
             outputs=[col], inputs=[self.outputs[0]]+inputs,

@@ -51,7 +51,7 @@ D = D.T
 def test_incorporate():
     linreg = LinearRegression(
         OUTPUTS, INPUTS,
-        distargs={'cctypes': CCTYPES, 'ccargs': CCARGS},
+        distargs={'inputs':{'stattypes': CCTYPES, 'statargs': CCARGS}},
         rng=gu.gen_rng(0))
     # Incorporate first 20 rows.
     for rowid, row in enumerate(D[:20]):
@@ -92,7 +92,7 @@ def test_incorporate():
 def test_logpdf_score():
     linreg = LinearRegression(
         OUTPUTS, INPUTS,
-        distargs={'cctypes': CCTYPES, 'ccargs': CCARGS},
+        distargs={'inputs':{'stattypes': CCTYPES, 'statargs': CCARGS}},
         rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:10]):
         query = {0: row[0]}
@@ -105,7 +105,7 @@ def test_logpdf_score():
 def test_logpdf_predictive():
     linreg = LinearRegression(
         OUTPUTS, INPUTS,
-        distargs={'cctypes': CCTYPES, 'ccargs': CCARGS},
+        distargs={'inputs':{'stattypes': CCTYPES, 'statargs': CCARGS}},
         rng=gu.gen_rng(0))
     Dx0 = D[D[:,1]==0]
     Dx1 = D[D[:,1]==1]
@@ -132,7 +132,7 @@ def test_logpdf_predictive():
 def test_simulate():
     linreg = LinearRegression(
         OUTPUTS, INPUTS,
-        distargs={'cctypes': CCTYPES, 'ccargs': CCARGS},
+        distargs={'inputs':{'stattypes': CCTYPES, 'statargs': CCARGS}},
         rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:25]):
         linreg.incorporate(rowid, {0:row[0]}, {i:row[i] for i in linreg.inputs})
@@ -166,9 +166,11 @@ def test_missing_inputs():
     outputs = [0]
     inputs = [2, 4, 6]
     distargs = {
-        'cctypes': ['normal', 'categorical', 'categorical'],
-        'ccargs': [None, {'k': 4}, {'k': 1}]
+        'inputs': {
+            'stattypes': ['normal', 'categorical', 'categorical'],
+            'statargs': [None, {'k': 4}, {'k': 1}]
         }
+    }
     linreg = LinearRegression(
         outputs=outputs,
         inputs=inputs,

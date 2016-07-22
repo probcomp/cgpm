@@ -91,7 +91,7 @@ cases = {
     'random_forest' : Case(
         outputs=[0],
         inputs=[1, 2],
-        distargs={'k': 2, 'cctypes': [1,2]},
+        distargs={'k': 2, 'inputs':{'stattypes': [1,2]}},
         good=[(0, {1:1, 2:2}), (1, {1:0, 2:2})],
         bad=[(-1, {1:1, 2:2}), (0, {0:1, 2:2}), (0, {1: 3})]),
 
@@ -106,8 +106,9 @@ cases = {
         outputs=[0],
         inputs=[1, 2],
         distargs={
-            'cctypes': ['normal', 'bernoulli'],
-            'ccargs': [None, {'k': 2}]},
+            'inputs': {
+                'stattypes': ['normal', 'bernoulli'],
+                'statargs': [None, {'k':2}]}},
         good=[(0, {1:1, 2:0})],
         bad=[(0, {0:1, 1:1, 2:0})]),
 }

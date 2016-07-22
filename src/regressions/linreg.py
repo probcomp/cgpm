@@ -50,14 +50,14 @@ class LinearRegression(CGpm):
         assert len(self.outputs) == 1
         assert len(self.inputs) >= 1
         assert self.outputs[0] not in self.inputs
-        assert len(distargs['cctypes']) == len(self.inputs)
-        self.input_cctypes = distargs['cctypes']
-        self.input_ccargs = distargs['ccargs']
+        assert len(distargs['inputs']['stattypes']) == len(self.inputs)
+        self.input_cctypes = distargs['inputs']['stattypes']
+        self.input_ccargs = distargs['inputs']['statargs']
         # Determine number of covariates (with 1 bias term) and number of
         # categories for categorical covariates.
-        p, counts = zip(
-            *[self._predictor_count(cctype, ccarg)
-            for cctype, ccarg in zip(distargs['cctypes'], distargs['ccargs'])])
+        p, counts = zip(*[
+            self._predictor_count(cctype, ccarg) for cctype, ccarg
+            in zip(self.input_cctypes, self.input_ccargs)])
         self.p = sum(p)+1
         self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
         # For numerical covariates, map index in inputs to index in code.
@@ -156,11 +156,13 @@ class LinearRegression(CGpm):
 
     def get_distargs(self):
         return {
-            'cctypes': self.input_cctypes,
-            'ccargs': self.input_ccargs,
+            'inputs': {
+                'stattypes': self.input_cctypes,
+                'statargs': self.input_ccargs,
+            } ,
             'inputs_discrete': self.inputs_discrete,
             'p': self.p,
-            }
+        }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=300):
