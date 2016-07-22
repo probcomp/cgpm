@@ -77,6 +77,8 @@ class FactorAnalysis(CGpm):
         # Default parameter settings.
         if params is None:
             params = {}
+        if distargs is None:
+            distargs = {}
         # Entropy.
         if rng is None:
             rng = gu.gen_rng(1)
@@ -93,6 +95,9 @@ class FactorAnalysis(CGpm):
             raise ValueError('Specify latent dimension L: %s.' % L)
         if L == 0:
             raise ValueError('Latent dimension at least 1: %s.' % L)
+        if 'outputs' in distargs and any(s != 'numerical'
+                for s in distargs['outputs']['stattypes']):
+            raise ValueError('Factor non-numerical outputs: %s.' % distargs)
         # Observable and latent variable indexes.
         D = len(outputs[:-L])
         if D < L:
