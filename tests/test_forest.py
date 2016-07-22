@@ -43,7 +43,7 @@ T, Zv, Zc = tu.gen_data_table(
     [.2]*len(cctypes), rng=gu.gen_rng(0))
 
 D = T.T
-RF_DISTARGS = {'k': distargs[0]['k'], 'cctypes': cctypes[1:]}
+RF_DISTARGS = {'inputs': {'stattypes': cctypes[1:]}, 'k': distargs[0]['k']}
 RF_OUTPUTS = [0]
 RF_INPUTS = range(1, len(cctypes))
 NUM_CLASSES = 3

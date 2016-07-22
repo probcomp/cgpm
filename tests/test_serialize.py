@@ -133,10 +133,10 @@ def test_serialize_composite_cgpm():
         outputs=[0],
         inputs=[1,2,3,4],
         distargs={
-            'cctypes': [cctypes[i] for i in [1,2,3,4]],
-            'ccargs': [distargs[i] for i in [1,2,3,4]],
-            'k': distargs[0]['k']
-            },
+            'inputs': {
+                'stattypes': [cctypes[i] for i in [1,2,3,4]],
+                'statargs': [distargs[i] for i in [1,2,3,4]]},
+            'k': distargs[0]['k']},
         rng=rng)
 
     # Create a Regression.
@@ -144,9 +144,9 @@ def test_serialize_composite_cgpm():
         outputs=[1],
         inputs=[3,4,5],
         distargs={
-            'cctypes': [cctypes[i] for i in [3,4,5]],
-            'ccargs': [distargs[i] for i in [3,4,5]],
-            },
+            'inputs': {
+                'stattypes': [cctypes[i] for i in [3,4,5]],
+                'statargs': [distargs[i] for i in [3,4,5]]}},
         rng=rng)
 
     # Incorporate the data.

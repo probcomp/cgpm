@@ -46,12 +46,12 @@ class RandomForest(CGpm):
         assert len(self.outputs) == 1
         assert len(self.inputs) >= 1
         assert self.outputs[0] not in self.inputs
-        assert len(distargs['cctypes']) == len(self.inputs)
+        assert len(distargs['inputs']['stattypes']) == len(self.inputs)
+        self.stattypes = distargs['inputs']['stattypes']
         # Number of output categories and input dimension.
-        # XXX WHATTA HACK
+        # XXX WHATTA HACK. BayesDB passes in top-level kwargs, not in distargs.
         self.k = k if k is not None else int(distargs['k'])
-        self.p = len(distargs['cctypes'])
-        self.input_cctypes = distargs['cctypes']
+        self.p = len(distargs['inputs']['stattypes'])
         # Sufficient statistics.
         self.N = 0
         self.data = Data(x=OrderedDict(), Y=OrderedDict())
@@ -139,17 +139,17 @@ class RandomForest(CGpm):
         return {
             'forest': self.regressor,
             'alpha': self.alpha
-            }
+        }
 
     def get_suffstats(self):
         return {}
 
     def get_distargs(self):
         return {
+            'inputs': {'stattypes': self.stattypes},
             'k': self.k,
             'p': self.p,
-            'cctypes': self.input_cctypes,
-            }
+        }
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
