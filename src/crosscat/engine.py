@@ -318,7 +318,7 @@ class Engine(object):
             metadata['states'] = metadata['state_metadatas']
         if 'X' not in metadata:
             metadata['X'] = metadata['states'][0]['X']
-        engine = cls(X=metadata['X'], num_states=0, multihtread=0, rng=rng)
+        engine = cls(X=metadata['X'], num_states=0, rng=rng)
         engine.states = metadata['states']
         engine._populate_metadata()
         return engine
