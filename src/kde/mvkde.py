@@ -40,25 +40,38 @@ class MultivariateKde(CGpm):
 
     def __init__(self, outputs, inputs, distargs=None, params=None,
             rng=None):
-        # Default parameter settings.
+        # Default arguments.
         if params is None:
             params = {}
-        # Entropy.
         if rng is None:
             rng = gu.gen_rng(1)
-        # No inputs.
+        # No inputs allowed.
         if inputs:
             raise ValueError('KDE rejects inputs: %s.' % inputs)
-        # Correct outputs.
+        # At least one output.
         if len(outputs) < 1:
             raise ValueError('KDE needs >= 1 outputs: %s.' % outputs)
+        # Unique outputs.
         if len(set(outputs)) != len(outputs):
             raise ValueError('Duplicate outputs: %s.' % outputs)
-        # Statistical types.
+        # Ensure outputs in distargs.
         if not distargs or 'outputs' not in distargs:
             raise ValueError('Missing distargs: %s.' % distargs)
-        if 'stattypes' not in distargs['outputs']:
-            raise ValueError('Missing statistical types: %s.' % distargs)
+        # Ensure stattypes and statargs in distargs['outputs]'
+        if 'stattypes' not in distargs['outputs']\
+                and 'statargs' not in distargs['outputs']:
+            raise ValueError('Missing output stattypes: %s.' % distargs)
+        # Ensure stattypes correct length.
+        if len(distargs['outputs']['stattypes']) != len(outputs):
+            raise ValueError('Wrong number of stattypes: %s.' % distargs)
+        # Ensure statargs correct length.
+        if len(distargs['outputs']['statargs']) != len(outputs):
+            raise ValueError('Wrong number of statargs: %s.' % distargs)
+        # Ensure number of categories provided as k.
+        if any('k' not in distargs['outputs']['statargs'][i]
+                for i in xrange(outputs)
+                if distargs['outputs']['stattypes'][i] != 'numerical'):
+            raise ValueError('Missing number of categories k: %s' % distargs)
         # Build the object.
         self.rng = rng
         # Varible indexes.
