@@ -67,9 +67,10 @@ class MultivariateKde(CGpm):
         # Distargs.
         self.stattypes = distargs['outputs']['stattypes']
         self.statargs = distargs['outputs']['statargs']
-        self.nominals = [i for i in self.outputs
-            if self.stattypes[i] != 'numerical']
-        self.levels = {i:1 for i in outputs if i in self.nominals}
+        self.levels = {
+            o: self.statargs[i]['k']
+            for i,o in outputs if self.stattypes[i] != 'numerical'
+        }
         # Dataset.
         self.data = OrderedDict()
         self.N = 0
@@ -103,7 +104,8 @@ class MultivariateKde(CGpm):
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
-        # XXX Deal with observed rowid.
+        if self.N == 0:
+            raise ValueError('KDE requires at least one observation.')
         evidence = self.populate_evidence(rowid, query, evidence)
         if not query:
             raise ValueError('No query: %s.' % query)
@@ -131,28 +133,37 @@ class MultivariateKde(CGpm):
         return np.log(pdf)
 
     def simulate(self, rowid, query, evidence=None, N=None):
+        if self.N == 0:
+            raise ValueError('KDE requires at least one observation.')
         evidence = self.populate_evidence(rowid, query, evidence)
-        if not query:
-            raise ValueError('No query: %s.' % query)
+        if not query: raise ValueError('No query: %s.' % query)
         if any(q not in self.outputs for q in query):
             raise ValueError('Unknown variables: (%s,%s).'
                 % (query, self.outputs))
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         members = self._dataset(query)
-        weights = _kernel_base.gpke(
-            self._bw(evidence), self._dataset(evidence),
-            evidence.values(), self._stattypes(evidence),
-            tosum=False) if evidence else [0.] * len(members)
+        if evidence:
+            weights = _kernel_base.gpke(
+                self._bw(evidence),
+                self._dataset(evidence),
+                evidence.values(),
+                self._stattypes(evidence),
+                tosum=False)
+        else:
+            weights = [0.] * len(members)
         assert len(weights) == len(members)
-        indexes = gu.logp_pflip(weights, size=N, rng=self.rng)
-        samples = [self._simulate_member(members[i], query) for i in indexes]
-        return np.log(pdf)
+        index = gu.logp_pflip(weights, size=N, rng=self.rng)
+        return self._simulate_member(members[index], query) if N is None\
+            else [self._simulate_member(members[i], query) for i in index]
 
     def _simulate_member(self, row, query):
-        sample = {
-            q: _simulate_gaussian_kernel(q, row)
+        lookup = {
+            'c': self._simulate_gaussian_kernel,
+            'u': self._simulate_aitchison_aitken_kernel
         }
+        funcs = [lookup[s] for s in self._stattypes(query)]
+        return {q: funcs(q, row[q]) for q in query}
 
     def _simulate_gaussian_kernel(self, q, Xi):
         assert self.stattypes[q] == 'numerical'
@@ -164,14 +175,15 @@ class MultivariateKde(CGpm):
         xs = range(c)
         def _compute_probabilities(s):
             return self.bw[q] if s == Xi else (1. - self.bw[q]) / (c - 1)
-        return self.rng.choice(xs, p=map(_compute_probabilities, xs))
+        probs = map(_compute_probabilities, xs)
+        return self.rng.choice(xs, p=probs)
 
     def logpdf_score(self):
-        def compute_logpdf(x):
+        def compute_logpdf(r, x):
             assert len(x) == self.D
-            query = {i:v for i,v in enumerate(x) if not np.isnan(v)}
-            return self.logpdf(-1, query, evidence=None)
-        return sum(compute_logpdf(x) for x in self.data)
+            query = {i:v for i, v in enumerate(x) if not np.isnan(v)}
+            return self.logpdf(r, query, evidence=None)
+        return sum(compute_logpdf(r, x) for r, x in self.data.iteritems())
 
     def transition(self, N=None):
         dataset = self._dataset(self.outputs)
@@ -228,6 +240,7 @@ class MultivariateKde(CGpm):
         return {
             'outputs': {
                 'stattypes': self.stattypes,
+                'statargs': self.statargs,
             },
         }
 
