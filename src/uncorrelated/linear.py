@@ -50,7 +50,7 @@ class Linear(UnDirectedXyGpm):
         return (1-self.noise)*z
 
     def conditional_variance(self, z):
-        return (1-self.noise**2)
+        return (1-(1-self.noise)**2)
 
     def mutual_information(self):
         cov = 1-self.noise
