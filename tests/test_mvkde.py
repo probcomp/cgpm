@@ -194,7 +194,7 @@ def test_univariate_two_sample(i):
     # Plot comparison of all train, test, and generated samples.
     fig, ax = plt.subplots()
     ax.scatter(samples_train, [0]*len(samples_train), color='b', label='Train')
-    ax.scatter(samples_gen, [1]*len(samples_gen), color='r', label='Posterior')
+    ax.scatter(samples_gen, [1]*len(samples_gen), color='r', label='KDE')
     ax.scatter(samples_test, [2]*len(samples_test), color='g', label='Test')
     # Overlay the density function.
     xs = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 200)
@@ -203,8 +203,56 @@ def test_univariate_two_sample(i):
     pdfs_plot = np.exp(pdfs)+1
     pdfs_plot = (pdfs_plot/max(pdfs_plot)) * 1.5
     ax.plot(xs, pdfs_plot, color='k')
+    # Clear up some labels.
+    ax.set_title('Univariate KDE Posterior versus Generator')
+    ax.set_xlabel('x')
+    ax.set_yticklabels([])
     # Show the plot.
     ax.grid()
     plt.close()
     # KS test
-    assert .01 < ks_2samp(samples_test, samples_gen)
+    assert .05 < ks_2samp(samples_test, samples_gen).pvalue
+
+
+@pytest.mark.parametrize('noise', [.1, .3, .7])
+def test_bivariate_conditional_two_sample(noise):
+    rng = gu.gen_rng(2)
+    # Synthetic samples.
+    linear = Linear(outputs=[0,1], noise=noise, rng=rng)
+    samples_train = np.asarray(
+        [[s[0], s[1]] for s in linear.simulate(-1, [0,1], N=N_SAMPLES)])
+    # Bivariate KDE.
+    kde = MultivariateKde(
+        [0,1], None, distargs={O: {ST: [N,N], SA:[{},{}]}}, rng=rng)
+    # Incorporate observations.
+    for rowid, x in enumerate(samples_train):
+        kde.incorporate(rowid, {0: x[0], 1: x[1]})
+    # Run inference.
+    kde.transition()
+    # Generate posterior samples from the joint.
+    samples_gen = np.asarray(
+        [[s[0],s[1]] for s in kde.simulate(-1, [0,1], N=N_SAMPLES)])
+    # Plot comparisons of the joint.
+    fig, ax = plt.subplots(nrows=1, ncols=2)
+    plot_data = zip(
+        ax, ['b', 'r'], ['Train', 'KDE'], [samples_train, samples_gen])
+    for (a, c, l, s) in plot_data:
+        a.scatter(s[:,0], s[:,1], color=c, label=l)
+        a.grid()
+        a.legend(framealpha=0)
+    # Generate posterior samples from the conditional.
+    xs = np.linspace(-3, 3, 100)
+    cond_samples_a = np.asarray(
+        [[s[1] for s in linear.simulate(-1, [1], {0: x0}, N=N_SAMPLES)]
+        for x0 in xs])
+    cond_samples_b = np.asarray(
+        [[s[1] for s in kde.simulate(-1, [1], {0: x0}, N=N_SAMPLES)]
+        for x0 in xs])
+    # Plot the mean value on the same plots.
+    for (a, s) in zip(ax, [cond_samples_a, cond_samples_b]):
+        a.plot(xs, np.mean(s, axis=1), linewidth=3, color='g')
+    plt.close('all')
+    # Perform a two sample test on the means.
+    mean_a = np.mean(cond_samples_a, axis=1)
+    mean_b = np.mean(cond_samples_b, axis=1)
+    assert .01 < ks_2samp(mean_a, mean_b).pvalue
