@@ -165,19 +165,20 @@ class MultivariateKde(CGpm):
                 self._stattypes(evidence),
                 tosum=False)
         else:
-            weights = [0.] * len(members)
+            weights = [1] * len(members)
         assert len(weights) == len(members)
-        index = gu.log_pflip(weights, size=N, rng=self.rng)
+        index = gu.pflip(weights, size=N, rng=self.rng)
         return self._simulate_member(members[index], query) if N is None\
             else [self._simulate_member(members[i], query) for i in index]
 
     def _simulate_member(self, row, query):
+        assert len(row) == len(query)
         lookup = {
             'c': self._simulate_gaussian_kernel,
             'u': self._simulate_aitchison_aitken_kernel
         }
         funcs = [lookup[s] for s in self._stattypes(query)]
-        return {q: f(q, row[q]) for f, q in zip(funcs, query)}
+        return {q: f(q, v) for f, q, v in zip(funcs, query, row)}
 
     def _simulate_gaussian_kernel(self, q, Xi):
         assert self.stattypes[q] == 'numerical'
@@ -223,7 +224,7 @@ class MultivariateKde(CGpm):
 
     def _bw(self, query):
         indexes = [self.outputs.index(q) for q in query]
-        return [self.bw[i] for i in indexes]
+        return np.asarray([self.bw[i] for i in indexes])
 
     def _stattypes(self, query):
         indexes = [self.outputs.index(q) for q in query]
