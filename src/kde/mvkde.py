@@ -18,8 +18,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from statsmodels.nonparametric import kernel_density
 from statsmodels.nonparametric import _kernel_base
+from statsmodels.nonparametric import kernel_density
 
 from cgpm.cgpm import CGpm
 from cgpm.utils import general as gu
@@ -94,9 +94,10 @@ class MultivariateKde(CGpm):
         # No duplicate observation.
         if rowid in self.data:
             raise ValueError('Already observed: %d.' % rowid)
-        # No inputs.
+        # No evidence.
         if evidence:
             raise ValueError('No evidence allowed: %s.' % evidence)
+        # Missing query.
         if not query:
             raise ValueError('No query specified: %s.' % query)
         # No unknown variables.
@@ -166,7 +167,7 @@ class MultivariateKde(CGpm):
         else:
             weights = [0.] * len(members)
         assert len(weights) == len(members)
-        index = gu.logp_pflip(weights, size=N, rng=self.rng)
+        index = gu.log_pflip(weights, size=N, rng=self.rng)
         return self._simulate_member(members[index], query) if N is None\
             else [self._simulate_member(members[i], query) for i in index]
 
@@ -176,7 +177,7 @@ class MultivariateKde(CGpm):
             'u': self._simulate_aitchison_aitken_kernel
         }
         funcs = [lookup[s] for s in self._stattypes(query)]
-        return {q: funcs(q, row[q]) for q in query}
+        return {q: f(q, row[q]) for f, q in zip(funcs, query)}
 
     def _simulate_gaussian_kernel(self, q, Xi):
         assert self.stattypes[q] == 'numerical'
@@ -218,7 +219,7 @@ class MultivariateKde(CGpm):
     def _dataset(self, query):
         indexes = [self.outputs.index(q) for q in query]
         X = np.asarray(self.data.values())[:,indexes]
-        return X[~np.any(np.isnan(X))]
+        return X[~np.any(np.isnan(X), axis=1)]
 
     def _bw(self, query):
         indexes = [self.outputs.index(q) for q in query]
@@ -227,10 +228,10 @@ class MultivariateKde(CGpm):
     def _stattypes(self, query):
         indexes = [self.outputs.index(q) for q in query]
         lookup = {
-            'c': 'numerical',
-            'u': 'categorical',
+            'numerical': 'c',
+            'categorical': 'u',
         }
-        return str.join(',', [lookup[self.stattypes[q]] for q in query])
+        return str.join(',', [lookup[self.stattypes[i]] for i in indexes])
 
     def populate_evidence(self, rowid, query, evidence):
         if evidence is None:
