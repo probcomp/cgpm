@@ -59,7 +59,7 @@ class MultivariateKde(CGpm):
             raise ValueError('Missing distargs: %s.' % distargs)
         # Ensure stattypes and statargs in distargs['outputs]'
         if 'stattypes' not in distargs['outputs']\
-                and 'statargs' not in distargs['outputs']:
+                or 'statargs' not in distargs['outputs']:
             raise ValueError('Missing output stattypes: %s.' % distargs)
         # Ensure stattypes correct length.
         if len(distargs['outputs']['stattypes']) != len(outputs):
@@ -69,7 +69,7 @@ class MultivariateKde(CGpm):
             raise ValueError('Wrong number of statargs: %s.' % distargs)
         # Ensure number of categories provided as k.
         if any('k' not in distargs['outputs']['statargs'][i]
-                for i in xrange(outputs)
+                for i in xrange(len(outputs))
                 if distargs['outputs']['stattypes'][i] != 'numerical'):
             raise ValueError('Missing number of categories k: %s' % distargs)
         # Build the object.
@@ -82,7 +82,7 @@ class MultivariateKde(CGpm):
         self.statargs = distargs['outputs']['statargs']
         self.levels = {
             o: self.statargs[i]['k']
-            for i,o in outputs if self.stattypes[i] != 'numerical'
+            for i,o in enumerate(outputs) if self.stattypes[i] != 'numerical'
         }
         # Dataset.
         self.data = OrderedDict()
