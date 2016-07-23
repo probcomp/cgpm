@@ -82,7 +82,7 @@ class MultivariateKde(CGpm):
         self.statargs = distargs['outputs']['statargs']
         self.levels = {
             o: self.statargs[i]['k']
-            for i,o in enumerate(outputs) if self.stattypes[i] != 'numerical'
+            for i, o in enumerate(outputs) if self.stattypes[i] != 'numerical'
         }
         # Dataset.
         self.data = OrderedDict()
@@ -181,17 +181,19 @@ class MultivariateKde(CGpm):
         return {q: f(q, v) for f, q, v in zip(funcs, query, row)}
 
     def _simulate_gaussian_kernel(self, q, Xi):
-        assert self.stattypes[q] == 'numerical'
-        return self.rng.normal(loc=Xi, scale=self.bw[q])
+        idx = self.outputs.index(q)
+        assert self.stattypes[idx] == 'numerical'
+        return self.rng.normal(loc=Xi, scale=self.bw[idx])
 
     def _simulate_aitchison_aitken_kernel(self, q, Xi):
-        assert self.stattypes[q] == 'categorical'
-        c = self.levels(q)
-        xs = range(c)
+        idx = self.outputs.index(q)
+        assert self.stattypes[idx] == 'categorical'
+        c = self.levels[q]
         def _compute_probabilities(s):
-            return self.bw[q] if s == Xi else (1. - self.bw[q]) / (c - 1)
-        probs = map(_compute_probabilities, xs)
-        return self.rng.choice(xs, p=probs)
+            return self.bw[idx] if s == Xi else (1. - self.bw[idx]) / (c - 1)
+        probs = map(_compute_probabilities, range(c))
+        assert np.allclose(sum(probs), 1)
+        return self.rng.choice(range(c), p=probs)
 
     def logpdf_score(self):
         def compute_logpdf(r, x):
@@ -206,13 +208,6 @@ class MultivariateKde(CGpm):
         # Learn the kernel bandwidths.
         kde = kernel_density.KDEMultivariate(dataset, stattypes, bw='cv_ml')
         self.bw = kde.bw.tolist()
-        # Extract the nominal levels.
-        def _levels(i):
-            levels = None
-            if self.stattypes[i] == 'categorical':
-                levels = np.unique(dataset[:,i]).size
-            return levels
-        self.levels = {i: _levels(i) for i in xrange(len(self.outputs))}
 
     # --------------------------------------------------------------------------
     # Internal.
