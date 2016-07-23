@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -24,7 +22,7 @@ from scipy.stats import ks_2samp
 
 from cgpm.kde.mvkde import MultivariateKde
 from cgpm.utils import general as gu
-from cgpm.utils import test as gt
+from cgpm.utils import test as tu
 from cgpm.uncorrelated.linear import Linear
 
 
@@ -183,14 +181,14 @@ def test_univariate_two_sample(i):
     samples_train = SAMPLES[i](N_SAMPLES, rng)
     samples_test = SAMPLES[i](N_SAMPLES, rng)
     # Univariate KDE.
-    kde = MultivariateKde([0], None, distargs={O: {ST: [N], SA:[{}]}}, rng=rng)
+    kde = MultivariateKde([3], None, distargs={O: {ST: [N], SA:[{}]}}, rng=rng)
     # Incorporate observations.
     for rowid, x in enumerate(samples_train):
-        kde.incorporate(rowid, {0: x})
+        kde.incorporate(rowid, {3: x})
     # Run inference.
     kde.transition()
     # Generate posterior samples.
-    samples_gen = [s[0] for s in kde.simulate(-1, [0], N=N_SAMPLES)]
+    samples_gen = [s[3] for s in kde.simulate(-1, [3], N=N_SAMPLES)]
     # Plot comparison of all train, test, and generated samples.
     fig, ax = plt.subplots()
     ax.scatter(samples_train, [0]*len(samples_train), color='b', label='Train')
@@ -198,7 +196,7 @@ def test_univariate_two_sample(i):
     ax.scatter(samples_test, [2]*len(samples_test), color='g', label='Test')
     # Overlay the density function.
     xs = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 200)
-    pdfs = [kde.logpdf(-1, {0: x}) for x in xs]
+    pdfs = [kde.logpdf(-1, {3: x}) for x in xs]
     # Convert the pdfs from the range to 1 to 1.5 by rescaling.
     pdfs_plot = np.exp(pdfs)+1
     pdfs_plot = (pdfs_plot/max(pdfs_plot)) * 1.5
