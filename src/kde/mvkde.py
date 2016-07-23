@@ -231,7 +231,7 @@ class MultivariateKde(CGpm):
             'numerical': 'c',
             'categorical': 'u',
         }
-        return str.join(',', [lookup[self.stattypes[i]] for i in indexes])
+        return str.join('', [lookup[self.stattypes[i]] for i in indexes])
 
     def populate_evidence(self, rowid, query, evidence):
         if evidence is None:

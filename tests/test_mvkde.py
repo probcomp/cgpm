@@ -25,6 +25,7 @@ from scipy.stats import ks_2samp
 from cgpm.kde.mvkde import MultivariateKde
 from cgpm.utils import general as gu
 from cgpm.utils import test as gt
+from cgpm.uncorrelated.linear import Linear
 
 
 O   = 'outputs'
@@ -195,6 +196,14 @@ def test_univariate_two_sample(i):
     ax.scatter(samples_train, [0]*len(samples_train), color='b', label='Train')
     ax.scatter(samples_gen, [1]*len(samples_gen), color='r', label='Posterior')
     ax.scatter(samples_test, [2]*len(samples_test), color='g', label='Test')
+    # Overlay the density function.
+    xs = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 200)
+    pdfs = [kde.logpdf(-1, {0: x}) for x in xs]
+    # Convert the pdfs from the range to 1 to 1.5 by rescaling.
+    pdfs_plot = np.exp(pdfs)+1
+    pdfs_plot = (pdfs_plot/max(pdfs_plot)) * 1.5
+    ax.plot(xs, pdfs_plot, color='k')
+    # Show the plot.
     ax.grid()
     plt.close()
     # KS test
