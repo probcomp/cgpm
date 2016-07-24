@@ -84,6 +84,8 @@ setup(
         'numpy',
         'pandas',
         'scipy>=0.14.0',  # For stats.multivariate_normal
+        'sklearn',
+        'statsmodels',
     ],
     tests_require=[
         'pytest',
