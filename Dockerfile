@@ -18,6 +18,7 @@ RUN apt-get install -y -qq liblapack-dev gfortran
 # See also: https://github.com/scikit-learn/scikit-learn/issues/4164
 RUN apt-get install -y -qq python-numpy python-scipy python-pandas
 RUN pip install scikit-learn
+RUN pip install statsmodels
 
 ### Build and install cgpm.
 
