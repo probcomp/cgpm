@@ -288,3 +288,70 @@ def test_univariate_categorical():
     f_exp = np.bincount(samples_test)
     _, pval = chisquare(f_obs, f_exp)
     assert 0.05 < pval
+
+
+def test_noisy_permutation_categorical__ci_():
+    # This test builds a synthetic bivariate distribution for variables X and Y,
+    # which are both categorical(3). The relationship is y = f(X) where f is
+    # the permutation (0,1,2)->(1,2,0). To introduce noise, 10 percent of the
+    # samples are "corrupted" and do not obey the relationship. The test ensure
+    # posterior simulate/logpdf target the permutation, and agree with one
+    # another.
+
+    rng = gu.gen_rng(22)
+    N_SAMPLES = 250
+
+    f_permutation = {0:1, 1:2, 2:0}
+    b_permutation = {0:2, 1:0, 2:1}
+
+    X = rng.choice([0,1,2], p=[.33, .33, .34], size=N_SAMPLES)
+    Y = (X+1) % 3
+
+    # Corrupt 10% of the samples.
+    corruption = rng.choice(
+        range(N_SAMPLES), replace=False, size=int(.1*N_SAMPLES))
+    for c in corruption:
+        Y[c] = rng.choice([i for i in f_permutation if i!=Y[c]])
+
+    samples_test = np.column_stack((X,Y))
+
+    # Build MvKde.
+    kde = MultivariateKde(
+        [7,8], None,
+        distargs={O: {ST: [C, C], SA:[{'k': 3}, {'k': 3}]}}, rng=rng)
+    for rowid, x in enumerate(samples_test):
+        kde.incorporate(rowid, {7:x[0], 8:x[1]})
+    kde.transition()
+
+    def test_sample_match(s, target):
+        f_obs = np.bincount(s)
+        f_exp = [90 if i==target else 5 for i in [0,1,2]]
+        # Max should be the target.
+        amax_obs = np.argmax(f_obs)
+        amax_exp = np.argmax(f_exp)
+        assert amax_obs == amax_exp
+        # Noise should not account for more than .20
+        n_noise = sum(f for i,f in enumerate(f_obs) if i!=amax_obs)
+        frac_noise = n_noise / float(sum(f_obs))
+        assert frac_noise < 0.20
+
+    def test_logps_match(s, ps):
+        f_obs = np.bincount(s)
+        n = float(sum(f_obs))
+        p_obs = f_obs / n
+        _, pval = chisquare(p_obs*n, ps*n)
+        assert 0.05 < pval
+
+    # Generate posterior samples conditioning on 7.
+    for g in [0,1,2]:
+        samples = [s[8] for s in kde.simulate(-1, [8], {7: g}, N=10000)]
+        test_sample_match(samples, f_permutation[g])
+        logps = [kde.logpdf(-1, {8:i}, {7:g}) for i in f_permutation]
+        test_logps_match(samples, np.exp(logps))
+
+    # Generate posterior samples conditioning on 8.
+    for g in [0,1,2]:
+        samples = [s[7] for s in kde.simulate(-1, [7], {8: g}, N=10000)]
+        test_sample_match(samples, b_permutation[g])
+        logps = [kde.logpdf(-1, {7:i}, {8:g}) for i in f_permutation]
+        test_logps_match(samples, np.exp(logps))
