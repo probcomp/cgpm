@@ -14,17 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
+
+import json
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from scipy.stats import ks_2samp
 from scipy.stats import chisquare
+from scipy.stats import ks_2samp
 
 from cgpm.kde.mvkde import MultivariateKde
+from cgpm.uncorrelated.linear import Linear
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
-from cgpm.uncorrelated.linear import Linear
 
 
 O   = 'outputs'
@@ -360,6 +363,41 @@ def test_noisy_permutation_categorical():
         test_sample_match(samples, b_permutation[g])
         logps = [kde.logpdf(-1, {7:i}, {8:g}) for i in f_permutation]
         test_logps_match(samples, np.exp(logps))
+
+
+def test_serialize():
+    rng = gu.gen_rng(1)
+
+    data = rng.rand(20, 5)
+    data[:10,-1] = 0
+    data[10:,-1] = 1
+
+    kde = MultivariateKde(
+        range(5), None,
+        distargs={O: {ST: [N, N, N, N, C], SA: [{},{},{},{},{'k':1}]}}, rng=rng)
+    for rowid, x in enumerate(data):
+        kde.incorporate(rowid, dict(zip(range(5), x)))
+    kde.transition()
+
+    metadata_s = json.dumps(kde.to_metadata())
+    metadata_l = json.loads(metadata_s)
+
+    modname = importlib.import_module(metadata_l['factory'][0])
+    builder = getattr(modname, metadata_l['factory'][1])
+    kde2 = builder.from_metadata(metadata_l, rng=rng)
+
+    # Varible indexes.
+    assert kde2.outputs == kde.outputs
+    assert kde2.inputs == kde.inputs
+    # Distargs.
+    assert kde2.get_distargs() == kde.get_distargs()
+    # Dataset.
+    assert kde2.data == kde.data
+    assert kde2.N == kde.N
+    # Bandwidth params.
+    assert np.allclose(kde2.bw, kde.bw)
+    # Statistical types.
+    assert kde2.stattypes == kde.stattypes
 
 
 # XXX The following three tests are very similar to test_normal_categorical. The
