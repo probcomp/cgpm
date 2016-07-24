@@ -34,8 +34,8 @@ class MultivariateKde(CGpm):
 
     This implementation extends the baseline implementation of [1] from the
     statsmodels package to satisfy the CGPM interface. In particular, it is
-    extended to support (un)conditional simulation by importance weighting the
-    dataset.
+    extended to support conditional simulation by importance weighting the
+    exemplars.
     """
 
     def __init__(self, outputs, inputs, distargs=None, params=None,
@@ -190,7 +190,7 @@ class MultivariateKde(CGpm):
         assert self.stattypes[idx] == 'categorical'
         c = self.levels[q]
         def _compute_probabilities(s):
-            return self.bw[idx] if s == Xi else (1. - self.bw[idx]) / (c - 1)
+            return 1 - self.bw[idx] if s == Xi else self.bw[idx] / (c - 1)
         probs = map(_compute_probabilities, range(c))
         assert np.allclose(sum(probs), 1)
         return self.rng.choice(range(c), p=probs)

@@ -19,6 +19,7 @@ import numpy as np
 import pytest
 
 from scipy.stats import ks_2samp
+from scipy.stats import chisquare
 
 from cgpm.kde.mvkde import MultivariateKde
 from cgpm.utils import general as gu
@@ -254,3 +255,22 @@ def test_bivariate_conditional_two_sample(noise):
     mean_a = np.mean(cond_samples_a, axis=1)
     mean_b = np.mean(cond_samples_b, axis=1)
     assert .01 < ks_2samp(mean_a, mean_b).pvalue
+
+
+def test_univariate_categorical():
+    rng = gu.gen_rng(2)
+    N_SAMPLES = 1000
+    p_theory = [.3, .1, .2, .15, .15, .1]
+    samples_test = rng.choice(range(6), p=p_theory, size=N_SAMPLES)
+    kde = MultivariateKde(
+        [7], None, distargs={O: {ST: [C], SA:[{'k': 6}]}}, rng=rng)
+    # Incorporate observations.
+    for rowid, x in enumerate(samples_test):
+        kde.incorporate(rowid, {7: x})
+    kde.transition()
+    # Posterior samples.
+    samples_gen = kde.simulate(-1, [7], N=N_SAMPLES)
+    f_obs = np.bincount([s[7] for s in samples_gen])
+    f_exp = np.bincount(samples_test)
+    chisq, pval = chisquare(f_obs, f_exp)
+    assert 0.05 < pval
