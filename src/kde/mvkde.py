@@ -142,7 +142,7 @@ class MultivariateKde(CGpm):
                 self._dataset(evidence),
                 self._stattypes(query),
                 self._stattypes(evidence),
-                bw=self._bw(query) + self._bw(evidence))
+                bw=np.concatenate((self._bw(query), self._bw(evidence))))
             pdf = model.pdf(query.values(), evidence.values())
         return np.log(pdf)
 
