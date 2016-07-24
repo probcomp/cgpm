@@ -129,3 +129,9 @@ def test_conditional_real(state):
         ax.set_ylabel('Frequency')
         ax.set_ylim([0, ax.get_ylim()[1]+10])
         ax.grid()
+        # Check that the simulated indicator agrees with true indicator.
+        true_ind_a = indicator
+        true_ind_b = indicator-1  if indicator % 2 else indicator+1
+        counts = np.bincount(samples_subpop)
+        frac = sum(counts[[true_ind_a, true_ind_b]])/float(sum(counts))
+        assert .8 < frac

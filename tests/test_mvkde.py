@@ -386,7 +386,7 @@ def test_serialize():
     builder = getattr(modname, metadata_l['factory'][1])
     kde2 = builder.from_metadata(metadata_l, rng=rng)
 
-    # Varible indexes.
+    # Variable indexes.
     assert kde2.outputs == kde.outputs
     assert kde2.inputs == kde.inputs
     # Distargs.
@@ -401,7 +401,7 @@ def test_serialize():
 
 
 # XXX The following three tests are very similar to test_normal_categorical. The
-# two tests can be merged easily and it should be done to reduce duplicaiton.
+# two tests can be merged easily and it should be done to reduce duplication.
 
 def generate_real_nominal_data(N, rng=None):
     # Generates a bivariate dataset, where the first variable x is real-valued
@@ -442,7 +442,7 @@ def kde_xz():
 
 def test_joint(kde_xz):
     # Simulate from the joint distribution of x,z (see
-    # generate_real_nominal_data) and perfrom a KS tests at each of the
+    # generate_real_nominal_data) and perform a KS tests at each of the
     # subpopulations at the six levels of z.
 
     data = np.asarray(kde_xz.data.values())
@@ -496,21 +496,19 @@ def test_conditional_indicator(kde_xz):
 
 def test_conditional_real(kde_xz):
     # Simulate from the conditional distribution of z|x (see
-    # generate_real_nominal_data) and plot the frequencies of the simluated
-    # values. TODO: Add numerical tests to complement the histgoram by ensuring
-    # the most frequently simulated level is in fact the "true indicator",
-    # (should check it is either one of the two true indicators, because z is
-    # not unique).
+    # generate_real_nominal_data) and plot the frequencies of the simulated
+    # values.
 
     data = np.asarray(kde_xz.data.values())
     indicators = sorted(set(data[:,1].astype(int)))
     fig, axes = plt.subplots(2,3)
     fig.suptitle('Conditional Simulation Of Indicator Z Given Data X', size=20)
-    # Compute representative data sample for each dindicator.
+    # Compute representative data sample for each indicator.
     means = [np.mean(data[data[:,1]==t], axis=0)[0] for t in indicators]
     for mean, indicator, ax in zip(means, indicators, axes.ravel('F')):
         samples_subpop = [s[1] for s in
             kde_xz.simulate(-1, [1], evidence={0:mean}, N=len(data))]
+        # Plot a histogram of the simulated indicator.
         ax.hist(samples_subpop, color='g', alpha=.4)
         ax.set_title('True Indicator %d' % indicator)
         ax.set_xlabel('Simulated Indicator')
@@ -518,3 +516,9 @@ def test_conditional_real(kde_xz):
         ax.set_ylabel('Frequency')
         ax.set_ylim([0, ax.get_ylim()[1]+10])
         ax.grid()
+        # Check that the simulated indicator agrees with true indicator.
+        true_ind_a = indicator
+        true_ind_b = indicator-1  if indicator % 2 else indicator+1
+        counts = np.bincount(samples_subpop)
+        frac = sum(counts[[true_ind_a, true_ind_b]])/float(sum(counts))
+        assert .8 < frac
