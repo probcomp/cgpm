@@ -304,7 +304,7 @@ def test_noisy_permutation_categorical__ci_():
     f_permutation = {0:1, 1:2, 2:0}
     b_permutation = {0:2, 1:0, 2:1}
 
-    X = rng.choice([0,1,2], p=[.33, .33, .34], size=N_SAMPLES)
+    X = rng.choice([0,1,2], p=[.33, .33, .34], size=N_SAMPLES).astype(float)
     Y = (X+1) % 3
 
     # Corrupt 10% of the samples.
@@ -312,6 +312,10 @@ def test_noisy_permutation_categorical__ci_():
         range(N_SAMPLES), replace=False, size=int(.1*N_SAMPLES))
     for c in corruption:
         Y[c] = rng.choice([i for i in f_permutation if i!=Y[c]])
+
+    # Add 2 nans.
+    X[0] = np.nan
+    Y[4] = np.nan
 
     samples_test = np.column_stack((X,Y))
 
