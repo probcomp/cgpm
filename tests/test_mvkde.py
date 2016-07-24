@@ -35,6 +35,7 @@ C   = 'categorical'
 
 
 def test_initialize():
+    # This test ensures that MvKde raises on bad initialize arguments.
     # Typical initialization.
     MultivariateKde(
         outputs=[0, 1], inputs=None,
@@ -94,6 +95,7 @@ def test_initialize():
 
 
 def test_invalid_incorporate():
+    # This test ensures that MvKde raises on bad incorporate.
     # No evidence.
     kde = MultivariateKde(
         outputs=[0, 1], inputs=None,
@@ -177,6 +179,10 @@ N_SAMPLES = 100
 
 @pytest.mark.parametrize('i', xrange(len(SAMPLES)))
 def test_univariate_two_sample(i):
+    # This test ensures posterior sampling of uni/bimodal dists on R. When the
+    # plot is shown, a density curve overlays the samples which is useful for
+    # seeing that logpdf/simulate agree.
+
     rng = gu.gen_rng(2)
     # Synthetic samples.
     samples_train = SAMPLES[i](N_SAMPLES, rng)
@@ -215,6 +221,10 @@ def test_univariate_two_sample(i):
 
 @pytest.mark.parametrize('noise', [.1, .3, .7])
 def test_bivariate_conditional_two_sample(noise):
+    # This test checks joint and conditional simulation of a bivarate normal
+    # with (correlation 1-noise). The most informative use is plotting but
+    # there is a numerical test for the conditional distributions.
+
     rng = gu.gen_rng(2)
     # Synthetic samples.
     linear = Linear(outputs=[0,1], noise=noise, rng=rng)
@@ -258,6 +268,10 @@ def test_bivariate_conditional_two_sample(noise):
 
 
 def test_univariate_categorical():
+    # This test generates univariate data from a nominal variable with 6 levels
+    # and probability vector p_theory, and performs a chi-square test on
+    # posterior samples from MvKde.
+
     rng = gu.gen_rng(2)
     N_SAMPLES = 1000
     p_theory = [.3, .1, .2, .15, .15, .1]
@@ -272,5 +286,5 @@ def test_univariate_categorical():
     samples_gen = kde.simulate(-1, [7], N=N_SAMPLES)
     f_obs = np.bincount([s[7] for s in samples_gen])
     f_exp = np.bincount(samples_test)
-    chisq, pval = chisquare(f_obs, f_exp)
+    _, pval = chisquare(f_obs, f_exp)
     assert 0.05 < pval
