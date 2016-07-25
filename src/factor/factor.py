@@ -222,8 +222,8 @@ class FactorAnalysis(CGpm):
             evidence = {}
         if rowid in self.data:
             values = self.data[rowid]
-            evidence_obs = {
-                e:v for e,v in zip(self.outputs[:self.D], values)
+            assert len(values) == len(self.outputs[:self.D])
+            evidence_obs = {e:v for e,v in zip(self.outputs[:self.D], values)
                 if not np.isnan(v) and e not in query and e not in evidence
             }
             evidence = gu.merged(evidence, evidence_obs)
