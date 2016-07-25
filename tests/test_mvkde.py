@@ -470,7 +470,7 @@ def test_joint(kde_xz):
         # KS test.
         pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
         assert .05 < pvalue
-    ax.set_xlabel('Indicator')
+    ax.set_xlabel('z')
     ax.set_ylabel('x')
     ax.grid()
 
@@ -483,7 +483,7 @@ def test_conditional_indicator(kde_xz):
     data = np.asarray(kde_xz.data.values())
     indicators = sorted(set(data[:,1].astype(int)))
     _, ax = plt.subplots()
-    ax.set_title('Conditional Simulation Of Data X Given Indicator Z')
+    ax.set_title('Conditional Simulation Of X Given Indicator Z')
     for t in indicators:
         # Plot original data.
         data_subpop = data[data[:,1] == t]
@@ -497,7 +497,7 @@ def test_conditional_indicator(kde_xz):
         # KS test.
         pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
         assert .1 < pvalue
-    ax.set_xlabel('Indicator')
+    ax.set_xlabel('z')
     ax.set_ylabel('x')
     ax.grid()
 
@@ -510,7 +510,7 @@ def test_conditional_real(kde_xz):
     data = np.asarray(kde_xz.data.values())
     indicators = sorted(set(data[:,1].astype(int)))
     fig, axes = plt.subplots(2,3)
-    fig.suptitle('Conditional Simulation Of Indicator Z Given Data X', size=20)
+    fig.suptitle('Conditional Simulation Of Indicator Z Given X', size=20)
     # Compute representative data sample for each indicator.
     means = [np.mean(data[data[:,1]==t], axis=0)[0] for t in indicators]
     for mean, indicator, ax in zip(means, indicators, axes.ravel('F')):
@@ -518,8 +518,8 @@ def test_conditional_real(kde_xz):
             kde_xz.simulate(-1, [1], evidence={0:mean}, N=len(data))]
         # Plot a histogram of the simulated indicator.
         ax.hist(samples_subpop, color='g', alpha=.4)
-        ax.set_title('True Indicator %d' % indicator)
-        ax.set_xlabel('Simulated Indicator')
+        ax.set_title('True Indicator Z %d' % indicator)
+        ax.set_xlabel('Simulated Indicator Z')
         ax.set_xticks(indicators)
         ax.set_ylabel('Frequency')
         ax.set_ylim([0, ax.get_ylim()[1]+10])
