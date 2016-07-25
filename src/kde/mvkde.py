@@ -203,11 +203,12 @@ class MultivariateKde(CGpm):
         return sum(compute_logpdf(r, x) for r, x in self.data.iteritems())
 
     def transition(self, N=None):
-        dataset = self._dataset(self.outputs)
-        stattypes = self._stattypes(self.outputs)
-        # Learn the kernel bandwidths.
-        kde = kernel_density.KDEMultivariate(dataset, stattypes, bw='cv_ml')
-        self.bw = kde.bw.tolist()
+        if self.N > 0:
+            dataset = self._dataset(self.outputs)
+            stattypes = self._stattypes(self.outputs)
+            # Learn the kernel bandwidths.
+            kde = kernel_density.KDEMultivariate(dataset, stattypes, bw='cv_ml')
+            self.bw = kde.bw.tolist()
 
     # --------------------------------------------------------------------------
     # Internal.

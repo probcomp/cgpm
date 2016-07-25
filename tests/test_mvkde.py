@@ -365,6 +365,14 @@ def test_noisy_permutation_categorical():
         test_logps_match(samples, np.exp(logps))
 
 
+def test_transition_no_data():
+    kde = MultivariateKde(
+        [1], None, distargs={O: {ST: [N], SA: [{}]}}, rng=gu.gen_rng(0))
+    bw = list(kde.bw)
+    kde.transition()
+    assert np.allclose(bw, kde.bw)
+
+
 def test_serialize():
     rng = gu.gen_rng(1)
 
