@@ -264,6 +264,8 @@ def test_bivariate_conditional_two_sample(noise):
     # Plot the mean value on the same plots.
     for (a, s) in zip(ax, [cond_samples_a, cond_samples_b]):
         a.plot(xs, np.mean(s, axis=1), linewidth=3, color='g')
+        a.set_xlim([-5,4])
+        a.set_ylim([-5,4])
     plt.close('all')
     # Perform a two sample test on the means.
     mean_a = np.mean(cond_samples_a, axis=1)
