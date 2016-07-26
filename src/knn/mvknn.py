@@ -31,8 +31,9 @@ class MultivariateKnn(CGpm):
     TODO: Migrate description from Github Issue #128.
 
     TODO:
-    [] Implement the nearest neighbor search for a datapoint given Q,E.
-        [] Euclidean embedding of the categoricals.
+    [x] Implement the nearest neighbor search for a datapoint given Q,E.
+        [x] Euclidean embedding of the categoricals.
+    [] Implement simulate by chaining regression models.
     """
 
     def __init__(self, outputs, inputs, K=None, distargs=None, params=None,
@@ -145,7 +146,7 @@ class MultivariateKnn(CGpm):
     # --------------------------------------------------------------------------
     # Internal.
 
-    def _find_nearest_neighbors(self, query, evidence):
+    def _find_nearest_neighbors(self, query, evidence, K=None):
         if not evidence:
             raise ValueError('No evidence in neighbor search: %s.' % evidence)
         if any(np.isnan(v) for v in evidence.values()):
@@ -153,9 +154,14 @@ class MultivariateKnn(CGpm):
         # Extract the query, evidence variables from the dataset.
         lookup = list(query) + list(evidence)
         D = self._dataset(lookup)
+        # By default return entire dataset sorted by distances.
+        if K is None:
+            K = len(D)
+        if K <= 0:
+            raise ValueError('Non-positive K in neighbor search: %s' % K)
         # Not enough neighbors: crash for now. Workarounds include:
         # (i) reduce  K, (ii) randomly drop evidences, or (iii) impute dataset.
-        if len(D) < self.K:
+        if len(D) < K:
             raise ValueError('Not enough neighbors: %s.' % ((query, evidence),))
         # Dummy code the evidence portion of the dataset.
         D_ev = D[:,len(query):]
@@ -165,8 +171,8 @@ class MultivariateKnn(CGpm):
         # Dummy code the evidence.
         evidence_coded = du.dummy_code(evidence.values(), levels)
         # Retrieve indices of the neighbors.
-        _, neighbors = KDTree(D_ev_coded).query([evidence_coded], k=self.K)
-        # Return full dataset
+        _, neighbors = KDTree(D_ev_coded).query([evidence_coded], k=K)
+        # Return dataset.
         return D[neighbors[0]]
 
     def _dataset(self, query):

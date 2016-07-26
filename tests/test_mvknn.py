@@ -139,27 +139,27 @@ def test_find_nearest_neighbors():
 
     # Neighbor search need evidence.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence=None)
+        knn._find_nearest_neighbors(query=[0,1], evidence=None, K=K)
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence=None)
+        knn._find_nearest_neighbors(query=[0,1], evidence=None, K=K)
 
     # Bad category 199.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence={2:199, 5:.8})
+        knn._find_nearest_neighbors(query=[0,1], evidence={2:199, 5:.8}, K=K)
 
     # Check the returned K and dimension are correct varying.
-    d_sub = knn._find_nearest_neighbors(query=[0,1], evidence={5:.8})
+    d_sub = knn._find_nearest_neighbors(query=[0,1], evidence={5:.8}, K=K)
     assert d_sub.shape == (K, 3)
-    d_sub = knn._find_nearest_neighbors(query=[0,1,7], evidence={5:.8})
+    d_sub = knn._find_nearest_neighbors(query=[0,1,7], evidence={5:.8}, K=K)
     assert d_sub.shape == (K, 4)
-    d_sub = knn._find_nearest_neighbors(query=[0,1,4], evidence={5:.8, 7:0})
+    d_sub = knn._find_nearest_neighbors(query=[0,1,4], evidence={5:.8,7:0}, K=K)
     assert d_sub.shape == (K, 5)
 
     # Dimension 10 has only 4 non-nan values, so K=5 will fail.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence={10:.8})
+        knn._find_nearest_neighbors(query=[0,1], evidence={10:.8}, K=K)
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[10,1], evidence={5:.8})
+        knn._find_nearest_neighbors(query=[10,1], evidence={5:.8}, K=K)
 
     # Now furnish dimension 10 with one additional non-nan value and ensure the
     # K=5 neighbors are the only possible ones i.e 0, 96, 97, 98, 99.
@@ -170,12 +170,12 @@ def test_find_nearest_neighbors():
         for f in found:
             assert any(np.allclose(f, x) for x in expect)
 
-    N1_found = knn._find_nearest_neighbors(query=[0,1], evidence={10:.8})
+    N1_found = knn._find_nearest_neighbors(query=[0,1], evidence={10:.8}, K=K)
     N1_expected = [np.asarray(knn.data[r])[[0,1,10]]
         for r in [0, 96, 97, 98, 99]]
     test_found_expected(N1_found, N1_expected)
 
-    N2_found = knn._find_nearest_neighbors(query=[10,1], evidence={5:.8})
+    N2_found = knn._find_nearest_neighbors(query=[10,1], evidence={5:.8}, K=K)
     N2_expected = [np.asarray(knn.data[r])[[10,1,5]]
         for r in [0, 96, 97, 98, 99]]
     test_found_expected(N2_found, N2_expected)
@@ -185,8 +185,20 @@ def test_find_nearest_neighbors():
 
     # First crash since z contains a nan.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors([0], dict(zip(outputs[1:], z[1:])))
+        knn._find_nearest_neighbors([0], dict(zip(outputs[1:], z[1:])), K=K)
     N3_found = knn._find_nearest_neighbors(
-        [0], {o:v for o,v in zip(outputs[1:], z[1:]) if not np.isnan(v)})
+        [0], {o:v for o,v in zip(outputs[1:], z[1:]) if not np.isnan(v)}, K=K)
+
+    # Now make sure that z is its own nearest neighbor.
     z_prime = [v for v in z if not np.isnan(v)]
     assert any(np.allclose(x, z_prime) for x in N3_found)
+
+    # Retrieve all nearest neighbors without specifying K should be the same as
+    # find the top K.
+    neighbors_all = knn._find_nearest_neighbors([0,1,2], {3:2})
+
+    with pytest.raises(ValueError):
+        neighbors_k = knn._find_nearest_neighbors([0,1,2], {3:2}, K=0)
+    for k in xrange(1, 100):
+        neighbors_k = knn._find_nearest_neighbors([0,1,2], {3:2}, K=k)
+        assert np.allclose(neighbors_k, neighbors_all[:k])
