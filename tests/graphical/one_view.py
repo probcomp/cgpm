@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from cgpm.crosscat.state import State
 from cgpm.utils import config as cu
+from cgpm.utils import general as gu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
 
@@ -86,3 +89,31 @@ test_crash_simulate_joint_observed(state)
 test_crash_logpdf_joint_observed(state)
 test_crash_simulate_conditional_observed(state)
 test_crash_logpdf_conditional_observed(state)
+
+# Joint equals chain rule for state 1.
+joint = state.logpdf(-1, {0:1, 1:2})
+chain = state.logpdf(-1, {0:1}, evidence={1:2}) + state.logpdf(-1, {1:2})
+assert np.allclose(joint, chain)
+
+if False:
+    state2 = State(T.T, cctypes=cctypes, distargs=distargs, rng=gu.gen_rng(12))
+    state2.transition(N=10, progress=1)
+
+    # Joint equals chain rule for state 2.
+    state2.logpdf(-1, {0:1, 1:2})
+    state2.logpdf(-1, {0:1}, evidence={1:2}) + state2.logpdf(-1, evidence={1:2})
+
+    # Take the Monte Carlo average of the conditional.
+    mc_conditional = np.log(.5) + gu.logsumexp([
+        state.logpdf(-1, {0:1}, evidence={1:2}),
+        state2.logpdf(-1, {0:1}, evidence={1:2})])
+
+    # Take the Monte Carlo average of the joint.
+    mc_joint = np.log(.5) + gu.logsumexp([
+        state.logpdf(-1, {0:1, 1:2}),
+        state2.logpdf(-1, {0:1, 1:2})])
+
+    # Take the Monte Carlo average of the marginal.
+    mc_marginal = np.log(.5) + gu.logsumexp([
+        state.logpdf(-1, {1:2}),
+        state2.logpdf(-1, {1:2})])
