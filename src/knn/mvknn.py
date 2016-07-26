@@ -164,16 +164,17 @@ class MultivariateKnn(CGpm):
         if len(D) < K:
             raise ValueError('Not enough neighbors: %s.' % ((query, evidence),))
         # Dummy code the evidence portion of the dataset.
-        D_ev = D[:,len(query):]
-        levels = {lookup.index(l)-len(query): self.levels[l]
-            for l in evidence if l in self.levels}
-        D_ev_coded = np.asarray([du.dummy_code(r, levels) for r in D_ev])
-        # Dummy code the evidence.
-        evidence_coded = du.dummy_code(evidence.values(), levels)
+        D_ev_code = self._dummy_code(D[:,len(query):], evidence.keys())
+        evidence_code = self._dummy_code([evidence.values()], evidence.keys())
         # Retrieve indices of the neighbors.
-        _, neighbors = KDTree(D_ev_coded).query([evidence_coded], k=K)
+        _, neighbors = KDTree(D_ev_code).query(evidence_code, k=K)
         # Return dataset.
         return D[neighbors[0]]
+
+    def _dummy_code(self, D, variables):
+        levels = {variables.index(l): self.levels[l] for l in variables if l
+            in self.levels}
+        return np.asarray([du.dummy_code(r, levels) for r in D])
 
     def _dataset(self, query):
         indexes = [self.outputs.index(q) for q in query]
