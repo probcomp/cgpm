@@ -19,10 +19,13 @@ import importlib
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pytest
 
 from scipy.stats import chisquare
 from scipy.stats import ks_2samp
+from sklearn.neighbors import KDTree
+from sklearn.neighbors import KNeighborsRegressor
 
 from cgpm.knn.mvknn import MultivariateKnn
 from cgpm.utils import general as gu
@@ -198,3 +201,66 @@ def test_find_neighborhoods():
     z_evidence = {o:v for o,v in zip(outputs[2:], z[2:]) if not np.isnan(v)}
     d_found, n_found = knn._find_neighborhoods(z_query, z_evidence)
     test_found_expected(d_found, n_found, [z[:2]])
+
+
+def test_apogee_perigee_period():
+    rng = gu.gen_rng(1)
+
+    # Load the satellites dataset.
+    satellites = pd.read_csv('resources/satellites.csv')
+
+    # Create an axes.
+    fig, ax = plt.subplots()
+
+    # Extract target columns of interest.
+    D = satellites[['Apogee_km', 'Perigee_km', 'Period_minutes']].dropna()
+    X = np.asarray(D)
+
+    # Extract the nearest neighbors given A=500.
+    tree = KDTree(X[:,0].reshape(-1,1))
+    _, neighbors = tree.query([[500]], k=20)
+    perigees = X[neighbors[0][:10],1]
+    periods = X[neighbors[0][:10],2]
+
+    # Learn the joint distribution by assuming P,T|A are independent..
+    perigees_ind = rng.normal(np.mean(perigees), np.std(perigees), size=20)
+    periods_ind = rng.normal(np.mean(periods), np.std(perigees), size=20)
+
+    # Create a KNN.
+    distargs = {
+    'outputs': {
+        'stattypes': ['numerical', 'numerical', 'numerical'],
+        'statargs': [{}, {}, {}]
+    }}
+    knn = MultivariateKnn([0,1,2], None, distargs=distargs, K=10, rng=rng)
+
+    for i, row in enumerate(X):
+        knn.incorporate(i, dict(zip([0,1,2], row)))
+
+    samples_dep = knn.simulate(-1, [1,2], {0: 500}, N=20)
+    logpdfs = [knn.logpdf(-1, s, {0: 500}) for s in samples_dep]
+    assert all(not np.isinf(l) for l in logpdfs)
+
+    # Scatter the actual neighborhood.
+    ax.scatter(perigees, periods, color='b', label='Actual Satellites')
+
+    # Plot the independent knn.
+    ax.scatter(
+        perigees_ind, periods_ind, color='r', alpha=.5,
+        label='Independent KNN')
+
+    # Plot the dependent knn.
+    ax.scatter([s[1] for s in samples_dep], [s[2] for s in samples_dep],
+        color='g', alpha=.5, label='Dependent KNN')
+
+    # Prepare the axes.
+    ax.set_title(
+        'SIMULATE Perigee_km, Period_minutes GIVEN Apogee_km = 500',
+        fontweight='bold')
+    ax.set_xlabel('Perigee', fontweight='bold')
+    ax.set_ylabel('Period', fontweight='bold')
+    ax.grid()
+    ax.legend(framealpha=0, loc='upper left')
+
+    # Reveal!
+    plt.close('all')
