@@ -250,7 +250,8 @@ def test_apogee_perigee_period():
         label='Independent KNN')
 
     # Plot the dependent knn.
-    ax.scatter([s[1] for s in samples_dep], [s[2] for s in samples_dep],
+    ax.scatter(
+        [s[1] for s in samples_dep], [s[2] for s in samples_dep],
         color='g', alpha=.5, label='Dependent KNN')
 
     # Prepare the axes.
