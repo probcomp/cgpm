@@ -148,7 +148,7 @@ class MultivariateKnn(CGpm):
     # --------------------------------------------------------------------------
     # Internal.
 
-    def _find_nearest_neighbors(self, query, evidence, K=None):
+    def _find_neighborhoods(self, query, evidence):
         if not evidence:
             raise ValueError('No evidence in neighbor search: %s.' % evidence)
         if any(np.isnan(v) for v in evidence.values()):
@@ -156,42 +156,34 @@ class MultivariateKnn(CGpm):
         # Extract the query, evidence variables from the dataset.
         lookup = list(query) + list(evidence)
         D = self._dataset(lookup)
-        # By default return entire dataset sorted by distances.
-        if K is None:
-            K = len(D)
-        if K <= 0:
-            raise ValueError('Non-positive K in neighbor search: %s' % K)
         # Not enough neighbors: crash for now. Workarounds include:
         # (i) reduce  K, (ii) randomly drop evidences, or (iii) impute dataset.
-        if len(D) < K:
+        if len(D) < self.K:
             raise ValueError('Not enough neighbors: %s.' % ((query, evidence),))
-        # Code the dataset.
+        # Code the dataset with Euclidean embedding.
         D_qr_code = self._dummy_code(D[:,:len(query)], lookup[:len(query)])
         D_ev_code = self._dummy_code(D[:,len(query):], lookup[len(query):])
         D_code = np.column_stack((D_qr_code, D_ev_code))
         # Run nearest neighbor search on the evidence only.
         evidence_code = self._dummy_code([evidence.values()], evidence.keys())
         dist, neighbors = KDTree(D_ev_code).query(evidence_code, k=len(D))
-        # import ipdb; ipdb.set_trace()
-        # Check for duplicate distances, in which case extend the search.
-        valid = [i for i, d in enumerate(dist[0]) if d <= dist[0][K-1]]
-        neighbors_v = self.rng.choice(
-            neighbors[0][valid], replace=False, size=K)
-        # For each neighbor find its nearest five on the full dataset.
-        K_resample = min(5, K)
-        exemplars = KDTree(D_code).query(D_code[neighbors_v], k=K_resample)
-        # Return dataset.
-        return D[neighbors[0][:K]]
+        # Check for equidistant neighbors and possible extend the search.
+        valid = [i for i, d in enumerate(dist[0]) if d <= dist[0][self.K-1]]
+        if self.K < len(valid):
+            neighbors = self.rng.choice(
+                neighbors[0][valid], replace=False, size=self.K)
+        else:
+            neighbors = neighbors[0][:self.K]
+        # For each neighbor, find its nearest five on the full lookup set.
+        _, ex = KDTree(D_code).query(D_code[neighbors], k=min(5, self.K))
+        # Return the dataset and the list of neighborhoods.
+        return D[:,:len(query)], ex
 
     def _dummy_code(self, D, variables):
         levels = {variables.index(l): self.levels[l]
             for l in variables if l in self.levels}
         return D if not levels\
             else np.asarray([du.dummy_code(r, levels) for r in D])
-
-    def _find_exemplars(self, query, evidence):
-        # Find all the nearest neighbors based on evidence.
-        pass
 
     def _dataset(self, query):
         indexes = [self.outputs.index(q) for q in query]

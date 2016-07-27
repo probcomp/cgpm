@@ -110,8 +110,8 @@ def test_initialize():
             distargs={O: {ST: [N, C], SA: [{}, {'k': 2}]}})
 
 
-def test_find_nearest_neighbors():
-    # This test target _find_nearest_neighbors from MultivariateKnn. See the
+def test_find_neighborhoods():
+    # This test target _find_neighborhoods from MultivariateKnn. See the
     # inline comments for the description of each test.
 
     # Generate a high dimensional dataset with mixed numerical/categorical.
@@ -139,66 +139,62 @@ def test_find_nearest_neighbors():
 
     # Neighbor search need evidence.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence=None, K=K)
+        knn._find_neighborhoods(query=[0,1], evidence=None)
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence=None, K=K)
+        knn._find_neighborhoods(query=[0,1], evidence={})
 
     # Bad category 199.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence={2:199, 5:.8}, K=K)
+        knn._find_neighborhoods(query=[0,1], evidence={2:199, 5:.8})
 
-    # Check the returned K and dimension are correct varying.
-    d_sub = knn._find_nearest_neighbors(query=[0,1], evidence={5:.8}, K=K)
-    assert d_sub.shape == (K, 3)
-    d_sub = knn._find_nearest_neighbors(query=[0,1,7], evidence={5:.8}, K=K)
-    assert d_sub.shape == (K, 4)
-    d_sub = knn._find_nearest_neighbors(query=[0,1,4], evidence={5:.8,7:0}, K=K)
-    assert d_sub.shape == (K, 5)
+    # Check the returned K and dimension are correct varying query/evidence.
+    for q, e in [
+            ([0,1], {5:.8}),
+            ([0,1,7], {5:.8}),
+            ([4], {5:.8, 7:0})
+    ]:
+        d, nh = knn._find_neighborhoods(query=q, evidence=e)
+        assert len(nh) == K
+        for n in nh:
+            assert 1 <= len(n) <= K
+            assert d[n].shape[1] == len(q)
 
     # Dimension 10 has only 4 non-nan values, so K=5 will fail.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[0,1], evidence={10:.8}, K=K)
+        knn._find_neighborhoods(query=[0,1], evidence={10:.8})
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors(query=[10,1], evidence={5:.8}, K=K)
+        knn._find_neighborhoods(query=[10,1], evidence={5:.8})
 
     # Now furnish dimension 10 with one additional non-nan value and ensure the
     # K=5 neighbors are the only possible ones i.e 0, 96, 97, 98, 99.
     knn.data[0][10] = 1
 
-    def test_found_expected(found, expect):
-        assert all(not np.allclose(x, expect[0]) for x in expect[1:])
-        for f in found:
-            assert any(np.allclose(f, x) for x in expect)
+    def test_found_expected(dataset, neighborhoods, expect):
+        for e in expect:
+            match = False
+            for n in neighborhoods:
+                match = match or any(np.allclose(dataset[i], e) for i in n)
+            assert match
 
-    N1_found = knn._find_nearest_neighbors(query=[0,1], evidence={10:.8}, K=K)
-    N1_expected = [np.asarray(knn.data[r])[[0,1,10]]
+    d_found, n_found = knn._find_neighborhoods(query=[0,1], evidence={10:.8})
+    expected = [np.asarray(knn.data[r])[[0,1]]
         for r in [0, 96, 97, 98, 99]]
-    test_found_expected(N1_found, N1_expected)
+    test_found_expected(d_found, n_found, expected)
 
-    N2_found = knn._find_nearest_neighbors(query=[10,1], evidence={5:.8}, K=K)
-    N2_expected = [np.asarray(knn.data[r])[[10,1,5]]
+    d_found, n_found = knn._find_neighborhoods(query=[10,1], evidence={5:.8})
+    expected = [np.asarray(knn.data[r])[[10,1]]
         for r in [0, 96, 97, 98, 99]]
-    test_found_expected(N2_found, N2_expected)
+    test_found_expected(d_found, n_found, expected)
 
     # Now make sure an exact match is in the nearest neighbor.
     z = knn.data[19]
 
-    # First crash since z contains a nan.
+    # # First crash since z contains a nan.
     with pytest.raises(ValueError):
-        knn._find_nearest_neighbors([0], dict(zip(outputs[1:], z[1:])), K=K)
-    N3_found = knn._find_nearest_neighbors(
-        [0], {o:v for o,v in zip(outputs[1:], z[1:]) if not np.isnan(v)}, K=K)
+        knn._find_neighborhoods([0,1], dict(zip(outputs[2:], z[2:])))
 
     # Now make sure that z is its own nearest neighbor.
-    z_prime = [v for v in z if not np.isnan(v)]
-    assert any(np.allclose(x, z_prime) for x in N3_found)
-
-    # Retrieve all nearest neighbors without specifying K should be the same as
-    # find the top K.
-    neighbors_all = knn._find_nearest_neighbors([0,1,2], {3:2})
-
-    with pytest.raises(ValueError):
-        neighbors_k = knn._find_nearest_neighbors([0,1,2], {3:2}, K=0)
-    for k in xrange(1, 100):
-        neighbors_k = knn._find_nearest_neighbors([0,1,2], {3:2}, K=k)
-        assert np.allclose(neighbors_k, neighbors_all[:k])
+    z_query = [0,1]
+    z_evidence = {o:v for o,v in zip(outputs[2:], z[2:]) if not np.isnan(v)}
+    d_found, n_found = knn._find_neighborhoods(z_query, z_evidence)
+    test_found_expected(d_found, n_found, [z[:2]])
