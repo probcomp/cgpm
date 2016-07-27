@@ -15,14 +15,18 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from collections import namedtuple
 
 import numpy as np
 
+from scipy.stats import norm
 from sklearn.neighbors import KDTree
 
 from cgpm.cgpm import CGpm
 from cgpm.utils import data as du
 from cgpm.utils import general as gu
+
+LocalGpm = namedtuple('LocalGpm', ['simulate', 'logpdf'])
 
 
 class MultivariateKnn(CGpm):
@@ -136,6 +140,11 @@ class MultivariateKnn(CGpm):
         # XXX Disable queries without evidence for now.
         if not evidence:
             raise ValueError('KNN requires at least 1 evidence: %s.' % evidence)
+        # Retrieve the global dataset and local neighborhoods.
+        dataset, exemplars = self._find_nearest_neighbors(
+            query, evidence, exemplars=True)
+        models = [self._create_local_model_joint(query, dataset[e], e)
+            for e in exemplars]
 
     def logpdf_score(self):
         pass
@@ -178,6 +187,38 @@ class MultivariateKnn(CGpm):
         _, ex = KDTree(D_code).query(D_code[neighbors], k=min(5, self.K))
         # Return the dataset and the list of neighborhoods.
         return D[:,:len(query)], ex
+
+    def _create_local_model_joint(self, query, dataset, neighborhood):
+        assert all(q in self.outputs for q in query)
+        assert dataset.shape[1] == len(query)
+        lookup = {
+            'numerical': self._create_local_model_numerical,
+            'categorical': self._create_local_model_categorical,
+        }
+        models = {q: lookup[self.stattypes[i]](q, dataset[:,i])
+            for i,q in enumerate(query)}
+        def simulate(self, query):
+            return {q: models[q].simulate() for q in query}
+        def logpdf(self, query):
+            return sum(models[q].logpdf(x) for q, x in query.iteritems())
+        return LocalGpm(simulate, logpdf)
+
+    def _create_local_model_numerical(self, q, locality):
+        assert q not in self.levels
+        (mu, std) = (np.mean(locality), min(np.std(locality), .01))
+        simulate = lambda N: self.rng.normal(mu, std, size=N)
+        logpdf = lambda x: norm.logpdf(x, mu, std)
+        return LocalGpm(simulate, logpdf)
+
+    def _create_local_model_categorical(self, q, locality):
+        assert q in self.levels
+        assert all(0 <= l < self.levels[q] for l in locality)
+        values = range(self.levels[q])
+        counts = np.bincount(locality, minlength=self.levels[q])
+        p = counts / np.sum(counts, dtype=float)
+        simulate = lambda N: self.rng.choice(values, p=p, size=N)
+        logpdf = lambda x: np.log(p[x])
+        return LocalGpm(simulate, logpdf)
 
     def _dummy_code(self, D, variables):
         levels = {variables.index(l): self.levels[l]
