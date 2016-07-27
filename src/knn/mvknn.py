@@ -133,7 +133,9 @@ class MultivariateKnn(CGpm):
                 % (query, self.outputs))
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
-        raise NotImplementedError
+        # XXX Disable queries without evidence for now.
+        if not evidence:
+            raise ValueError('KNN requires at least 1 evidence: %s.' % evidence)
 
     def logpdf_score(self):
         pass
@@ -163,18 +165,33 @@ class MultivariateKnn(CGpm):
         # (i) reduce  K, (ii) randomly drop evidences, or (iii) impute dataset.
         if len(D) < K:
             raise ValueError('Not enough neighbors: %s.' % ((query, evidence),))
-        # Dummy code the evidence portion of the dataset.
-        D_ev_code = self._dummy_code(D[:,len(query):], evidence.keys())
+        # Code the dataset.
+        D_qr_code = self._dummy_code(D[:,:len(query)], lookup[:len(query)])
+        D_ev_code = self._dummy_code(D[:,len(query):], lookup[len(query):])
+        D_code = np.column_stack((D_qr_code, D_ev_code))
+        # Run nearest neighbor search on the evidence only.
         evidence_code = self._dummy_code([evidence.values()], evidence.keys())
-        # Retrieve indices of the neighbors.
-        _, neighbors = KDTree(D_ev_code).query(evidence_code, k=K)
+        dist, neighbors = KDTree(D_ev_code).query(evidence_code, k=len(D))
+        # import ipdb; ipdb.set_trace()
+        # Check for duplicate distances, in which case extend the search.
+        valid = [i for i, d in enumerate(dist[0]) if d <= dist[0][K-1]]
+        neighbors_v = self.rng.choice(
+            neighbors[0][valid], replace=False, size=K)
+        # For each neighbor find its nearest five on the full dataset.
+        K_resample = min(5, K)
+        exemplars = KDTree(D_code).query(D_code[neighbors_v], k=K_resample)
         # Return dataset.
-        return D[neighbors[0]]
+        return D[neighbors[0][:K]]
 
     def _dummy_code(self, D, variables):
-        levels = {variables.index(l): self.levels[l] for l in variables if l
-            in self.levels}
-        return np.asarray([du.dummy_code(r, levels) for r in D])
+        levels = {variables.index(l): self.levels[l]
+            for l in variables if l in self.levels}
+        return D if not levels\
+            else np.asarray([du.dummy_code(r, levels) for r in D])
+
+    def _find_exemplars(self, query, evidence):
+        # Find all the nearest neighbors based on evidence.
+        pass
 
     def _dataset(self, query):
         indexes = [self.outputs.index(q) for q in query]
