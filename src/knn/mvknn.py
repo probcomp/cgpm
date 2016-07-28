@@ -33,22 +33,19 @@ class MultivariateKnn(CGpm):
     """Multivariate K-Nearest-Neighbors builds ML models on a per-query basis.
 
     TODO: Migrate description from Github Issue #128.
-
-    TODO:
-    [x] Implement the nearest neighbor search for a datapoint given Q,E.
-        [x] Euclidean embedding of the categoricals.
-    [x] Implement simulate by chaining regression models.
     """
 
-    def __init__(self, outputs, inputs, K=None, distargs=None, params=None,
-            rng=None):
+    def __init__(self, outputs, inputs, K=None, M=None, distargs=None,
+            params=None, rng=None):
         # Default arguments.
         if params is None:
             params = {}
         if rng is None:
             rng = gu.gen_rng(1)
+        if M is None:
+            M = 10
         # Input validation.
-        self._validate_init(outputs, inputs, K, distargs, params, rng)
+        self._validate_init(outputs, inputs, K, M, distargs, params, rng)
         # Build the object.
         self.rng = rng
         # Varible indexes.
@@ -68,6 +65,7 @@ class MultivariateKnn(CGpm):
         self.ordering = list(self.rng.permutation(self.outputs))
         # Number of nearest neighbors.
         self.K = K
+        self.M = M
 
     def incorporate(self, rowid, query, evidence=None):
         self._validate_incorporate(rowid, query, evidence)
@@ -97,16 +95,38 @@ class MultivariateKnn(CGpm):
         samples = 1 if N is None else N
         evidence = self._populate_evidence(rowid, query, evidence)
         self._validate_simulate_logpdf(rowid, query, evidence, samples)
-        # Retrieve the dataset and neighborhoods.
-        dataset, neighborhoods = self._find_neighborhoods(query, evidence)
-        models = [self._create_local_model_joint(query, dataset[n])
-            for n in neighborhoods]
-        # Sample the models.
-        indices = self.rng.choice(len(models), size=samples)
-        sampled_models = [models[i] for i in indices]
-        # Sample from each model.
-        sampled_data = [m.simulate(query) for m in sampled_models]
-        return sampled_data[0] if N is None else sampled_data
+        if evidence:
+            # Retrieve the dataset and neighborhoods.
+            dataset, neighborhoods = self._find_neighborhoods(query, evidence)
+            models = [self._create_local_model_joint(query, dataset[n])
+                for n in neighborhoods]
+            # Sample the models.
+            indices = self.rng.choice(len(models), size=samples)
+            # Sample from each model.
+            sampled_models = [models[i] for i in indices]
+            results = [m.simulate(query) for m in sampled_models]
+        else:
+            results = self._simulate_recusrive(rowid, query, samples)
+            assert len(results) == samples
+        return results[0] if N is None else results
+
+    def _simulate_recusrive(self, rowid, query, samples):
+        # Fallback if there is no such evidence to resample from, resample
+        # the first query variable.
+        merged = (len(query) == len(self.outputs))
+        targets = [o for o in self.outputs if o not in query]
+        if merged:
+            assert not targets
+            targets = [query[0]]
+            query = query[1:]
+        dataset = self._dataset(targets)
+        indices = self.rng.choice(len(dataset), size=samples)
+        evidences = [zip(targets, dataset[i]) for i in indices]
+        results = [self.simulate(rowid, query, dict(e)) for e in evidences]
+        # Make sure to add back the resampled first query variable to results.
+        if merged:
+            results = [gu.merged(s, e) for s, e in zip(results, evidences)]
+        return results
 
     def logpdf_score(self):
         pass
@@ -144,7 +164,7 @@ class MultivariateKnn(CGpm):
         else:
             neighbors = neighbors[0][:self.K]
         # For each neighbor, find its nearest five on the full lookup set.
-        _, ex = KDTree(D_code).query(D_code[neighbors], k=min(10, self.K))
+        _, ex = KDTree(D_code).query(D_code[neighbors], k=min(self.M, self.K))
         # Return the dataset and the list of neighborhoods.
         return D[:,:len(query)], ex
 
@@ -155,7 +175,8 @@ class MultivariateKnn(CGpm):
             'numerical': self._create_local_model_numerical,
             'categorical': self._create_local_model_categorical,
         }
-        models = {q: lookup[self.stattypes[i]](q, dataset[:,i])
+        models = {
+            q: lookup[self.stattypes[self.outputs.index(q)]](q, dataset[:,i])
             for i, q in enumerate(query)}
         simulate = lambda q, N=None: {c: models[c].simulate(N) for c in q}
         logpdf = lambda q: sum(models[c].logpdf(x) for c,x in q.iteritems())
@@ -171,7 +192,7 @@ class MultivariateKnn(CGpm):
     def _create_local_model_categorical(self, q, locality):
         assert q in self.levels
         assert all(0 <= l < self.levels[q] for l in locality)
-        counts = np.bincount(locality, minlength=self.levels[q])
+        counts = np.bincount(locality.astype(int), minlength=self.levels[q])
         p = counts / np.sum(counts, dtype=float)
         simulate = lambda N: self.rng.choice(self.levels[q], p=p, size=N)
         logpdf = lambda x: np.log(p[x])
@@ -207,6 +228,7 @@ class MultivariateKnn(CGpm):
     def get_params(self):
         return {
             'K': self.K,
+            'K': self.M,
         }
 
     def get_distargs(self):
@@ -224,13 +246,13 @@ class MultivariateKnn(CGpm):
     # --------------------------------------------------------------------------
     # Validation.
 
-    def _validate_init(self, outputs, inputs, K, distargs, params, rng):
+    def _validate_init(self, outputs, inputs, K, M, distargs, params, rng):
         # No inputs allowed.
         if inputs:
             raise ValueError('KNN rejects inputs: %s.' % inputs)
         # At least one output.
-        if len(outputs) < 1:
-            raise ValueError('KNN needs >= 1 outputs: %s.' % outputs)
+        if len(outputs) < 2:
+            raise ValueError('KNN needs >= 2 outputs: %s.' % outputs)
         # Unique outputs.
         if len(set(outputs)) != len(outputs):
             raise ValueError('Duplicate outputs: %s.' % outputs)
@@ -291,9 +313,9 @@ class MultivariateKnn(CGpm):
                 and any(np.isnan(v) for v in query.itervalues()):
             raise ValueError('Nan value in query: %s.' % query)
         # XXX Disable queries without evidence for now.
-        if not evidence:
+        if isinstance(query, dict) and not evidence:
             raise ValueError(
-                'KNN requires at least one evidence clauses: %s.' % evidence)
+                'KNN requires at least one evidence clause: %s.' % evidence)
 
     def _validate_incorporate(self, rowid, query, evidence):
         # No duplicate observation.
@@ -327,6 +349,7 @@ class MultivariateKnn(CGpm):
 
         metadata['params'] = dict()
         metadata['params']['K'] = self.K
+        metadata['params']['M'] = self.M
 
         metadata['factory'] = ('cgpm.knn.mvknn', 'MultivariateKnn')
         return metadata
@@ -339,6 +362,7 @@ class MultivariateKnn(CGpm):
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
             K=metadata['params']['K'],
+            M=metadata['params']['M'],
             distargs=metadata['distargs'],
             params=metadata['params'],
             rng=rng)

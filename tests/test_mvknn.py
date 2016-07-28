@@ -50,10 +50,14 @@ def test_initialize():
         MultivariateKnn(
             outputs=[0, 1], inputs=[2], K=2,
             distargs={O: {ST:[N, C], SA: [{}, {'k': 2}]}})
-    # At least one output.
+    # At least two output.
     with pytest.raises(ValueError):
         MultivariateKnn(
             outputs=[], inputs=[], K=2,
+            distargs={O: {ST: [], SA:[]}})
+    with pytest.raises(ValueError):
+        MultivariateKnn(
+            outputs=[1], inputs=[], K=2,
             distargs={O: {ST: [], SA:[]}})
     # Unique outputs.
     with pytest.raises(ValueError):
@@ -203,14 +207,11 @@ def test_find_neighborhoods():
     test_found_expected(d_found, n_found, [z[:2]])
 
 
-def test_apogee_perigee_period():
+def test_perigee_period_given_apogee():
     rng = gu.gen_rng(1)
 
     # Load the satellites dataset.
     satellites = pd.read_csv('resources/satellites.csv')
-
-    # Create an axes.
-    fig, ax = plt.subplots()
 
     # Extract target columns of interest.
     D = satellites[['Apogee_km', 'Perigee_km', 'Period_minutes']].dropna()
@@ -222,7 +223,7 @@ def test_apogee_perigee_period():
     perigees = X[neighbors[0][:10],1]
     periods = X[neighbors[0][:10],2]
 
-    # Learn the joint distribution by assuming P,T|A are independent..
+    # Learn the joint distribution by assuming P,T|A are independent.
     perigees_ind = rng.normal(np.mean(perigees), np.std(perigees), size=20)
     periods_ind = rng.normal(np.mean(periods), np.std(perigees), size=20)
 
@@ -232,14 +233,17 @@ def test_apogee_perigee_period():
         'stattypes': ['numerical', 'numerical', 'numerical'],
         'statargs': [{}, {}, {}]
     }}
-    knn = MultivariateKnn([0,1,2], None, distargs=distargs, K=10, rng=rng)
-
+    knn = MultivariateKnn([0,1,2], None, distargs=distargs, K=30, rng=rng)
     for i, row in enumerate(X):
         knn.incorporate(i, dict(zip([0,1,2], row)))
 
+    # Sample from the dependent KNN.
     samples_dep = knn.simulate(-1, [1,2], {0: 500}, N=20)
     logpdfs = [knn.logpdf(-1, s, {0: 500}) for s in samples_dep]
     assert all(not np.isinf(l) for l in logpdfs)
+
+    # Create an axis.
+    fig, ax = plt.subplots()
 
     # Scatter the actual neighborhood.
     ax.scatter(perigees, periods, color='b', label='Actual Satellites')
@@ -263,5 +267,29 @@ def test_apogee_perigee_period():
     ax.grid()
     ax.legend(framealpha=0, loc='upper left')
 
+    # Now simulate from the joint distributions of apogee, perigee.
+    samples_joint = knn.simulate(-1, [0,2], N=100)
+
+    # Create an axis.
+    fig, ax = plt.subplots()
+
+    # Scatter the actual data.
+    ax.scatter(X[:,0], X[:,2], color='b', label='Actual Satellites')
+
+    # Scatter the simulated data.
+    ax.scatter(
+        [s[0] for s in samples_joint], [s[2] for s in samples_joint],
+        color='r', label='Dependent KNN')
+
+    # Prepare the axes.
+    ax.set_title(
+        'SIMULATE period_minutes, apogee_km LIMIT 500', fontweight='bold')
+    ax.set_xlabel('Apogee', fontweight='bold')
+    ax.set_ylabel('Period', fontweight='bold')
+    ax.set_xlim([-500, 50000])
+    ax.set_ylim([-100, 1800])
+    ax.grid()
+    ax.legend(framealpha=0, loc='upper left')
+
     # Reveal!
-    plt.close('all')
+    # plt.close('all')
