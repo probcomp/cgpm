@@ -69,6 +69,7 @@ setup(
         'cgpm.exponentials',
         'cgpm.factor',
         'cgpm.kde',
+        'cgpm.knn',
         'cgpm.mixtures',
         'cgpm.network',
         'cgpm.regressions',
