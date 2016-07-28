@@ -215,7 +215,7 @@ class View(CGpm):
         if cols is None:
             cols = self.dims.keys()
         for c in cols:
-            self.dim_for(c).transition_hyper_grids(self.X[c])
+            self.dims[c].transition_hyper_grids(self.X[c])
 
     def transition_rows(self, rows=None):
         if rows is None:
@@ -238,10 +238,10 @@ class View(CGpm):
     def logpdf(self, rowid, query, evidence=None):
         # Algorithm.
         # P(xQ|xE) = \sum_z p(xQ|z,xE)p(z|xE)       marginalization
-        # Now consider p(z|xE) \propto p(z)p(xE|z)  Bayes rule
-        # p(z)p(xE|z)                               logp_evidence_unorm
+        # Now consider p(z|xE) \propto p(z,xE)      Bayes rule
+        # p(z,xE)                                   logp_evidence_unorm
         # p(z|xE)                                   logp_evidence
-        # p(xQ|z)                                   logp_query
+        # p(xQ|z,xE)                                logp_query
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network()
         # Condition on cluster.

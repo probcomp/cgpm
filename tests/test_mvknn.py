@@ -209,6 +209,11 @@ def test_find_neighborhoods():
 
 
 def test_perigee_period_given_apogee():
+    # This test uses KNN to answer two BQL queries.
+    # SIMULATE perigee_km, period_minutes GIVEN apogee_km = 500;
+    # SIMULATE apogee_km, period_minutes;
+    # The outputs of the query are scattered on a plot.
+
     rng = gu.gen_rng(1)
 
     # Load the satellites dataset.
