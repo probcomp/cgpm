@@ -82,6 +82,9 @@ class MultivariateKnn(CGpm):
 
     def logpdf(self, rowid, query, evidence=None):
         evidence = self._populate_evidence(rowid, query, evidence)
+        # XXX Disable logpdf queries without evidence.
+        if not evidence:
+            raise ValueError('Provide at least one evidence: %s.' % evidence)
         self._validate_simulate_logpdf(rowid, query, evidence)
         # Retrieve the dataset and neighborhoods.
         dataset, neighborhoods = self._find_neighborhoods(query, evidence)
@@ -226,10 +229,7 @@ class MultivariateKnn(CGpm):
         return evidence
 
     def get_params(self):
-        return {
-            'K': self.K,
-            'K': self.M,
-        }
+        return {}
 
     def get_distargs(self):
         return {
@@ -237,6 +237,8 @@ class MultivariateKnn(CGpm):
                 'stattypes': self.stattypes,
                 'statargs': self.statargs,
             },
+            'K': self.K,
+            'M': self.M,
         }
 
     @staticmethod
@@ -312,10 +314,6 @@ class MultivariateKnn(CGpm):
         if isinstance(query, dict)\
                 and any(np.isnan(v) for v in query.itervalues()):
             raise ValueError('Nan value in query: %s.' % query)
-        # XXX Disable queries without evidence for now.
-        if isinstance(query, dict) and not evidence:
-            raise ValueError(
-                'KNN requires at least one evidence clause: %s.' % evidence)
 
     def _validate_incorporate(self, rowid, query, evidence):
         # No duplicate observation.
@@ -348,8 +346,6 @@ class MultivariateKnn(CGpm):
         metadata['data'] = self.data.items()
 
         metadata['params'] = dict()
-        metadata['params']['K'] = self.K
-        metadata['params']['M'] = self.M
 
         metadata['factory'] = ('cgpm.knn.mvknn', 'MultivariateKnn')
         return metadata
@@ -361,8 +357,8 @@ class MultivariateKnn(CGpm):
         knn = cls(
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
-            K=metadata['params']['K'],
-            M=metadata['params']['M'],
+            K=metadata['distargs']['K'],    # Pending migration to **kwargs
+            M=metadata['distargs']['M'],
             distargs=metadata['distargs'],
             params=metadata['params'],
             rng=rng)

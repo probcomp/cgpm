@@ -292,4 +292,59 @@ def test_perigee_period_given_apogee():
     ax.legend(framealpha=0, loc='upper left')
 
     # Reveal!
-    # plt.close('all')
+    plt.close('all')
+
+
+def test_serialize():
+    rng = gu.gen_rng(1)
+
+    data = rng.rand(20, 5)
+    data[:10,-1] = 0
+    data[10:,-1] = 1
+
+    knn = MultivariateKnn(
+        range(5),
+        None,
+        K=10,
+        distargs={
+            'outputs': {
+                'stattypes': [
+                    'numerical',
+                    'numerical',
+                    'numerical',
+                    'numerical',
+                    'categorical'
+                ],
+                'statargs': [
+                    {},
+                    {},
+                    {},
+                    {},
+                    {'k':1}
+        ]}},
+        rng=rng)
+
+    for rowid, x in enumerate(data):
+        knn.incorporate(rowid, dict(zip(range(5), x)))
+
+    knn.transition()
+
+    metadata_s = json.dumps(knn.to_metadata())
+    metadata_l = json.loads(metadata_s)
+
+    modname = importlib.import_module(metadata_l['factory'][0])
+    builder = getattr(modname, metadata_l['factory'][1])
+    knn2 = builder.from_metadata(metadata_l, rng=rng)
+
+    # Variable indexes.
+    assert knn2.outputs == knn.outputs
+    assert knn2.inputs == knn.inputs
+    # Distargs.
+    assert knn2.get_distargs() == knn.get_distargs()
+    assert knn2.get_distargs() == knn.get_distargs()
+    # Dataset.
+    assert knn2.data == knn.data
+    assert knn2.N == knn.N
+    # Bandwidth params.
+    assert knn2.stattypes == knn.stattypes
+    assert knn2.statargs == knn.statargs
