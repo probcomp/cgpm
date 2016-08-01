@@ -23,7 +23,9 @@ from cgpm.utils import general as gu
 class ImportanceNetwork(object):
     """Querier for a Composite CGpm."""
 
-    def __init__(self, cgpms, accuracy=1, rng=None):
+    def __init__(self, cgpms, accuracy=None, rng=None):
+        if accuracy is None:
+            accuracy = 1
         self.rng = rng if rng else gu.gen_rng(1)
         self.cgpms = hu.validate_cgpms(cgpms)
         self.accuracy = accuracy
