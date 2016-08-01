@@ -58,8 +58,14 @@ class SinY(CGpm):
         return {self.outputs[0]: y}
 
     def logpdf(self, rowid, query, evidence=None):
-        raise NotImplementedError
-
+        assert query.keys() == self.outputs
+        assert evidence.keys() == self.inputs
+        x = evidence[self.inputs[0]]
+        y = query[self.outputs[0]]
+        if np.cos(x) < 0:
+            return self.uniform.logpdf(y-np.cos(x))
+        else:
+            return self.uniform.logpdf(np.cos(x)-y)
 
 class Sin(DirectedXyGpm):
     """Y = cos(X) + Noise."""
