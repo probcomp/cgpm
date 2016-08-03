@@ -72,7 +72,10 @@ def test_simulate_noisy_cos():
     vs_y = InlineVsCGpm([1], [0],
         expression='(lambda (x) (normal (cos x) 0.25))')
 
-    # XXX TODO: Debug why this versions returns a noiseless cosine.
+    # This version returns a noiseless cosine because it has the same seed
+    # as vs_x, and the only samplers are uniform continuous, so for some reason
+    # the errors are a deterministic function of x.
+    # See test_vsinline_determinism.py for minimal working example.
     InlineVsCGpm([1], [0],
         expression='''
             (lambda (x)
