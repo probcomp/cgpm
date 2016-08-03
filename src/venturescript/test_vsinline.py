@@ -65,48 +65,41 @@ def test_simulate_uniform():
     fig, ax = plt.subplots()
     ax.hist(extracted)
 
-# def test_simulate_noisy_cos():
-vs_x = InlineVsCGpm([0], [],
-    expression='(lambda () (uniform_continuous -4.71 4.71))')
+def test_simulate_noisy_cos():
+    vs_x = InlineVsCGpm([0], [],
+        expression='(lambda () (uniform_continuous -4.71 4.71))')
 
-# XXX TODO: Debug why this versions returns a noiseless cosine.
-vs_y = InlineVsCGpm([1], [0],
-    expression='''(lambda (x) (if (> (cos x) 0) (uniform_continuous (- (cos x) .5) (cos x)) (uniform_continuous (cos x) (+ (cos x) .5))))''')
+    vs_y = InlineVsCGpm([1], [0],
+        expression='(lambda (x) (normal (cos x) 0.25))')
 
-samples_x = vs_x.simulate(0, [0], evidence=None, N=200)
+    # XXX TODO: Debug why this versions returns a noiseless cosine.
+    InlineVsCGpm([1], [0],
+        expression='''
+            (lambda (x)
+                (if (> (cos x) 0)
+                    (uniform_continuous (- (cos x) .5) (cos x))
+                    (uniform_continuous (cos x) (+ (cos x) .5))))
+        ''')
 
-# This version works.
-samples_y1 = [vs_y.simulate(0, [1], sx) for sx in samples_x]
-samples_y2 = [vs_y.simulate(0, [1], sx, N=2) for sx in samples_x]
+    samples_x = vs_x.simulate(0, [0], evidence=None, N=200)
+    samples_y = [vs_y.simulate(0, [1], sx) for sx in samples_x]
 
-# # Plot the joint query.
-fig, ax = plt.subplots()
+    # Plot the joint query.
+    fig, ax = plt.subplots()
 
-xs = [s[0] for s in samples_x]
-ys1 = [s[1] for s in samples_y1]
-ys2 = [s[0][1] for s in samples_y2]
+    xs = [s[0] for s in samples_x]
+    ys = [s[1] for s in samples_y]
 
-# This one seems to have a fixed noise level.
-ax.scatter(xs, ys1, color='blue', alpha=.4)
-# This one looks noisy enough.
-ax.scatter(xs, ys2, color='red', alpha=.4)
-ax.set_xlim([-1.5*np.pi, 1.5*np.pi])
-ax.set_ylim([-1.75, 1.75])
-for x in xs:
-    ax.vlines(x, -1.75, -1.65, linewidth=.5)
-ax.grid()
+    # Scatter the dots.
+    ax.scatter(xs, ys, color='blue', alpha=.4)
+    ax.set_xlim([-1.5*np.pi, 1.5*np.pi])
+    ax.set_ylim([-1.75, 1.75])
+    for x in xs:
+        ax.vlines(x, -1.75, -1.65, linewidth=.5)
+    ax.grid()
 
-# Sorted the errors by xs.
-errors1 = zip(xs, np.cos(xs)-ys1)
-errors2 = zip(xs, np.cos(xs)-ys2)
-
-sorted_errors_1 = sorted(errors1, key=lambda t: t[1])
-sorted_errors_2 = sorted(errors2, key=lambda t: t[1])
-fig, ax = plt.subplots()
-ax.scatter([s[0] for s in sorted_errors_1], [s[1] for s in sorted_errors_1] ,
-    color='blue', alpha=.4)
-ax.scatter([s[0] for s in sorted_errors_2], [s[1] for s in sorted_errors_2] ,
-    color='red', alpha=.4)
-ax.set_xlabel('value of x')
-ax.set_ylabel('error of cos(x) - y')
-ax.grid()
+    # Plot the density from y=0 to y=2 for x = 0
+    fig, ax = plt.subplots()
+    logpdfs = np.exp(
+        [vs_y.logpdf(0, {1:y}, {0:0}) for y in np.linspace(0,2,50)])
+    ax.plot(np.linspace(0, 2, 50), logpdfs)
