@@ -76,7 +76,6 @@ class InlineVsCGpm(CGpm):
         return logp[0]
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        print rowid, query, evidence
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         if evidence is None: evidence = {}
@@ -109,7 +108,7 @@ class InlineVsCGpm(CGpm):
         # the arguments.
         expression = expression.replace('\n', ' ')
         tokens = expression.split('(')
-        assert all(t in ['', ' '] for t in tokens[0])
+        # assert all(t in ['', ' '] for t in tokens[0])
         assert tokens[1].strip() == 'lambda'
         arguments = tokens[2]
         assert len([i for i in arguments if i ==')']) == 1
