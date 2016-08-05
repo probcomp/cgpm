@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 
 from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
@@ -63,22 +63,24 @@ def generate_regression_samples():
 def plot_samples(samples, title):
     fig, ax = plt.subplots()
     clusters = set(s[-1] for s in samples)
-    colors = iter(cm.gist_rainbow(np.linspace(0, 1, len(clusters)+2)))
+    colors = iter(cm.Set1(np.linspace(0, 1, len(clusters)+2)))
     ax.scatter(D[:,0], D[:,1], color='k', label='Data')
     for i, c in enumerate(clusters):
         sc = [(j[0], j[1]) for j in samples if j[-1] == c]
         xs, ys = zip(*sc)
         ax.scatter(
             xs, ys, alpha=.5, color=next(colors),
-            label='Simulated (cluster %d)' %i)
-    ax.set_title(title)
-    ax.legend(framealpha=0, loc='upper left')
+            label='Cluster %d' %i)
+    ax.set_title(title, fontweight='bold', fontsize=16)
+    ax.legend(framealpha=0, loc='upper left', prop={'weight':'bold'})
+    fig.set_size_inches(1.5,1)
+    ax.set_xlim([-2, 14])
+    ax.set_ylim([-20, 70])
     ax.grid()
 
-
-def test_regression_plot_crash__ci_():
-    samples_a = generate_gaussian_samples()
-    samples_b = generate_regression_samples()
-    plot_samples(samples_a, 'Model: Mixture of 2D Gaussians')
-    plot_samples(samples_b, 'Model: Mixture of Linear Regression')
-    # plt.close('all')
+# def test_regression_plot_crash__ci_():
+samples_a = generate_gaussian_samples()
+samples_b = generate_regression_samples()
+plot_samples(samples_a, 'Mixture of Axis-Aligned Gaussians')
+plot_samples(samples_b, 'Mixture of Linear Regression')
+# plt.close('all')
