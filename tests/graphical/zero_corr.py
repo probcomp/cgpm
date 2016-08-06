@@ -84,7 +84,7 @@ from cgpm.utils.general import gen_rng
 NUM_SAMPLES = 200
 NUM_STATES = 16
 NUM_SECONDS = 600
-NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, 0.10, .05, .01]
+NOISES = [.95,. .85, .75, .65, .55, .45, .35, .25, .15, .10, .05, .01]
 
 NUM_PROCESSORS = 64
 NUM_PARALLEL = NUM_PROCESSORS/NUM_STATES
@@ -223,6 +223,7 @@ def plot_samples(samples, dist, noise, num_samples, timestamp):
     ax[0].set_ylim(simulator_limits[dist][1])
     ax[1].set_xlim(ax[0].get_xlim())
     ax[1].set_ylim(ax[0].get_ylim())
+    fig.set_tight_layout(True)
     # Save.
     fig.savefig(filename_samples_figure(dist, noise, timestamp))
     plt.close('all')
@@ -257,8 +258,9 @@ def generate_samples(dist, noise, num_samples, timestamp):
     engine = load_engine(dist, noise, timestamp)
     state = retrieve_nice_state(load_engine_states(engine))
     # XXX Refactor to use the CGPM interface.
-    samples = state.views[0]._simulate_hypothetical(
-        [0,1], [], num_samples, cluster=True)
+    view = state.view_for(0)
+    samples = view.simulate(-1, [0, 1, view.outputs[0]], N=100)
+    samples = [[s[0],s[1],s[view.outputs[0]]] for s in samples]
     np.savetxt(filename_samples(dist, noise, timestamp), samples, delimiter=',')
 
 def generate_mi(dist, noise, timestamp):
@@ -334,4 +336,3 @@ if __name__ == '__main__':
             run_dist(d, tstamp)
             plot_samples_all(d, NOISES, NUM_SAMPLES, tstamp)
             plot_mi_all(d, NOISES, tstamp)
-
