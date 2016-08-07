@@ -17,7 +17,6 @@
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 
 from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
@@ -64,7 +63,6 @@ def plot_samples(samples, title):
     fig, ax = plt.subplots()
     clusters = set(s[-1] for s in samples)
     colors = iter(cm.Set1(np.linspace(0, 1, len(clusters)+2)))
-    ax.scatter(D[:,0], D[:,1], color='k', label='Data')
     for i, c in enumerate(clusters):
         sc = [(j[0], j[1]) for j in samples if j[-1] == c]
         xs, ys = zip(*sc)
@@ -72,15 +70,23 @@ def plot_samples(samples, title):
             xs, ys, alpha=.5, color=next(colors),
             label='Cluster %d' %i)
     ax.set_title(title, fontweight='bold', fontsize=16)
-    ax.legend(framealpha=0, loc='upper left', prop={'weight':'bold'})
+    ax.scatter(D[:,0], D[:,1], color='k', alpha=.6, label='Observed Data')
+    # ax.legend(framealpha=0, loc='upper left', prop={'weight':'bold'})
     fig.set_size_inches(1.5,1)
     ax.set_xlim([-2, 14])
     ax.set_ylim([-20, 70])
     ax.grid()
+    return fig
 
 # def test_regression_plot_crash__ci_():
 samples_a = generate_gaussian_samples()
 samples_b = generate_regression_samples()
-plot_samples(samples_a, 'Mixture of Axis-Aligned Gaussians')
-plot_samples(samples_b, 'Mixture of Linear Regression')
+fig_a = plot_samples(samples_a, '')
+fig_b = plot_samples(samples_b, '')
+
+def save_figure(f, name):
+    f.set_size_inches(5, 3)
+    f.set_tight_layout(True)
+    f.savefig(name)
+
 # plt.close('all')
