@@ -82,9 +82,9 @@ from cgpm.utils.general import gen_rng
 # Configuration.
 
 NUM_SAMPLES = 200
-NUM_STATES = 16
+NUM_STATES = 32
 NUM_SECONDS = 600
-NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, 0.10, .05, .01]
+NOISES = [.65, .45]
 
 NUM_PROCESSORS = 64
 NUM_PARALLEL = NUM_PROCESSORS/NUM_STATES
@@ -156,8 +156,7 @@ def filename_mi_figure(dist, timestamp):
 # Inference.
 
 def simulate_dataset(dist, noise, size=200):
-    rng = gen_rng(0)
-    cgpm = simulators[dist](outputs=[0,1], noise=noise, rng=rng)
+    cgpm = simulators[dist](outputs=[0,1], noise=noise, rng=gen_rng(15))
     samples = [cgpm.simulate(-1, [0, 1]) for i in xrange(size)]
     D = [(s[0], s[1]) for s in samples]
     return np.asarray(D)
@@ -165,7 +164,8 @@ def simulate_dataset(dist, noise, size=200):
 def create_engine(dist, noise, num_samples, num_states, timestamp):
     T = simulate_dataset(dist, noise, num_samples)
     print 'Creating engine (%s %1.2f) ...' % (dist, noise)
-    engine = Engine(T, cctypes=['normal','normal'], num_states=num_states)
+    engine = Engine(T, cctypes=['normal','normal'], num_states=num_states,
+        rng=gen_rng(971))
     engine.to_pickle(file(filename_engine(dist, noise, timestamp), 'w'))
 
 def load_engine(dist, noise, timestamp):
@@ -199,20 +199,20 @@ def retrieve_nice_state(states, transitions=10):
         state.transition_dim_hypers()
     return state
 
-def plot_samples(samples, dist, noise, num_samples, timestamp):
+def plot_samples(samples, dist, noise, num_samples, timestamp, i=''):
     """Plot the observed samples and posterior samples side-by-side."""
     print 'Plotting samples %s %f' % (dist, noise)
     fig, ax = plt.subplots(nrows=1, ncols=2)
     # Plot the observed samples.
     T = simulate_dataset(dist, noise, num_samples)
-    ax[0].set_title('%s Distribution (Noise %1.2f)' % (dist, noise))
+    # ax[0].set_title('%s Distribution (Noise %1.2f)' % (dist, noise))
     ax[0].scatter(T[:,0], T[:,1], color='k', alpha=.5, label='True Distribution')
-    ax[0].set_xlabel('x1')
-    ax[0].set_ylabel('x2')
+    # ax[0].set_xlabel('x1')
+    # ax[0].set_ylabel('x2')
     ax[0].grid()
     # Plot posterior distribution.
-    ax[1].set_title('Emulator Distribution')
-    ax[1].set_xlabel('x1')
+    # ax[1].set_title('Emulator Distribution')
+    # ax[1].set_xlabel('x1')
     ax[1].grid()
     clusters = set(samples[:,2])
     colors = iter(cm.gist_rainbow(np.linspace(0, 1, len(clusters)+2)))
@@ -223,8 +223,17 @@ def plot_samples(samples, dist, noise, num_samples, timestamp):
     ax[0].set_ylim(simulator_limits[dist][1])
     ax[1].set_xlim(ax[0].get_xlim())
     ax[1].set_ylim(ax[0].get_ylim())
+    ax[0].set_xticklabels([])
+    ax[0].set_yticklabels([])
+    ax[1].set_xticklabels([])
+    ax[1].set_yticklabels([])
+    # fig.set_tight_layout(True)
     # Save.
-    fig.savefig(filename_samples_figure(dist, noise, timestamp))
+    # fig.set_size_inches(6,4)
+    print filename_samples_figure(dist, noise, timestamp)+'-%d.png'%i
+    fig.savefig(
+        filename_samples_figure(dist, noise, timestamp)+'-%d.png'%i,
+        format='png')
     plt.close('all')
 
 def plot_mi(mis, dist, noises, timestamp):
@@ -255,11 +264,22 @@ def generate_engine(dist, noise, num_samples, num_states, num_seconds, timestamp
 def generate_samples(dist, noise, num_samples, timestamp):
     print 'Generating samples %s %f' % (dist, noise)
     engine = load_engine(dist, noise, timestamp)
-    state = retrieve_nice_state(load_engine_states(engine))
+    # states =load_engine_states(engine)
+    states = engine.get_states(range(NUM_STATES))
+    # state = retrieve_nice_state(load_engine_states(engine))
     # XXX Refactor to use the CGPM interface.
-    samples = state.views[0]._simulate_hypothetical(
-        [0,1], [], num_samples, cluster=True)
-    np.savetxt(filename_samples(dist, noise, timestamp), samples, delimiter=',')
+    for i, state in enumerate(states):
+        print i, state
+        if len(state.views) != 1:
+            continue
+        view = state.view_for(0)
+        for i in xrange(15):
+            view.transition_dim_hypers()
+        samples = view.simulate(-1, [0, 1, view.outputs[0]], N=100)
+        samples = [[s[0],s[1],s[view.outputs[0]]] for s in samples]
+        np.savetxt(
+            filename_samples(dist, noise, timestamp)+'-%d'%i,
+            samples, delimiter=',')
 
 def generate_mi(dist, noise, timestamp):
     print 'Generating mi %s %f' % (dist, noise)
@@ -269,9 +289,14 @@ def generate_mi(dist, noise, timestamp):
 
 def plot_samples_all(dist, noises, num_samples, timestamp):
     for noise in noises:
-        samples  = np.loadtxt(
-            filename_samples(dist, noise, timestamp), delimiter=',')
-        plot_samples(samples, dist, noise, num_samples, timestamp)
+        for i in xrange(NUM_STATES):
+            try:
+                samples  = np.loadtxt(
+                    filename_samples(dist, noise, timestamp)+'-%d'%i,
+                    delimiter=',')
+                plot_samples(samples, dist, noise, num_samples, timestamp, i)
+            except:
+                continue
 
 def plot_mi_all(dist, noises, timestamp):
     filenames = [filename_mi(dist, noise, timestamp) for noise in noises]
@@ -282,7 +307,7 @@ def plot_mi_all(dist, noises, timestamp):
 # --------------------------------------------------------------------------
 # Launchers for dist.
 
-if __name__ == '__main__':
+if __name__ == '__smains__':
 
     # Creates the structure for this run.
     def create_directories(timestamp):
@@ -297,7 +322,7 @@ if __name__ == '__main__':
         generate_engine(
             dist, noise, NUM_SAMPLES, NUM_STATES, NUM_SECONDS, timestamp)
         generate_samples(dist, noise, NUM_SAMPLES, timestamp)
-        generate_mi(dist, noise, timestamp)
+        # generate_mi(dist, noise, timestamp)
 
     def run_dist(dist, timestamp):
         # Run these in parallel.
@@ -330,8 +355,7 @@ if __name__ == '__main__':
     else:
         tstamp = cu.timestamp()
         create_directories(tstamp)
-        for d in simulators:
+        for d in ['ring', 'parabola']:
             run_dist(d, tstamp)
             plot_samples_all(d, NOISES, NUM_SAMPLES, tstamp)
-            plot_mi_all(d, NOISES, tstamp)
-
+            # plot_mi_all(d, NOISES, tstamp)

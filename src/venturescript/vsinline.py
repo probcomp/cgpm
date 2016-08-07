@@ -16,6 +16,7 @@
 
 import base64
 from datetime import datetime
+import string
 
 import venture.shortcuts as vs
 
@@ -43,17 +44,17 @@ class InlineVsCGpm(CGpm):
         # Retrieve the expression.
         if expression is None:
             raise ValueError('Missing expression: %s' % expression)
-        # Retrieve the ripl.
-        self.ripl = vs.make_lite_ripl(seed=seed)
-        self.ripl.set_mode('church_prime')
         # Save the outputs.
         self.outputs = outputs
         # Check correct inputs against the expression.
-        self._validate_expression(expression, inputs)
+        self._validate_expression_concrete(expression, inputs)
         # Store the inputs and expression.
         self.inputs = inputs
         self.expression = expression
+        # Execute the program in the ripl to make sure it parses.
+        self.ripl = vs.make_lite_ripl(seed=seed)
         self.ripl.execute_program(self.expression)
+        self.ripl.execute_program('assume uniform = uniform_continuous')
 
     def incorporate(self, rowid, query, evidence=None):
         return
@@ -69,7 +70,7 @@ class InlineVsCGpm(CGpm):
         args = self._retrieve_args(evidence)
         # Retrieve the conditional density.
         logp = self.ripl.observe(
-            '(expr %s)' % args, query[self.outputs[0]], label='expr_observe')
+            'expr (%s)' % args, query[self.outputs[0]], label='expr_observe')
         # Forget the label.
         self.ripl.forget('expr_observe')
         self.ripl.forget('expr_assume')
@@ -83,7 +84,7 @@ class InlineVsCGpm(CGpm):
         assert query == self.outputs
         self.ripl.assume('expr', self.expression, label='expr')
         args = self._retrieve_args(evidence)
-        sample = self.ripl.sample('(expr %s)' % (args,))
+        sample = self.ripl.sample('expr(%s)' % (args,))
         self.ripl.forget('expr')
         return {self.outputs[0]: sample}
 
@@ -93,19 +94,14 @@ class InlineVsCGpm(CGpm):
     def transition(self, program=None, N=None):
         return
 
-    def _gen_label(self):
-        return 't%s%s' % (
-            self.rng.randint(1,100),
-            datetime.now().strftime('%Y%m%d%H%M%S%f'))
-
     def _retrieve_args(self, evidence):
-        return str.join(' ', [str(evidence[i]) for i in self.inputs])
+        return str.join(',', [str(evidence[i]) for i in self.inputs])
 
-    def _validate_expression(self, expression, inputs):
-        # We are expecting an expression of the form (lambda (<args>) exp)
+    def _validate_expression_abstract(self, expression, inputs):
+        # We are expecting an expression of the form (lambda (<args>) (exp))
         # so remove the whitespace, split by left parens, check the first
         # token is spaces, the second token is "lambda", the third token is the
-        # the arguments.
+        # the arguments. Note this will fail if (exp) is just exp i.e. 1.
         expression = expression.replace('\n', ' ')
         tokens = expression.split('(')
         # assert all(t in ['', ' '] for t in tokens[0])
@@ -114,6 +110,21 @@ class InlineVsCGpm(CGpm):
         assert len([i for i in arguments if i ==')']) == 1
         arguments = arguments.replace(')', '')
         arguments = arguments.split()
+        assert len(arguments) == len(inputs)
+
+    def _validate_expression_concrete(self, expression, inputs):
+        # We are expecting an expression of the form (a,b,c) ~> {}
+        # so remove the whitespace, split by left parens, check the first
+        # token is spaces, the second token is "lambda", the third token is the
+        # the arguments.
+        # Eliminate surrounding whitespace.
+        expression = expression.encode('ascii','ignore')
+        expression = expression.translate(None, string.whitespace)
+        # Retrieve symbols before ~>.
+        tokens = expression.split('~>')
+        # Eliminate the parens.
+        arguments = tokens[0].replace('(','').replace(')','')
+        arguments = [a for a in arguments.split(',') if a != '']
         assert len(arguments) == len(inputs)
 
     def to_metadata(self):

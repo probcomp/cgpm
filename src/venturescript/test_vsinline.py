@@ -19,6 +19,8 @@ import numpy as np
 import pytest
 
 from cgpm.venturescript.vsinline import InlineVsCGpm
+from cgpm.utils import general as gu
+
 
 def test_input_matches_args():
     InlineVsCGpm([0], [], expression='(lambda () (normal 0 1))')
@@ -33,16 +35,17 @@ def test_input_matches_args():
     InlineVsCGpm([0], [1,2], expression='(lambda(a b) (normal 0 1))')
     InlineVsCGpm([0], [1,2], expression='(lambda(a b ) (normal 0 1))')
     InlineVsCGpm([0], [1,2], expression='(lambda (a b ) (normal 0 1))')
+    InlineVsCGpm([0], [1,2,3], expression='(lambda (a b bc) (+ 1 2))')
 
     # This is the test case for the figure.
     InlineVsCGpm([0], [],
-        expression='(lambda () (uniform_continuous -4.71 4.71))')
+        expression='(lambda () (uniform -4.71 4.71))')
     InlineVsCGpm([0], [1],
         expression='''
             (lambda (x)
                 (if (> (cos x) 0)
-                    (uniform_continuous (- (cos x) .5) (cos x))
-                    (uniform_continuous (cos x) (+ (cos x) .5))))
+                    (uniform (- (cos x) .5) (cos x))
+                    (uniform (cos x) (+ (cos x) .5))))
         ''')
 
     with pytest.raises(Exception):
@@ -67,22 +70,17 @@ def test_simulate_uniform():
 
 def test_simulate_noisy_cos():
     vs_x = InlineVsCGpm([0], [],
-        expression='(lambda () (uniform_continuous -4.71 4.71))')
+        expression='() ~> {uniform(low: -4.71, high: 4.71)}',
+        rng=gu.gen_rng(10))
 
     vs_y = InlineVsCGpm([1], [0],
-        expression='(lambda (x) (normal (cos x) 0.25))')
-
-    # This version returns a noiseless cosine because it has the same seed
-    # as vs_x, and the only samplers are uniform continuous, so for some reason
-    # the errors are a deterministic function of x.
-    # See test_vsinline_determinism.py for minimal working example.
-    InlineVsCGpm([1], [0],
-        expression='''
-            (lambda (x)
-                (if (> (cos x) 0)
-                    (uniform_continuous (- (cos x) .5) (cos x))
-                    (uniform_continuous (cos x) (+ (cos x) .5))))
-        ''')
+        expression="""
+        (x) ~>
+            {if (cos(x) > 0)
+                {uniform(low: cos(x) - .5, high: cos(x))}
+            else
+                {uniform(low: cos(x), high: cos(x) + .5)}}""",
+        rng=gu.gen_rng(12))
 
     samples_x = vs_x.simulate(0, [0], evidence=None, N=200)
     samples_y = [vs_y.simulate(0, [1], sx) for sx in samples_x]

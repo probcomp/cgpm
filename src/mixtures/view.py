@@ -203,7 +203,7 @@ class View(CGpm):
 
     def transition_crp_alpha(self):
         self.crp.transition_hypers()
-        self.crp.transition_hypers()
+        # self.crp.transition_hypers()
 
     def transition_dim_hypers(self, cols=None):
         if cols is None:

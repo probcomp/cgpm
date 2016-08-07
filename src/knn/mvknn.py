@@ -81,6 +81,7 @@ class MultivariateKnn(CGpm):
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
+        return 0
         evidence = self._populate_evidence(rowid, query, evidence)
         # XXX Disable logpdf queries without evidence.
         if not evidence:
