@@ -4,7 +4,7 @@ The aim of this project is to provide a unified probabilistic programming
 framework to express different models and techniques from statistics, machine
 learning and non-parametric Bayes.
 
-Conditional generative population models (CGPM) provide a computational
+Composable generative population models (CGPM) provide a computational
 abstraction for probabilistic objects. They provide an interface that explicitly
 differentiates between the _sampler_ of a random variable from its conditional
 distribution and the _assessor_ of its conditional density. By encapsulating
@@ -22,7 +22,7 @@ The simplest example is creating a synthetic dataset where each variable is a
 mixture of one of the available DistributionGpms. Inference is run using
 [gpmcc](src/crosscat), an extended implementation of
 [crosscat](http://probcomp.csail.mit.edu/crosscat/) from the lens of
-compositions of conditional generative population models.
+compositions of composable generative population models.
 
 ```
 $ python -i tests/graphical/one_view.py

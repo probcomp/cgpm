@@ -15,9 +15,9 @@
 # limitations under the License.
 
 class CGpm(object):
-    """Interface for conditional generative population models.
+    """Interface for composable generative population models.
 
-    Conditional generative population models provide a procedural abstraction
+    Composable generative population models provide a computational abstraction
     for multivariate probability densities and stochastic samplers.
     """
 
@@ -101,7 +101,7 @@ class CGpm(object):
         raise NotImplementedError
 
     def to_metadata(self):
-        """Return the binary representation of the CGpm.
+        """Return the binary (json-friendly) representation of the CGpm.
 
         The returned B is expected to contain an entry ['factory'] which can
         be used to deserialize the binary in the following way:
