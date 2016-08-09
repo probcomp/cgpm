@@ -181,6 +181,7 @@ class FactorAnalysis(CGpm):
         return multivariate_normal.logpdf(query_r.values(), mean=muG, cov=covG)
 
     def simulate(self, rowid, query, evidence=None, N=None):
+        print rowid, query, evidence
         # XXX Deal with observed rowid.
         evidence = self.populate_evidence(rowid, query, evidence)
         if any(q in evidence for q in query):

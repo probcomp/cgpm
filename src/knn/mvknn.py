@@ -37,15 +37,15 @@ class MultivariateKnn(CGpm):
 
     def __init__(self, outputs, inputs, K=None, M=None, distargs=None,
             params=None, rng=None):
+        # Input validation.
+        self._validate_init(outputs, inputs, K, M, distargs, params, rng)
         # Default arguments.
         if params is None:
             params = {}
         if rng is None:
             rng = gu.gen_rng(1)
         if M is None:
-            M = 10
-        # Input validation.
-        self._validate_init(outputs, inputs, K, M, distargs, params, rng)
+            M = K
         # Build the object.
         self.rng = rng
         # Varible indexes.
@@ -81,6 +81,7 @@ class MultivariateKnn(CGpm):
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
+        return 0
         evidence = self._populate_evidence(rowid, query, evidence)
         # XXX Disable logpdf queries without evidence.
         if not evidence:
