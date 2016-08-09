@@ -310,7 +310,7 @@ class Engine(object):
         return metadata
 
     @classmethod
-    def from_metadata(cls, metadata, rng=None):
+    def from_metadata(cls, metadata, rng=None, multiprocess=1):
         if rng is None:
             rng = gu.gen_rng(0)
         # XXX Backward compatability.
@@ -318,7 +318,11 @@ class Engine(object):
             metadata['states'] = metadata['state_metadatas']
         if 'X' not in metadata:
             metadata['X'] = metadata['states'][0]['X']
-        engine = cls(X=metadata['X'], num_states=0, rng=rng)
+        engine = cls(
+            X=metadata['X'],
+            num_states=0,
+            rng=rng,
+            multiprocess=multiprocess)
         engine.states = metadata['states']
         engine._populate_metadata()
         return engine
