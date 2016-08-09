@@ -202,7 +202,7 @@ def generate_gpmcc_posteriors(cctype, distargs, D_train, iters, seconds):
 
 cctypes_distargs = {
     'bernoulli'         : None,
-    'beta_uc'           : None,
+    'beta'           : None,
     'categorical'       : {'k':12},
     'exponential'       : None,
     'geometric'         : None,

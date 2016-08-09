@@ -25,7 +25,7 @@ n_rows = 200
 view_weights = np.asarray([0.55, .45])
 cluster_weights = [np.array([.33, .33, .34]), np.array([.1, .9])]
 cctypes = [
-    'beta_uc',
+    'beta',
     'normal',
     'poisson',
     'categorical(k=4)',

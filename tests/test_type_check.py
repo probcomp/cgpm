@@ -32,7 +32,7 @@ cases = {
         good=[0, 1.],
         bad=[-1, .5, 3]),
 
-    'beta_uc' : Case(
+    'beta' : Case(
         outputs=[0],
         inputs=None,
         distargs=None,
