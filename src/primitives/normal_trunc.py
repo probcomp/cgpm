@@ -20,7 +20,7 @@ from scipy.stats import gamma
 from scipy.stats import norm
 from scipy.stats import uniform
 
-from cgpm.exponentials.distribution import DistributionGpm
+from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
 from cgpm.utils import sampling as su
 

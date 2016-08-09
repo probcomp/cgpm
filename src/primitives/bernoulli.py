@@ -18,7 +18,7 @@ from math import log
 
 from scipy.special import betaln
 
-from cgpm.exponentials.distribution import DistributionGpm
+from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
 
 

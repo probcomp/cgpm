@@ -20,7 +20,7 @@ import numpy as np
 import scipy
 
 from cgpm.utils import sampling as su
-from cgpm.exponentials.distribution import DistributionGpm
+from cgpm.primitives.distribution import DistributionGpm
 
 
 class Beta(DistributionGpm):

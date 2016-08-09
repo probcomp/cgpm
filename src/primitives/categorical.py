@@ -20,55 +20,54 @@ import numpy as np
 
 from scipy.special import gammaln
 
-from cgpm.exponentials.distribution import DistributionGpm
+from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
 
 
-class Poisson(DistributionGpm):
-    """Poisson distribution with gamma prior on mu. Collapsed.
+class Categorical(DistributionGpm):
+    """Categorical distribution with symmetric dirichlet prior on
+    category weight vector v.
 
-    mu ~ Gamma(a, b)
-    x ~ Poisson(mu)
+    k := distarg
+    v ~ Symmetric-Dirichlet(alpha/k)
+    x ~ Categorical(v)
+    http://www.cs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None,
             distargs=None, rng=None):
         DistributionGpm.__init__(
             self, outputs, inputs, hypers, params, distargs, rng)
-        # Sufficient statistics.
+        # Distargs.
+        self.k = int(distargs['k'])
         self.N = 0
-        self.sum_x = 0
-        self.sum_log_fact_x = 0
+        self.counts = np.zeros(self.k)
         # Hyperparameters.
         if hypers is None: hypers = {}
-        self.a = hypers.get('a', 1)
-        self.b = hypers.get('b', 1)
-        assert self.a > 0
-        assert self.b > 0
+        self.alpha = hypers.get('alpha', 1.)
 
     def incorporate(self, rowid, query, evidence=None):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if not (x % 1 == 0 and x >= 0):
-            raise ValueError('Invalid Poisson: %s' % str(x))
+        if not (x % 1 == 0 and 0 <= x < self.k):
+            raise ValueError('Invalid Categorical(%d): %s' % (self.k, x))
+        x = int(x)
         self.N += 1
-        self.sum_x += x
-        self.sum_log_fact_x += gammaln(x+1)
+        self.counts[x] += 1
         self.data[rowid] = x
 
     def unincorporate(self, rowid):
         x = self.data.pop(rowid)
         self.N -= 1
-        self.sum_x -= x
-        self.sum_log_fact_x -= gammaln(x+1)
+        self.counts[x] -= 1
 
     def logpdf(self, rowid, query, evidence=None):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if not (x % 1 == 0 and x >= 0):
+        if not (x % 1 == 0 and 0 <= x < self.k):
             return -float('inf')
-        return Poisson.calc_predictive_logp(
-            x, self.N, self.sum_x, self.a, self.b)
+        return Categorical.calc_predictive_logp(
+            int(x), self.N, self.counts, self.alpha)
 
     def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
@@ -76,14 +75,11 @@ class Poisson(DistributionGpm):
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
-        an, bn = Poisson.posterior_hypers(
-            self.N, self.sum_x, self.a, self.b)
-        x = self.rng.negative_binomial(an, bn/(bn+1.))
+        x = gu.pflip(self.counts + self.alpha, rng=self.rng)
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
-        return Poisson.calc_logpdf_marginal(
-            self.N, self.sum_x, self.sum_log_fact_x, self.a, self.b)
+        return Categorical.calc_logpdf_marginal(self.N, self.counts, self.alpha)
 
     ##################
     # NON-GPM METHOD #
@@ -93,36 +89,30 @@ class Poisson(DistributionGpm):
         return
 
     def set_hypers(self, hypers):
-        assert hypers['a'] > 0
-        assert hypers['b'] > 0
-        self.a = hypers['a']
-        self.b = hypers['b']
+        assert hypers['alpha'] > 0
+        self.alpha = hypers['alpha']
 
     def get_hypers(self):
-        return {'a': self.a, 'b': self.b}
+        return {'alpha': self.alpha}
 
     def get_params(self):
         return {}
 
     def get_suffstats(self):
-        return {'N': self.N, 'sum_x' : self.sum_x,
-            'sum_log_fact_x': self.sum_log_fact_x}
+        return {'N' : self.N, 'counts' : list(self.counts)}
 
     def get_distargs(self):
-        return {}
+        return {'k': self.k}
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        # only use integers for a so we can nicely draw from a negative binomial
-        # in predictive_draw
-        grids['a'] = np.unique(np.round(np.linspace(1, len(X), n_grid)))
-        grids['b'] = gu.log_linspace(.1, float(len(X)), n_grid)
+        grids['alpha'] = gu.log_linspace(1./float(len(X)), float(len(X)), n_grid)
         return grids
 
     @staticmethod
     def name():
-        return 'poisson'
+        return 'categorical'
 
     @staticmethod
     def is_collapsed():
@@ -138,40 +128,25 @@ class Poisson(DistributionGpm):
 
     @staticmethod
     def is_numeric():
-        return True
+        return False
 
     ##################
     # HELPER METHODS #
     ##################
 
     @staticmethod
-    def calc_predictive_logp(x, N, sum_x, a, b):
-        an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
-        am, bm = Poisson.posterior_hypers(N+1, sum_x+x, a, b)
-        ZN = Poisson.calc_log_Z(an, bn)
-        ZM = Poisson.calc_log_Z(am, bm)
-        return  ZM - ZN - gammaln(x+1)
+    def validate(x, K):
+        return int(x) == float(x) and 0 <= x < K
 
     @staticmethod
-    def calc_logpdf_marginal(N, sum_x, sum_log_fact_x, a, b):
-        an, bn = Poisson.posterior_hypers(N, sum_x, a, b)
-        Z0 = Poisson.calc_log_Z(a, b)
-        ZN = Poisson.calc_log_Z(an, bn)
-        return ZN - Z0 - sum_log_fact_x
+    def calc_predictive_logp(x, N, counts, alpha):
+        numer = log(alpha + counts[x])
+        denom = log(np.sum(counts) + alpha * len(counts))
+        return numer - denom
 
     @staticmethod
-    def posterior_hypers(N, sum_x, a, b):
-        an = a + sum_x
-        bn = b + N
-        return an, bn
-
-    @staticmethod
-    def calc_log_Z(a, b):
-        Z =  gammaln(a) - a*log(b)
-        return Z
-
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        if float(x) != int(x) or x < 0:
-            raise ValueError('Poisson requires [0,1,..): {}'.format(x))
-        return int(x), y
+    def calc_logpdf_marginal(N, counts, alpha):
+        K = len(counts)
+        A = K * alpha
+        lg = sum(gammaln(counts[k] + alpha) for k in xrange(K))
+        return gammaln(A) - gammaln(A+N) + lg - K * gammaln(alpha)
