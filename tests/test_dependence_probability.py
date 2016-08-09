@@ -35,7 +35,7 @@ def test_dependence_probability__ci_():
         'poisson',
         'bernoulli',
         'lognormal',
-        'beta_uc',
+        'beta',
         'vonmises'])
 
     T, Zv, Zc = tu.gen_data_table(

@@ -23,7 +23,7 @@ from cgpm.utils import sampling as su
 from cgpm.exponentials.distribution import DistributionGpm
 
 
-class BetaUC(DistributionGpm):
+class Beta(DistributionGpm):
     """Beta distribution with exponential prior on strength and beta
     prior on balance. Uncollapsed.
 
@@ -49,7 +49,7 @@ class BetaUC(DistributionGpm):
         self.strength = params.get('strength', None)
         self.balance = params.get('balance', 1)
         if not self.strength or not self.balance:
-            self.strength, self.balance = BetaUC.sample_parameters(
+            self.strength, self.balance = Beta.sample_parameters(
                 self.mu, self.alpha, self.beta, self.rng)
         assert self.mu > 0
         assert self.alpha > 0
@@ -76,7 +76,7 @@ class BetaUC(DistributionGpm):
         x = query[self.outputs[0]]
         if not 0 < x < 1:
             return -float('inf')
-        return BetaUC.calc_predictive_logp(x, self.strength, self.balance)
+        return Beta.calc_predictive_logp(x, self.strength, self.balance)
 
     def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
@@ -90,10 +90,10 @@ class BetaUC(DistributionGpm):
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
-        data_logp = BetaUC.calc_log_likelihood(
+        data_logp = Beta.calc_log_likelihood(
             self.N, self.sum_log_x, self.sum_minus_log_x, self.strength,
             self.balance)
-        prior_logp = BetaUC.calc_log_prior(
+        prior_logp = Beta.calc_log_prior(
             self.strength, self.balance, self.mu, self.alpha, self.beta)
         return data_logp + prior_logp
 
@@ -107,10 +107,10 @@ class BetaUC(DistributionGpm):
         # Transition strength.
         def log_pdf_fun_str(strength):
             return (
-                BetaUC.calc_log_likelihood(
+                Beta.calc_log_likelihood(
                     self.N, self.sum_log_x, self.sum_minus_log_x,
                     strength, self.balance)
-                + BetaUC.calc_log_prior(
+                + Beta.calc_log_prior(
                     strength, self.balance, self.mu, self.alpha, self.beta))
 
         self.strength = su.mh_sample(
@@ -120,10 +120,10 @@ class BetaUC(DistributionGpm):
         # Transition balance.
         def log_pdf_fun_bal(balance):
             return (
-                BetaUC.calc_log_likelihood(
+                Beta.calc_log_likelihood(
                     self.N, self.sum_log_x, self.sum_minus_log_x,
                     self.strength, balance)
-                + BetaUC.calc_log_prior(
+                + Beta.calc_log_prior(
                     self.strength, balance, self.mu, self.alpha, self.beta))
 
         self.balance = su.mh_sample(
@@ -153,7 +153,7 @@ class BetaUC(DistributionGpm):
 
     @staticmethod
     def name():
-        return 'beta_uc'
+        return 'beta'
 
     @staticmethod
     def is_collapsed():

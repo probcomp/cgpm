@@ -299,7 +299,7 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,
-    'beta_uc'           : _gen_beta_data,
+    'beta'           : _gen_beta_data,
     'categorical'       : _gen_categorical_data,
     'exponential'       : _gen_exponential_data,
     'geometric'         : _gen_geometric_data,

@@ -24,7 +24,7 @@ import importlib
 
 cctype_class_lookup = {
     'bernoulli'         : ('cgpm.exponentials.bernoulli', 'Bernoulli'),
-    'beta_uc'           : ('cgpm.exponentials.beta_uc', 'BetaUC'),
+    'beta'           : ('cgpm.exponentials.beta', 'Beta'),
     'categorical'       : ('cgpm.exponentials.categorical', 'Categorical'),
     'crp'               : ('cgpm.exponentials.crp', 'Crp'),
     'exponential'       : ('cgpm.exponentials.exponential', 'Exponential'),
@@ -63,8 +63,8 @@ def all_cctypes():
 
 def parse_distargs(dists):
     """Parses a list of cctypes, where distargs are in parenthesis.
-    >>> Input ['normal','categorical(k=8)','beta_uc'].
-    >>> Output ['normal','categorical','beta_uc'], [None, {'k':8}, None].
+    >>> Input ['normal','categorical(k=8)','beta'].
+    >>> Output ['normal','categorical','beta'], [None, {'k':8}, None].
     """
     cctypes, distargs = [], []
     for cctype in dists:
