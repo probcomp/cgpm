@@ -20,7 +20,7 @@ import pytest
 
 import numpy as np
 
-from cgpm.exponentials.crp import Crp
+from cgpm.primitives.crp import Crp
 from cgpm.utils import general as gu
 
 
