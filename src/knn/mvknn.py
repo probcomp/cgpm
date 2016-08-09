@@ -178,6 +178,7 @@ class MultivariateKnn(CGpm):
         lookup = {
             'numerical': self._create_local_model_numerical,
             'categorical': self._create_local_model_categorical,
+            'nominal': self._create_local_model_categorical,
         }
         models = {
             q: lookup[self.stattypes[self.outputs.index(q)]](q, dataset[:,i])
