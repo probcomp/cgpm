@@ -14,16 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import importlib
-import pytest
+
+from collections import namedtuple
 
 import numpy as np
+import pytest
 
 from cgpm.venturescript.vscgpm import VsCGpm
 
 
-source = """
+source_abstract = """
 [define make_cgpm (lambda ()
   (do
     ; Population variables.
@@ -65,25 +66,71 @@ source = """
 """
 
 
-def test_wrong_outputs():
-    with pytest.raises(ValueError):
-        VsCGpm(outputs=[1], inputs=[2], source=source)
-    with pytest.raises(ValueError):
-        VsCGpm(outputs=[1,2,3], inputs=[2], source=source)
-    with pytest.raises(ValueError):
-        VsCGpm(outputs=[1,2,2], inputs=[2], source=source)
+source_concrete = """
+define make_cgpm = () -> {
+    // Population variables.
+    assume sigma = gamma(1, 1);
 
-def test_wrong_inputs():
-    with pytest.raises(ValueError):
-        VsCGpm(outputs=[1,2], inputs=[1], source=source)
-    with pytest.raises(ValueError):
-        VsCGpm(outputs=[1,2], inputs=[], source=source)
-    with pytest.raises(ValueError):
-        VsCGpm(outputs=[1,2], inputs=[3,4], source=source)
+    // Latent variables.
+    assume x = mem((rowid) ~> {
+        normal(0, sigma)
+    });
 
+    assume simulate_m = mem((rowid, w) ~> {
+        normal(x(rowid), sigma)
+    });
 
-def test_incorporate_unincorporate():
-    cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=source)
+    assume simulate_y = mem((rowid, w) ~> {
+        uniform_continuous(w - 10, w + 10)
+    });
+
+    assume simulators = [simulate_m, simulate_y];
+};
+
+define observe_m = (rowid, w, value, label) -> {
+    $label: observe simulate_m($rowid, $w) = value;
+};
+
+define observe_y = (rowid, w, value, label) -> {
+    $label: observe simulate_y($rowid, $w) = value;
+};
+
+define observers = [observe_m, observe_y];
+
+define inputs = ["w"];
+
+define transition = (N) -> {
+    mh(default, one, N)
+};
+"""
+
+Case = namedtuple('Case', ['source', 'mode'])
+cases = [
+    Case(source_abstract, 'church_prime'),
+    Case(source_concrete, 'venture_script'),
+]
+
+@pytest.mark.parametrize('case', cases)
+def test_wrong_outputs(case):
+    with pytest.raises(ValueError):
+        VsCGpm(outputs=[1], inputs=[2], source=case.source, mode=case.mode)
+    with pytest.raises(ValueError):
+        VsCGpm(outputs=[1,2,3], inputs=[2], source=case.source, mode=case.mode)
+    with pytest.raises(ValueError):
+        VsCGpm(outputs=[1,2,2], inputs=[2], source=case.source, mode=case.mode)
+
+@pytest.mark.parametrize('case', cases)
+def test_wrong_inputs(case):
+    with pytest.raises(ValueError):
+        VsCGpm(outputs=[1,2], inputs=[1], source=case.source, mode=case.mode)
+    with pytest.raises(ValueError):
+        VsCGpm(outputs=[1,2], inputs=[], source=case.source, mode=case.mode)
+    with pytest.raises(ValueError):
+        VsCGpm(outputs=[1,2], inputs=[3,4], source=case.source, mode=case.mode)
+
+@pytest.mark.parametrize('case', cases)
+def test_incorporate_unincorporate(case):
+    cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
 
     OBS = [[1.2, .2], [1, 4]]
     EV = [0, 2]
@@ -144,8 +191,9 @@ def test_incorporate_unincorporate():
     assert not np.allclose(sample[1], OBS[rowid][1])
 
 
-def test_serialize():
-    cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=source)
+@pytest.mark.parametrize('case', cases)
+def test_serialize(case):
+    cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
     cgpm.incorporate(0, {0:1, 1:2}, {3:0})
     cgpm.incorporate(1, {1:15}, {3:10})
     cgpm.transition(N=2)

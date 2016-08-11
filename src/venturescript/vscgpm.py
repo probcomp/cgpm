@@ -45,11 +45,14 @@ class VsCGpm(CGpm):
             raise ValueError('Duplicates: %s, %s' % (inputs, outputs))
         # Retrieve the ripl.
         self.ripl = kwargs.get('ripl', vs.make_lite_ripl(seed=seed))
-        self.ripl.set_mode('church_prime')
+        self.mode = kwargs.get('mode', 'church_prime')
         # Execute the program.
         self.source = kwargs.get('source', None)
         if self.source is not None:
+            self.ripl.set_mode(self.mode)
             self.ripl.execute_program(self.source)
+        # Force the mode to church_prime.
+        self.ripl.set_mode('church_prime')
         # Create the CGpm.
         if not kwargs.get('supress', None):
             self.ripl.evaluate('(%s)' % ('make_cgpm' if sp is None else sp,))
@@ -121,6 +124,7 @@ class VsCGpm(CGpm):
         metadata['source'] = self.source
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
+        metadata['mode'] = self.mode
         metadata['obs'] = {k: dict(v) for k, v in self.obs.iteritems()}
         metadata['binary'] =  base64.b64encode(self.ripl.saves())
         metadata['factory'] = ('cgpm.venturescript.vscgpm', 'VsCGpm')
@@ -135,6 +139,7 @@ class VsCGpm(CGpm):
             inputs=metadata['inputs'],
             ripl=ripl,
             source=metadata['source'],
+            mode=metadata['mode'],
             supress=True,
             rng=rng,)
         # Restore the observations.
