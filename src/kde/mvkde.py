@@ -197,8 +197,9 @@ class MultivariateKde(CGpm):
 
     def logpdf_score(self):
         def compute_logpdf(r, x):
-            assert len(x) == self.D
-            query = {i:v for i, v in enumerate(x) if not np.isnan(v)}
+            assert len(x) == len(self.outputs)
+            query = {self.outputs[i]: v
+                for i, v in enumerate(x) if not np.isnan(v)}
             return self.logpdf(r, query, evidence=None)
         return sum(compute_logpdf(r, x) for r, x in self.data.iteritems())
 
@@ -207,7 +208,8 @@ class MultivariateKde(CGpm):
             dataset = self._dataset(self.outputs)
             stattypes = self._stattypes(self.outputs)
             # Learn the kernel bandwidths.
-            kde = kernel_density.KDEMultivariate(dataset, stattypes, bw='cv_ml')
+            kde = kernel_density.KDEMultivariate(
+                dataset, stattypes, bw='cv_ml')
             self.bw = kde.bw.tolist()
 
     # --------------------------------------------------------------------------
