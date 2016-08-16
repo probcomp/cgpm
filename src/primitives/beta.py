@@ -58,6 +58,10 @@ class Beta(DistributionGpm):
     def incorporate(self, rowid, query, evidence=None):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
+        if np.allclose(0, x):
+            x = 0.001
+        elif np.allclose(1, x):
+            x = 0.999
         if not 0 < x < 1:
             raise ValueError('Invalid Beta: %s' % str(x))
         self.N += 1
