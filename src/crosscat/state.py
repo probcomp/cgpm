@@ -220,7 +220,15 @@ class State(CGpm):
         self._check_partitions()
 
     def unincorporate(self, rowid):
-        raise NotImplementedError('Functionality disabled, Github issue #83.')
+        # if self.n_rows() == 1:
+        #     raise ValueError('Cannot incorporate single row.')
+        # if not 0 <= rowid < self.n_rows():
+        #     raise ValueError('No such row: %d' % (rowid,))
+        for view in self.views.itervalues():
+            view.unincorporate(rowid)
+        # for c in self.outputs:
+        #     del self.X[c][rowid]
+        # self._check_partitions()
 
     # --------------------------------------------------------------------------
     # Schema updates.
@@ -233,7 +241,7 @@ class State(CGpm):
         self.transition_dim_grids(cols=[col])
         self.transition_dim_params(cols=[col])
         self.transition_dim_hypers(cols=[col])
-        self._check_partitions()
+        # self._check_partitions()
 
     # --------------------------------------------------------------------------
     # Compositions.
