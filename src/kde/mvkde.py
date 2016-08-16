@@ -187,7 +187,7 @@ class MultivariateKde(CGpm):
 
     def _simulate_aitchison_aitken_kernel(self, q, Xi):
         idx = self.outputs.index(q)
-        assert self.stattypes[idx] == 'categorical'
+        assert self.stattypes[idx] in ['categorical', 'nominal']
         c = self.levels[q]
         def _compute_probabilities(s):
             return 1 - self.bw[idx] if s == Xi else self.bw[idx] / (c - 1)
@@ -227,6 +227,7 @@ class MultivariateKde(CGpm):
         lookup = {
             'numerical': 'c',
             'categorical': 'u',
+            'nominal': 'u',
         }
         return str.join('', [lookup[self.stattypes[i]] for i in indexes])
 

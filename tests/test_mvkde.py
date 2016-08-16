@@ -34,7 +34,7 @@ O   = 'outputs'
 ST  = 'stattypes'
 SA  = 'statargs'
 N   = 'numerical'
-C   = 'categorical'
+C   = 'nominal'
 
 
 def test_initialize():
