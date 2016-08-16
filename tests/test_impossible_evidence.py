@@ -33,7 +33,7 @@ def state():
         'poisson',
         'bernoulli',
         'lognormal',
-        'beta_uc',
+        'beta',
         'vonmises'])
     T, Zv, Zc = tu.gen_data_table(
     30, [1], [[.25, .25, .5]], cctypes, distargs,

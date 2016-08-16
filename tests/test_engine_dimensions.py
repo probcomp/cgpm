@@ -50,7 +50,7 @@ def engine():
         'poisson',
         'bernoulli',
         'lognormal',
-        'beta_uc',
+        'beta',
         'vonmises'])
     T, Zv, Zc = tu.gen_data_table(
     100, [1], [[.25, .25, .5]], cctypes, distargs,

@@ -16,20 +16,17 @@
 
 from math import log
 
-import numpy as np
+from scipy.special import gammaln
 
-from cgpm.exponentials.distribution import DistributionGpm
-from cgpm.exponentials.normal import Normal
+from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
 
 
-class Lognormal(DistributionGpm):
-    """Log-normal (zero-bounded) distribution with normal prior on mean and
-    gamma prior on precision. Collapsed.
+class Exponential(DistributionGpm):
+    """Exponential distribution with gamma prior on mu. Collapsed.
 
-    rho ~ Gamma(a, b)
-    mu ~ Normal(m, t)
-    x ~ Lognormal(mu, rho)
+    mu ~ Gamma(a, b)
+    x ~ Exponential(mu)
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None,
@@ -38,66 +35,51 @@ class Lognormal(DistributionGpm):
             self, outputs, inputs, hypers, params, distargs, rng)
         # Sufficient statistics.
         self.N = 0
-        self.sum_log_x_sq = 0
-        self.sum_log_x = 0
+        self.sum_x = 0
         # Hyperparameters.
         if hypers is None: hypers = {}
-        self.m = hypers.get('m', 1.)
-        self.r = hypers.get('r', 1.)
-        self.s = hypers.get('s', 1.)
-        self.nu = hypers.get('nu', 1.)
-        assert self.r > 0.
-        assert self.s > 0.
-        assert self.nu > 0.
+        self.a = hypers.get('a', 1)
+        self.b = hypers.get('b', 1)
+        assert self.a > 0
+        assert self.b > 0
 
     def incorporate(self, rowid, query, evidence=None):
         DistributionGpm.incorporate(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if x <= 0:
-            raise ValueError('Invalid Lognormal: %s' % str(x))
+        if x < 0:
+            raise ValueError('Invalid Exponential: %s' % str(x))
         self.N += 1
-        self.sum_log_x += log(x)
-        self.sum_log_x_sq += log(x) * log(x)
+        self.sum_x += x
         self.data[rowid] = x
 
     def unincorporate(self, rowid):
         x = self.data.pop(rowid)
         self.N -= 1
-        self.sum_log_x -= log(x)
-        self.sum_log_x_sq -= log(x) * log(x)
+        self.sum_x -= x
 
     def logpdf(self, rowid, query, evidence=None):
         DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        if x <= 0:
+        if x < 0:
             return -float('inf')
-        return - log(x) + \
-            Normal.calc_predictive_logp(
-                log(x), self.N, self.sum_log_x, self.sum_log_x_sq, self.m,
-                self.r, self.s, self.nu)
+        return Exponential.calc_predictive_logp(
+            x, self.N, self.sum_x, self.a, self.b)
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        # XXX This implementation is not verified but will be covered in
-        # future univariate simulate tests, see Github issue #14.
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
-        # Simulate normal parameters.
-        mn, rn, sn, nun = Normal.posterior_hypers(
-            self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
-            self.s, self.nu)
-        mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
-        xn = self.rng.normal(loc=mu, scale=rho**-.5)
-        x = np.exp(xn)
+        an, bn = Exponential.posterior_hypers(
+            self.N, self.sum_x, self.a, self.b)
+        mu = self.rng.gamma(an, scale=1./bn)
+        x = self.rng.exponential(scale=1./mu)
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
-        return -self.sum_log_x + \
-            Normal.calc_logpdf_marginal(
-                self.N, self.sum_log_x, self.sum_log_x_sq, self.m, self.r,
-                self.s, self.nu)
+        return Exponential.calc_logpdf_marginal(
+            self.N, self.sum_x, self.a, self.b)
 
     ##################
     # NON-GPM METHOD #
@@ -107,23 +89,19 @@ class Lognormal(DistributionGpm):
         return
 
     def set_hypers(self, hypers):
-        assert hypers['r'] > 0.
-        assert hypers['s'] > 0.
-        assert hypers['nu'] > 0.
-        self.m = hypers['m']
-        self.r = hypers['r']
-        self.s = hypers['s']
-        self.nu = hypers['nu']
+        assert hypers['a'] > 0
+        assert hypers['b'] > 0
+        self.b = hypers['b']
+        self.a = hypers['a']
 
     def get_hypers(self):
-        return {'m': self.m, 'r': self.r, 's': self.s, 'nu': self.nu}
+        return {'a': self.a, 'b': self.b}
 
     def get_params(self):
         return {}
 
     def get_suffstats(self):
-        return {'N': self.N, 'sum_log_x': self.sum_log_x,
-            'sum_log_x_sq': self.sum_log_x_sq}
+        return {'N': self.N, 'sum_x': self.sum_x}
 
     def get_distargs(self):
         return {}
@@ -131,15 +109,13 @@ class Lognormal(DistributionGpm):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['m'] = gu.log_linspace(1e-4, max(X), n_grid)
-        grids['r'] = gu.log_linspace(.1, float(len(X)), n_grid)
-        grids['nu'] = gu.log_linspace(.1, float(len(X)), n_grid)
-        grids['s'] = gu.log_linspace(.1, float(len(X)), n_grid)
+        grids['a'] = gu.log_linspace(.5, float(len(X)), n_grid)
+        grids['b'] = gu.log_linspace(.5, float(len(X)), n_grid)
         return grids
 
     @staticmethod
     def name():
-        return 'lognormal'
+        return 'exponential'
 
     @staticmethod
     def is_collapsed():
@@ -157,9 +133,32 @@ class Lognormal(DistributionGpm):
     def is_numeric():
         return True
 
-    @staticmethod
-    def preprocess(x, y, distargs=None):
-        if x <= 0:
-            raise ValueError('Lognormal requires [0,inf): {}'.format(x))
-        return x, y
+    ##################
+    # HELPER METHODS #
+    ##################
 
+    @staticmethod
+    def calc_predictive_logp(x, N, sum_x, a, b):
+        an,bn = Exponential.posterior_hypers(N, sum_x, a, b)
+        am,bm = Exponential.posterior_hypers(N+1, sum_x+x, a, b)
+        ZN = Exponential.calc_log_Z(an, bn)
+        ZM = Exponential.calc_log_Z(am, bm)
+        return  ZM - ZN
+
+    @staticmethod
+    def calc_logpdf_marginal(N, sum_x, a, b):
+        an, bn = Exponential.posterior_hypers(N, sum_x, a, b)
+        Z0 = Exponential.calc_log_Z(a, b)
+        ZN = Exponential.calc_log_Z(an, bn)
+        return ZN - Z0
+
+    @staticmethod
+    def posterior_hypers(N, sum_x, a, b):
+        an = a + N
+        bn = b + sum_x
+        return an, bn
+
+    @staticmethod
+    def calc_log_Z(a, b):
+        Z =  gammaln(a) - a*log(b)
+        return Z

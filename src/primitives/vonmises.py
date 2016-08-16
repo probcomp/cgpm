@@ -27,7 +27,7 @@ import numpy as np
 from scipy.special import i0 as bessel_0
 from scipy.special import i1 as bessel_1
 
-from cgpm.exponentials.distribution import DistributionGpm
+from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
 
 

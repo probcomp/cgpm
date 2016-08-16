@@ -30,7 +30,7 @@ cctypes, distargs = cu.parse_distargs(
     'categorical(k=4)',
     'lognormal',
     'exponential',
-    'beta_uc',
+    'beta',
     'geometric',
     'vonmises'])
 

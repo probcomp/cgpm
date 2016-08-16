@@ -23,19 +23,19 @@ import importlib
 
 
 cctype_class_lookup = {
-    'bernoulli'         : ('cgpm.exponentials.bernoulli', 'Bernoulli'),
-    'beta_uc'           : ('cgpm.exponentials.beta_uc', 'BetaUC'),
-    'categorical'       : ('cgpm.exponentials.categorical', 'Categorical'),
-    'crp'               : ('cgpm.exponentials.crp', 'Crp'),
-    'exponential'       : ('cgpm.exponentials.exponential', 'Exponential'),
-    'geometric'         : ('cgpm.exponentials.geometric', 'Geometric'),
+    'bernoulli'         : ('cgpm.primitives.bernoulli', 'Bernoulli'),
+    'beta'           : ('cgpm.primitives.beta', 'Beta'),
+    'categorical'       : ('cgpm.primitives.categorical', 'Categorical'),
+    'crp'               : ('cgpm.primitives.crp', 'Crp'),
+    'exponential'       : ('cgpm.primitives.exponential', 'Exponential'),
+    'geometric'         : ('cgpm.primitives.geometric', 'Geometric'),
     'linear_regression' : ('cgpm.regressions.linreg', 'LinearRegression'),
-    'lognormal'         : ('cgpm.exponentials.lognormal', 'Lognormal'),
-    'normal'            : ('cgpm.exponentials.normal', 'Normal'),
-    'normal_trunc'      : ('cgpm.exponentials.normal_trunc', 'NormalTrunc'),
-    'poisson'           : ('cgpm.exponentials.poisson', 'Poisson'),
+    'lognormal'         : ('cgpm.primitives.lognormal', 'Lognormal'),
+    'normal'            : ('cgpm.primitives.normal', 'Normal'),
+    'normal_trunc'      : ('cgpm.primitives.normal_trunc', 'NormalTrunc'),
+    'poisson'           : ('cgpm.primitives.poisson', 'Poisson'),
     'random_forest'     : ('cgpm.regressions.forest', 'RandomForest'),
-    'vonmises'          : ('cgpm.exponentials.vonmises', 'Vonmises'),
+    'vonmises'          : ('cgpm.primitives.vonmises', 'Vonmises'),
 }
 
 def timestamp():
@@ -63,8 +63,8 @@ def all_cctypes():
 
 def parse_distargs(dists):
     """Parses a list of cctypes, where distargs are in parenthesis.
-    >>> Input ['normal','categorical(k=8)','beta_uc'].
-    >>> Output ['normal','categorical','beta_uc'], [None, {'k':8}, None].
+    >>> Input ['normal','categorical(k=8)','beta'].
+    >>> Output ['normal','categorical','beta'], [None, {'k':8}, None].
     """
     cctypes, distargs = [], []
     for cctype in dists:
