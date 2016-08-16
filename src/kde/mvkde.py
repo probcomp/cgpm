@@ -88,7 +88,7 @@ class MultivariateKde(CGpm):
         self.data = OrderedDict()
         self.N = 0
         # Parameters of the kernels.
-        self.bw = params.get('bw', [1.]*len(self.outputs))
+        self.bw = params.get('bw', [self._default_bw(o) for o in self.outputs])
 
     def incorporate(self, rowid, query, evidence=None):
         # No duplicate observation.
@@ -217,6 +217,10 @@ class MultivariateKde(CGpm):
         indexes = [self.outputs.index(q) for q in query]
         X = np.asarray(self.data.values())[:,indexes]
         return X[~np.any(np.isnan(X), axis=1)]
+
+    def _default_bw(self, q):
+        i = self.outputs.index(q)
+        return 1 if self.stattypes[i] == 'numerical' else .1
 
     def _bw(self, query):
         indexes = [self.outputs.index(q) for q in query]
