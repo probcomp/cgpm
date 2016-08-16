@@ -37,15 +37,15 @@ class MultivariateKnn(CGpm):
 
     def __init__(self, outputs, inputs, K=None, M=None, distargs=None,
             params=None, rng=None):
+        # Input validation.
+        self._validate_init(outputs, inputs, K, M, distargs, params, rng)
         # Default arguments.
         if params is None:
             params = {}
         if rng is None:
             rng = gu.gen_rng(1)
         if M is None:
-            M = 10
-        # Input validation.
-        self._validate_init(outputs, inputs, K, M, distargs, params, rng)
+            M = K
         # Build the object.
         self.rng = rng
         # Varible indexes.
@@ -177,6 +177,7 @@ class MultivariateKnn(CGpm):
         lookup = {
             'numerical': self._create_local_model_numerical,
             'categorical': self._create_local_model_categorical,
+            'nominal': self._create_local_model_categorical,
         }
         models = {
             q: lookup[self.stattypes[self.outputs.index(q)]](q, dataset[:,i])

@@ -37,7 +37,7 @@ O   = 'outputs'
 ST  = 'stattypes'
 SA  = 'statargs'
 N   = 'numerical'
-C   = 'categorical'
+C   = 'nominal'
 
 
 def test_initialize():
@@ -391,6 +391,7 @@ def knn_xz():
     K = MultivariateKnn(
         [0,1], None,
         K=20,
+        M=5,
         distargs={'outputs': {ST: [N, C], SA:[{}, {'k': len(indicators)}]}},
         rng=gu.gen_rng(0))
     for rowid, x in enumerate(data):
