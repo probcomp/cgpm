@@ -124,7 +124,6 @@ class InlineVsCGpm(CGpm):
         tokens = expression.split('~>')
         # Eliminate the parens.
         arguments = tokens[0].replace('(','').replace(')','')
-        print arguments
         arguments = [a for a in arguments.split(',') if a != '']
         assert len(arguments) == len(inputs)
 

@@ -34,7 +34,7 @@ O   = 'outputs'
 ST  = 'stattypes'
 SA  = 'statargs'
 N   = 'numerical'
-C   = 'categorical'
+C   = 'nominal'
 
 
 def test_initialize():
@@ -294,6 +294,8 @@ def test_univariate_categorical():
     f_exp = np.bincount(samples_test)
     _, pval = chisquare(f_obs, f_exp)
     assert 0.05 < pval
+    # Get some coverage on logpdf_score.
+    assert kde.logpdf_score() < 0
 
 
 def test_noisy_permutation_categorical():

@@ -36,7 +36,7 @@ cases = {
         outputs=[0],
         inputs=None,
         distargs=None,
-        good=[.3, .1, .9],
+        good=[.3, .1, .9, 0.001, .9999],
         bad=[-1, 1.02, 21]),
 
     'categorical' : Case(

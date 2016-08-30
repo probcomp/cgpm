@@ -198,7 +198,8 @@ class MultivariateKde(CGpm):
     def logpdf_score(self):
         def compute_logpdf(r, x):
             assert len(x) == len(self.outputs)
-            query = {i:v for i, v in enumerate(x) if not np.isnan(v)}
+            query = {self.outputs[i]: v
+                for i, v in enumerate(x) if not np.isnan(v)}
             return self.logpdf(r, query, evidence=None)
         return sum(compute_logpdf(r, x) for r, x in self.data.iteritems())
 
