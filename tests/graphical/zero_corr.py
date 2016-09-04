@@ -54,6 +54,7 @@ The estimate runtime for the whole script with the current configuration is
 """
 
 import argparse
+import itertools
 import os
 import subprocess
 
@@ -137,17 +138,17 @@ def filename_dataset(dist, noise, timestamp):
     return '%s/dataset_%s_%1.2f.png'\
         % (filename_prefix(dist, timestamp), dist, noise)
 
-def filename_samples(dist, noise, timestamp):
-    return '%s/samples_%s_%1.2f.txt'\
-        % (filename_prefix(dist, timestamp), dist, noise)
+def filename_samples(dist, noise, modelno, timestamp):
+    return '%s/samples_%s_%1.2f_%d.txt'\
+        % (filename_prefix(dist, timestamp), dist, noise, modelno)
 
 def filename_mi(dist, noise, timestamp):
     return '%s/mi_%s_%1.2f.txt'\
         % (filename_prefix(dist, timestamp), dist, noise)
 
-def filename_samples_figure(dist, noise, timestamp):
-    return '%s/samples_%s_%1.2f.png'\
-        % (filename_prefix(dist, timestamp), dist, noise)
+def filename_samples_figure(dist, noise, modelno, timestamp):
+    return '%s/samples_%s_%1.2f_%d.png'\
+        % (filename_prefix(dist, timestamp), dist, noise, modelno)
 
 def filename_mi_figure(dist, timestamp):
     return '%s/mi_%s.png' % (filename_prefix(dist, timestamp), dist)
@@ -199,33 +200,44 @@ def retrieve_nice_state(states, transitions=10):
         state.transition_dim_hypers()
     return state
 
-def plot_samples(samples, dist, noise, num_samples, timestamp):
+def plot_samples(samples, dist, noise, modelno, num_samples, timestamp):
     """Plot the observed samples and posterior samples side-by-side."""
     print 'Plotting samples %s %f' % (dist, noise)
     fig, ax = plt.subplots(nrows=1, ncols=2)
+    fig.suptitle(
+        '%s (noise %1.2f, sample %d)' % (dist, noise, modelno),
+        size=16)
     # Plot the observed samples.
     T = simulate_dataset(dist, noise, num_samples)
-    ax[0].set_title('%s Distribution (Noise %1.2f)' % (dist, noise))
-    ax[0].scatter(T[:,0], T[:,1], color='k', alpha=.5, label='True Distribution')
+    # ax[0].set_title('Observed Data')
+    ax[0].text(
+        .5, .95, 'Observed Data',
+        horizontalalignment='center',
+        transform=ax[0].transAxes)
     ax[0].set_xlabel('x1')
     ax[0].set_ylabel('x2')
+    ax[0].scatter(T[:,0], T[:,1], color='k', alpha=.5)
+    ax[0].set_xlim(simulator_limits[dist][0])
+    ax[0].set_ylim(simulator_limits[dist][1])
     ax[0].grid()
     # Plot posterior distribution.
-    ax[1].set_title('Emulator Distribution')
+    # ax[1].set_title('CrossCat Posterior Samples')
+    ax[1].text(
+        .5, .95, 'CrossCat Posterior Samples',
+        horizontalalignment='center',
+        transform=ax[1].transAxes)
     ax[1].set_xlabel('x1')
-    ax[1].grid()
     clusters = set(samples[:,2])
     colors = iter(cm.gist_rainbow(np.linspace(0, 1, len(clusters)+2)))
     for c in clusters:
         sc = samples[samples[:,2] == c][:,[0,1]]
         ax[1].scatter(sc[:,0], sc[:,1], alpha=.5, color=next(colors))
-    ax[0].set_xlim(simulator_limits[dist][0])
-    ax[0].set_ylim(simulator_limits[dist][1])
     ax[1].set_xlim(ax[0].get_xlim())
     ax[1].set_ylim(ax[0].get_ylim())
-    fig.set_tight_layout(True)
+    ax[1].grid()
     # Save.
-    fig.savefig(filename_samples_figure(dist, noise, timestamp))
+    # fig.set_tight_layout(True)
+    fig.savefig(filename_samples_figure(dist, noise, modelno, timestamp))
     plt.close('all')
 
 def plot_mi(mis, dist, noises, timestamp):
@@ -256,12 +268,21 @@ def generate_engine(dist, noise, num_samples, num_states, num_seconds, timestamp
 def generate_samples(dist, noise, num_samples, timestamp):
     print 'Generating samples %s %f' % (dist, noise)
     engine = load_engine(dist, noise, timestamp)
-    state = retrieve_nice_state(load_engine_states(engine))
-    # XXX Refactor to use the CGPM interface.
-    view = state.view_for(0)
-    samples = view.simulate(-1, [0, 1, view.outputs[0]], N=num_samples)
-    samples = [[s[0],s[1],s[view.outputs[0]]] for s in samples]
-    np.savetxt(filename_samples(dist, noise, timestamp), samples, delimiter=',')
+    for modelno in xrange(NUM_STATES):
+        state = engine.get_state(modelno)
+        if len(state.views) == 1:
+            for _ in xrange(10):
+                state.transition_dim_hypers()
+            view = state.view_for(0)
+            sims = view.simulate(-1, [0, 1, view.outputs[0]], N=num_samples)
+            samples = [[s[0],s[1],s[view.outputs[0]]] for s in sims]
+        else:
+            sims = state.simulate(-1, [0, 1], N=num_samples)
+            samples = [[s[0],s[1],0] for s in sims]
+        np.savetxt(
+            filename_samples(dist, noise, modelno, timestamp),
+            samples,
+            delimiter=',')
 
 def generate_mi(dist, noise, timestamp):
     print 'Generating mi %s %f' % (dist, noise)
@@ -269,11 +290,12 @@ def generate_mi(dist, noise, timestamp):
     mi = engine.mutual_information(0, 1)
     np.savetxt(filename_mi(dist, noise, timestamp), [mi], delimiter=',')
 
-def plot_samples_all(dist, noises, num_samples, timestamp):
-    for noise in noises:
+def plot_samples_all(dist, noises, modelnos, num_samples, timestamp):
+    for noise, modelno in itertools.product(noises, modelnos):
         samples  = np.loadtxt(
-            filename_samples(dist, noise, timestamp), delimiter=',')
-        plot_samples(samples, dist, noise, num_samples, timestamp)
+            filename_samples(dist, noise, modelno, timestamp),
+            delimiter=',')
+        plot_samples(samples, dist, noise, modelno, num_samples, timestamp)
 
 def plot_mi_all(dist, noises, timestamp):
     filenames = [filename_mi(dist, noise, timestamp) for noise in noises]
@@ -334,5 +356,5 @@ if __name__ == '__main__':
         create_directories(tstamp)
         for d in simulators:
             run_dist(d, tstamp)
-            plot_samples_all(d, NOISES, NUM_SAMPLES, tstamp)
+            plot_samples_all(d, NOISES, range(NUM_STATES), NUM_SAMPLES, tstamp)
             plot_mi_all(d, NOISES, tstamp)
