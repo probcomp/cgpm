@@ -11,6 +11,14 @@ distribution and the _assessor_ of its conditional density. By encapsulating
 models as probabilistic programs that implement CGPMs, complex models can be
 built as compositions of sub-CGPMs.
 
+## Reference
+
+CGPMs, and their integration as a runtime system for
+[BayesDB](probcomp.csail.mit.edu/bayesdb/), are described in:
+
+Probabilistic Data Analysis with Probabilistic Programming. Saad, F. and Mansinghka, V.
+[arXiv, number 1608.05347](https://arxiv.org/abs/1608.05347).
+
 ## Installing
 ```
 pip install .
