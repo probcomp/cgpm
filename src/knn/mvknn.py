@@ -166,7 +166,7 @@ class MultivariateKnn(CGpm):
                 neighbors[0][valid], replace=False, size=self.K)
         else:
             neighbors = neighbors[0][:self.K]
-        # For each neighbor, find its nearest five on the full lookup set.
+        # For each neighbor, find its nearest M on the full lookup set.
         _, ex = KDTree(D_code).query(D_code[neighbors], k=min(self.M, self.K))
         # Return the dataset and the list of neighborhoods.
         return D[:,:len(query)], ex
