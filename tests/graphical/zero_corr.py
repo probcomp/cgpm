@@ -84,7 +84,7 @@ from cgpm.utils.general import gen_rng
 NUM_SAMPLES = 200
 NUM_STATES = 16
 NUM_SECONDS = 600
-NOISES = [.95,. .85, .75, .65, .55, .45, .35, .25, .15, .10, .05, .01]
+NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, .10, .05, .01]
 
 NUM_PROCESSORS = 64
 NUM_PARALLEL = NUM_PROCESSORS/NUM_STATES
@@ -259,7 +259,7 @@ def generate_samples(dist, noise, num_samples, timestamp):
     state = retrieve_nice_state(load_engine_states(engine))
     # XXX Refactor to use the CGPM interface.
     view = state.view_for(0)
-    samples = view.simulate(-1, [0, 1, view.outputs[0]], N=100)
+    samples = view.simulate(-1, [0, 1, view.outputs[0]], N=num_samples)
     samples = [[s[0],s[1],s[view.outputs[0]]] for s in samples]
     np.savetxt(filename_samples(dist, noise, timestamp), samples, delimiter=',')
 
@@ -285,6 +285,15 @@ def plot_mi_all(dist, noises, timestamp):
 # Launchers for dist.
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-d', '--distribution', type=str, help='Name of distribution to run.')
+    parser.add_argument(
+        '-n', '--noise', type=float, help='Noise level of distribution.')
+    parser.add_argument(
+        '-t', '--timestamp', type=str, help='Timestamp of the experiment.')
+    args = parser.parse_args()
 
     # Creates the structure for this run.
     def create_directories(timestamp):
@@ -314,15 +323,6 @@ if __name__ == '__main__':
             for p in processes:
                 p.wait()
         return None
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-d', '--distribution', type=str, help='Name of distribution to run.')
-    parser.add_argument(
-        '-n', '--noise', type=float, help='Noise level of distribution.')
-    parser.add_argument(
-        '-t', '--timestamp', type=str, help='Timestamp of the experiment.')
-    args = parser.parse_args()
 
     # If subprocess, just launch run_dist_noise, otherwise run everything.
     if args.distribution is not None:
