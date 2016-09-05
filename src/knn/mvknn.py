@@ -30,9 +30,33 @@ LocalGpm = namedtuple('LocalGpm', ['simulate', 'logpdf'])
 
 
 class MultivariateKnn(CGpm):
-    """Multivariate K-Nearest-Neighbors builds ML models on a per-query basis.
+    """Multivariate K-Nearest-Neighbors builds local statistical models on a
+    per-query basis.
 
-    TODO: Migrate description from Github Issue #128.
+    Algorithm for simulate(rowid, query, evidence) and
+    logpdf(rowid, query, evidence):
+
+        - Find K nearest neighbors to `rowid` based only on the `evidence`.
+
+        - For each nearest neighbor k = 1,...,K
+
+            - Find M nearest neighbors of k (called the locality of k) based
+            on both the `evidence` and `query` dimensions.
+
+            - For each query varaible q \in query:
+
+                - Learn a primitive univariate CGPM,  using the dimension q of
+                the M neighbors in the locality of k.
+
+            - Return a product CGPM G_k representing locality k.
+
+        Overall CGPM G = (1/K)*G_1 + ... + (1/K)*G_K is a simple-weighted
+        mixture of the product CGPM learned in each locality.
+
+    This "locality-based" algorithm is designed to capture the dependence
+    between the query variables, rather than assume that all the query variables
+    are independent conditioned on the evidence. Github ticket #133 will support
+    selecting either the independent or locality-based versions of KNN.
     """
 
     def __init__(self, outputs, inputs, K=None, M=None, distargs=None,
