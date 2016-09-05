@@ -433,6 +433,8 @@ class State(CGpm):
             kernels = _kernel_lookup.keys()
 
         kernel_funcs = [_kernel_lookup[k] for k in kernels]
+        assert kernel_funcs
+
         self._transition_generic(kernel_funcs, N=N, S=S, progress=progress)
 
     def transition_crp_alpha(self):
@@ -512,7 +514,7 @@ class State(CGpm):
         iters = 0
         start = time.time()
 
-        while True:
+        while True and kernels:
             for kernel in kernels:
                 p = _proportion_done(N, S, iters, start)
                 if progress:
