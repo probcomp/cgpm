@@ -137,9 +137,10 @@ class MultivariateKde(CGpm):
                 bw=self._bw(query))
             pdf = model.pdf(query.values())
         else:
+            full_members = self._dataset(query.keys() + evidence.keys())
             model = kernel_density.KDEMultivariateConditional(
-                self._dataset(query),
-                self._dataset(evidence),
+                full_members[:,:len(query)],
+                full_members[:,len(query):],
                 self._stattypes(query),
                 self._stattypes(evidence),
                 bw=np.concatenate((self._bw(query), self._bw(evidence))))
@@ -156,20 +157,22 @@ class MultivariateKde(CGpm):
                 % (query, self.outputs))
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
-        members = self._dataset(query)
         if evidence:
+            full_members = self._dataset(query + evidence.keys())
             weights = _kernel_base.gpke(
                 self._bw(evidence),
-                self._dataset(evidence),
+                full_members[:,len(query):],
                 evidence.values(),
                 self._stattypes(evidence),
                 tosum=False)
+            query_members = full_members[:,:len(query)]
         else:
-            weights = [1] * len(members)
-        assert len(weights) == len(members)
+            query_members = self._dataset(query)
+            weights = [1] * len(query_members)
+        assert len(weights) == len(query_members)
         index = gu.pflip(weights, size=N, rng=self.rng)
-        return self._simulate_member(members[index], query) if N is None\
-            else [self._simulate_member(members[i], query) for i in index]
+        return self._simulate_member(query_members[index], query) if N is None\
+            else [self._simulate_member(query_members[i], query) for i in index]
 
     def _simulate_member(self, row, query):
         assert len(row) == len(query)
