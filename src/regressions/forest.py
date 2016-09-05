@@ -111,23 +111,23 @@ class RandomForest(CGpm):
     ##################
 
     def transition(self, N=None):
+        if N is None: N = 1
         self.transition_params(N=N)
 
     def transition_params(self, N=None):
-        if N is None:
-            N = 1
-        # Transition noise parameter.
-        alphas = np.linspace(0.01, 0.99, 30)
-        alpha_logps = [
-            RandomForest.calc_log_likelihood(
-                self.data.x.values(), self.data.Y.values(), self.regressor,
-                self.counts, a)
-            for a in alphas]
+        if N is None: N = 1
         for i in xrange(N):
+            # Transition noise parameter.
+            alphas = np.linspace(0.01, 0.99, 30)
+            alpha_logps = [
+                RandomForest.calc_log_likelihood(
+                    self.data.x.values(), self.data.Y.values(), self.regressor,
+                    self.counts, a)
+                for a in alphas]
             self.alpha = gu.log_pflip(alpha_logps, array=alphas, rng=self.rng)
-        # Transition forest.
-        if len(self.data.Y) > 0:
-            self.regressor.fit(self.data.Y.values(), self.data.x.values())
+            # Transition forest.
+            if len(self.data.Y) > 0:
+                self.regressor.fit(self.data.Y.values(), self.data.x.values())
 
     def set_hypers(self, hypers):
         return
