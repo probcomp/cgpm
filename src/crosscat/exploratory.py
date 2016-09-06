@@ -92,6 +92,9 @@ bdb.execute('ANALYZE data_m FOR 10 ITERATION WAIT;')
 # Retrieve the metamodel.
 metamodel = bdb.metamodels['crosscat']
 
+
+# XXX M_c
+
 # Function to create M_c.
 def create_metadata(T, outputs, cctypes, distargs):
     assert len(T) == len(outputs) == len(cctypes) == len(distargs)
@@ -148,3 +151,27 @@ assert M_c['name_to_idx'] == M_c_prime['name_to_idx']
 assert M_c['idx_to_name'] == M_c_prime['idx_to_name']
 assert M_c['column_metadata'] == M_c_prime['column_metadata']
 
+# XXX Data
+
+def _crosscat_data(T, M_c):
+    def crosscat_value_to_code(val, col):
+        if np.isnan(val):
+            return val
+        # For hysterical raisins, code_to_value and value_to_code are
+        # backwards, so to convert from a raw value to a crosscat value we
+        # need to do code->value.
+        lookup = M_c['column_metadata'][col]['code_to_value']
+        if lookup:
+            assert unicode(int(val)) in lookup
+            return float(lookup[unicode(int(val))])
+        else:
+            return val
+    ordering = sorted(T.keys())
+    rows = range(len(T[ordering[0]]))
+    return [[crosscat_value_to_code(T[col][row], i) for (i, col) in
+        enumerate(ordering)] for row in rows]
+
+bdb_data = metamodel._crosscat_data(bdb, 1, M_c)
+cgpm_data = _crosscat_data(T_prime, M_c_prime)
+
+assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
