@@ -23,11 +23,12 @@ import bayeslite
 from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import nullify
 
+from crosscat.LocalEngine import LocalEngine
+
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
-
-from crosscat.LocalEngine import LocalEngine
+from cgpm.crosscat.state import State
 
 rng = gu.gen_rng(2)
 
@@ -54,7 +55,7 @@ for i, m in enumerate(missing):
 
 T = np.transpose(D)
 
-# Create a bdb instance with crosscat.
+# -------- Create a bdb instance with crosscat -------- #
 bdb = bayeslite.bayesdb_open()
 
 # Convert data into csv format and load it.
@@ -88,18 +89,37 @@ bdb.execute('''
 bdb.execute('INITIALIZE 1 MODEL FOR data_m;')
 bdb.execute('ANALYZE data_m FOR 10 ITERATION WAIT;')
 
-
-# Retrieve the metamodel.
+# Retrieve the CrossCat metamodel instance.
 metamodel = bdb.metamodels['crosscat']
 
+# -------- Create a gpmcc instance -------- #
 
-# XXX M_c
+# Remember that c1 is ignored.
+outputs_prime = [0,2,3,4,5,6,7]
+cctypes_prime = [c if c == 'categorical' else 'normal'
+    for i, c in enumerate(cctypes) if i != 1]
+distargs_prime = [d for i, d in enumerate(distargs) if i != 1]
+T_prime = {c: T[:,c] for c in outputs_prime}
 
-# Function to create M_c.
-def create_metadata(T, outputs, cctypes, distargs):
+state = State(
+    X=np.transpose([D[o] for o in outputs_prime]),
+    outputs=outputs_prime,
+    cctypes=cctypes_prime,
+    distargs=distargs_prime)
+
+# -------- Create a gpmcc instance -------- #
+
+# Function to create M_c from a state.
+def create_metadata(state):
+    T = state.X
+    outputs = state.outputs
+    cctypes = state.cctypes()
+    distargs = state.distargs()
+
     assert len(T) == len(outputs) == len(cctypes) == len(distargs)
     assert all(c in ['normal', 'categorical'] for c in cctypes)
     ncols = len(outputs)
+
     def create_metadata_numerical():
         return {
             unicode('modeltype'): unicode('normal_inverse_gamma'),
@@ -119,12 +139,14 @@ def create_metadata(T, outputs, cctypes, distargs):
             unicode('code_to_value'):
                 dict(zip(codes, ncodes)),
         }
+
     column_names = [unicode('c%d') % (i,) for i in outputs]
     column_metadata = [
         create_metadata_numerical() if cctype == 'normal' else\
             create_metadata_categorical(output, distarg['k'])
         for output, cctype, distarg in zip(outputs, cctypes, distargs)
     ]
+
     return {
         unicode('name_to_idx'):
             dict(zip(column_names, range(ncols))),
@@ -134,17 +156,8 @@ def create_metadata(T, outputs, cctypes, distargs):
             column_metadata,
     }
 
-# Remember that c1 is ignored.
-outputs_prime = [0,2,3,4,5,6,7]
-cctypes_prime = [c if c == 'categorical' else 'normal'
-    for i, c in enumerate(cctypes) if i != 1]
-distargs_prime = [d for i, d in enumerate(distargs) if i != 1]
-T_prime = {c: T[:,c] for c in outputs_prime}
-
-M_c_prime = create_metadata(
-    T_prime, outputs_prime, cctypes_prime, distargs_prime)
-
 # Assert that M_c_prime agrees with CrossCat M_c.
+M_c_prime = create_metadata(state)
 M_c = metamodel._crosscat_metadata(bdb, 1)
 
 assert M_c['name_to_idx'] == M_c_prime['name_to_idx']
@@ -153,7 +166,8 @@ assert M_c['column_metadata'] == M_c_prime['column_metadata']
 
 # XXX Data
 
-def _crosscat_data(T, M_c):
+def _crosscat_data(state, M_c):
+    T = state.X
     def crosscat_value_to_code(val, col):
         if np.isnan(val):
             return val
@@ -172,6 +186,6 @@ def _crosscat_data(T, M_c):
         enumerate(ordering)] for row in rows]
 
 bdb_data = metamodel._crosscat_data(bdb, 1, M_c)
-cgpm_data = _crosscat_data(T_prime, M_c_prime)
+cgpm_data = _crosscat_data(state, M_c_prime)
 
 assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
