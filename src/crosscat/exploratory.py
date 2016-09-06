@@ -105,7 +105,8 @@ state = State(
     X=np.transpose([D[o] for o in outputs_prime]),
     outputs=outputs_prime,
     cctypes=cctypes_prime,
-    distargs=distargs_prime)
+    distargs=distargs_prime,
+    Zv={o:0 for o in outputs_prime})
 
 # -------- Create a gpmcc instance -------- #
 
@@ -143,7 +144,7 @@ def create_metadata(state):
     column_names = [unicode('c%d') % (i,) for i in outputs]
     # Convert all numerical datatypes to normal for lovecat.
     column_metadata = [
-        create_metadata_numerical() if cctype == 'normal' else\
+        create_metadata_numerical() if cctype != 'categorical' else\
             create_metadata_categorical(output, distarg['k'])
         for output, cctype, distarg in zip(outputs, cctypes, distargs)
     ]
@@ -193,7 +194,7 @@ assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
 
 # XXX Thetas
 
-def _crosscat_X_D(state):
+def _crosscat_X_D(state, M_c):
     view_assignments = state.Zv().values()
     views_unique = sorted(set(view_assignments))
     views_to_code = {v:i for (i,v) in enumerate(views_unique)}
@@ -210,7 +211,37 @@ def _crosscat_X_D(state):
 
     return cluster_assignments_remapped
 
-def _crosscat_X_L(state):
-    pass
+def _crosscat_X_L(state, M_c):
+
+    def column_hypers_numerical(index, hypers):
+        assert state.cctypes()[index] != 'categorical'
+        return {
+            unicode('fixed'): 0.0,
+            unicode('mu'): hypers['m'],
+            unicode('nu'): hypers['nu'],
+            unicode('r'): hypers['r'],
+            unicode('s'): hypers['s'],
+        }
+
+    def column_hypers_categorical(index, hypers):
+        assert state.cctypes()[index] == 'categorical'
+        K = len(M_c['column_metadata'][index]['code_to_value'])
+        assert K > 0
+        return {
+            unicode('fixed'): 0.0,
+            unicode('dirichlet_alpha'): hypers['alpha'],
+            unicode('K'): K
+        }
+
+    # Convert all numerical datatypes to normal for lovecat.
+    column_hypers = [
+        column_hypers_numerical(i, state.dims()[i].hypers)
+            if cctype != 'categorical'
+            else column_hypers_categorical(i, state.dims()[i].hypers)
+        for i, cctype in enumerate(state.cctypes())
+    ]
+
+    return column_hypers
+
 
 theta = metamodel._crosscat_theta(bdb, 1, 0)
