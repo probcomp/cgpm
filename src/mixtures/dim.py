@@ -201,7 +201,7 @@ class Dim(CGpm):
         return self.model.is_numeric()
 
     def name(self):
-        return self.aux_model.get_name()
+        return self.aux_model.name()
 
     # --------------------------------------------------------------------------
     # Plotter

@@ -564,7 +564,7 @@ class State(CGpm):
 
     def cctypes(self):
         """DistributionGpm name of each Dim."""
-        return [d.get_name() for d in self.dims()]
+        return [d.name() for d in self.dims()]
 
     def distargs(self):
         """DistributionGpm distargs of each Dim."""
