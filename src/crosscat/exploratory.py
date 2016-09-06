@@ -87,7 +87,7 @@ bdb.execute('''
 ''')
 
 bdb.execute('INITIALIZE 1 MODEL FOR data_m;')
-bdb.execute('ANALYZE data_m FOR 10 ITERATION WAIT;')
+bdb.execute('ANALYZE data_m FOR 100 ITERATION WAIT;')
 
 # Retrieve the CrossCat metamodel instance.
 metamodel = bdb.metamodels['crosscat']
@@ -141,6 +141,7 @@ def create_metadata(state):
         }
 
     column_names = [unicode('c%d') % (i,) for i in outputs]
+    # Convert all numerical datatypes to normal for lovecat.
     column_metadata = [
         create_metadata_numerical() if cctype == 'normal' else\
             create_metadata_categorical(output, distarg['k'])
@@ -189,3 +190,27 @@ bdb_data = metamodel._crosscat_data(bdb, 1, M_c)
 cgpm_data = _crosscat_data(state, M_c_prime)
 
 assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
+
+# XXX Thetas
+
+def _crosscat_X_D(state):
+    view_assignments = state.Zv().values()
+    views_unique = sorted(set(view_assignments))
+    views_to_code = {v:i for (i,v) in enumerate(views_unique)}
+    views_remapped = [views_to_code[v] for v in view_assignments]
+
+    cluster_assignments = [state.views[v].Zr().values() for v in views_unique]
+    cluster_assignments_unique = [sorted(set(assgn))
+        for assgn in cluster_assignments]
+    cluster_assignments_to_code = [{k:i for (i,k) in enumerate(assgn)}
+        for assgn in cluster_assignments_unique]
+    cluster_assignments_remapped = [
+        [coder[v] for v in assgn] for (coder, assgn)
+        in zip(cluster_assignments_to_code, cluster_assignments)]
+
+    return cluster_assignments_remapped
+
+def _crosscat_X_L(state):
+    pass
+
+theta = metamodel._crosscat_theta(bdb, 1, 0)
