@@ -106,7 +106,8 @@ state = State(
     outputs=outputs_prime,
     cctypes=cctypes_prime,
     distargs=distargs_prime,
-    Zv={o:0 for o in outputs_prime})
+    Zv={o:0 for o in outputs_prime},
+    rng=rng)
 
 # -------- Create a gpmcc instance -------- #
 
@@ -195,11 +196,6 @@ assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
 # XXX Thetas
 
 def _crosscat_X_D(state, M_c):
-    view_assignments = state.Zv().values()
-    views_unique = sorted(set(view_assignments))
-    views_to_code = {v:i for (i,v) in enumerate(views_unique)}
-    views_remapped = [views_to_code[v] for v in view_assignments]
-
     cluster_assignments = [state.views[v].Zr().values() for v in views_unique]
     cluster_assignments_unique = [sorted(set(assgn))
         for assgn in cluster_assignments]
@@ -213,6 +209,7 @@ def _crosscat_X_D(state, M_c):
 
 def _crosscat_X_L(state, M_c):
 
+    # Generate X_L['column_hypers']
     def column_hypers_numerical(index, hypers):
         assert state.cctypes()[index] != 'categorical'
         return {
@@ -241,7 +238,24 @@ def _crosscat_X_L(state, M_c):
         for i, cctype in enumerate(state.cctypes())
     ]
 
-    return column_hypers
+    # Generate X_L['column_partition']
+    def column_partition():
+        view_assignments = state.Zv().values()
+        views_unique = sorted(set(view_assignments))
+        views_to_code = {v:i for (i,v) in enumerate(views_unique)}
+        views_remapped = [views_to_code[v] for v in view_assignments]
+        counts = list(np.bincount(views_remapped))
+        assert 0 not in counts
+        return {
+            unicode('assignments'): views_remapped,
+            unicode('counts'): counts,
+            unicode('hypers'): {unicode('alpha'): state.alpha()}
+        }
 
+    column_partition = column_partition()
+
+    return column_hypers, column_partition
 
 theta = metamodel._crosscat_theta(bdb, 1, 0)
+
+column_hypers, column_partition = _crosscat_X_L(state, M_c_prime)
