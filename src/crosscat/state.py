@@ -698,23 +698,25 @@ class State(CGpm):
 
         # Migrate dimension.
         if v_a != v_b:
-            delete = self.Nv(v_a) == 1
-            self.views[v_a].unincorporate_dim(dprop[index])
             if v_b > max(self.views):
                 self._append_view(vprop_aux[index-len(self.views)], v_b)
-            self.views[v_b].incorporate_dim(
-                dprop[index], reassign=dprop[index].is_collapsed())
-            # Accounting
-            self.crp.unincorporate(col)
-            self.crp.incorporate(col, {self.crp_id: v_b}, {-1:0})
-            # Delete empty view?
-            if delete:
-                self._delete_view(v_a)
+            self._migrate_dim(v_a, v_b, dprop[index])
         else:
             self.views[v_a].incorporate_dim(
                 dprop[index], reassign=dprop[index].is_collapsed())
 
         self._check_partitions()
+
+    def _migrate_dim(self, v_a, v_b, dim):
+        delete = self.Nv(v_a) == 1
+        self.views[v_a].unincorporate_dim(dim)
+        self.views[v_b].incorporate_dim(dim, reassign=dim.is_collapsed())
+        # Accounting
+        self.crp.unincorporate(dim.index)
+        self.crp.incorporate(dim.index, {self.crp_id: v_b}, {-1:0})
+        # Delete empty view?
+        if delete:
+            self._delete_view(v_a)
 
     def _delete_view(self, v):
         assert v not in self.crp.clusters[0].counts
