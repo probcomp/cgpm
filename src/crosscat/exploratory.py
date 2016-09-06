@@ -196,6 +196,9 @@ assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
 # XXX Thetas
 
 def _crosscat_X_D(state, M_c):
+    view_assignments = state.Zv().values()
+    views_unique = sorted(set(view_assignments))
+
     cluster_assignments = [state.views[v].Zr().values() for v in views_unique]
     cluster_assignments_unique = [sorted(set(assgn))
         for assgn in cluster_assignments]
@@ -207,9 +210,9 @@ def _crosscat_X_D(state, M_c):
 
     return cluster_assignments_remapped
 
-def _crosscat_X_L(state, M_c):
+def _crosscat_X_L(state, X_D, M_c):
 
-    # Generate X_L['column_hypers']
+    # -- Generates X_L['column_hypers'] --
     def column_hypers_numerical(index, hypers):
         assert state.cctypes()[index] != 'categorical'
         return {
@@ -230,7 +233,7 @@ def _crosscat_X_L(state, M_c):
             unicode('K'): K
         }
 
-    # Convert all numerical datatypes to normal for lovecat.
+    # Retrieve the column_hypers.
     column_hypers = [
         column_hypers_numerical(i, state.dims()[i].hypers)
             if cctype != 'categorical'
@@ -238,24 +241,59 @@ def _crosscat_X_L(state, M_c):
         for i, cctype in enumerate(state.cctypes())
     ]
 
-    # Generate X_L['column_partition']
-    def column_partition():
-        view_assignments = state.Zv().values()
-        views_unique = sorted(set(view_assignments))
-        views_to_code = {v:i for (i,v) in enumerate(views_unique)}
-        views_remapped = [views_to_code[v] for v in view_assignments]
-        counts = list(np.bincount(views_remapped))
+    # -- Generates X_L['column_partition'] --
+    view_assignments = state.Zv().values()
+    views_unique = sorted(set(view_assignments))
+    views_to_code = {v:i for (i,v) in enumerate(views_unique)}
+    views_remapped = [views_to_code[v] for v in view_assignments]
+    counts = list(np.bincount(views_remapped))
+    assert 0 not in counts
+    column_partition = {
+        unicode('assignments'): views_remapped,
+        unicode('counts'): counts,
+        unicode('hypers'): {unicode('alpha'): state.alpha()}
+    }
+
+    # -- Generates X_L['view_state'] --
+    def view_state(v):
+        view = state.views[v]
+        row_partition = X_D[views_to_code[v]]
+        # Generate X_L['view_state'][v]['column_component_suffstats']
+        numcategories = len(set(row_partition))
+        column_component_suffstats = [
+            [{} for c in xrange(numcategories)]
+            for d in view.dims]
+
+        # Generate X_L['view_state'][v]['column_names']
+        column_names = \
+            [unicode('c%d' % (o,)) for o in state.views[0].outputs[1:]]
+
+        # Generate X_L['view_state'][v]['row_partition_model']
+        counts = list(np.bincount(row_partition))
         assert 0 not in counts
+        hypers = view.alpha()
+
         return {
-            unicode('assignments'): views_remapped,
-            unicode('counts'): counts,
-            unicode('hypers'): {unicode('alpha'): state.alpha()}
+            unicode('column_component_suffstats'):
+                column_component_suffstats,
+            unicode('column_names'):
+                column_names,
+            unicode('row_partition_model'): {
+                unicode('counts'): counts,
+                unicode('hypers'): hypers
+            }
         }
 
-    column_partition = column_partition()
+    view_states = [view_state(v) for v in state.views.keys()]
 
-    return column_hypers, column_partition
+    # XXX TODO convert me to dictionary.
+    return {
+        unicode('column_hypers'): column_hypers,
+        unicode('column_partition'): column_partition,
+        unicode('view_states'): view_states
+    }
 
 theta = metamodel._crosscat_theta(bdb, 1, 0)
 
-column_hypers, column_partition = _crosscat_X_L(state, M_c_prime)
+X_D = _crosscat_X_D(state, M_c_prime)
+X_L = _crosscat_X_L(state, X_D, M_c_prime)
