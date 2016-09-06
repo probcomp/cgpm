@@ -34,7 +34,7 @@ def _create_metadata(state):
             unicode('code_to_value'): {},
         }
     def create_metadata_categorical(col, k):
-        categories = filter(lambda v: not np.isnan(v), sorted(set(T[col])))
+        categories = [v for v in sorted(set(T[col])) if not np.isnan(v)]
         assert all(0 <= c < k for c in categories)
         codes = [unicode('%d') % (c,) for c in categories]
         ncodes = range(len(codes))
