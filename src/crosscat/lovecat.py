@@ -178,10 +178,8 @@ def _crosscat_X_L(state, X_D, M_c):
 
     view_states = [view_state(v) for v in state.views.keys()]
 
-    # XXX TODO convert me to dictionary.
     return {
         unicode('column_hypers'): column_hypers,
         unicode('column_partition'): column_partition,
         unicode('view_state'): view_states
     }
-
