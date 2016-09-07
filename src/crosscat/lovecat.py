@@ -17,7 +17,6 @@
 import numpy as np
 
 from cgpm.mixtures.view import View
-from crosscat.LocalEngine import LocalEngine
 
 
 def _crosscat_M_c(state):
@@ -238,6 +237,7 @@ def _update_state(state, M_c, X_L, X_D):
 
 
 def transition(state, N=None, S=None, seed=None):
+    """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
     if seed is None:
         seed = 1
 
@@ -262,6 +262,7 @@ def transition(state, N=None, S=None, seed=None):
     X_D = _crosscat_X_D(state, M_c)
     X_L = _crosscat_X_L(state, M_c, X_D)
 
+    from crosscat.LocalEngine import LocalEngine
     LE = LocalEngine(seed=seed)
     X_L_new, X_D_new = LE.analyze(
         M_c, T, X_L, X_D, seed, n_steps=n_steps, max_time=max_time)
