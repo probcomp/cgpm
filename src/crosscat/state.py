@@ -487,6 +487,22 @@ class State(CGpm):
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
 
+    def transition_lovecat(self, N=None, S=None):
+        # This function in its entirely is one major hack.
+        # XXX TODO: Temporarily convert all cctypes into normal/categorical.
+        if any(c not in ['normal','categorical'] for c in self.cctypes()):
+            raise ValueError(
+                'Only normal and categorical cgpms supported by lovecat.')
+        if any(d.is_conditional() for d in self.dims()):
+            raise ValueError('Cannot transition lovecat with conditional dims.')
+        from cgpm.crosscat import lovecat
+        seed = self.rng.randint(1, 2**31-1)
+        lovecat.transition(self, N=N, S=S, seed=seed)
+        self.transition_dim_hypers()
+        # XXX self._increment_iterations should be called, but if N is None
+        # we have no way to obtain from lovecat the number of realized
+        # iterations.
+
     def _transition_generic(self, kernels, N=None, S=None, progress=None):
         def _progress(percentage):
             progress = ' ' * 30
@@ -564,7 +580,7 @@ class State(CGpm):
 
     def cctypes(self):
         """DistributionGpm name of each Dim."""
-        return [d.get_name() for d in self.dims()]
+        return [d.name() for d in self.dims()]
 
     def distargs(self):
         """DistributionGpm distargs of each Dim."""
@@ -698,23 +714,25 @@ class State(CGpm):
 
         # Migrate dimension.
         if v_a != v_b:
-            delete = self.Nv(v_a) == 1
-            self.views[v_a].unincorporate_dim(dprop[index])
             if v_b > max(self.views):
                 self._append_view(vprop_aux[index-len(self.views)], v_b)
-            self.views[v_b].incorporate_dim(
-                dprop[index], reassign=dprop[index].is_collapsed())
-            # Accounting
-            self.crp.unincorporate(col)
-            self.crp.incorporate(col, {self.crp_id: v_b}, {-1:0})
-            # Delete empty view?
-            if delete:
-                self._delete_view(v_a)
+            self._migrate_dim(v_a, v_b, dprop[index])
         else:
             self.views[v_a].incorporate_dim(
                 dprop[index], reassign=dprop[index].is_collapsed())
 
         self._check_partitions()
+
+    def _migrate_dim(self, v_a, v_b, dim):
+        delete = self.Nv(v_a) == 1
+        self.views[v_a].unincorporate_dim(dim)
+        self.views[v_b].incorporate_dim(dim, reassign=dim.is_collapsed())
+        # Accounting
+        self.crp.unincorporate(dim.index)
+        self.crp.incorporate(dim.index, {self.crp_id: v_b}, {-1:0})
+        # Delete empty view?
+        if delete:
+            self._delete_view(v_a)
 
     def _delete_view(self, v):
         assert v not in self.crp.clusters[0].counts

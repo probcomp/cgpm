@@ -201,7 +201,12 @@ class Dim(CGpm):
         return self.model.is_numeric()
 
     def name(self):
-        return self.aux_model.get_name()
+        return self.aux_model.name()
+
+    def set_hypers(self, hypers):
+        self.hypers = hypers
+        for model in self.clusters.values():
+            model.set_hypers(hypers)
 
     # --------------------------------------------------------------------------
     # Plotter
