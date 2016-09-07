@@ -16,7 +16,10 @@
 
 import numpy as np
 
-def _create_metadata(state):
+from cgpm.mixtures.view import View
+
+
+def _crosscat_M_c(state):
     """Create M_c from cgpm.state.State"""
     T = state.X
     outputs = state.outputs
@@ -64,7 +67,7 @@ def _create_metadata(state):
             column_metadata,
     }
 
-def _crosscat_data(state, M_c):
+def _crosscat_T(state, M_c):
     """Create T from cgpm.state.State"""
     T = state.X
     def crosscat_value_to_code(val, col):
@@ -183,3 +186,50 @@ def _crosscat_X_L(state, X_D, M_c):
         unicode('column_partition'): column_partition,
         unicode('view_state'): view_states
     }
+
+
+def _update_state(state, M_c, X_L, X_D):
+    # Perform checking on M_c.
+    assert all(c in ['normal','categorical'] for c in state.cctypes())
+    assert len(M_c['name_to_idx']) == len(state.outputs)
+    def _check_model_type(i):
+        reference = 'normal_inverse_gamma' if state.cctypes()[i] == 'normal'\
+            else 'symmetric_dirichlet_discrete'
+        return M_c['column_metadata'][i]['modeltype'] == reference
+    assert all(_check_model_type(i) for i in xrange(len(state.cctypes())))
+    # Perform checking on X_D.
+    assert all(len(partition)==state.n_rows() for partition in X_D)
+    assert len(X_D) == len(X_L['view_state'])
+    # Perform checking on X_L.
+    assert len(X_L['column_partition']['assignments']) == len(state.outputs)
+
+    # Update the global state alpha.
+    state.crp.set_hypers(
+        {'alpha': X_L['column_partition']['hypers']['alpha']})
+
+    assert state.alpha() == X_L['column_partition']['hypers']['alpha']
+    assert state.crp.clusters[0].alpha ==\
+        X_L['column_partition']['hypers']['alpha']
+
+    # Create the new views.
+    offset = max(state.views) + 1
+    new_views = []
+    for v in xrange(len(X_D)):
+        alpha = X_L['view_state'][v]['row_partition_model']['hypers']['alpha']
+        index = v + offset
+
+        assert index not in state.views
+        view = View(
+            state.X, outputs=[10**7 + index], Zr=X_D[v],
+            alpha=alpha, rng=state.rng)
+        new_views.append(view)
+        state._append_view(view, index)
+
+    # Migrate the dims to their view partitions.
+    for i, c in enumerate(state.outputs):
+        v_a = state.Zv(c)
+        v_b = X_L['column_partition']['assignments'][i] + offset
+        state._migrate_dim(v_a, v_b, state.dim_for(c))
+
+    assert len(state.views) == len(new_views)
+    state._check_partitions()
