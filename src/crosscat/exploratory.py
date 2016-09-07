@@ -125,7 +125,7 @@ assert M_c['column_metadata'] == M_c_prime['column_metadata']
 bdb_data = metamodel._crosscat_data(bdb, 1, M_c)
 cgpm_data = lovecat._crosscat_T(state, M_c_prime)
 
-assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
+assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-2, equal_nan=True))
 
 # XXX X_L and X_D
 
@@ -139,10 +139,13 @@ import time
 start = time.time()
 X_L_new, X_D_new = LE.analyze(
     M_c_prime, lovecat._crosscat_T(state, M_c_prime),
-    X_L, X_D, 1, max_time=10, n_steps=150000, max_iterations=150000)
+    X_L, X_D, 1, max_time=5, n_steps=100000000)
 print time.time() - start
+
 lovecat._update_state(state, M_c, X_L_new, X_D_new)
 
 start = time.time()
-lovecat.transition_lovecat(state, S=10, seed=None)
+lovecat.transition(state, S=5, seed=None)
 print time.time() - start
+
+state.transition(S=5)

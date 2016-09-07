@@ -237,28 +237,23 @@ def _update_state(state, M_c, X_L, X_D):
 
 
 
-def transition_lovecat(state, N=None, S=None, seed=None):
+def transition(state, N=None, S=None, seed=None):
     if seed is None:
         seed = 1
 
     if N is None and S is None:
         n_steps = 1
         max_time = -1
-        max_iterations = -1
     if N is not None and S is None:
         n_steps = N
         max_time = -1
-        max_iterations = -1
-    # Just specified S.
     elif S is not None and N is None:
+        # This is a hack, lovecat has no way to specify just max_seconds.
         n_steps = 150000
         max_time = S
-        max_iterations = 150000
-    # Specified N and S.
     elif S is not None and N is not None:
         n_steps = N
         max_time = S
-        max_iterations = N
     else:
         assert False
 
@@ -269,7 +264,6 @@ def transition_lovecat(state, N=None, S=None, seed=None):
 
     LE = LocalEngine(seed=seed)
     X_L_new, X_D_new = LE.analyze(
-        M_c, T, X_L, X_D, seed, n_steps=n_steps,
-        max_time=max_time, max_iterations=max_iterations)
+        M_c, T, X_L, X_D, seed, n_steps=n_steps, max_time=max_time)
 
     _update_state(state, M_c, X_L_new, X_D_new)
