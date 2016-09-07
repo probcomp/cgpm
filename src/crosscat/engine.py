@@ -73,6 +73,14 @@ class Engine(object):
         self.states = mapper(_modify, args)
         self._close_mapper(pool)
 
+    def transition_lovecat(self, N=None, S=None, multiprocess=1):
+        pool, mapper = self._get_mapper(multiprocess)
+        args = [('transition_lovecat', self.states[i],
+                (N, S))
+                for i in xrange(self.num_states())]
+        self.states = mapper(_modify, args)
+        self._close_mapper(pool)
+
     def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
             distargs=None, v=None, multiprocess=1):
         pool, mapper = self._get_mapper(multiprocess)

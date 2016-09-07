@@ -487,6 +487,18 @@ class State(CGpm):
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
 
+    def transition_lovecat(self, N=None, S=None):
+        # This function in its entirely is one major hack.
+        if any(d.is_conditional() for d in self.dims()):
+            raise ValueError('Cannot transition lovecat with conditional dims.')
+        from cgpm.crosscat import lovecat
+        seed = self.rng.randint(1, 2**31-1)
+        lovecat.transition(self, N=N, S=S, seed=seed)
+        self.transition_dim_hypers()
+        # XXX self._increment_iterations should be called, but if N is None
+        # we have no way to obtain from lovecat the number of realized
+        # iterations.
+
     def _transition_generic(self, kernels, N=None, S=None, progress=None):
         def _progress(percentage):
             progress = ' ' * 30
