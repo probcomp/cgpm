@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import StringIO
+import time
 
 import numpy as np
 
@@ -88,7 +89,7 @@ bdb.execute('''
 ''')
 
 bdb.execute('INITIALIZE 1 MODEL FOR data_m;')
-bdb.execute('ANALYZE data_m FOR 100 ITERATION WAIT;')
+bdb.execute('ANALYZE data_m FOR 2 ITERATION WAIT;')
 
 # Retrieve the CrossCat metamodel instance.
 metamodel = bdb.metamodels['crosscat']
@@ -112,7 +113,7 @@ state = State(
 
 
 # Assert that M_c_prime agrees with CrossCat M_c.
-M_c_prime = lovecat._create_metadata(state)
+M_c_prime = lovecat._crosscat_M_c(state)
 M_c = metamodel._crosscat_metadata(bdb, 1)
 
 assert M_c['name_to_idx'] == M_c_prime['name_to_idx']
@@ -122,16 +123,26 @@ assert M_c['column_metadata'] == M_c_prime['column_metadata']
 # XXX Data
 
 bdb_data = metamodel._crosscat_data(bdb, 1, M_c)
-cgpm_data = lovecat._crosscat_data(state, M_c_prime)
+cgpm_data = lovecat._crosscat_T(state, M_c_prime)
 
 assert np.all(np.isclose(bdb_data, cgpm_data, atol=1e-1, equal_nan=True))
+
+# XXX X_L and X_D
 
 theta = metamodel._crosscat_theta(bdb, 1, 0)
 
 X_D = lovecat._crosscat_X_D(state, M_c_prime)
-X_L = lovecat._crosscat_X_L(state, X_D, M_c_prime)
+X_L = lovecat._crosscat_X_L(state, M_c_prime, X_D)
 
-LE = LocalEngine(seed=1)
+LE = LocalEngine(seed=4)
+import time
+start = time.time()
 X_L_new, X_D_new = LE.analyze(
-    M_c_prime, lovecat._crosscat_data(state, M_c_prime),
-    X_L, X_D, 1, n_steps=100)
+    M_c_prime, lovecat._crosscat_T(state, M_c_prime),
+    X_L, X_D, 1, max_time=10, n_steps=150000, max_iterations=150000)
+print time.time() - start
+lovecat._update_state(state, M_c, X_L_new, X_D_new)
+
+start = time.time()
+lovecat.transition_lovecat(state, S=10, seed=None)
+print time.time() - start

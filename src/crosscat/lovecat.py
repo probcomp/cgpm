@@ -17,6 +17,7 @@
 import numpy as np
 
 from cgpm.mixtures.view import View
+from crosscat.LocalEngine import LocalEngine
 
 
 def _crosscat_M_c(state):
@@ -105,7 +106,7 @@ def _crosscat_X_D(state, M_c):
     return cluster_assignments_remapped
 
 
-def _crosscat_X_L(state, X_D, M_c):
+def _crosscat_X_L(state, M_c, X_D):
     """Create X_L from cgpm.state.State"""
 
     # -- Generates X_L['column_hypers'] --
@@ -162,7 +163,7 @@ def _crosscat_X_L(state, X_D, M_c):
 
         # Generate X_L['view_state'][v]['column_names']
         column_names = \
-            [unicode('c%d' % (o,)) for o in state.views[0].outputs[1:]]
+            [unicode('c%d' % (o,)) for o in view.outputs[1:]]
 
         # Generate X_L['view_state'][v]['row_partition_model']
         counts = list(np.bincount(row_partition))
@@ -233,3 +234,42 @@ def _update_state(state, M_c, X_L, X_D):
 
     assert len(state.views) == len(new_views)
     state._check_partitions()
+
+
+
+def transition_lovecat(state, N=None, S=None, seed=None):
+    if seed is None:
+        seed = 1
+
+    if N is None and S is None:
+        n_steps = 1
+        max_time = -1
+        max_iterations = -1
+    if N is not None and S is None:
+        n_steps = N
+        max_time = -1
+        max_iterations = -1
+    # Just specified S.
+    elif S is not None and N is None:
+        n_steps = 150000
+        max_time = S
+        max_iterations = 150000
+    # Specified N and S.
+    elif S is not None and N is not None:
+        n_steps = N
+        max_time = S
+        max_iterations = N
+    else:
+        assert False
+
+    M_c = _crosscat_M_c(state)
+    T = _crosscat_T(state, M_c)
+    X_D = _crosscat_X_D(state, M_c)
+    X_L = _crosscat_X_L(state, M_c, X_D)
+
+    LE = LocalEngine(seed=seed)
+    X_L_new, X_D_new = LE.analyze(
+        M_c, T, X_L, X_D, seed, n_steps=n_steps,
+        max_time=max_time, max_iterations=max_iterations)
+
+    _update_state(state, M_c, X_L_new, X_D_new)
