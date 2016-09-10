@@ -332,23 +332,31 @@ class State(CGpm):
     # Dependence probability.
 
     def dependence_probability(self, col0, col1):
-        # Both crosscat check views directly.
-        if col0 in self.outputs and col1 in self.outputs:
-            return 1 if self.Zv(col0) == self.Zv(col1) else 0
-        # XXX Assume all outputs of a particular CGPM are dependent.
-        if any(col0 in c.outputs and col1 in c.outputs
-                for c in self.hooked_cgpms.values()):
+        cgpms = self.build_cgpms()
+        Zv = {i: self.Zv(i) for i in self.outputs}
+        return State._dependence_probability(cgpms, Zv, col0, col1)
+
+    @staticmethod
+    def _dependence_probability(cgpms, Zv, col0, col1):
+        # Use the CrossCat view partition.
+        if col0 in Zv and col1 in Zv:
+            return 1 if Zv[col0] == Zv[col1] else 0
+        # XXX Conservatively assume all outputs of a particular are dependent.
+        if any(col0 in c.outputs and col1 in c.outputs for c in cgpms):
             return 1
-        ancestors0 = retrieve_ancestors(self.build_cgpms(), col0)
-        ancestors1 = retrieve_ancestors(self.build_cgpms(), col1)
+        # Use the BayesBall algorithm on the cgpm network.
+        ancestors0 = retrieve_ancestors(cgpms, col0)
+        ancestors1 = retrieve_ancestors(cgpms, col1)
         # Direct common ancestor implies dependent.
         if set.intersection(set(ancestors0), set(ancestors1)):
             return 1
-        # Dependent ancestors via crosscat view.
-        cc_ancestors0 = [self.Zv(i) for i in ancestors0 if i in self.outputs]
-        cc_ancestors1 = [self.Zv(i) for i in ancestors1 if i in self.outputs]
-        return 1 if set.intersection(set(cc_ancestors0), set(cc_ancestors1))\
-            else 0
+        # Dependent ancestors via variable partition at root, Zv.
+        cc_ancestors0 = [Zv[i] for i in ancestors0 if i in Zv]
+        cc_ancestors1 = [Zv[i] for i in ancestors1 if i in Zv]
+        if set.intersection(set(cc_ancestors0), set(cc_ancestors1)):
+            return 1
+        # No dependence.
+        return 0
 
     # --------------------------------------------------------------------------
     # Mutual information
