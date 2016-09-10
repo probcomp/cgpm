@@ -28,7 +28,7 @@ from cgpm.utils import test as tu
 from cgpm.dummy.barebones import BareBonesCGpm
 
 
-def test_dependence_probability__ci_():
+def test_dependence_probability():
     cctypes, distargs = cu.parse_distargs([
         'normal',
         'poisson',
