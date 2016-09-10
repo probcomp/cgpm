@@ -338,15 +338,17 @@ class State(CGpm):
 
     @staticmethod
     def _dependence_probability(cgpms, Zv, col0, col1):
-        # Use the CrossCat view partition.
+        # Use the CrossCat view partition for state variables.
         if col0 in Zv and col1 in Zv:
             return 1 if Zv[col0] == Zv[col1] else 0
         # XXX Conservatively assume all outputs of a particular are dependent.
         if any(col0 in c.outputs and col1 in c.outputs for c in cgpms):
             return 1
         # Use the BayesBall algorithm on the cgpm network.
-        ancestors0 = retrieve_ancestors(cgpms, col0)
-        ancestors1 = retrieve_ancestors(cgpms, col1)
+        ancestors0 = retrieve_ancestors(cgpms, col0) if col0 not in Zv\
+            else [c for c in Zv if Zv[c]==Zv[col0]]
+        ancestors1 = retrieve_ancestors(cgpms, col1) if col1 not in Zv\
+            else [c for c in Zv if Zv[c]==Zv[col1]]
         # Direct common ancestor implies dependent.
         if set.intersection(set(ancestors0), set(ancestors1)):
             return 1
