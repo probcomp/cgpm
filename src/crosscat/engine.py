@@ -19,10 +19,16 @@ import itertools
 import multiprocessing
 import pickle
 
+from collections import namedtuple
+
 import numpy as np
 
 from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
+
+
+# Wrapper for a simple cgpm for optimized dependence_probability.
+DummyCgpm = namedtuple('DummyCgpm', ['outputs', 'inputs'])
 
 
 # Multiprocessing functions.
@@ -200,23 +206,26 @@ class Engine(object):
         self._close_mapper(pool)
         return mis
 
-    def dependence_probability(self, col0, col1, states=None, multiprocess=1):
+    def dependence_probability(self, col0, col1, multiprocess=1):
         """Compute dependence probability between col0 and col1 as float."""
-        if states is None: states = xrange(self.num_states())
-        pool, mapper = self._get_mapper(multiprocess)
-        args = [('dependence_probability', self.states[i],
-                (col0, col1))
-                for i in states]
-        depprobs = mapper(_evaluate, args)
-        self._close_mapper(pool)
-        return sum(depprobs) / float(len(states))
+        # XXX Ignore multiprocess.
+        depprobs = [self._dependence_probability_state(s, col0, col1)
+            for s in self.states]
+        return sum(depprobs) / float(len(self.states))
 
-    def dependence_probability_pairwise(self, states=None):
+    def _dependence_probability_state(self, state, col0, col1):
+        cgpms = [DummyCgpm(m['outputs'], m['inputs'])
+            for m in state['hooked_cgpms'].itervalues()
+        ] + [DummyCgpm(state['outputs'], [])]
+        return State._dependence_probability(
+            cgpms, dict(state['Zv']), col0, col1)
+
+    def dependence_probability_pairwise(self):
         """Compute dependence probability between all pairs as matrix."""
         n_cols = len(self.states[0]['X'][0])
         D = np.eye(n_cols)
         for i,j in itertools.combinations(range(n_cols), 2):
-            D[i,j] = D[j,i] = self.dependence_probability(i,j, states=states)
+            D[i,j] = D[j,i] = self.dependence_probability(i,j)
         return D
 
     def row_similarity(self, row0, row1, cols=None, states=None):
