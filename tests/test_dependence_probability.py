@@ -25,9 +25,8 @@ from cgpm.crosscat.state import State
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
+from cgpm.dummy.barebones import BareBonesCGpm
 
-
-CGpm = namedtuple('CGpm', ['outputs', 'inputs'])
 
 def test_dependence_probability__ci_():
     cctypes, distargs = cu.parse_distargs([
@@ -43,8 +42,9 @@ def test_dependence_probability__ci_():
         [.95]*len(cctypes), rng=gu.gen_rng(100))
 
     T = T.T
-    # Make some nan cells for evidence.
     outputs = range(0, 12, 2)
+
+    # Test for direct dependence for state and engine.
     s = State(
         T, outputs=outputs, cctypes=cctypes, distargs=distargs,
         Zv={o:z for o,z in zip(outputs, Zv)}, rng=gu.gen_rng(0))
@@ -53,26 +53,51 @@ def test_dependence_probability__ci_():
         T, outputs=outputs, cctypes=cctypes, distargs=distargs,
         Zv={o:z for o,z in zip(outputs, Zv)}, rng=gu.gen_rng(0))
 
-    # Test for direct dependence.
     for C in [s,e]:
         for col0, col1 in itertools.product(outputs, outputs):
             i0 = outputs.index(col0)
             i1 = outputs.index(col1)
             assert C.dependence_probability(col0, col1) == (Zv[i0] == Zv[i1])
 
-    # Now hook some cgpms.
+    # Hook some cgpms into state.
+
+    # XXX What if Zv has only one unique value? Hopefully not with this rng!
     uniques = list(set(Zv))
     parent_1 = [o for i, o in enumerate(outputs) if Zv[i] == uniques[0]]
     parent_2 = [o for i, o in enumerate(outputs) if Zv[i] == uniques[1]]
 
-    c1 = CGpm(outputs=[1821, 154], inputs=[parent_1[0]])
-    c2 = CGpm(outputs=[1721], inputs=[parent_2[0]])
-    c3 = CGpm(outputs=[9721], inputs=[parent_2[1]])
+    c1 = BareBonesCGpm(outputs=[1821, 154], inputs=[parent_1[0]])
+    c2 = BareBonesCGpm(outputs=[1721], inputs=[parent_2[0]])
+    c3 = BareBonesCGpm(outputs=[9721], inputs=[parent_2[1]])
+    c4 = BareBonesCGpm(outputs=[74], inputs=[9721])
 
-    s.compose_cgpm(c1)
-    s.compose_cgpm(c2)
-    s.compose_cgpm(c3)
+    for i, C in enumerate([s, e]):
+        print i
+        C.compose_cgpm(c1 if i==0 else [c1])
+        C.compose_cgpm(c2 if i==0 else [c2])
+        C.compose_cgpm(c3 if i==0 else [c3])
+        C.compose_cgpm(c4 if i==0 else [c4])
 
-    assert s.dependence_probability(1821, 1721) == 0
-    assert s.dependence_probability(9721, 1721) == 1
-    assert s.dependence_probability(1821, 154) == 1
+        # Between hooked cgpms and state parents.
+        for p in parent_1:
+            C.dependence_probability(1821, p) == 1
+            assert C.dependence_probability(154, p) == 1
+            assert C.dependence_probability(1721, p) == 0
+            assert C.dependence_probability(9721, p) == 0
+            assert C.dependence_probability(74, p) == 0
+        for p in parent_2:
+            assert C.dependence_probability(1821, p) == 0
+            assert C.dependence_probability(154, p) == 0
+            assert C.dependence_probability(1721, p) == 1
+            assert C.dependence_probability(9721, p) == 1
+            assert C.dependence_probability(74, p) == 1
+
+        # Between hooked cgpm.
+        assert C.dependence_probability(9721, 1721) == 1
+        assert C.dependence_probability(1821, 154) == 1
+        assert C.dependence_probability(74, 9721) == 1
+        assert C.dependence_probability(74, 1721) == 1
+
+        assert C.dependence_probability(1821, 1721) == 0
+        assert C.dependence_probability(1821, 74) == 0
+        assert C.dependence_probability(154, 74) == 0
