@@ -179,7 +179,11 @@ def _crosscat_X_L(state, M_c, X_D):
             }
         }
 
-    view_states = [view_state(v) for v in state.views.keys()]
+    # view_states[i] is the view with code views_to_code[i], so we need to
+    # iterate in the same order of views_unique to agree with both X_D (the row
+    # X_L['c'] partition in each view), as well as
+    # X_L['column_partition']['assignments']
+    view_states = [view_state(v) for v in views_unique]
 
     return {
         unicode('column_hypers'): column_hypers,
