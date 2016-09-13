@@ -98,9 +98,8 @@ class OrdinaryLeastSquares(CGpm):
         if rowid in self.data.x:
             return {self.outputs[0]: self.data.x[rowid]}
         xt, yt = self.preprocess(None, evidence)
-        # compute the mean
-        mean = self.regressor.predict([yt])
-        return self.rng.normal(mean, self.noise)
+        mean = self.regressor.predict([yt])[0]
+        return {self.outputs[0]: self.rng.normal(mean, self.noise)}
 
     def logpdf_score(self):
         pass
@@ -115,7 +114,9 @@ class OrdinaryLeastSquares(CGpm):
         if len(self.data.Y) > 0:
             self.regressor.fit(self.data.Y.values(), self.data.x.values())
             predictions = self.regressor.predict(self.data.Y.values())
-            self.noise = np.linalg.norm(self.data.x.values() - predictions)
+            self.noise = \
+                np.linalg.norm(self.data.x.values() - predictions)\
+                / np.sqrt(self.N)
 
     def transition_params(self):
         return
