@@ -228,7 +228,8 @@ class Engine(object):
             D[i,j] = D[j,i] = self.dependence_probability(i,j)
         return D
 
-    def row_similarity(self, row0, row1, cols=None, states=None):
+    def row_similarity(self, row0, row1, cols=None, states=None,
+            multiprocess=1):
         """Compute similiarty between row0 and row1 as float."""
         if states is None: states = xrange(self.num_states())
         if cols is None: cols = range(len(self.states[0]['cctypes']))
