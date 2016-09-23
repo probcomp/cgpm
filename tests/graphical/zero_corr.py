@@ -60,11 +60,12 @@ import subprocess
 
 from datetime import datetime
 
-import matplotlib.cm as cm
+import matplotlib
+matplotlib.use('Agg')
+
+import matplotlib.cm
 import matplotlib.pyplot as plt
 import numpy as np
-
-from matplotlib import cm
 
 from cgpm.uncorrelated.diamond import Diamond
 from cgpm.uncorrelated.dots import Dots
@@ -157,7 +158,7 @@ def filename_mi_figure(dist, timestamp):
 # Inference.
 
 def simulate_dataset(dist, noise, size=200):
-    rng = gen_rng(0)
+    rng = gen_rng(100)
     cgpm = simulators[dist](outputs=[0,1], noise=noise, rng=rng)
     samples = [cgpm.simulate(-1, [0, 1]) for i in xrange(size)]
     D = [(s[0], s[1]) for s in samples]
@@ -228,7 +229,8 @@ def plot_samples(samples, dist, noise, modelno, num_samples, timestamp):
         transform=ax[1].transAxes)
     ax[1].set_xlabel('x1')
     clusters = set(samples[:,2])
-    colors = iter(cm.gist_rainbow(np.linspace(0, 1, len(clusters)+2)))
+    colors = iter(matplotlib.cm.gist_rainbow(
+        np.linspace(0, 1, len(clusters)+2)))
     for c in clusters:
         sc = samples[samples[:,2] == c][:,[0,1]]
         ax[1].scatter(sc[:,0], sc[:,1], alpha=.5, color=next(colors))
