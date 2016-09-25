@@ -22,8 +22,9 @@ import numpy as np
 from cgpm.utils import general as gu
 
 
-def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1,
-        rng=None):
+def mh_sample(
+        x, logpdf_target, jump_std, D,
+        num_samples=1, burn=1, lag=1, rng=None):
     """Uses MH to sample from logpdf_target.
 
     Parameters
@@ -142,8 +143,9 @@ def mh_sample(x, logpdf_target, jump_std, D, num_samples=1, burn=1, lag=1,
     else:
         return samples
 
-def slice_sample(proposal_fun, log_pdf_fun, D, num_samples=1, burn=1, lag=1,
-        w=1.0, rng=None):
+def slice_sample(
+        proposal_fun, log_pdf_fun, D,
+        num_samples=1, burn=1, lag=1, w=1.0, rng=None):
     """Slice samples from the disitrbution defined by log_pdf_fun.
 
     Parameters
@@ -231,8 +233,9 @@ def _find_slice_interval(f, r, x, u, D, w=1.):
                 break
     return a, b
 
-def rejection_sample(target_pdf_fn, proposal_pdf_fn, proposal_draw_fn, N=1,
-        rng=None):
+def rejection_sample(
+        target_pdf_fn, proposal_pdf_fn, proposal_draw_fn,
+        N=1, rng=None):
     """Samples from target pdf using rejection sampling.
 
     Parameters

@@ -40,7 +40,8 @@ from cgpm.utils import validation as vu
 class State(CGpm):
     """CGpm representing Crosscat, built as a composition of smaller CGpms."""
 
-    def __init__(self, X, outputs=None, inputs=None, cctypes=None,
+    def __init__(
+            self, X, outputs=None, inputs=None, cctypes=None,
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, iterations=None,
             rng=None):
@@ -132,7 +133,8 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
+    def incorporate_dim(
+            self, T, outputs, inputs=None, cctype=None,
             distargs=None, v=None):
         """Incorporate a new Dim into this State with data T."""
         if len(T) != self.n_rows():
@@ -381,8 +383,8 @@ class State(CGpm):
             PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
             return - np.sum(PX) / N
 
-    def conditional_mutual_information(self, col0, col1, evidence, T=None,
-            N=None):
+    def conditional_mutual_information(
+            self, col0, col1, evidence, T=None, N=None):
         if T is None:
             T = 100
         if not evidence:
@@ -394,7 +396,8 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Inference
 
-    def transition(self, N=None, S=None, kernels=None, rowids=None,
+    def transition(
+            self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True):
         # XXX Many combinations of the above kwargs will cause havoc.
         # Moreover if cols contains a value that is neither modeled by gpmcc or

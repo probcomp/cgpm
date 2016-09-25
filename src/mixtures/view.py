@@ -32,7 +32,8 @@ from cgpm.utils.general import merged
 class View(CGpm):
     """CGpm represnting a multivariate Dirichlet process mixture of CGpms."""
 
-    def __init__(self, X, outputs=None, inputs=None, alpha=None,
+    def __init__(
+            self, X, outputs=None, inputs=None, alpha=None,
             cctypes=None, distargs=None, hypers=None, Zr=None, rng=None):
         """View constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.

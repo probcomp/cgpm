@@ -26,14 +26,14 @@ definitions, no new line and use eight spaces.
                                         'lognormal'],
                                       rng=np.random.RandomState(0))
 
-    Example: Yes
-    def generate_mh_sample(x, logpdf_target, jump_std, D, num_samples=1,
+    Example: Yes, Preferred
+    def generate_mh_sample(
+            x, logpdf_target, jump_std, D, num_samples=1,
             num_burn=1, num_chains=7 num_lag=1, rng=None):
         ...body...
 
-    Example: Possible, not preferable.
-    def generate_mh_sample(
-            x, logpdf_target, jump_std, D, num_samples=1,
+    Example: Yes
+    def generate_mh_sample(x, logpdf_target, jump_std, D, num_samples=1,
             num_burn=1, num_chains=7 num_lag=1, rng=None):
         ...body...
 
