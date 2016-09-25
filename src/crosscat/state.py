@@ -624,9 +624,10 @@ class State(CGpm):
                 color='blue', horizontalalignment='right',
                 verticalalignment='top')
             ax.grid()
-        plt.draw()
-        plt.ion()
-        plt.show()
+        # XXX TODO: Write png to disk rather than slow matplotlib animation.
+        # plt.draw()
+        # plt.ion()
+        # plt.show()
         return fig
 
     # --------------------------------------------------------------------------
