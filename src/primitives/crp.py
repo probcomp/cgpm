@@ -29,8 +29,9 @@ class Crp(DistributionGpm):
     X[n] ~ Crp(\alpha | X[1],...,X[n-1])
     """
 
-    def __init__(self, outputs, inputs, hypers=None, params=None,
-            distargs=None, rng=None):
+    def __init__(
+            self, outputs, inputs,
+            hypers=None, params=None, distargs=None, rng=None):
         DistributionGpm.__init__(
             self, outputs, inputs, hypers, params, distargs, rng)
         # Distargs.
