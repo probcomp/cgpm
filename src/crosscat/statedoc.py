@@ -32,13 +32,13 @@ def load_docstrings(module):
             Defaults to normal.
         distargs : list<dict>, optional
             See the documentation for each DistributionGpm for its distargs.
-        Zv : list<int>, optional
+        Zv : dict{int:int}, optional
             Assignmet of columns to views. Defaults to sampling from CRP.
-        Zrv : list(list<int>), optional
+        Zrv : dict{int:list<int>}, optional
             Assignment of rows to clusters in each view, where Zrv[k] is
-            the Zr for View k. If specified, then Zv must also be specified.
+            the Zr for view k. If specified, then Zv must also be specified.
             Defaults to sampling from CRP.
-        Cd : list(list<int>), optional
+        Cd : list(list<int>), disabled
             List of marginal dependence constraints for columns. Each element in
             the list is a list of columns which are to be in the same view. Each
             column can only be in one such list i.e. [[1,2,5],[1,5]] is not
@@ -47,12 +47,12 @@ def load_docstrings(module):
             List of marginal independence constraints for columns.
             Each element in the list is a 2-tuple of columns that must be
             independent, i.e. [(1,2),(1,3)].
-        Rd : dict(int:Cd), optional
+        Rd : dict(int:Cd), disabled
             Dictionary of dependence constraints for rows, wrt.
             Each entry is (col: Cd), where col is a column number and Cd is a
             list of dependence constraints for the rows with respect to that
             column (see doc for Cd).
-        Ri : dict(int:Cid), optional
+        Ri : dict(int:Cid), disabled
             Dictionary of independence constraints for rows, wrt.
             Each entry is (col: Ci), where col is a column number and Ci is a
             list of independence constraints for the rows with respect to that
@@ -72,12 +72,18 @@ def load_docstrings(module):
 
         Parameters
         ----------
-        X : list
+        T : list
             Data with length self.n_rows().
         outputs : list[int]
             Identity of the variable modeled by this dim, must be non-negative
             and cannot collide with State.outputs. Only univariate outputs
             currently supported.
+        inputs : list[int], disabled
+            List of input variables.
+        cctype: str, optional
+            Name of the CGPM to model this dimension.
+        distargs: dict, optional
+            Additional configuration to `cctype`.
         v : int, optional
             Index of the view to assign the data. If 0 <= v < len(state.views)
             then insert into an existing View. If v = len(state.views) then
@@ -85,8 +91,18 @@ def load_docstrings(module):
             If unspecified, will be sampled.
         """
 
+    module.State.unincorporate_dim.__func__.__doc__ = """
+        Remoe an existing Dim from this State.
+
+        Parameters
+        ----------
+        col : int
+            Index of the dimension to remove. An error will be thrown if `col`
+            is the only variable.
+        """
+
     module.State.incorporate.__func__.__doc__ = """
-        Incorporate a new rowid.
+        Incorporate a new member with token rowid.
 
         Parameters
         ----------
