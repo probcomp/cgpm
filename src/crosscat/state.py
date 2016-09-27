@@ -134,11 +134,11 @@ class State(CGpm):
     # Observe
 
     def incorporate_dim(
-            self, T, outputs, inputs=None, cctype=None,
-            distargs=None, v=None):
+            self, T, outputs,
+            inputs=None, cctype=None, distargs=None, v=None):
         """Incorporate a new Dim into this State with data T."""
         if len(T) != self.n_rows():
-            raise ValueError('%d rows required: %d' % (self.n_rows(), len(T)))
+            raise ValueError('%d rows required: %d.' % (self.n_rows(), len(T)))
         if len(outputs) != 1:
             raise ValueError('Univariate outputs only: %s.' % outputs)
         if outputs[0] in self.outputs:
