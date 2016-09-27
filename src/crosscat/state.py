@@ -517,12 +517,6 @@ class State(CGpm):
         # iterations.
 
     def _transition_generic(self, kernels, N=None, S=None, progress=None):
-        def _progress(percentage):
-            progress = ' ' * 30
-            fill = int(percentage * len(progress))
-            progress = '[' + '=' * fill + progress[fill:] + ']'
-            print '\r{} {:1.2f}%'.format(progress, 100 * percentage),
-            sys.stdout.flush()
 
         def _proportion_done(N, S, iters, start):
             if S is None:
@@ -547,7 +541,7 @@ class State(CGpm):
             for kernel in kernels:
                 p = _proportion_done(N, S, iters, start)
                 if progress:
-                    _progress(p)
+                    self._progress(p)
                 if p >= 1.:
                     break
                 kernel()
@@ -579,6 +573,13 @@ class State(CGpm):
 
     def _increment_iterations(self, kernel, N=1):
         self.iterations[kernel] = self.iterations.get(kernel, 0) + N
+
+    def _progress(self, percentage):
+        progress = ' ' * 30
+        fill = int(percentage * len(progress))
+        progress = '[' + '=' * fill + progress[fill:] + ']'
+        print '\r{} {:1.2f}%'.format(progress, 100 * percentage),
+        sys.stdout.flush()
 
     # --------------------------------------------------------------------------
     # Helpers
