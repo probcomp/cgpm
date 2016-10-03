@@ -280,6 +280,12 @@ class State(CGpm):
         return network.logpdf(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
+    # logpdf_multirow
+
+    def logpdf_multirow(self, rowid, query, evidence=None, accuracy=None):
+        return 42
+
+    # --------------------------------------------------------------------------
     # Simulate
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
