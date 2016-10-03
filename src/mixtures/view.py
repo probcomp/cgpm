@@ -258,6 +258,9 @@ class View(CGpm):
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
         return gu.logsumexp(np.add(lp_evidence, lp_query))
 
+
+    def logpdf_multirow(self, rowid, query, evidence=None):
+        return 42
     # --------------------------------------------------------------------------
     # simulate
 
