@@ -50,17 +50,17 @@ def posteriorCGPM():
     return state
 
 def test_logpdf_multirow_analytical(priorCGPM):
-    dpmbb = priorCGPM
+    state = priorCGPM
     
     # case 1: p(x_1=1|x_0=1)
-    out_1 = dpmbb.logpdf_multirow(-1, query={0: 1}, evidence={0: {0: 1}})
+    out_1 = state.logpdf_multirow(-1, query={0: 1}, evidence={0: {0: 1}})
     analytical_1 = np.log(0.569)  # computed by hand
     assert np.allclose(analytical_1, out_1, atol=0.1)
 
     # case 2: p(x_1=[1,1,1,1,1]| x_0=[1,1,1,1,1])
     x1 = {i: 1 for i in range(5)}
     x0 = {0: x1}
-    out_2 = dpmbb.logpdf_multirow(-1, query=x1, evidence=x0)
+    out_2 = state.logpdf_multirow(-1, query=x1, evidence=x0)
     analytical_2 = np.log(0.134)  # computed by hand
     assert np.allclose(analytical_2, out_2, atol=0.1)
 
@@ -178,16 +178,25 @@ def test_logpdf_multirow_bayes(priorCGPM, posteriorCGPM):
     assert np.allclose(left_5, right_5)
 
 def test_logpdf_multirow_plot(priorCGPM):
-    dpmbb = priorCGPM
+    state = priorCGPM
     
     query = {0: 1}
     d = {} 
-    logp = [dpmbb.logpdf(-1, query=query)]
+    logp = [state.logpdf(-1, query=query)]
     for i in range(10):
         d[i] = {0: 1}
-        logp.append(dpmbb.logpdf_multirow(-1, query=query, evidence=d))
+        logp.append(state.logpdf_multirow(-1, query=query, evidence=d))
     Nx = range(len(logp))
     plt.plot(Nx, logp)
     plt.xlabel("$n$ (number of conditioned rows)")
     plt.ylabel("$\log(p(x_t=1|x_1=1,\ldots,x_n=1))$")
     plt.savefig(OUT+"test_logpdf_multirow_univariate_increasing_evidence.png")
+
+def test_generative_logscore(posteriorCGPM):
+    state = posteriorCGPM
+    D = len(state.outputs) 
+
+    query = {i: 0 for i in range(D)}
+    evidence = {0: query}
+    
+    state.generative_logscore(query, evidence)

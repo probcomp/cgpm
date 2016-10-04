@@ -311,12 +311,12 @@ class View(CGpm):
         query  - dict{rowid: dict{col: value}}
         """
         if not isinstance(query, dict):
-            target_dict = du.list_to_dict(query)
+            query = du.list_to_dict(query)
         if not isinstance(query, dict):
-            query_dict = du.list_to_dict(query)
+            evidence = du.list_to_dict(query)
 
-        logp_target = self.logpdf(target_dict)
-        logp_conditional = self.logpdf_multirow(target_dict, query_dict)
+        logp_target = self.logpdf(-1, query)
+        logp_conditional = self.logpdf_multirow(-1, query, evidence)
 
         logscore = logp_conditional - logp_target
         return logscore
