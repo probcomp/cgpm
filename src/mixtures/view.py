@@ -20,11 +20,13 @@ from math import isnan
 
 import numpy as np
 
+
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
+from cgpm.utils import datasearch_utils as du
 from cgpm.utils.config import cctype_class
 from cgpm.utils.general import merged
 
@@ -294,6 +296,32 @@ class View(CGpm):
         result = list(itertools.chain.from_iterable(samples))
         return result[0] if unwrap else result
 
+
+    # --------------------------------------------------------------------------
+    # generative logscore 
+
+    def generative_logscore(self, query, evidence): 
+        """
+        Bayes sets logscore for assessing relevance of a query with
+        respect to evidence. 
+
+        Parameters:
+        -----------
+        target - dict{col: value}
+        query  - dict{rowid: dict{col: value}}
+        """
+        if not isinstance(query, dict):
+            target_dict = du.list_to_dict(query)
+        if not isinstance(query, dict):
+            query_dict = du.list_to_dict(query)
+
+        logp_target = self.logpdf(target_dict)
+        logp_conditional = self.logpdf_multirow(target_dict, query_dict)
+
+        logscore = logp_conditional - logp_target
+        return logscore
+
+    
     # --------------------------------------------------------------------------
     # Internal simulate/logpdf helpers
 
@@ -357,7 +385,6 @@ class View(CGpm):
 
     # --------------------------------------------------------------------------
     # Internal query utils.
-
 
     def n_rows(self):
         return len(self.X[self.X.keys()[0]])

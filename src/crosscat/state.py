@@ -26,6 +26,7 @@ from math import isnan
 
 import numpy as np
 
+
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
@@ -35,6 +36,7 @@ from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import plots as pu
 from cgpm.utils import validation as vu
+from cgpm.utils import datasearch_utils as du
 
 
 class State(CGpm):
@@ -403,6 +405,30 @@ class State(CGpm):
         samples = self.simulate(-1, evidence, N=T)
         mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
         return mi / float(T)
+
+    # --------------------------------------------------------------------------
+    # generative logscore
+
+    def generative_logscore(self, query, evidence): 
+        """
+        Bayes sets logscore for assessing relevance of a query with
+        respect to evidence. 
+
+        Parameters:
+        -----------
+        target - dict{col: value}
+        query  - dict{rowid: dict{col: value}}
+        """
+        if not isinstance(query, dict):
+            target_dict = du.list_to_dict(query)
+        if not isinstance(query, dict):
+            query_dict = du.list_to_dict(query)
+
+        logp_target = self.logpdf(target_dict)
+        logp_conditional = self.logpdf_multirow(target_dict, query_dict)
+
+        logscore = logp_conditional - logp_target
+        return logscore
 
     # --------------------------------------------------------------------------
     # Inference
