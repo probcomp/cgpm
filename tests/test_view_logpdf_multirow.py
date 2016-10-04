@@ -195,3 +195,12 @@ def test_logpdf_multirow_plot(priorCGPM):
     plt.xlabel("$n$ (number of conditioned rows)")
     plt.ylabel("$\log(p(x_t=1|x_1=1,\ldots,x_n=1))$")
     plt.savefig(OUT+"test_logpdf_multirow_univariate_increasing_evidence.png")
+
+def test_generative_logscore(posteriorCGPM):
+    dpmbb = posteriorCGPM
+    D = len(dpmbb.outputs) 
+
+    query = {i: 0 for i in range(D)}
+    evidence = {0: query}
+    
+    dpmbb.generative_logscore(query, evidence)
