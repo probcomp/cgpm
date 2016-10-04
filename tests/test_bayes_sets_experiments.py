@@ -4,9 +4,14 @@ import numpy as np
 from cgpm.mixtures.view import View
 from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
-from cgpm.utils import experiment_utils as eu
+from cgpm.utils import bayessets_utils as bu
 
-ANIMALSPATH = '/resources/animals.csv'
+"""
+This tests should be run from the main folder cgpm/
+"""
+
+OUT = 'tests/resources/out/'
+ANIMALSPATH = 'tests/resources/animals.csv'
 @pytest.fixture
 def priorView():
     data = np.random.choice([0, 1], size=(100, 5))
@@ -31,6 +36,8 @@ def test_comparison_experiment(priorView, priorState):
     view = priorView
     state = priorState
     evidence = ['grizzly bear', 'killer whale', 'lion']
-    comparison_df = eu.comparison_experiment(evidence, ANIMALSPATH, view, state)
+    comparison_df = bu.comparison_experiment(evidence, ANIMALSPATH, view, state)
 
-    eu.score_histograms(comparison_df, evidence)
+    print comparison_df
+    fig, ax = bu.score_histograms(comparison_df, evidence)
+    fig.savefig(OUT + "scored_histograms")
