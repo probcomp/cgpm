@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd 
+import seaborn as sb
 
-from mvbernoulli import IndependentBernoulli
-from sklearn.datasets import fetch_mldata
+from cgpm.bayessets.mvbernoulli import IndependentBernoulli
 from collections import namedtuple
-import bayes_sets as bs
+from cgpm.bayessets import bayes_sets as bs
 
 TwiceTwentyCoins = namedtuple('TwiceTwentyCoins', [
     'name', 'twenty_coins_first', 'twenty_coins_second', 'data_first',
@@ -91,19 +91,24 @@ def comparison_experiment(query, csv_path, view, state):
     
     indices_crosscat = order_dataset_by_score(
         query, state.generative_logscore, csv_path)
-    indices_crosscat.columns = ['name_crosscat', 'score_dpmbb']
+    indices_crosscat.columns = ['name_crosscat', 'score_crosscat']
     
-    return pd.concat([indices_parametric, indices_view], axis=1)
+    return pd.concat([indices_parametric, indices_view, indices_crosscat], axis=1)
 
 def score_histograms(df, query):
-    fig, ax = plt.subplots(1,2, sharey=True, sharex=True)
-    sb.distplot(df['score_bs'], rug=True, bins=15, ax=ax[0], vertical=True, norm_hist=False)
+    fig, ax = plt.subplots(1,3, sharey=True, sharex=True)
+    sb.distplot(df['score_parametric'], rug=True, bins=15,
+                ax=ax[0], vertical=True, norm_hist=False)
     ax[0].set_xlabel('Parametric Bayes Sets (frequency)', fontsize=13)
     ax[0].set_ylabel('score', fontsize=15)
     sb.distplot(df['score_dpmbb'], rug=True, bins=15, ax=ax[1], vertical=True)
     ax[1].set_xlabel('DPMixture Bayes Sets (frequency)', fontsize=13)
     ax[1].set_ylabel('')
-    fig.suptitle('Query: %s' %(", ".join(query),), fontsize=15)    
+    sb.distplot(df['score_crosscat'], rug=True, bins=15, ax=ax[2], vertical=True)
+    ax[2].set_xlabel('Crosscat Bayes Sets (frequency)', fontsize=13)
+    ax[2].set_ylabel('')
+    fig.suptitle('Query: %s' %(", ".join(query),), fontsize=15)
+    return fig, ax
 
 def generate_twice_twenty_coins(name, p1, p2):
     """
