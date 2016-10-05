@@ -57,6 +57,7 @@ def posteriorCGPM():
 #  - Create View with empty dataset
 #  - Force Beta Bernoulli hyperparameters to [.1, .1] 
 #    - Alternatively, rederive using hyperprior.
+
 # def test_logpdf_multirow_analytical(priorCGPM):
 #     view = priorCGPM
     
@@ -130,7 +131,7 @@ def test_logpdf_multirow_marginalization(priorCGPM, posteriorCGPM):
         [0, 1], [0, 1], [0, 1], [0, 1], [0, 1])]
     left_5 = log_marginal_t(dx2) 
     summand_5 = [
-        log_marginal_t(d.values()[0]) * log_conditional_t(dx2, d) for d in dx1]
+        log_marginal_t(d.values()[0]) + log_conditional_t(dx2, d) for d in dx1]
     assert np.allclose(left_5, logsumexp(summand_5))
 
 
@@ -138,7 +139,8 @@ def test_logpdf_multirow_marginalization(priorCGPM, posteriorCGPM):
 #  - Let view incorporate rows with missing values.
 def test_logpdf_multirow_bayes(priorCGPM, posteriorCGPM):
     """
-    Check whether p(x2|x1) p(x2) = p(x1|x2)p(x1)
+    Check whether p(x2|x1)= p(x1|x2)p(x2)/ p(x1) 
+          or log(p(x2|x1)) = log(p(x1|x2)) + log(p(x2)) - log(p(x1))
     """
     log_marginal_i = lambda d: priorCGPM.logpdf(-1, query=d)
     log_conditional_i = lambda d1, d2: priorCGPM.logpdf_multirow(-1, 
@@ -195,20 +197,20 @@ def test_logpdf_multirow_bayes(priorCGPM, posteriorCGPM):
 # Broken. To fix, do:
 #  - Let view incorporate rows with missing values.
 #  - Alternatively, hack new plot.
-def test_logpdf_multirow_plot(priorCGPM):
-    view = priorCGPM
+# def test_logpdf_multirow_plot(priorCGPM):
+#     view = priorCGPM
     
-    query = {0: 1}
-    d = {} 
-    logp = [view.logpdf(-1, query=query)]
-    for i in range(10):
-        d[i] = {0: 1}
-        logp.append(view.logpdf_multirow(-1, query=query, evidence=d))
-    Nx = range(len(logp))
-    plt.plot(Nx, logp)
-    plt.xlabel("$n$ (number of conditioned rows)")
-    plt.ylabel("$\log(p(x_t=1|x_1=1,\ldots,x_n=1))$")
-    plt.savefig(OUT+"test_logpdf_multirow_univariate_increasing_evidence.png")
+#     query = {0: 1}
+#     d = {} 
+#     logp = [view.logpdf(-1, query=query)]
+#     for i in range(10):
+#         d[i] = {0: 1}
+#         logp.append(view.logpdf_multirow(-1, query=query, evidence=d))
+#     Nx = range(len(logp))
+#     plt.plot(Nx, logp)
+#     plt.xlabel("$n$ (number of conditioned rows)")
+#     plt.ylabel("$\log(p(x_t=1|x_1=1,\ldots,x_n=1))$")
+#     plt.savefig(OUT+"test_logpdf_multirow_univariate_increasing_evidence.png")
 
 def test_generative_logscore(posteriorCGPM):
     view = posteriorCGPM

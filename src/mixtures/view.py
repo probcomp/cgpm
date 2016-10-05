@@ -292,15 +292,15 @@ class View(CGpm):
             row_evidence = evidence[i]
             row_evidences = [merged(
                 row_evidence, {self.outputs[0]: k}) for k in K]
-            for k in K:
+            for j in range(len(K)):
                 # Compute posterior_crp_logpdf
                 lp_evidence_unorm = [
                     network.logpdf(rowid, ev) for ev in row_evidences]
                 lp_evidence = gu.log_normalize(lp_evidence_unorm)
-                posterior_crp_logpdf = lp_evidence[k] 
+                posterior_crp_logpdf = lp_evidence[j] 
                 # incorporate row_evidence into cgpm with latent cluster k
                 self.incorporate(
-                    rowid=42000+i, query=row_evidences[k])
+                    rowid=42000+i, query=row_evidences[j])
                 S = gu.logsumexp([
                     S, posterior_crp_logpdf +
                     self.logpdf_multirow_hypothetical_helper(
