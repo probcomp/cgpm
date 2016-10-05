@@ -1,6 +1,6 @@
 from cgpm import bayes_sets as bs
 import numpy as np
-from cgpm.utils import bayessets_utils as eu
+from cgpm.utils import bayessets_utils as bu
 import matplotlib
 matplotlib.use("Agg")
     
@@ -26,7 +26,7 @@ def test_score_coherence():
     assert np.allclose(np.eu(logscore_2), score_2)
 
 def test_logscore_synthetic():
-    ld = eu.generate_ttc_gradthresh()
+    ld = bu.generate_ttc_gradthresh()
     query = ld.data_first
     dataset = ld.shuffled_data
 
@@ -35,9 +35,9 @@ def test_logscore_synthetic():
         assert not np.isnan(bs.binary_logscore(dataset[i, :], query))
 
 # def test_plot_ttc():
-#     eu.plot_ttc(eu.generate_ttc_gradthresh())
-#     # eu.plot_ttc(eu.generate_ttc_left_right())
+#     bu.plot_ttc(bu.generate_ttc_gradthresh())
+#     # bu.plot_ttc(bu.generate_ttc_left_right())
 
 # def test_experiment_ttc():
-#     eu.experiment_ttc(n=10, ttc=eu.generate_ttc_gradthresh())
-#     eu.experiment_ttc(n=10, ttc=eu.generate_ttc_concentrated())
+#     bu.experiment_ttc(n=10, ttc=bu.generate_ttc_gradthresh())
+#     bu.experiment_ttc(n=10, ttc=bu.generate_ttc_concentrated())

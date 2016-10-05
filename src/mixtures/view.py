@@ -245,12 +245,15 @@ class View(CGpm):
         # p(z,xE)                                   logp_evidence_unorm
         # p(z|xE)                                   logp_evidence
         # p(xQ|z,xE)                                logp_query
+        #
+        # if rowid in dataset, return row except for values in evidence
         evidence = self._populate_evidence(rowid, query, evidence)
-        network = self.build_network()
+        # construct cgpm network [crp.clusters[0] + dims cgpms]
+        network = self.build_network() # where does the suff stats info get in?
         # Condition on cluster.
         if self.outputs[0] in evidence:
             # XXX DETERMINE ME!
-            if not self.hypothetical(rowid): rowid = -1
+            if not self.hypothetical(rowid): rowid = -1 # make rowid hypothetical if conditioned on cluster
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
@@ -259,10 +262,52 @@ class View(CGpm):
         lp_evidence = gu.log_normalize(lp_evidence_unorm)
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
         return gu.logsumexp(np.add(lp_evidence, lp_query))
-
+        # Methods/objects to figure out:
+        # _populate_evidence
+        # build_network
+        # network -> primitive cgpms for each column in the cluster?
+        # crp.clusters[0].gibbs_tables[-1y`] (I think this returns the max cluster,
+        #                                   but why the name?)
+        #
 
     def logpdf_multirow(self, rowid, query, evidence=None):
-        return 42
+        """
+        Parameters:
+        -----------
+        query: dict{col: value}
+        evidence: dict{rowid: dict{col: value}}
+        """
+        return self.logpdf_multirow_hypothetical_helper(
+            i=0, rowid=rowid, query=query, evidence=evidence)  
+
+    def logpdf_multirow_hypothetical_helper(self, i, rowid,
+                                            query, evidence):
+        n = len(evidence)
+        K = self.crp.clusters[0].gibbs_tables(-1)
+        S = -np.float("inf")
+        network = self.build_network()
+        if i == n:  # base case
+            S = gu.logsumexp([S, self.logpdf(rowid, query)])
+        else:  # recursive case
+            row_evidence = evidence[i]
+            row_evidences = [merged(
+                row_evidence, {self.outputs[0]: k}) for k in K]
+            for k in K:
+                # Compute posterior_crp_logpdf
+                lp_evidence_unorm = [
+                    network.logpdf(rowid, ev) for ev in row_evidences]
+                lp_evidence = gu.log_normalize(lp_evidence_unorm)
+                posterior_crp_logpdf = lp_evidence[k] 
+                # incorporate row_evidence into cgpm with latent cluster k
+                self.incorporate(
+                    rowid=42000+i, query=row_evidences[k])
+                S = gu.logsumexp([
+                    S, posterior_crp_logpdf +
+                    self.logpdf_multirow_hypothetical_helper(
+                        i+1, rowid, query, evidence)])
+                self.unincorporate(42000+i)
+        return S
+             
     # --------------------------------------------------------------------------
     # simulate
 
@@ -319,7 +364,7 @@ class View(CGpm):
         logp_conditional = self.logpdf_multirow(-1, query, evidence)
 
         logscore = logp_conditional - logp_target
-        return logscore
+        return logscore  
 
     
     # --------------------------------------------------------------------------
