@@ -19,7 +19,8 @@ This test suite ensures that results returned from View.logpdf_multirow,
 State.logpdf_multirow and Engine.logpdf_multirow, are analytically correct
 (for some cases) and follow the rules of probability. 
 """
-
+# RUN TESTS IN cgpm/ DIRECTORY
+ 
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,23 +34,25 @@ from cgpm.utils.general import logsumexp
 
 from cgpm.mixtures.view import View
 
-OUT = '../images/'
+OUT = 'tests/resources/out/'
 
-@pytest.fixture
-def priorCGPM():
-    data = np.random.choice([0, 1], size=(100, 5))
-    outputs = range(5)
+@pytest.fixture(params=[(seed, D) for seed in range(3) for D in [1, 5]])
+def priorCGPM(request):
+    seed = request.param[0]
+    D = request.param[1]
+    rng = gu.gen_rng(seed)
+    data = rng.choice([0, 1], size=(100, D))
+    outputs = range(D)
     X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
     model = View(
         X,
-        cctypes=['bernoulli']*5,
+        cctypes=['bernoulli']*D,
         outputs=[1000] + outputs,
-        rng=gu.gen_rng(0))
+        rng=rng)
+    model.seed = seed
     return model
 
-@pytest.fixture
-def posteriorCGPM():
-    model = priorCGPM()
+def analyze(model):
     model.transition(N=10)
     return model
 
@@ -74,13 +77,13 @@ def posteriorCGPM():
 #     assert np.allclose(analytical_2, out_2, atol=0.1)
 
 
-# Malfunctioning. To fix, do:
-#  - Let view incorporate rows with missing values.
-def test_logpdf_multirow_marginalization(priorCGPM, posteriorCGPM):
+def test_logpdf_multirow_marginalization(priorCGPM):
     """ 
     Check p(x2) = sum_x1 (p(x2|x1) p(x1)), or equivalently
       log(p(x2) = logsumexp_x1 (logp(x2|x1) + logp(x1))
     """
+    posteriorCGPM = analyze(priorCGPM)
+    D = len(priorCGPM.outputs) - 1
 
     log_marginal_i = lambda d: priorCGPM.logpdf(-1, query=d)
     log_conditional_i = lambda d1, d2: priorCGPM.logpdf_multirow(-1, 
@@ -90,58 +93,66 @@ def test_logpdf_multirow_marginalization(priorCGPM, posteriorCGPM):
     log_conditional_t = lambda d1, d2: posteriorCGPM.logpdf_multirow(-1, 
         query=d1, evidence=d2)
 
-    # # case 1: empty cgpm, x_2 = 1
-    # dx2 = {0: 1}
-    # dx1 = [{0: {0: 0}}, {0: {0: 1}}]
-    # left_1 = log_marginal_i(dx2) 
-    # summand_1 = [
-    #     log_marginal_i(d.values()[0]) + log_conditional_i(dx2, d) for d in dx1]
-    # assert np.allclose(left_1, logsumexp(summand_1))
+    if D == 1:
+        # case 1: empty cgpm, x_2 = 1
+        dx2 = {0: 1}
+        dx1 = [{0: {0: 0}}, {0: {0: 1}}]
+        left_1 = log_marginal_i(dx2) 
+        summand_1 = [
+            log_marginal_i(d.values()[0]) + log_conditional_i(dx2, d)
+            for d in dx1]
+        assert np.allclose(left_1, logsumexp(summand_1))
 
-    # # case 2: empty cgpm, x_2 = 0
-    # dx2 = {0: 0}
-    # left_2 = log_marginal_i(dx2) 
-    # summand_2 = [
-    #     log_marginal_i(d.values()[0]) + log_conditional_i(dx2, d) for d in dx1]
-    # assert np.allclose(left_1, logsumexp(summand_1))
-    
-    # # check whether p(x2) is probability
-    # assert np.allclose(logsumexp([left_1, left_2]), 0)
- 
-    # # case 3: cgpm with data, x_2 = 1
-    # dx2 = {0: 1}
-    # left_3 = log_marginal_t(dx2) 
-    # summand_3 = [
-    #     log_marginal_t(d.values()[0]) + log_conditional_t(dx2, d) for d in dx1]
-    # assert np.allclose(left_1, logsumexp(summand_1))
+        # case 2: empty cgpm, x_2 = 0
+        dx2 = {0: 0}
+        left_2 = log_marginal_i(dx2) 
+        summand_2 = [
+            log_marginal_i(d.values()[0]) + log_conditional_i(dx2, d)
+            for d in dx1]
+        assert np.allclose(left_2, logsumexp(summand_2))
 
-    # # case 4: cgpm with, x_2 = 0
-    # dx2 = {0: 0}
-    # left_4 = log_marginal_t(dx2) 
-    # summand_4 = [
-    #     log_marginal_t(d.values()[0]) + log_conditional_t(dx2, d) for d in dx1]
-    # assert np.allclose(left_1, logsumexp(summand_1))
-    
-    # # check whether p(x2) is probability
-    # assert np.allclose(logsumexp([left_3, left_4]), 0)
+        # check whether p(x2) is probability
+        assert np.allclose(logsumexp([left_1, left_2]), 0)
 
-    # case 5: cgpm with data, x_2 = [1,1,1,1,1]
-    dx2 = {i: 1 for i in range(5)}
-    dx1 = [{0: {0: i, 1: j, 2: k, 3: l, 4: m}} for i, j, k, l, m in product(
-        [0, 1], [0, 1], [0, 1], [0, 1], [0, 1])]
-    left_5 = log_marginal_t(dx2) 
-    summand_5 = [
-        log_marginal_t(d.values()[0]) + log_conditional_t(dx2, d) for d in dx1]
-    assert np.allclose(left_5, logsumexp(summand_5))
+        # case 3: cgpm with data, x_2 = 1
+        dx2 = {0: 1}
+        left_3 = log_marginal_t(dx2) 
+        summand_3 = [
+            log_marginal_t(d.values()[0]) + log_conditional_t(dx2, d)
+            for d in dx1]
+        assert np.allclose(left_3, logsumexp(summand_3))
+
+        # case 4: cgpm with, x_2 = 0
+        dx2 = {0: 0}
+        left_4 = log_marginal_t(dx2) 
+        summand_4 = [
+            log_marginal_t(d.values()[0]) + log_conditional_t(dx2, d)
+            for d in dx1]
+        assert np.allclose(left_4, logsumexp(summand_4))
+
+        # check whether p(x2) is probability
+        assert np.allclose(logsumexp([left_3, left_4]), 0)
+
+    # case 5: posterior cgpm, x_2 = [1] * D
+    if D == 5:
+        dx2 = {i: 1 for i in range(D)}
+        dx1 = [{0: {0: i, 1: j, 2: k, 3: l, 4: m}}
+               for i, j, k, l, m in product(
+               [0, 1], [0, 1], [0, 1], [0, 1], [0, 1])]
+        left_5 = log_marginal_t(dx2) 
+        summand_5 = [
+            log_marginal_t(d.values()[0]) + log_conditional_t(dx2, d)
+            for d in dx1]
+        assert np.allclose(left_5, logsumexp(summand_5))
 
 
-# Malfunctioning. To fix, do:
-#  - Let view incorporate rows with missing values.
-def test_logpdf_multirow_bayes(priorCGPM, posteriorCGPM):
+def test_logpdf_multirow_bayes(priorCGPM):
     """
     Check whether p(x2|x1)= p(x1|x2)p(x2)/ p(x1) 
           or log(p(x2|x1)) = log(p(x1|x2)) + log(p(x2)) - log(p(x1))
     """
+    posteriorCGPM = analyze(priorCGPM)
+
     log_marginal_i = lambda d: priorCGPM.logpdf(-1, query=d)
     log_conditional_i = lambda d1, d2: priorCGPM.logpdf_multirow(-1, 
         query=d1, evidence=d2)
@@ -150,44 +161,47 @@ def test_logpdf_multirow_bayes(priorCGPM, posteriorCGPM):
     log_conditional_t = lambda d1, d2: posteriorCGPM.logpdf_multirow(-1, 
         query=d1, evidence=d2)
 
-    # # case 1: x2=1, x1=0
-    # dx1 = {0: {0: 0}}
-    # dx2 = {0: {0: 1}}
-    # left_1 = log_conditional_i(dx2[0], dx1) 
-    # right_1 = (log_conditional_i(dx1[0], dx2) + log_marginal_i(dx2[0]) - 
-    #            log_marginal_i(dx1[0]))
-    # assert np.allclose(left_1, right_1)
+    D = len(priorCGPM.outputs)-1
 
-    # # case 2: x2=0, x1=0
-    # dx2 = {0: {0: 0}}
-    # left_2 = log_conditional_i(dx2[0], dx1) 
-    # right_2 = (log_conditional_i(dx1[0], dx2) + log_marginal_i(dx2[0]) - 
-    #            log_marginal_i(dx1[0]))
-    # assert np.allclose(left_2, right_2)
+    if D == 1:  # CGPM with two columns
+        # case 1: x2=1, x1=0
+        dx1 = {0: {0: 0}}
+        dx2 = {0: {0: 1}}
+        left_1 = log_conditional_i(dx2[0], dx1) 
+        right_1 = (log_conditional_i(dx1[0], dx2) + log_marginal_i(dx2[0]) - 
+                   log_marginal_i(dx1[0]))
+        assert np.allclose(left_1, right_1)
 
-    # # check whether p(x2|x1=0) is probability
-    # assert np.allclose(logsumexp([left_1, left_2]), 0)
+        # case 2: x2=0, x1=0
+        dx2 = {0: {0: 0}}
+        left_2 = log_conditional_i(dx2[0], dx1) 
+        right_2 = (log_conditional_i(dx1[0], dx2) + log_marginal_i(dx2[0]) - 
+                   log_marginal_i(dx1[0]))
+        assert np.allclose(left_2, right_2)
 
-    # # case 3: incorporate data; x2=1, x1=0
-    # dx2 = {0: {0: 1}}
-    # left_3 = log_conditional_t(dx2[0], dx1) 
-    # right_3 = (log_conditional_t(dx1[0], dx2) + log_marginal_t(dx2[0]) - 
-    #            log_marginal_t(dx1[0]))
-    # assert np.allclose(left_3, right_3)
+        # check whether p(x2|x1=0) is probability
+        assert np.allclose(logsumexp([left_1, left_2]), 0)
 
-    # # case 4: x2=0, x1=0
-    # dx2 = {0: {0: 0}}
-    # left_4 = log_conditional_t(dx2[0], dx1) 
-    # right_4 = (log_conditional_t(dx1[0], dx2) + log_marginal_t(dx2[0]) - 
-    #            log_marginal_t(dx1[0]))
-    # assert np.allclose(left_4, right_4)
+        # case 3: incorporate data; x2=1, x1=0
+        dx2 = {0: {0: 1}}
+        left_3 = log_conditional_t(dx2[0], dx1) 
+        right_3 = (log_conditional_t(dx1[0], dx2) + log_marginal_t(dx2[0]) - 
+                   log_marginal_t(dx1[0]))
+        assert np.allclose(left_3, right_3)
 
-    # # check whether p(x2|x1=0) is probability
-    # assert np.allclose(logsumexp([left_3, left_4]), 0)
-    
-    # case 5: cgpm with data, x_2 = [1,1,1,1,1], 
-    dx2 = {0: {i: 1 for i in range(5)}}
-    dx1 = {0: {i: 0 for i in range(5)}}
+        # case 4: x2=0, x1=0
+        dx2 = {0: {0: 0}}
+        left_4 = log_conditional_t(dx2[0], dx1) 
+        right_4 = (log_conditional_t(dx1[0], dx2) + log_marginal_t(dx2[0]) - 
+                   log_marginal_t(dx1[0]))
+        assert np.allclose(left_4, right_4)
+
+        # check whether p(x2|x1=0) is probability
+        assert np.allclose(logsumexp([left_3, left_4]), 0)
+
+    # case 5: posterior cgpm, x_2 = [1]*D, 
+    dx2 = {0: {i: 1 for i in range(D)}}
+    dx1 = {0: {i: 0 for i in range(D)}}
     left_5 = log_conditional_t(dx2[0], dx1) 
     right_5 = (log_conditional_t(dx1[0], dx2) + log_marginal_t(dx2[0]) - 
                log_marginal_t(dx1[0]))
@@ -196,23 +210,28 @@ def test_logpdf_multirow_bayes(priorCGPM, posteriorCGPM):
 
 # Broken. To fix, do:
 #  - Let view incorporate rows with missing values.
-#  - Alternatively, hack new plot.
+#  - [X] Alternatively, hack new plot.
 # def test_logpdf_multirow_plot(priorCGPM):
 #     view = priorCGPM
-    
-#     query = {0: 1}
+
+#     D = len(view.outputs)-1
+#     query = {0: 1 for i in range(D)}
 #     d = {} 
 #     logp = [view.logpdf(-1, query=query)]
-#     for i in range(10):
-#         d[i] = {0: 1}
+#     for i in range(3):
+#         d[i] = {i: 1 for i in range(D)}
 #         logp.append(view.logpdf_multirow(-1, query=query, evidence=d))
 #     Nx = range(len(logp))
 #     plt.plot(Nx, logp)
 #     plt.xlabel("$n$ (number of conditioned rows)")
 #     plt.ylabel("$\log(p(x_t=1|x_1=1,\ldots,x_n=1))$")
-#     plt.savefig(OUT+"test_logpdf_multirow_univariate_increasing_evidence.png")
+#     plt.savefig(OUT + '''
+#     test_logpdf_multirow_univariate_increasing_seed%d_%dD_evidence.png'''
+#                 % (priorCGPM.seed, D))
+#     plt.clf()
 
-def test_generative_logscore(posteriorCGPM):
+def test_generative_logscore(priorCGPM):
+    posteriorCGPM = analyze(priorCGPM)
     view = posteriorCGPM
     D = len(view.outputs) 
 

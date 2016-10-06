@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pandas as pd
 
 from cgpm.mixtures.view import View
 from cgpm.crosscat.state import State
@@ -12,32 +13,40 @@ This tests should be run from the main folder cgpm/
 
 OUT = 'tests/resources/out/'
 ANIMALSPATH = 'tests/resources/animals.csv'
-@pytest.fixture
-def priorView():
-    data = np.random.choice([0, 1], size=(100, 5))
-    outputs = range(5)
+
+def load_animals():
+    return pd.read_csv(ANIMALSPATH, index_col="name")
+
+@pytest.fixture(params=[0, 10])
+def cgpms(request):
+    rng = gu.gen_rng(0)
+    data = load_animals().values
+    D = len(data[0])
+    outputs = range(D)
+    N = request.param
     X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
-    model = View(
+    view = View(
         X,
-        cctypes=['bernoulli']*5,
+        cctypes=['bernoulli']*D,
         outputs=[1000] + outputs,
-        rng=gu.gen_rng(0))
-    return model
+        rng=rng)
+    state = State(
+        data,
+        outputs=outputs,
+        cctypes=['bernoulli']*D,
+        rng=rng)
+    if N > 0:
+        view.transition(N=N)
+        state.transition(N=N)
+    return view, state
 
-@pytest.fixture
-def priorState():
-    data = np.random.choice([0, 1], size=(100, 5))
-    outputs = range(5)
-    rng=gu.gen_rng(0)
-    state = State(data, cctypes=['bernoulli']*5, rng=rng)
-    return state
-
-def test_comparison_experiment(priorView, priorState):
-    view = priorView
-    state = priorState
+def test_comparison_experiment(cgpms):
+    view, state = cgpms
     evidence = ['grizzly bear', 'killer whale', 'lion']
-    comparison_df = bu.comparison_experiment(evidence, ANIMALSPATH, view, state)
+    comparison_df = bu.comparison_experiment(
+        evidence, ANIMALSPATH, view, state)
 
     print comparison_df
+
     fig, ax = bu.score_histograms(comparison_df, evidence)
     fig.savefig(OUT + "scored_histograms")

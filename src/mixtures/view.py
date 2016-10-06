@@ -357,8 +357,8 @@ class View(CGpm):
         """
         if not isinstance(query, dict):
             query = du.list_to_dict(query)
-        if not isinstance(query, dict):
-            evidence = du.list_to_dict(query)
+        if not isinstance(evidence, dict):
+            evidence = du.list_to_dict(evidence)
 
         logp_target = self.logpdf(-1, query)
         logp_conditional = self.logpdf_multirow(-1, query, evidence)
