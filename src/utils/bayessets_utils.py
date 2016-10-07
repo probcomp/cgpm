@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd 
 import seaborn as sb
 
-from cgpm.bayessets.mvbernoulli import IndependentBernoulli
 from collections import namedtuple
 from cgpm.bayessets import bayes_sets as bs
 
@@ -113,75 +112,10 @@ def score_histograms(df, query):
     fig.suptitle('Query: %s' %(", ".join(query),), fontsize=15)
     return fig, ax
 
-def generate_twice_twenty_coins(name, p1, p2):
-    """
-    Generate two 20-dimensional Bernoulli and returns the 
-    named tuple corresponding to them.
-    """
-    twenty_coins_first = IndependentBernoulli(params={
-        'p': p1}, rng=RNG)
-
-    twenty_coins_second = IndependentBernoulli(params={
-        'p': p2}, rng=RNG)        
-
-    # Generate toy data
-    data_first = twenty_coins_first.simulate_array(N=25)
-    data_second = twenty_coins_second.simulate_array(N=25)
-    all_data = np.vstack((data_first, data_second))
-    
-    # Shuffle data
-    shuffled_indices = np.random.permutation(range(all_data.shape[0]))
-    shuffled_data = all_data[shuffled_indices, :]
-
-    return TwiceTwentyCoins(
-        name, twenty_coins_first, twenty_coins_second, data_first,
-        data_second, all_data, shuffled_data, shuffled_indices)
-
-def generate_ttc_gradthresh():
-    return generate_twice_twenty_coins(
-        name='ttc_gradthresh', p1=np.linspace(0, 1, 20), p2=[.8]*8 + [.2]*12)
-
-def generate_ttc_concentrated():
-    return generate_twice_twenty_coins(
-        name='ttc_concentrated', p1=[.9]*5 + [.1]*15, p2=[.1]*15 + [.9]*5)
-
 def sample_beta_sparse(D=20, rng=RNG):
     beta_1 = .1
     beta_0 = .1
     return rng.beta(beta_1, beta_0, size=D)
-
-def generate_three_sparse_coin_sets(name='default_three_sparse'):
-    coin_sets = [IndependentBernoulli(params={
-        'p': sample_beta_sparse(20)}, rng=RNG) for i in range(3)]
-    
-    data = [coin_sets[i].simulate_array(N=20) for i in range(3)]
-    all_data = np.vstack((data[i] for i in range(3)))
-
-    shuffled_indices = np.random.permutation(range(all_data.shape[0]))
-    shuffled_data = all_data[shuffled_indices, :]
-
-    return Coins(
-        name, coin_sets, data, all_data, shuffled_data, shuffled_indices)
-
-def generate_three_crosscat_coin_sets(name='default_three_crosscat'):
-    three_coin_sets_left = [IndependentBernoulli(params={
-        'p': sample_beta_sparse(10)}, rng=RNG) for i in range(3)]
-    two_coins_sets_right = [IndependentBernoulli(params={
-        'p': sample_beta_sparse(10)}, rng=RNG) for i in range(2)]
-    coin_sets = [three_coin_sets_left, two_coins_sets_right]
-
-    data_left = [coin_sets[0][i].simulate_array(N=20) for i in range(3)]
-    all_data_left = np.vstack((data_left[i] for i in range(3)))
-    data_right = [coin_sets[1][i].simulate_array(N=30) for i in range(2)]
-    all_data_right = np.vstack((data_right[i] for i in range(2)))
-    data = [data_left, data_right]
-    all_data = np.hstack((all_data_left, all_data_right))
-
-    shuffled_indices = np.random.permutation(range(all_data.shape[0]))
-    shuffled_data = all_data[shuffled_indices, :]
-
-    return Coins(
-        name, coin_sets, data, all_data, shuffled_data, shuffled_indices)
 
 def binary_linear_plot(data):
     fig, ax = plt.subplots(1, 1)
@@ -206,31 +140,6 @@ def binary_square_plot(data):
     ax.imshow(sqr_data, cmap='Greys', interpolation='nearest',
               vmin=0, vmax=1)
     return fig, ax
-
-def plot_ttc(ttc=None, save=None):
-    if ttc is None: ttc = generate_ttc_gradthresh()
-    if save is None: save = False
-    # Visualize toy data separately
-    ttc.twenty_coins_first.plot_samples(N=25)
-    if save:
-        plt.savefig(OUTDIR + ttc.name + '_first_samples.png')
-    # plt.show()
-
-    ttc.twenty_coins_second.plot_samples(N=25)
-    if save:
-        plt.savefig(OUTDIR + ttc.name + '_second_samples.png')
-    # plt.show()
-
-    # Visualize mixed toy_data
-    binary_linear_plot(ttc.all_data)
-    if save:
-        plt.savefig(OUTDIR + ttc.name + '_all_samples.png')
-    # plt.show()
-
-    binary_linear_plot(ttc.shuffled_data)
-    if save:
-        plt.savefig(OUTDIR + ttc.name + '_shuffled_samples.png')
-    # plt.show()
 
 def plot_dataset(dataset, save, name):
     binary_linear_plot(dataset)
@@ -291,45 +200,3 @@ def experimental_setup(dataset, query, save, n, name, score_function=None):
         plt.savefig(OUTDIR + name + '_scored_q%d.png' % (n,))
     plt.close("all")
 
-def experiment_ttc(n=None, ttc=None, save=None, score_function=None):
-    if ttc is None: ttc = generate_ttc_gradthresh()
-    if save is None: save = False
-    if n is None: n = 4
-    if score_function is None: score_function = bs.binary_logscore
-    plot_ttc(ttc)
-
-    name = ttc.name 
-    query = ttc.data_first[:n, :]
-    dataset = ttc.shuffled_data
-
-    plot_dataset(dataset, save, name + "_dataset")
-    plot_dataset(query, save, name + "_query")
-
-    experimental_setup(dataset, query, save, n, name, score_function)
-
-def experiment_three_sparse_coin_sets(n=None, tcs=None, save=None, score_function=None):
-    if tcs is None: tcs = generate_three_sparse_coin_sets()
-    if save is None: save = False
-    if n is None: n = 4
-    name = tcs.name + "_" + score_function.__name__
-    query = np.vstack((tcs.data[i][:n/2, :] for i in range(2)))
-    dataset = tcs.all_data
-
-    plot_dataset(dataset, save, name + "_dataset")
-    plot_dataset(query, save, name + "_query")
-
-    experimental_setup(dataset, query, save, n, name, score_function)
-    
-def experiment_three_crosscat_coin_sets(n=None, txs=None, save=None, score_function=None):
-    if txs is None: txs = generate_three_crosscat_coin_sets()
-    if save is None: save = False
-
-    n = 4
-    name = txs.name
-    dataset = txs.all_data
-    query = dataset[[0, 15, 29, 45], :]
-
-    plot_dataset(dataset, save, name)
-    plot_dataset(query, save, name + "_query")
-
-    experimental_setup(dataset, query, save, n, name, score_function)
