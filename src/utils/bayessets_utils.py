@@ -81,14 +81,17 @@ def comparison_experiment(query, csv_path, view, state):
     Dataframe containing both the ordered indices from the three functions 
     and their respective scores.
     """
+    print "\n\nComputing Parametric Logscore"
     indices_parametric = order_dataset_by_score(
         query, bs.binary_logscore, csv_path)
     indices_parametric.columns = ['name_parametric', 'score_parametric']
     
+    print "\n\nComputing DP Mixture Logscore"
     indices_view = order_dataset_by_score(
         query, view.generative_logscore, csv_path)
     indices_view.columns = ['name_dpmbb', 'score_dpmbb']
     
+    print "\n\nComputing Crosscat Logscore"
     indices_crosscat = order_dataset_by_score(
         query, state.generative_logscore, csv_path)
     indices_crosscat.columns = ['name_crosscat', 'score_crosscat']
