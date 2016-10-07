@@ -285,8 +285,43 @@ class State(CGpm):
     # logpdf_multirow
 
     def logpdf_multirow(self, rowid, query, evidence=None, accuracy=None):
-        return 42
+        """
+        - Partition query and evidence into the appropriate views.
+          - For each view
+            - Check the columns of that view
+            - Get the intersection between the query and view columns
+            - Get the intersection between the evidence and view columns
+            - Compute logpdf multirow for that view
+                using the intersections above
+        - Return sum logpdf multirow over all views
+        """
+        ## Sanity checks ##
+        if evidence is None:  # call logpdf if not conditioning on row
+            return self.logpdf(rowid, query, accuracy=accuracy)
+        assert isinstance(query, dict)
+        assert isinstance(evidence, dict)
+        assert isinstance(evidence[0], dict)
 
+        logp = 0
+        for view in self.views.values():
+            view_outputs = view.outputs[1:]
+
+            # Get the intersection between view columns and query
+            cols _query_view = du.list_intersection(view_outputs, query.keys())
+            query_view = {col: query[col] for col in cols_query_view}
+
+            # Get the intersection between view columns and evidence
+            evidence_view = {}
+            for row in evidence.keys():
+                common_cols = du.list_intersection(
+                    view_outputs, evidence[row].keys())
+                evidence_view[row] = {
+                    col: evidence[row][col] for col in common_cols}
+
+            logp += view.logpdf_multirow(
+                rowid, query=query_view, evidence=evidence_view)
+
+        return logp
     # --------------------------------------------------------------------------
     # Simulate
 
@@ -421,12 +456,12 @@ class State(CGpm):
         """
         if not isinstance(query, dict):
             query = du.list_to_dict(query)
-        if not isinstance(query, dict):
-            evidence = du.list_to_dict(query)
+        if not isinstance(evidence, dict):
+            evidence = du.list_to_dict(evidence)
 
         logp_target = self.logpdf(-1, query)
         logp_conditional = self.logpdf_multirow(-1, query, evidence)
-
+ 
         logscore = logp_conditional - logp_target
         return logscore
     # --------------------------------------------------------------------------
