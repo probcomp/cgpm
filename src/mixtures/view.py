@@ -245,31 +245,19 @@ class View(CGpm):
         # p(z,xE)                                   logp_evidence_unorm
         # p(z|xE)                                   logp_evidence
         # p(xQ|z,xE)                                logp_query
-        #
-        # if rowid in dataset, return row except for values in evidence
         evidence = self._populate_evidence(rowid, query, evidence)
-        # construct cgpm network [crp.clusters[0] + dims cgpms]
-        network = self.build_network() # where does the suff stats info get in?
-        # Condition on cluster.
+        network = self.build_network()
         if self.outputs[0] in evidence:
             # XXX DETERMINE ME!
-            if not self.hypothetical(rowid): rowid = -1 # make rowid hypothetical if conditioned on cluster
+            if not self.hypothetical(rowid): rowid = -1 
             return network.logpdf(rowid, query, evidence)
-        # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
         evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         lp_evidence = gu.log_normalize(lp_evidence_unorm)
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
         return gu.logsumexp(np.add(lp_evidence, lp_query))
-        # Methods/objects to figure out:
-        # _populate_evidence
-        # build_network
-        # network -> primitive cgpms for each column in the cluster?
-        # crp.clusters[0].gibbs_tables[-1y`] (I think this returns the max cluster,
-        #                                   but why the name?)
-        #
-
+ 
     def logpdf_multirow(self, rowid, query, evidence=None):
         """
         Parameters:

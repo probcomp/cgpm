@@ -307,7 +307,7 @@ class State(CGpm):
             view_outputs = view.outputs[1:]
 
             # Get the intersection between view columns and query
-            cols _query_view = du.list_intersection(view_outputs, query.keys())
+            cols_query_view = du.list_intersection(view_outputs, query.keys())
             query_view = {col: query[col] for col in cols_query_view}
 
             # Get the intersection between view columns and evidence

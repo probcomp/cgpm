@@ -21,7 +21,7 @@ def load_animals():
 
 @pytest.fixture(params=[(iters, dim) 
                         for iters in [0, 50]
-                        for dim in [85]])
+                        for dim in [1, 85]])
 def cgpms(request):
     N = request.param[0]
     D = request.param[1]
@@ -46,7 +46,7 @@ def cgpms(request):
 
 def test_comparison_experiment(cgpms):
     view, state = cgpms
-    evidence = ['grizzly bear', 'killer whale', 'lion']
+    evidence = ['dalmatian']
     t_start = timer()
     comparison_df = bu.comparison_experiment(
         evidence, ANIMALSPATH, view, state)
@@ -63,8 +63,8 @@ def test_comparison_experiment(cgpms):
                          % (D, N))
 
     fig, ax = bu.score_histograms(comparison_df, evidence)
-    fig.suptitle(''' Query: grizzly bear, killer whale, lion.\n
-                     Computation time: %.2f ''' % (comp_time,))
+    fig.suptitle(''' Query: %s.\n
+                     Computation time: %.2f ''' % (evidence, comp_time))
     fig.savefig(OUT + "scored_histograms_%ddims_%diterations" % (D, N),
                 dpi=900)
 

@@ -59,5 +59,6 @@ def list_to_dict(lst):
         d = {i: lst[i] for i in range(len(lst))}
     return d
 
-    def list_intersection(self, l1, l2):
+def list_intersection(l1, l2):
         return [x for x in l1 if x in l2]
+ 
