@@ -33,7 +33,7 @@ from cgpm.utils.general import logsumexp
 
 from cgpm.crosscat.state import State
 
-OUT = '../images/'
+OUT = 'tests/resources/out'
 
 @pytest.fixture(params=[(seed, D) for seed in range(3) for D in [1, 5]])
 def priorCGPM(request):
@@ -44,18 +44,13 @@ def priorCGPM(request):
     state = State(data, cctypes=['bernoulli']*D, rng=rng)
     state.seed = seed
     return state
-
- 
-def analyze(model):
-    model.transition(N=10)
-    return model
-
+    
 def test_marginalization(priorCGPM):
     """ 
     Check p(x2) = sum_x1 (p(x2|x1) p(x1)), or equivalently
       log(p(x2) = logsumexp_x1 (logp(x2|x1) + logp(x1))
     """
-    posteriorCGPM = analyze(priorCGPM)
+    posteriorCGPM = analyze_until_view_partitions(priorCGPM)
     D = len(priorCGPM.outputs)
 
     log_marginal_i = lambda d: priorCGPM.logpdf(-1, query=d)
@@ -126,7 +121,7 @@ def test_bayes(priorCGPM):
     Check whether p(x2|x1)= p(x1|x2)p(x2)/ p(x1) 
           or log(p(x2|x1)) = log(p(x1|x2)) + log(p(x2)) - log(p(x1))
     """
-    posteriorCGPM = analyze(priorCGPM)
+    posteriorCGPM = analyze_until_view_partitions(priorCGPM)
 
     log_marginal_i = lambda d: priorCGPM.logpdf(-1, query=d)
     log_conditional_i = lambda d1, d2: priorCGPM.logpdf_multirow(-1, 
@@ -182,13 +177,57 @@ def test_bayes(priorCGPM):
                log_marginal_t(dx1[0]))
     assert np.allclose(left_5, right_5)
 
+def test_independent_views(priorCGPM):
+
+    state = priorCGPM
+    assert len(state.views) > 1, "test only suited for multiple views"
+
+    poststate = analyze_until_view_partitions(state)
+    full_query, full_evid = get_full_query_evidence(poststate)
+    part_query, part_evid = get_view_partitioned_query_evidence(poststate)
+
+    full_logp = poststate.logpdf_multirow(-1, full_query, full_evid)
+    part_logp = [poststate.logpdf_multirow(-1, part_query[i], part_evid[i])
+                 for i in range(len(part_query))]
+
+    assert np.allclose(full_logp, sum(part_logp))
+
+    part_full_logp = [poststate.logpdf_multirow(-1, part_query[i], full_evid)
+                      for i in range(len(part_query))]
+    assert part_logp == part_full_logp
+
+
+
 def test_generative_logscore(priorCGPM):
-    posteriorCGPM = analyze(priorCGPM)
+    posteriorCGPM = analyze_until_view_partitions(priorCGPM)
     state = posteriorCGPM
     D = len(state.outputs) 
 
     query = {i: 0 for i in range(D)}
     evidence = {0: query}
     
-    state.generative_logscore(query, evidence)
+    assert state.generative_logscore(query, evidence) < 40
 
+## HELPERS ##
+def analyze_until_view_partitions(model):
+    # While there is only one view, analyze_until_view_partitions model
+    i = 0
+    while len(set(model.Zv().values())) == 1 and i < 10:
+        model.transition(N=10)
+        i += 1
+    return model
+
+def get_view_partitioned_query_evidence(model):
+    q = []
+    ev = []
+    for key, view in model.views.iteritems():
+        view_outputs = view.outputs[1:]
+        q.append({i: 1 for i in view_outputs})
+        ev.append({j: {i: j for i in view_outputs} for j in range(2)})
+    return q, ev
+
+def get_full_query_evidence(model):
+    D = len(model.dims())
+    q = {i: 1 for i in range(D)}
+    ev = {j: {i: j for i in range(D)} for j in range(2)}
+    return q, ev
