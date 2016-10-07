@@ -46,7 +46,7 @@ def test_comparison_experiment(cgpms):
     comparison_df = bu.comparison_experiment(
         evidence, ANIMALSPATH, view, state)
 
-    print comparison_df
+    comparison_df.to_csv(OUT + "bs_animal_comparison.csv")
 
     fig, ax = bu.score_histograms(comparison_df, evidence)
     fig.savefig(OUT + "scored_histograms")
