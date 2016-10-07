@@ -100,7 +100,6 @@ def binary_logscore(target, query, hypers=None):
     assert not np.isnan(logscore)
     return logscore
 
-
 def dpmbb_logscore(target, query, rng=None):
     """
     Uses the DP Mixture of Beta Bernoullis CGPM to compute:
@@ -149,17 +148,3 @@ def cgpm_logscore(target, query, cgpm, rng=None):
     
     logscore = logp_conditional - logp_target
     return logscore
-
-def list_to_dict(lst):
-    """
-    Transforms lists or arrays to dict.
-    If list is nested (or array has more than one columns),
-    the output is of the form dict{row: dict{col: value}}.
-    Otherwise, output is dict{col:value}.
-    """
-    if hasattr(lst[0], '__iter__'):
-        d = {j: {i: lst[j][i] for i in range(len(lst[j]))}
-             for j in range(len(lst))}
-    else:
-        d = {i: lst[i] for i in range(len(lst))}
-    return d
