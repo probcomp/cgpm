@@ -64,6 +64,7 @@ setup(
     ],
     packages=[
         'cgpm',
+        'cgpm.bayessets',
         'cgpm.crosscat',
         'cgpm.dummy',
         'cgpm.factor',
