@@ -46,8 +46,11 @@ def order_dataset_by_score(query, score_function, csv_path):
     ordered_indices.index = range(1, len(ordered_indices) + 1)
     return ordered_indices
 
+def load_animals():
+    return pd.read_csv(ANIMALSPATH, index_col="name")
+
 def init_view_state(iters):
-    data = pd.read_csv(ANIMALSPATH, index_col="name").values
+    data = load_animals().values
     D = len(data[0])
     outputs = range(D)
     X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
@@ -66,8 +69,15 @@ def init_view_state(iters):
         state.transition(N=iters)
     return view, state
 
+def viz_animals():
+    df = load_animals()
+    ax = sb.heatmap(df)
+    plt.yticks(rotation=0) 
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    return ax 
 
-def animal_experiment(query, iters):
+def animal_experiment(query, iters=10):
     """
     Scores animal dataset according to query and 
     returns 
@@ -80,6 +90,7 @@ def animal_experiment(query, iters):
     t_end = timer()
     comp_time = t_end - t_start
 
+    print "\n Elapsed time: %fs" %(comp_time,)
     return comparison_df, comp_time
    
 def comparison_experiment(query, csv_path, view, state):
@@ -103,17 +114,17 @@ def comparison_experiment(query, csv_path, view, state):
     Dataframe containing both the ordered indices from the three functions 
     and their respective scores.
     """
-    print "\n\nComputing Parametric Logscore"
+    print "Computing Parametric Logscore..."
     indices_parametric = order_dataset_by_score(
         query, bs.binary_logscore, csv_path)
     indices_parametric.columns = ['name_parametric', 'score_parametric']
     
-    print "\n\nComputing DP Mixture Logscore"
+    print "Computing DP Mixture Logscore..."
     indices_view = order_dataset_by_score(
         query, view.generative_logscore, csv_path)
     indices_view.columns = ['name_dpmbb', 'score_dpmbb']
     
-    print "\n\nComputing Crosscat Logscore"
+    print "Computing Crosscat Logscore..."
     indices_crosscat = order_dataset_by_score(
         query, state.generative_logscore, csv_path)
     indices_crosscat.columns = ['name_crosscat', 'score_crosscat']
