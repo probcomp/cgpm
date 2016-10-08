@@ -1,23 +1,17 @@
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd 
 import seaborn as sb
 
-from collections import namedtuple
+from cgpm.mixtures.view import View
+from cgpm.crosscat.state import State
 from cgpm.bayessets import bayes_sets as bs
+from cgpm.utils import general as gu
+from timeit import default_timer as timer
 
-TwiceTwentyCoins = namedtuple('TwiceTwentyCoins', [
-    'name', 'twenty_coins_first', 'twenty_coins_second', 'data_first',
-    'data_second', 'all_data', 'shuffled_data', 'shuffled_indices'])
-
-Coins = namedtuple('Coins', [
-    'name', 'coin_sets', 'data', 'all_data',
-    'shuffled_data', 'shuffled_indices'])
-OUTDIR = '../out/'
-RNG = np.random.RandomState(0)
-DATA = '../data/'
+OUTDIR = 'test/resources/out/'
+ANIMALSPATH = 'tests/resources/animals.csv'
+RNG = gu.gen_rng(0)
 
 def init_array(size):
     return np.empty(size) * np.nan
@@ -52,14 +46,41 @@ def order_dataset_by_score(query, score_function, csv_path):
     ordered_indices.index = range(1, len(ordered_indices) + 1)
     return ordered_indices
 
-def animal_experiment(query, score_function):
+def init_view_state(iters):
+    data = pd.read_csv(ANIMALSPATH, index_col="name").values
+    D = len(data[0])
+    outputs = range(D)
+    X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
+    view = View(
+        X,
+        cctypes=['bernoulli']*D,
+        outputs=[1000] + outputs,
+        rng=RNG)
+    state = State(
+        data[:, 0:D],
+        outputs=outputs,
+        cctypes=['bernoulli']*D,
+        rng=RNG)
+    if iters > 0:
+        view.transition(N=iters)
+        state.transition(N=iters)
+    return view, state
+
+
+def animal_experiment(query, iters):
     """
     Scores animal dataset according to query and 
     returns 
     """
     # Load data 
-    csv_path = DATA + 'animaldata.csv'
-    return order_dataset_by_score(query, score_function, csv_path)
+    t_start = timer()
+    view, state = init_view_state(iters)
+    comparison_df = comparison_experiment(
+        query, ANIMALSPATH, view, state)
+    t_end = timer()
+    comp_time = t_end - t_start
+
+    return comparison_df, comp_time
    
 def comparison_experiment(query, csv_path, view, state):
     """
@@ -201,4 +222,3 @@ def experimental_setup(dataset, query, save, n, name, score_function=None):
     if save:
         plt.savefig(OUTDIR + name + '_scored_q%d.png' % (n,))
     plt.close("all")
-
