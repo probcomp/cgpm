@@ -107,7 +107,7 @@ def test_conditional_indicator(state):
             samples_subpop, color=gu.colors[t])
         # KS test.
         pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
-        assert .1 < pvalue
+        assert .01 < pvalue
     ax.set_xlabel('Indicator')
     ax.set_ylabel('x')
     ax.grid()

@@ -69,7 +69,7 @@ class State(CGpm):
         self.crp = Dim(
             [self.crp_id], [-1], cctype='crp', hypers=crp_alpha,
             rng=self.rng)
-        self.crp.transition_hyper_grids([1]*self.n_rows())
+        self.crp.transition_hyper_grids([1]*self.n_cols())
         if Zv is None:
             for c in self.outputs:
                 s = self.crp.simulate(c, [self.crp_id], {-1:0})
