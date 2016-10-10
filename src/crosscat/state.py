@@ -327,8 +327,14 @@ class State(CGpm):
         """Evaluate multiple queries at once, used by Engine."""
         if evidences is None: evidences = [{} for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences)
-        return [self.logpdf(r, q, e)
-            for (r, q, e) in zip(rowids, queries, evidences)]
+        T = len(rowids)
+        def compute_logpdf(i, r, q, e):
+            lp = self.logpdf(r, q, e)
+            self._progress(float(i)/T)
+            return lp
+        self._progress(0./T)
+        return [compute_logpdf(i, r, q, e)
+            for (i, (r, q, e)) in enumerate(zip(rowids, queries, evidences))]
 
     # --------------------------------------------------------------------------
     # Dependence probability.
@@ -416,6 +422,8 @@ class State(CGpm):
             # Filter out the gpmcc from foreign variables.
             cols_gpmcc = [c for c in cols if c in self.outputs]
             cols_foreign = [c for c in cols if c not in self.outputs]
+            # Find the views for cols_gpmcc.
+            views = set([self.Zv(c) for c in cols_gpmcc])
 
         # Default order of crosscat kernels is important.
         _kernel_lookup = OrderedDict([
