@@ -372,8 +372,16 @@ class State(CGpm):
     # Mutual information
 
     def mutual_information(self, col0, col1, evidence=None, N=None):
-        if N is None: N = 1000
-        if evidence is None: evidence = {}
+        if N is None:
+            N = 1000
+        if evidence is None:
+            evidence = {}
+        if not self.dependence_probability(col0, col1):
+            return 0
+        evidence = {e:v
+            for e,v in evidence.iteritems()
+            if self.dependence_probability(col0, e)
+        }
         def samples_logpdf(samples, evidence):
             assert len(samples) == N
             return self.logpdf_bulk([-1]*N, samples, [evidence]*N)
