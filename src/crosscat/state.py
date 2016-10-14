@@ -473,7 +473,6 @@ class State(CGpm):
 
     def transition_crp_alpha(self):
         self.crp.transition_hypers()
-        self.crp.transition_hypers()
         self._increment_iterations('alpha')
 
     def transition_view_alphas(self, views=None):
