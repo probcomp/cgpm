@@ -384,7 +384,7 @@ class View(CGpm):
         dim.Zr = {}         # Mapping of non-nan rowids to cluster k.
         dim.Zi = {}         # Mapping of nan rowids to cluster k.
         dim.aux_model = dim.create_aux_model()
-        for rowid, k in sorted(self.Zr().items(), key=lambda e: e[1]):
+        for rowid, k in self.Zr().iteritems():
             dim.incorporate(
                 rowid,
                 query={dim.index: self.X[dim.index][rowid]},
