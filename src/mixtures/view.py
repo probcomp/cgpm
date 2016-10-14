@@ -84,7 +84,7 @@ class View(CGpm):
             assert len(outputs[1:])==len(cctypes)
             assert len(distargs) == len(cctypes)
             assert len(hypers) == len(cctypes)
-        self.outputs = outputs
+        self.outputs = list(outputs)
 
         # -- Row CRP -----------------------------------------------------------
         self.crp = Dim(

@@ -63,8 +63,6 @@ class Dim(CGpm):
         # -- Outputs -----------------------------------------------------------
         if len(outputs) != 1:
             raise ValueError('Dim requires exactly 1 output.')
-        self.outputs = outputs
-        self.inputs = inputs if inputs else []
         self.outputs = list(outputs)
 
         # -- Inputs ------------------------------------------------------------
@@ -78,11 +76,11 @@ class Dim(CGpm):
         # -- DistributionCGpms -------------------------------------------------
         self.model = cu.cctype_class(cctype)
         self.cctype = self.model.name()
-        self.distargs = distargs if distargs is not None else {}
+        self.distargs = dict(distargs) if distargs is not None else {}
 
         # -- Hyperparameters ---------------------------------------------------
         self.hyper_grids = {}
-        self.hypers = hypers if hypers is not None else {}
+        self.hypers = dict(hypers) if hypers is not None else {}
 
         # -- Clusters and Assignments ------------------------------------------
         self.clusters = {}  # Mapping of cluster k to the object.

@@ -60,7 +60,7 @@ class State(CGpm):
         else:
             assert len(outputs) == X.shape[1]
             assert all(o >= 0 for o in outputs)
-        self.outputs = outputs
+        self.outputs = list(outputs)
         self.X = {c: X[:,i].tolist() for i,c in enumerate(self.outputs)}
 
         # -- Column CRP --------------------------------------------------------
