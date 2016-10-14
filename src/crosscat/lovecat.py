@@ -240,10 +240,19 @@ def _update_state(state, M_c, X_L, X_D):
 
 
 
-def transition(state, N=None, S=None, seed=None):
+def transition(state, N=None, S=None, kernels=None, seed=None):
     """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
+    # Permittable kernels:
+    #   column_partition_hyperparameter
+    #   column_partition_assignments
+    #   column_hyperparameters
+    #   row_partition_hyperparameters
+    #   row_partition_assignments
+
     if seed is None:
         seed = 1
+    if kernels is None:
+        kernels = ()
 
     if N is None and S is None:
         n_steps = 1
@@ -269,6 +278,7 @@ def transition(state, N=None, S=None, seed=None):
     from crosscat.LocalEngine import LocalEngine
     LE = LocalEngine(seed=seed)
     X_L_new, X_D_new = LE.analyze(
-        M_c, T, X_L, X_D, seed, n_steps=n_steps, max_time=max_time)
+        M_c, T, X_L, X_D, seed,
+        kernel_list=kernels, n_steps=n_steps, max_time=max_time)
 
     _update_state(state, M_c, X_L_new, X_D_new)
