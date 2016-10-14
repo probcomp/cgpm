@@ -691,12 +691,13 @@ class State(CGpm):
 
         # Compute probability of dim data under view partition.
         def get_data_logp(view, dim):
-            if is_member(view, dim):
-                logp = view.unincorporate_dim(dim)
-                view.incorporate_dim(dim, reassign=dim.is_collapsed())
-            else:
-                logp = view.incorporate_dim(dim)
-                view.unincorporate_dim(dim)
+            # XXX This computation is incorrect for uncollapsed dims.
+            # If dim is uncollapsed and dim is a member of view, then it is
+            # necessary to reuse the current parameters; however,
+            # view.incorporate_dim resamples all component parameters from the
+            # prior.
+            logp = view.incorporate_dim(dim)
+            view.unincorporate_dim(dim)
             return logp
 
         # Reuse collapsed, deepcopy uncollapsed.
@@ -706,20 +707,21 @@ class State(CGpm):
             else:
                 return copy.deepcopy(dim)
 
-        # Current view.
+        # Current dim object and view index.
+        dim = self.dim_for(col)
+
+        # Retrieve current view.
         v_a = self.Zv(col)
 
         # Existing view proposals.
-        dprop = [get_prop_dim(self.views[v], self.dim_for(col))
-            for v in self.views]
+        dprop = [get_prop_dim(self.views[v], dim) for v in self.views]
         logp_data = [get_data_logp(self.views[v], dim)
             for (v, dim) in zip(self.views, dprop)]
 
         # Auxiliary view proposals.
         tables = self.crp.clusters[0].gibbs_tables(col, m=m)
         t_aux = tables[len(self.views):]
-        dprop_aux = [get_prop_dim(None, self.dim_for(col))
-            for t in t_aux]
+        dprop_aux = [get_prop_dim(None, dim) for t in t_aux]
         vprop_aux = [View(self.X, outputs=[10**7+t], rng=self.rng)
             for t in t_aux]
         logp_data_aux = [get_data_logp(view, dim)
@@ -759,10 +761,14 @@ class State(CGpm):
         self._check_partitions()
 
     def _migrate_dim(self, v_a, v_b, dim):
+        # XXX Even though dim might not be a member of view v_a, the CRP gpm
+        # which stores the counts has not been updated to reflect the removal of
+        # dim from v_a. Therefore, we check whether CRP has v_a as a singleton.
         delete = self.Nv(v_a) == 1
-        self.views[v_a].unincorporate_dim(dim)
+        if dim.index in self.views[v_a].dims:
+            self.views[v_a].unincorporate_dim(dim)
         self.views[v_b].incorporate_dim(dim, reassign=dim.is_collapsed())
-        # Accounting
+        # CRP Accounting
         self.crp.unincorporate(dim.index)
         self.crp.incorporate(dim.index, {self.crp_id: v_b}, {-1:0})
         # Delete empty view?
