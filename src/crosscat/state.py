@@ -512,7 +512,7 @@ class State(CGpm):
             self.views[v].transition_rows(rows=rows)
         self._increment_iterations('rows')
 
-    def transition_dims(self, cols=None, m=2):
+    def transition_dims(self, cols=None, m=1):
         if cols is None:
             cols = self.outputs
         cols = self.rng.permutation(cols)
