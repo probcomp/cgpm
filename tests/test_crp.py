@@ -113,3 +113,65 @@ def test_crp_increment(N, alpha, seed):
     crp.incorporate(rowid+6, {0:clust+3}, None)
 
     assert_crp_equality(alpha, Nk, crp)
+
+def test_gibbs_tables_logps():
+    crp = Crp(
+        outputs=[0], inputs=None, hypers={'alpha': 1.5}, rng=gu.gen_rng(1))
+
+    assignments = [
+        (0, {0: 0}),
+        (1, {0: 0}),
+        (2, {0: 2}),
+        (3, {0: 2}),
+        (4, {0: 2}),
+        (5, {0: 6}),
+    ]
+
+    for rowid, table in assignments:
+        crp.incorporate(rowid, table, None)
+
+    # customer 0
+    K01 = crp.gibbs_tables(0, m=1)
+    assert K01 == [0, 2, 6, 7]
+    P01 = crp.gibbs_logps(0, m=1)
+    assert np.allclose(np.exp(P01), [1, 3, 1, 1.5])
+
+    K02 = crp.gibbs_tables(0, m=2)
+    assert K02 == [0, 2, 6, 7, 8]
+    P02 = crp.gibbs_logps(0, m=2)
+    assert np.allclose(np.exp(P02), [1, 3, 1, 1.5/2, 1.5/2])
+
+    K03 = crp.gibbs_tables(0, m=3)
+    assert K03 == [0, 2, 6, 7, 8, 9]
+    P03 = crp.gibbs_logps(0, m=3)
+    assert np.allclose(np.exp(P03), [1, 3, 1, 1.5/3, 1.5/3, 1.5/3])
+
+    K21 = crp.gibbs_tables(2, m=1)
+    assert K21 == [0, 2, 6, 7]
+    P21 = crp.gibbs_logps(2, m=1)
+    assert np.allclose(np.exp(P21), [2, 2, 1, 1.5])
+
+    K22 = crp.gibbs_tables(2, m=2)
+    assert K22 == [0, 2, 6, 7, 8]
+    P22 = crp.gibbs_logps(2, m=2)
+    assert np.allclose(np.exp(P22), [2, 2, 1, 1.5/2, 1.5/2])
+
+    K23 = crp.gibbs_tables(2, m=3)
+    P23 = crp.gibbs_logps(2, m=3)
+    assert K23 == [0, 2, 6, 7, 8, 9]
+    assert np.allclose(np.exp(P23), [2, 2, 1, 1.5/3, 1.5/3, 1.5/3])
+
+    K51 = crp.gibbs_tables(5, m=1)
+    assert K51 == [0, 2, 6]
+    P51 = crp.gibbs_logps(5, m=1)
+    assert np.allclose(np.exp(P51), [2, 3, 1.5])
+
+    K52 = crp.gibbs_tables(5, m=2)
+    assert K52 == [0, 2, 6, 7]
+    P52 = crp.gibbs_logps(5, m=2)
+    assert np.allclose(np.exp(P52), [2, 3, 1.5/2, 1.5/2])
+
+    K53 = crp.gibbs_tables(5, m=3)
+    P53 = crp.gibbs_logps(5, m=3)
+    assert K53 == [0, 2, 6, 7, 8]
+    assert np.allclose(np.exp(P53), [2, 3, 1.5/3, 1.5/3, 1.5/3])
