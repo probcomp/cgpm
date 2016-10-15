@@ -715,17 +715,23 @@ class State(CGpm):
 
         # Existing view proposals.
         dprop = [get_prop_dim(self.views[v], dim) for v in self.views]
-        logp_data = [get_data_logp(self.views[v], dim)
-            for (v, dim) in zip(self.views, dprop)]
+        logp_data = [
+            get_data_logp(self.views[v], dim)
+            for (v, dim) in zip(self.views, dprop)
+        ]
 
         # Auxiliary view proposals.
         tables = self.crp.clusters[0].gibbs_tables(col, m=m)
         t_aux = tables[len(self.views):]
         dprop_aux = [get_prop_dim(None, dim) for t in t_aux]
-        vprop_aux = [View(self.X, outputs=[10**7+t], rng=self.rng)
-            for t in t_aux]
-        logp_data_aux = [get_data_logp(view, dim)
-            for (view, dim) in zip(vprop_aux, dprop_aux)]
+        vprop_aux = [
+            View(self.X, outputs=[10**7+t], rng=self.rng)
+            for t in t_aux
+        ]
+        logp_data_aux = [
+            get_data_logp(view, dim)
+            for (view, dim) in zip(vprop_aux, dprop_aux)
+        ]
 
         # Extend data structs with auxiliary proposals.
         dprop.extend(dprop_aux)
