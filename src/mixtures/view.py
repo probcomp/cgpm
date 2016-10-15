@@ -221,7 +221,7 @@ class View(CGpm):
     def transition_rows(self, rows=None):
         if rows is None:
             rows = self.Zr().keys()
-        self.rng.shuffle(rows)
+        rows = self.rng.permutation(rows)
         for rowid in rows:
             self._gibbs_transition_row(rowid)
 
