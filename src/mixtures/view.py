@@ -84,7 +84,7 @@ class View(CGpm):
             assert len(outputs[1:])==len(cctypes)
             assert len(distargs) == len(cctypes)
             assert len(hypers) == len(cctypes)
-        self.outputs = outputs
+        self.outputs = list(outputs)
 
         # -- Row CRP -----------------------------------------------------------
         self.crp = Dim(
@@ -221,6 +221,7 @@ class View(CGpm):
     def transition_rows(self, rows=None):
         if rows is None:
             rows = self.Zr().keys()
+        rows = self.rng.permutation(rows)
         for rowid in rows:
             self._gibbs_transition_row(rowid)
 
@@ -384,7 +385,7 @@ class View(CGpm):
         dim.Zr = {}         # Mapping of non-nan rowids to cluster k.
         dim.Zi = {}         # Mapping of nan rowids to cluster k.
         dim.aux_model = dim.create_aux_model()
-        for rowid, k in sorted(self.Zr().items(), key=lambda e: e[1]):
+        for rowid, k in self.Zr().iteritems():
             dim.incorporate(
                 rowid,
                 query={dim.index: self.X[dim.index][rowid]},

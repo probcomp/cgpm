@@ -118,6 +118,6 @@ def test_categorical_forest():
     # Updating cctype in singleton View should raise.
     state.incorporate_dim(
         T[:,CCTYPES.index('categorical')], outputs=[98],
-        cctype='categorical', distargs=cat_distargs, v=len(state.views))
+        cctype='categorical', distargs=cat_distargs, v=max(state.views)+1)
     with pytest.raises(Exception):
         state.update_cctype(98, 'random_forest', distargs=cat_distargs)

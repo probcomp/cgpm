@@ -60,7 +60,7 @@ class State(CGpm):
         else:
             assert len(outputs) == X.shape[1]
             assert all(o >= 0 for o in outputs)
-        self.outputs = outputs
+        self.outputs = list(outputs)
         self.X = {c: X[:,i].tolist() for i,c in enumerate(self.outputs)}
 
         # -- Column CRP --------------------------------------------------------
@@ -473,7 +473,6 @@ class State(CGpm):
 
     def transition_crp_alpha(self):
         self.crp.transition_hypers()
-        self.crp.transition_hypers()
         self._increment_iterations('alpha')
 
     def transition_view_alphas(self, views=None):
@@ -513,7 +512,7 @@ class State(CGpm):
             self.views[v].transition_rows(rows=rows)
         self._increment_iterations('rows')
 
-    def transition_dims(self, cols=None, m=2):
+    def transition_dims(self, cols=None, m=1):
         if cols is None:
             cols = self.outputs
         cols = self.rng.permutation(cols)
@@ -521,7 +520,7 @@ class State(CGpm):
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
 
-    def transition_lovecat(self, N=None, S=None):
+    def transition_lovecat(self, N=None, S=None, kernels=None):
         # This function in its entirely is one major hack.
         # XXX TODO: Temporarily convert all cctypes into normal/categorical.
         if any(c not in ['normal','categorical'] for c in self.cctypes()):
@@ -531,7 +530,7 @@ class State(CGpm):
             raise ValueError('Cannot transition lovecat with conditional dims.')
         from cgpm.crosscat import lovecat
         seed = self.rng.randint(1, 2**31-1)
-        lovecat.transition(self, N=N, S=S, seed=seed)
+        lovecat.transition(self, N=N, S=S, kernels=kernels, seed=seed)
         self.transition_dim_hypers()
         # XXX self._increment_iterations should be called, but if N is None
         # we have no way to obtain from lovecat the number of realized
@@ -692,12 +691,14 @@ class State(CGpm):
 
         # Compute probability of dim data under view partition.
         def get_data_logp(view, dim):
-            if is_member(view, dim):
-                logp = view.unincorporate_dim(dim)
-                view.incorporate_dim(dim, reassign=dim.is_collapsed())
-            else:
-                logp = view.incorporate_dim(dim)
-                view.unincorporate_dim(dim)
+            # XXX This computation is incorrect for uncollapsed dims.
+            # If dim is uncollapsed and dim is a member of view, then it is
+            # necessary to reuse the current parameters; however,
+            # view.incorporate_dim resamples all component parameters from the
+            # prior. While it is OK to resample during the proposal, if accepted
+            # those params need to be reused, not rewritten.
+            logp = view.incorporate_dim(dim)
+            view.unincorporate_dim(dim)
             return logp
 
         # Reuse collapsed, deepcopy uncollapsed.
@@ -707,24 +708,31 @@ class State(CGpm):
             else:
                 return copy.deepcopy(dim)
 
-        # Current view.
+        # Current dim object and view index.
+        dim = self.dim_for(col)
+
+        # Retrieve current view.
         v_a = self.Zv(col)
 
         # Existing view proposals.
-        dprop = [get_prop_dim(self.views[v], self.dim_for(col))
-            for v in self.views]
-        logp_data = [get_data_logp(self.views[v], dim)
-            for (v, dim) in zip(self.views, dprop)]
+        dprop = [get_prop_dim(self.views[v], dim) for v in self.views]
+        logp_data = [
+            get_data_logp(self.views[v], dim)
+            for (v, dim) in zip(self.views, dprop)
+        ]
 
         # Auxiliary view proposals.
         tables = self.crp.clusters[0].gibbs_tables(col, m=m)
         t_aux = tables[len(self.views):]
-        dprop_aux = [get_prop_dim(None, self.dim_for(col))
-            for t in t_aux]
-        vprop_aux = [View(self.X, outputs=[10**7+t], rng=self.rng)
-            for t in t_aux]
-        logp_data_aux = [get_data_logp(view, dim)
-            for (view, dim) in zip(vprop_aux, dprop_aux)]
+        dprop_aux = [get_prop_dim(None, dim) for t in t_aux]
+        vprop_aux = [
+            View(self.X, outputs=[10**7+t], rng=self.rng)
+            for t in t_aux
+        ]
+        logp_data_aux = [
+            get_data_logp(view, dim)
+            for (view, dim) in zip(vprop_aux, dprop_aux)
+        ]
 
         # Extend data structs with auxiliary proposals.
         dprop.extend(dprop_aux)
@@ -760,10 +768,14 @@ class State(CGpm):
         self._check_partitions()
 
     def _migrate_dim(self, v_a, v_b, dim):
+        # XXX Even though dim might not be a member of view v_a, the CRP gpm
+        # which stores the counts has not been updated to reflect the removal of
+        # dim from v_a. Therefore, we check whether CRP has v_a as a singleton.
         delete = self.Nv(v_a) == 1
-        self.views[v_a].unincorporate_dim(dim)
+        if dim.index in self.views[v_a].dims:
+            self.views[v_a].unincorporate_dim(dim)
         self.views[v_b].incorporate_dim(dim, reassign=dim.is_collapsed())
-        # Accounting
+        # CRP Accounting
         self.crp.unincorporate(dim.index)
         self.crp.incorporate(dim.index, {self.crp_id: v_b}, {-1:0})
         # Delete empty view?

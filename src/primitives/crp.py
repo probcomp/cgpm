@@ -111,8 +111,9 @@ class Crp(DistributionGpm):
         """Compute the CRP probabilities for a Gibbs transition of rowid,
         with table counts Nk, table assignments Z, and m auxiliary tables."""
         assert rowid in self.data
+        assert 0 < m
         singleton = self.singleton(rowid)
-        p_aux = self.alpha/m
+        p_aux = self.alpha / float(m)
         p_rowid = p_aux if singleton else self.counts[self.data[rowid]]-1
         tables = self.gibbs_tables(rowid, m=m)
         def p_table(t):
@@ -122,6 +123,7 @@ class Crp(DistributionGpm):
         return [log(p_table(t)) for t in tables]
 
     def gibbs_tables(self, rowid, m=1):
+        assert 0 < m
         K = sorted(self.counts)
         singleton = self.singleton(rowid)
         m_aux = m-1 if singleton else m
