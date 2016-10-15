@@ -695,7 +695,8 @@ class State(CGpm):
             # If dim is uncollapsed and dim is a member of view, then it is
             # necessary to reuse the current parameters; however,
             # view.incorporate_dim resamples all component parameters from the
-            # prior.
+            # prior. While it is OK to resample during the proposal, if accepted
+            # those params need to be reused, not rewritten.
             logp = view.incorporate_dim(dim)
             view.unincorporate_dim(dim)
             return logp
