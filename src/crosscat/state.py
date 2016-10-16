@@ -430,8 +430,6 @@ class State(CGpm):
             # Filter out the gpmcc from foreign variables.
             cols_gpmcc = [c for c in cols if c in self.outputs]
             cols_foreign = [c for c in cols if c not in self.outputs]
-            # Find the views for cols_gpmcc.
-            views = set([self.Zv(c) for c in cols_gpmcc])
 
         # Default order of crosscat kernels is important.
         _kernel_lookup = OrderedDict([
