@@ -304,13 +304,16 @@ class Engine(object):
         seeds = self.rng.randint(low=1, high=2**32-1, size=num_states)
         return [gu.gen_rng(s) for s in seeds]
 
-    def _process_logpdfs(self, logpdfs, rowid, evidence=None, multiprocess=1):
+    def _likelihood_weighted_integrate(
+            self, logpdfs, rowid, evidence=None, multiprocess=1):
+        # Computes an importance sampling integral with likelihood weight.
         assert len(logpdfs) == len(self.states)
         weights = np.zeros(len(logpdfs)) if not evidence else\
             self.logpdf(rowid, evidence, evidence=None, multiprocess=multiprocess)
         return gu.logsumexp(logpdfs + weights) - gu.logsumexp(weights)
 
-    def _process_samples(self, samples, rowid, evidence=None, multiprocess=1):
+    def _likelihood_weighted_resample(
+            self, samples, rowid, evidence=None, multiprocess=1):
         assert len(samples) == len(self.states)
         assert all(len(s) == len(samples[0]) for s in samples[1:])
         N = len(samples[0])

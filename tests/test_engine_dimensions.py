@@ -77,7 +77,8 @@ def test_logpdf__ci_(engine):
             for state_logpdfs in logpdfs:
                 # Each element in logpdfs should be a single float.
                 assert isinstance(state_logpdfs, float)
-            lp = engine._process_logpdfs(logpdfs, rowid, evidence=E)
+            lp = engine._likelihood_weighted_integrate(
+                logpdfs, rowid, evidence=E)
             assert isinstance(lp, float)
 
 
@@ -98,7 +99,8 @@ def test_simulate__ci_(engine):
                         # Each raw sample should be len(Q) dimensional.
                         assert set(s.keys()) == set(Q)
                         assert len(s) == len(Q)
-                s = engine._process_samples(samples, rowid, evidence=E)
+                s = engine._likelihood_weighted_resample(
+                    samples, rowid, evidence=E)
                 assert len(s) == N
 
 
