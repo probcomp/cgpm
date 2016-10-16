@@ -702,10 +702,8 @@ class State(CGpm):
 
         # Reuse collapsed, deepcopy uncollapsed.
         def get_prop_dim(view, dim):
-            if dim.is_collapsed() or is_member(view, dim):
-                return dim
-            else:
-                return copy.deepcopy(dim)
+            return dim if (dim.is_collapsed() or is_member(view, dim)) \
+                else copy.deepcopy(dim)
 
         # Current dim object and view index.
         dim = self.dim_for(col)
