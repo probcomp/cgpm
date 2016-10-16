@@ -22,10 +22,19 @@ from collections import namedtuple
 
 from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
+from cgpm.dummy.barebones import BareBonesCGpm
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
-from cgpm.dummy.barebones import BareBonesCGpm
+
+
+def compute_depprob(d):
+    if isinstance(d, list):
+        return np.mean(d)
+    elif isinstance(d, float):
+        return d
+    else:
+        raise ValueError('Unknown data type for depprob: %s.' % (d,))
 
 
 def test_dependence_probability():
@@ -57,7 +66,10 @@ def test_dependence_probability():
         for col0, col1 in itertools.product(outputs, outputs):
             i0 = outputs.index(col0)
             i1 = outputs.index(col1)
-            assert C.dependence_probability(col0, col1) == (Zv[i0] == Zv[i1])
+            assert (
+                compute_depprob(C.dependence_probability(col0, col1))
+                == (Zv[i0] == Zv[i1])
+            )
 
     # Hook some cgpms into state.
 
@@ -80,24 +92,24 @@ def test_dependence_probability():
 
         # Between hooked cgpms and state parents.
         for p in parent_1:
-            C.dependence_probability(1821, p) == 1
-            assert C.dependence_probability(154, p) == 1
-            assert C.dependence_probability(1721, p) == 0
-            assert C.dependence_probability(9721, p) == 0
-            assert C.dependence_probability(74, p) == 0
+            assert compute_depprob(C.dependence_probability(1821, p)) == 1
+            assert compute_depprob(C.dependence_probability(154, p)) == 1
+            assert compute_depprob(C.dependence_probability(1721, p)) == 0
+            assert compute_depprob(C.dependence_probability(9721, p)) == 0
+            assert compute_depprob(C.dependence_probability(74, p)) == 0
         for p in parent_2:
-            assert C.dependence_probability(1821, p) == 0
-            assert C.dependence_probability(154, p) == 0
-            assert C.dependence_probability(1721, p) == 1
-            assert C.dependence_probability(9721, p) == 1
-            assert C.dependence_probability(74, p) == 1
+            assert compute_depprob(C.dependence_probability(1821, p)) == 0
+            assert compute_depprob(C.dependence_probability(154, p)) == 0
+            assert compute_depprob(C.dependence_probability(1721, p)) == 1
+            assert compute_depprob(C.dependence_probability(9721, p)) == 1
+            assert compute_depprob(C.dependence_probability(74, p)) == 1
 
         # Between hooked cgpm.
-        assert C.dependence_probability(9721, 1721) == 1
-        assert C.dependence_probability(1821, 154) == 1
-        assert C.dependence_probability(74, 9721) == 1
-        assert C.dependence_probability(74, 1721) == 1
+        assert compute_depprob(C.dependence_probability(9721, 1721)) == 1
+        assert compute_depprob(C.dependence_probability(1821, 154)) == 1
+        assert compute_depprob(C.dependence_probability(74, 9721)) == 1
+        assert compute_depprob(C.dependence_probability(74, 1721)) == 1
 
-        assert C.dependence_probability(1821, 1721) == 0
-        assert C.dependence_probability(1821, 74) == 0
-        assert C.dependence_probability(154, 74) == 0
+        assert compute_depprob(C.dependence_probability(1821, 1721)) == 0
+        assert compute_depprob(C.dependence_probability(1821, 74)) == 0
+        assert compute_depprob(C.dependence_probability(154, 74)) == 0

@@ -209,12 +209,14 @@ class Engine(object):
     def dependence_probability(self, col0, col1, multiprocess=1):
         """Compute dependence probability between col0 and col1 as float."""
         # XXX Ignore multiprocess.
-        depprobs = [self._dependence_probability_state(s, col0, col1)
-            for s in self.states]
-        return sum(depprobs) / float(len(self.states))
+        return [
+            self._dependence_probability_state(s, col0, col1)
+            for s in self.states
+        ]
 
     def _dependence_probability_state(self, state, col0, col1):
-        cgpms = [DummyCgpm(m['outputs'], m['inputs'])
+        cgpms = [
+            DummyCgpm(m['outputs'], m['inputs'])
             for m in state['hooked_cgpms'].itervalues()
         ] + [DummyCgpm(state['outputs'], [])]
         return State._dependence_probability(
@@ -225,7 +227,8 @@ class Engine(object):
         n_cols = len(self.states[0]['X'][0])
         D = np.eye(n_cols)
         for i,j in itertools.combinations(range(n_cols), 2):
-            D[i,j] = D[j,i] = self.dependence_probability(i,j)
+            d = np.mean(self.dependence_probability(i,j))
+            D[i,j] = D[j,i] = d
         return D
 
     def row_similarity(self, row0, row1, cols=None, states=None,
