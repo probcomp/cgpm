@@ -689,13 +689,14 @@ class State(CGpm):
 
         # Compute probability of dim data under view partition.
         def get_data_logp(view, dim):
-            # XXX This computation is incorrect for uncollapsed dims.
-            # If dim is uncollapsed and dim is a member of view, then it is
-            # necessary to reuse the current parameters; however,
-            # view.incorporate_dim resamples all component parameters from the
-            # prior. While it is OK to resample during the proposal, if accepted
-            # those params need to be reused, not rewritten.
-            logp = view.incorporate_dim(dim)
+            # collasped   member  reassign
+            # 0           0       1
+            # 0           1       0
+            # 1           0       1
+            # 1           0       1
+            # implies reassign = collapsed or (not member)
+            reassign = dim.is_collapsed() or not is_member(view, dim)
+            logp = view.incorporate_dim(dim, reassign=reassign)
             view.unincorporate_dim(dim)
             return logp
 
