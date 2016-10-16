@@ -231,8 +231,8 @@ class Engine(object):
             D[i,j] = D[j,i] = d
         return D
 
-    def row_similarity(self, row0, row1, cols=None, states=None,
-            multiprocess=1):
+    def row_similarity(
+            self, row0, row1, cols=None, states=None, multiprocess=1):
         """Compute similiarty between row0 and row1 as float."""
         if states is None: states = xrange(self.num_states())
         if cols is None: cols = range(len(self.states[0]['cctypes']))
@@ -241,14 +241,15 @@ class Engine(object):
             Zrv = dict(self.states[s]['Zrv'])
             Zrs = [Zrv[v] for v in set(Zv[c] for c in cols)]
             return sum([Zr[row0]==Zr[row1] for Zr in Zrs]) / float(len(Zrv))
-        return sum(map(row_sim_state, states)) / len(states)
+        return [row_sim_state(s) for s in states]
 
     def row_similarity_pairwise(self, cols=None, states=None):
         """Compute dependence probability between all pairs as matrix."""
         n_rows = len(self.states[0]['X'])
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
-            S[i,j] = S[j,i] = self.row_similarity(i,j, cols=cols, states=states)
+            s = np.mean(self.row_similarity(i,j, cols=cols, states=states))
+            S[i,j] = S[j,i] = s
         return S
 
     def get_state(self, index):
