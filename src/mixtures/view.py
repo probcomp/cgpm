@@ -148,6 +148,7 @@ class View(CGpm):
             of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
+        query = self.fill_in_missing_values(query)  # missing output -> nan
         k = query.get(self.outputs[0], 0)
         transition = [rowid] if k is None else []
         self.crp.incorporate(rowid, {self.outputs[0]: k}, {-1: 0})
@@ -157,6 +158,16 @@ class View(CGpm):
                 query={d: query[d]},
                 evidence=self._get_evidence(rowid, self.dims[d], k))
         self.transition_rows(rows=transition)
+
+    def fill_in_missing_values(self, query):
+        """
+        Fill in missing values in query with NaN.
+        """
+        exposed_outputs = self.outputs[1:]
+        filled_query = {0: query.get(self.outputs[0], 0)}
+        for d in exposed_outputs:
+            filled_query[d] = query.get(d, np.nan)
+        return filled_query
 
     def unincorporate(self, rowid):
         # Unincorporate from dims.
