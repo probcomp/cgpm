@@ -185,11 +185,11 @@ class Engine(object):
         return samples
 
     def mutual_information(self, col0, col1, evidence=None, T=None, N=None,
-            multiprocess=1):
+            progress=None, multiprocess=1):
         """Returns list of mutual information estimates, one for each state."""
         pool, mapper = self._get_mapper(multiprocess)
         args = [('mutual_information', self.states[i],
-                (col0, col1, evidence, T, N))
+                (col0, col1, evidence, T, N, progress))
                 for i in xrange(self.num_states())]
         mis = mapper(_evaluate, args)
         self._close_mapper(pool)

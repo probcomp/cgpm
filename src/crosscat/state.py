@@ -327,14 +327,10 @@ class State(CGpm):
         """Evaluate multiple queries at once, used by Engine."""
         if evidences is None: evidences = [{} for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences)
-        T = len(rowids)
-        def compute_logpdf(i, r, q, e):
-            lp = self.logpdf(r, q, e)
-            self._progress(float(i)/T)
-            return lp
-        self._progress(0./T)
-        return [compute_logpdf(i, r, q, e)
-            for (i, (r, q, e)) in enumerate(zip(rowids, queries, evidences))]
+        return [
+            self.logpdf(r, q, e)
+            for (r, q, e) in zip(rowids, queries, evidences)
+        ]
 
     # --------------------------------------------------------------------------
     # Dependence probability.
@@ -397,7 +393,8 @@ class State(CGpm):
             PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
             return - np.sum(PX) / N
 
-    def mutual_information(self, col0, col1, evidence=None, T=None, N=None):
+    def mutual_information(
+            self, col0, col1, evidence=None, T=None, N=None, progress=None):
         if evidence:
             e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
             m_evidence = [e for e, x in evidence.iteritems() if x is None]
@@ -413,9 +410,9 @@ class State(CGpm):
         def compute_mi(i, s):
             ev = gu.merged(e_evidence, s)
             m = self._mutual_information_estimator(col0, col1, ev, N=N)
-            self._progress(float(i)/T)
+            if progress: self._progress(float(i)/T)
             return m
-        self._progress(0./T)
+        if progress: self._progress(0./T)
         samples = self.simulate(-1, m_evidence, N=T)
         mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
         return mi / float(T)
