@@ -174,9 +174,10 @@ def load_docstrings(module):
         Computes the mutual information MI(col0:col1|evidence).
 
         Mutual information with conditioning variables can be interpreted in
-        two forms
+        two forms:
             - MI(X:Y|Z=z): point-wise CMI, (this function).
             - MI(X:Y|Z): expected pointwise CMI E_Z[MI(X:Y|Z)] under Z.
+        This function supports both forms.
 
         The rowid is hypothetical. For any observed member, the rowid is
         sufficient and decouples all columns.
@@ -185,44 +186,29 @@ def load_docstrings(module):
         ----------
         col0, col1 : int
             Columns to comptue MI. If col0 = col1 then entropy is returned.
-        evidence : list(tuple<int>), optional
-            A list of pairs (col, val) of observed values to condition on.
-        N : int, optional.
-            Number of samples to use in the Monte Carlo estimate.
-
-        Returns
-        -------
-        mi : float
-            A point estimate of the mutual information.
-        """
-
-    module.State.conditional_mutual_information.__func__.__doc__ = """
-        Computes conditional mutual information MI(col0:col1|evidence).
-
-        Mutual information with conditioning variables can be interpreted in
-        two forms
-            - MI(X:Y|Z=z): point-wise CMI.
-            - MI(X:Y|Z): expected pointwise CMI E_z[MI(X:Y|Z=z)] under Z
-            (this function).
-
-        The rowid is hypothetical. For any observed member, the rowid is
-        sufficient and decouples all columns.
-
-        Parameters
-        ----------
-        col0, col1 : int
-            Columns to comptue MI. If col0 = col1 then entropy is returned.
-        evidence : list<int>
-            A list of columns to condition on.
+        evidence : list(tuple), optional
+            A list of pairs (col, val) of observed values to condition on. If
+            `val` is None, then `col` is marginalized over.
         T : int, optional.
-            Number of samples to use in external Monte Carlo estimate (z~Z).
+            Number of samples to use in the outer (marginalization) estimator.
         N : int, optional.
-            Number of samples to use in internal Monte Carlo estimate.
+            Number of samples to use in the inner Monte Carlo estimator.
 
         Returns
         -------
         mi : float
             A point estimate of the mutual information.
+
+        Examples
+        -------
+        # Compute MI(X:Y)
+        >>> State.mutual_information(col_x, col_y)
+        # Compute MI(X:Y|Z=1)
+        >>> State.mutual_information(col_x, col_y, {col_z: 1})
+        # Compute MI(X:Y|W)
+        >>> State.mutual_information(col_x, col_y, {col_w:None})
+        # Compute MI(X:Y|Z=1, W)
+        >>> State.mutual_information(col_x, col_y, {col_z: 1, col_w:None})
         """
 
     # --------------------------------------------------------------------------

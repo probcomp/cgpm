@@ -64,18 +64,17 @@ def test_cmi_different_views__ci_():
         state.mutual_information(0, 2, evidence={1:0}), mi02)
     assert np.allclose(
         state.mutual_information(1, 2, evidence={0:-2}), mi12)
+    assert np.allclose(
+        state.mutual_information(1, 2, evidence={0:None}, T=5), mi12)
 
 def test_cmi_marginal_crash():
     X = np.eye(5)
     cctypes = ['normal'] * 5
     s = State(X, cctypes=cctypes)
     s.transition(N=2)
-    # Need evidence.
-    with pytest.raises(ValueError):
-        s.conditional_mutual_information(0, 1, [], T=10, N=10)
-    with pytest.raises(ValueError):
-        s.conditional_mutual_information(0, 1, None, T=10, N=10)
-    # One evidence variable.
-    s.conditional_mutual_information(0, 1, [2], T=10, N=10)
-    # Two evidence variables.
-    s.conditional_mutual_information(0, 1, [2,3], T=10, N=10)
+    # One marginalized evidence variable.
+    s.mutual_information(0, 1, {2:None}, T=10, N=10)
+    # Two marginalized evidence variables.
+    s.mutual_information(0, 1, {2:None, 3:None}, T=10, N=10)
+    # Two marginalized evidence variables and one constrained variable.
+    s.mutual_information(0, 1, {2:None, 3:None, 4:0}, T=10, N=10)
