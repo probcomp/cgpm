@@ -38,7 +38,7 @@ def priorCGPM():
         rng=gu.gen_rng(0))
     return model
 
-def test_view_incorporate_missing_value(priorCGPM):
+def test_crash_incorporate_missing_value(priorCGPM):
     view = priorCGPM
 
     # incorporate full row and sample cluster (works)
@@ -55,3 +55,7 @@ def test_view_incorporate_missing_value(priorCGPM):
     missing_row = {i: 1 for i in range(3)}
     view.incorporate(42002, query=missing_row)
     view.unincorporate(42002)
+
+
+def test_simulate_missing_values():
+    raise NotImplementedError
