@@ -108,6 +108,16 @@ def test_logpdf_multirow_missing_value(exampleCGPM):
         lp2 = logsumexp(joint_logpdfs)
         assert np.allclose(lp1, lp2, atol=.1)
 
+        # 3. Test missing value logpdf marginalizes correctly on evidence
+        # # sum_i P(q=[1, nan]| e=[i, nan]) P(e=[i, nan]) = P(q=[1,nan])
+        marg_lps = [view.logpdf(-1, query={0: i}) for i in range(2)]
+        lp_right = marg_lps[1]
+        cond_lps = [
+            view.logpdf_multirow(-1, query=marg_query, evidence={0: {0: i}}) +
+            view.logpdf(-1, query={0: i}) for i in range(2)]
+        lp_left = logsumexp(cond_lps)
+        assert np.allclose(lp_left, lp_right, atol=.1)
+
     else:
         raise Exception("No test run")
 

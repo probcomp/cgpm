@@ -114,12 +114,23 @@ def test_logpdf_multirow_missing_value(exampleCGPM):
             -1, query=query, evidence=marg_evid)
         assert False, "should have crashed"
 
-        # 2. Test missing value logpdf makes sense
+        # 2. Test missing value logpdf marginalizes correctly on query
+        # # sum_i P(q=[1,i]| e=[1,nan]) = P(q=[1,nan]| e=[1,nan])
         joint_queries = [{0: 1, 1: i} for i in range(2)]
         joint_logpdfs = [state.logpdf_multirow(
             -1, query=joint_queries[i], evidence=marg_evid) for i in range(2)]
         lp2 = logsumexp(joint_logpdfs)
         assert np.allclose(lp1, lp2, atol=.1)
+
+        # 3. Test missing value logpdf marginalizes correctly on evidence
+        # # sum_i P(q=[1, nan]| e=[i, nan]) P(e=[i, nan]) = P(q=[1,nan])
+        marg_lps = [state.logpdf(-1, query={0: i}) for i in range(2)]
+        lp_right = marg_lps[1]
+        cond_lps = [
+            state.logpdf_multirow(-1, query=marg_query, evidence={0: {0: i}}) +
+            state.logpdf(-1, query={0: i}) for i in range(2)]
+        lp_left = logsumexp(cond_lps)
+        assert np.allclose(lp_left, lp_right, atol=.1)
 
     else:
         raise Exception("No test run")
