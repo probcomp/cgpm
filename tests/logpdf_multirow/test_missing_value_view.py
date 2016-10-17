@@ -14,12 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-This test suite ensures that results returned from View.logpdf_multirow,
-State.logpdf_multirow and Engine.logpdf_multirow, are analytically correct
-(for some cases) and follow the rules of probability. 
-"""
-
 import pytest
 import numpy as np
 
@@ -56,6 +50,11 @@ def test_crash_incorporate_missing_value(priorCGPM):
     view.incorporate(42002, query=missing_row)
     view.unincorporate(42002)
 
+def test_logpdf_missing_value(priorCGPM):
+    raise NotImplementedError
+
+def test_logpdf_multirow_missing_values(priorCGPM):
+    raise NotImplementedError
 
 def test_simulate_missing_values():
     raise NotImplementedError
