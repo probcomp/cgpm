@@ -371,7 +371,7 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Mutual information
 
-    def mutual_information(self, col0, col1, evidence=None, N=None):
+    def _mutual_information_estimator(self, col0, col1, evidence=None, N=None):
         if N is None:
             N = 1000
         if evidence is None:
@@ -397,18 +397,26 @@ class State(CGpm):
             PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
             return - np.sum(PX) / N
 
-    def conditional_mutual_information(
-            self, col0, col1, evidence, T=None, N=None):
+    def mutual_information(self, col0, col1, evidence=None, T=None, N=None):
+        if evidence:
+            e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
+            m_evidence = [e for e, x in evidence.iteritems() if x is None]
+        else:
+            e_evidence = None
+            m_evidence = None
+        # Short circuit marginalization if no marginalization constraints.
+        if not m_evidence:
+            return self._mutual_information_estimator(col0, col1, evidence, N)
+        # Compute by Monte Carlo marginalization.
         if T is None:
             T = 100
-        if not evidence:
-            raise ValueError('No evidence: %s' % evidence)
         def compute_mi(i, s):
-            m = self.mutual_information(col0, col1, s, N=N)
+            ev = gu.merged(e_evidence, s)
+            m = self._mutual_information_estimator(col0, col1, ev, N=N)
             self._progress(float(i)/T)
             return m
         self._progress(0./T)
-        samples = self.simulate(-1, evidence, N=T)
+        samples = self.simulate(-1, m_evidence, N=T)
         mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
         return mi / float(T)
 
