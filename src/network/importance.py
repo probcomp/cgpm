@@ -38,9 +38,10 @@ class ImportanceNetwork(object):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
         if evidence is None: evidence = {}
-        samples, weights = zip(*
-            [self.weighted_sample(rowid, query, evidence)
-            for i in xrange(self.accuracy)])
+        samples, weights = zip(*[
+            self.weighted_sample(rowid, query, evidence)
+            for i in xrange(self.accuracy)
+        ])
         if all(isinf(l) for l in weights):
             raise ValueError('Zero density evidence: %s' % (evidence))
         index = gu.log_pflip(weights, rng=self.rng)
@@ -49,14 +50,16 @@ class ImportanceNetwork(object):
     def logpdf(self, rowid, query, evidence=None):
         if evidence is None: evidence = {}
         # Compute joint probability.
-        samples_joint, weights_joint = zip(*
-            [self.weighted_sample(rowid, [], gu.merged(evidence, query))
-            for i in xrange(self.accuracy)])
+        samples_joint, weights_joint = zip(*[
+            self.weighted_sample(rowid, [], gu.merged(evidence, query))
+            for i in xrange(self.accuracy)
+        ])
         logp_joint = gu.logmeanexp(weights_joint)
         # Compute marginal probability.
-        samples_marginal, weights_marginal = zip(*
-            [self.weighted_sample(rowid, [], evidence)
-            for i in xrange(self.accuracy)]) if evidence else ({}, [0.])
+        samples_marginal, weights_marginal = zip(*[
+            self.weighted_sample(rowid, [], evidence)
+            for i in xrange(self.accuracy)
+        ]) if evidence else ({}, [0.])
         if all(isinf(l) for l in weights_marginal):
             raise ValueError('Zero density evidence: %s' % (evidence))
         logp_evidence = gu.logmeanexp(weights_marginal)
