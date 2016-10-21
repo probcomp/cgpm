@@ -20,9 +20,26 @@ from cgpm.cgpm import CGpm
 
 class BareBonesCGpm(CGpm):
 
-    def __init__(self, outputs, inputs, rng=None):
+    def __init__(self, outputs, inputs, distargs=None, rng=None):
         self.outputs = outputs
         self.inputs = inputs
+
+    def incorporate(self, rowid, query, evidence=None):
+        return
+
+    def unincorporate(self, rowid):
+        return
+
+    def logpdf(self, rowid, query, evidence=None):
+        return 0
+
+    def simulate(self, rowid, query, evidence=None, N=None):
+        if N is not None:
+            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
+        return {i:1 for i in self.outputs}
+
+    def transition(self, **kwargs):
+        return
 
     def to_metadata(self):
         metadata = dict()
