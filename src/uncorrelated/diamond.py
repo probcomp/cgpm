@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from scipy.stats import uniform
-
 from cgpm.cgpm import CGpm
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.uncorrelated.directed import DirectedXyGpm
@@ -37,7 +35,6 @@ class DiamondY(CGpm):
         self.outputs = outputs
         self.inputs = inputs
         self.noise = noise
-        self.uniform = uniform(scale=self.noise)
 
     def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
@@ -46,7 +43,7 @@ class DiamondY(CGpm):
         assert evidence.keys() == self.inputs
         x = evidence[self.inputs[0]]
         slope = self.rng.rand()
-        noise = self.uniform.rvs(random_state=self.rng)
+        noise = self.rng.uniform(high=self.noise)
         if x < 0 and slope < .5:
             y = max(-x-1, x+1 - noise)
         elif x < 0 and slope > .5:

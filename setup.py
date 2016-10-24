@@ -84,7 +84,7 @@ setup(
         'matplotlib>=1.5.0',
         'numpy',
         'pandas',
-        'scipy>=0.14.0',  # For stats.multivariate_normal
+        'scipy>=0.13.3',
         'sklearn',
         'statsmodels',
     ],
