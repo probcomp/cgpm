@@ -27,6 +27,8 @@ from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
 
+from stochastic import stochastic
+
 
 cctypes, distargs = cu.parse_distargs([
     'categorical(k=3)',
@@ -175,10 +177,11 @@ def test_transition_hypers():
         forest.incorporate(rowid, query, evidence)
 
 
-def test_simulate():
+@stochastic(max_runs=3, min_passes=1)
+def test_simulate(seed):
     forest = Dim(
         outputs=RF_OUTPUTS, inputs=[-1]+RF_INPUTS, cctype='random_forest',
-        distargs=RF_DISTARGS, rng=gu.gen_rng(0))
+        distargs=RF_DISTARGS, rng=gu.gen_rng(bytearray(seed)))
     forest.transition_hyper_grids(D[:,0])
     # Incorporate data into 1 cluster.
     for rowid, row in enumerate(D[:40]):
