@@ -219,7 +219,8 @@ def test_univariate_two_sample(i):
     ax.grid()
     plt.close()
     # KS test
-    assert .05 < ks_2samp(samples_test, samples_gen).pvalue
+    _, p = ks_2samp(samples_test, samples_gen)
+    assert .05 < p
 
 
 @pytest.mark.parametrize('noise', [.1, .3, .7])
@@ -270,7 +271,8 @@ def test_bivariate_conditional_two_sample(noise):
     # Perform a two sample test on the means.
     mean_a = np.mean(cond_samples_a, axis=1)
     mean_b = np.mean(cond_samples_b, axis=1)
-    assert .01 < ks_2samp(mean_a, mean_b).pvalue
+    _, p = ks_2samp(mean_a, mean_b)
+    assert .01 < p
 
 
 def test_univariate_categorical():
@@ -472,8 +474,8 @@ def test_joint(kde_xz):
             np.add([t]*len(samples_subpop), .25), samples_subpop,
             color=gu.colors[t])
         # KS test.
-        pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
-        assert .05 < pvalue
+        _, p = ks_2samp(data_subpop[:,0], samples_subpop)
+        assert .05 < p
     ax.set_xlabel('z')
     ax.set_ylabel('x')
     ax.grid()
@@ -499,8 +501,8 @@ def test_conditional_indicator(kde_xz):
             np.repeat(t, len(data_subpop)) + .25,
             samples_subpop, color=gu.colors[t])
         # KS test.
-        pvalue = ks_2samp(data_subpop[:,0], samples_subpop)[1]
-        assert .1 < pvalue
+        _, p = ks_2samp(data_subpop[:,0], samples_subpop)
+        assert .1 < p
     ax.set_xlabel('z')
     ax.set_ylabel('x')
     ax.grid()
