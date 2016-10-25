@@ -33,7 +33,6 @@ from cgpm.network.helpers import retrieve_ancestors
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
-from cgpm.utils import plots as pu
 from cgpm.utils import validation as vu
 
 
@@ -629,6 +628,7 @@ class State(CGpm):
     def plot(self):
         """Plots observation histogram and posterior distirbution of Dims."""
         import matplotlib.pyplot as plt
+        from cgpm.utils import plots as pu
         layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(
             num=None,
