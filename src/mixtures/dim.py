@@ -21,7 +21,6 @@ import numpy as np
 from cgpm.cgpm import CGpm
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
-from cgpm.utils import plots as pu
 
 
 class Dim(CGpm):
@@ -211,6 +210,7 @@ class Dim(CGpm):
 
     def plot_dist(self, X, Y=None, ax=None):
         """Plots predictive distribution and a histogram of data X."""
+        from cgpm.utils import plots as pu
         plotter = pu.plot_dist_continuous if self.model.is_continuous() else \
             pu.plot_dist_discrete
         return plotter(
