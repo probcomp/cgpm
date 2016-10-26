@@ -10,7 +10,7 @@ from cgpm.mixtures.view import View
 
 
 OUT = 'tests/resources/out/'
-RNG = np.random.RandomState(0)
+RNG = np.random.RandomState(7)
 # Define Data
 
 test_dataset_dpmm = [  # data3
@@ -44,9 +44,15 @@ test_dataset_with_distractors = [ # data2
 ];
 
 X1 = np.array(test_dataset_dpmm)
-X2 = np.random.normal(10, 5, size=[12, 6])
+X2 = RNG.normal(10, 5, size=[12, 6])
 test_dataset_mixed = np.hstack((X1, X2))
 test_dataset_mixed_nan = np.vstack((test_dataset_mixed, [np.nan]*12))
+test_dataset_wide = np.hstack((test_dataset_mixed,
+                               test_dataset_mixed,
+                               test_dataset_mixed))
+test_dataset_tall = np.vstack((test_dataset_mixed,
+                               test_dataset_mixed,
+                               test_dataset_mixed))
 
 # Initialize DPMM and CrossCat models for the data above
 
@@ -78,7 +84,7 @@ def string_generator(N=1, length=10):
 # view1, state1 = init_binary_view_state(test_dataset_dpmm, 50)
 # view2, state2 = init_binary_view_state(test_dataset_with_distractors, 50)
 view3, state3 = init_view_state(
-    test_dataset_mixed_nan, 50, ['bernoulli']*6 + ['normal']*6)
+    test_dataset_mixed_nan, 25, ['bernoulli']*6 + ['normal']*6)
 row_names_test = string_generator(12, 10)
 col_names_test = string_generator(6, 7)
 row_names3 = string_generator(13, 10)
@@ -92,6 +98,14 @@ def test_viz_data_with_names():
     savefile = OUT + "test_viz_data_with_names.png"
     ru.viz_data(test_dataset_dpmm, row_names=row_names_test,
                 col_names=col_names_test, savefile=savefile)
+
+def test_viz_wide_data():
+    savefile = OUT + "test_viz_wide_data.png"
+    ru.viz_data(test_dataset_wide, savefile=savefile)
+
+def test_viz_tall_data():
+    savefile = OUT + "test_viz_tall_data.png"
+    ru.viz_data(test_dataset_tall, savefile=savefile)
 
 def test_viz_view():
     savefile = OUT + "test_viz_view.png"
