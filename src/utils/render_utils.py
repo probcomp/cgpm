@@ -83,7 +83,8 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None):
     """
     if ax is None: ax = plt.gca()
     if isinstance(row_names, list): row_names = np.array(row_names)
-
+    if isinstance(col_names, list): col_names = np.array(col_names)
+    
     # Get data restricted to current view's outputs
     data_dict = get_view_data(view)
     data_arr = np.array(data_dict.values()).T
@@ -101,14 +102,15 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None):
         row_names = row_names[row_indexes]
 
     output_cols = data_dict.keys()
+
     if col_names is None:
         col_names = output_cols
-    elif len(col_names) == len(view.X.values())-1:
+    elif len(col_names) == len(view.X.values()):
         col_names = col_names[output_cols]
 
     # Plot clustered data 
     ax = viz_data_raw(clustered_data, ax, row_names, col_names)
-
+    
     # Plot lines between clusters
     for bd in cluster_boundaries:
         ax.plot(
