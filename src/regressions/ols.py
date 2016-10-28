@@ -209,7 +209,7 @@ class OrdinaryLeastSquares(CGpm):
         y = du.dummy_code(y, self.inputs_discrete)
         assert len(y) == self.p - 1
 
-        return x, [1] + y
+        return x, y
 
     ####################
     # SERLIAZE METHODS #
