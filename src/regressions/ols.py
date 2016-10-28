@@ -99,7 +99,9 @@ class OrdinaryLeastSquares(CGpm):
             return {self.outputs[0]: self.data.x[rowid]}
         xt, yt = self.preprocess(None, evidence)
         mean = self.regressor.predict([yt])[0]
-        return {self.outputs[0]: self.rng.normal(mean, self.noise)}
+        x = self.rng.normal(mean, self.noise)
+        # XXX Temporarily disable stochastic sample.
+        return {self.outputs[0]: mean}
 
     def logpdf_score(self):
         pass
