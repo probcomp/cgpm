@@ -20,6 +20,9 @@ import pytest
 from math import log
 
 import numpy as np
+import pandas as pd
+
+from sklearn.datasets import load_iris
 
 from cgpm.mixtures.dim import Dim
 from cgpm.regressions.forest import RandomForest
@@ -179,25 +182,48 @@ def test_transition_hypers():
 
 @stochastic(max_runs=3, min_passes=1)
 def test_simulate(seed):
+    rng = gu.gen_rng(bytearray(seed))
+
+    iris = load_iris()
+    indices = rng.uniform(0, 1, size=len(iris.data)) <= .75
+
+    Y_train = iris.data[indices]
+    X_train = iris.target[indices]
+
+    Y_test = iris.data[~indices]
+    X_test = iris.target[~indices]
+
     forest = Dim(
-        outputs=RF_OUTPUTS, inputs=[-1]+RF_INPUTS, cctype='random_forest',
-        distargs=RF_DISTARGS, rng=gu.gen_rng(bytearray(seed)))
-    forest.transition_hyper_grids(D[:,0])
+        outputs=[5], inputs=[-1]+range(4), cctype='random_forest',
+        distargs={
+            'inputs': {'stattypes': ['normal']*4},
+            'k': len(iris.target_names)},
+        rng=rng)
+
+    forest.transition_hyper_grids(X_test)
+
     # Incorporate data into 1 cluster.
-    for rowid, row in enumerate(D[:40]):
-        query = {0: row[0]}
-        evidence = gu.merged({i:row[i] for i in forest.inputs}, {-1:0})
+    for rowid, (x, y) in enumerate(zip(X_train, Y_train)):
+        query = {5: x}
+        evidence = gu.merged(
+            {-1: 0},
+            {i: t for (i,t) in zip(range(4), y)})
         forest.incorporate(rowid, query, evidence)
+
     # Transitions.
-    forest.transition_params()
-    for _ in xrange(2):
+    for i in xrange(2):
         forest.transition_hypers()
+        forest.transition_params()
+
     correct, total = 0, 0.
-    for row in D[40:]:
-        evidence = gu.merged({i:row[i] for i in forest.inputs}, {-1:0})
-        samples = [forest.simulate(-1, [0], evidence)[0] for i in xrange(10)]
-        prediction = np.argmax(np.bincount(samples))
-        correct += (prediction==row[0])
+    for rowid, (x, y) in enumerate(zip(X_test, Y_test)):
+        evidence = gu.merged(
+            {-1: 0},
+            {i: t for (i,t) in zip(range(4), y)})
+        samples = forest.simulate(-1, [5], evidence, N=10)
+        prediction = np.argmax(np.bincount([s[5] for s in samples]))
+        correct += (prediction==x)
         total += 1.
+
     # Classification should be better than random.
-    assert correct/total > 1./NUM_CLASSES
+    assert correct/total > 1./ forest.distargs['k']

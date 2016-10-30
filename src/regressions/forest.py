@@ -154,7 +154,7 @@ class RandomForest(CGpm):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
-        grids['alpha'] = np.linspace(0.01, 0.99, n_grid)
+        # grids['alpha'] = np.linspace(0.01, 0.99, n_grid)
         return grids
 
     @staticmethod
