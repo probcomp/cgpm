@@ -130,27 +130,8 @@ class VsCGpm(CGpm):
         metadata['factory'] = ('cgpm.venturescript.vscgpm', 'VsCGpm')
         return metadata
 
-    # Terrible hack for caching the cgpm object returned by `from_metadata`.
-    # Tests whether the `metadata` object is identical to the previous
-    # invocation, and if so return the cached cgpm.
-    # Issues:
-    # 1. Bug with rng.
-    # 2. If the metadata are subject to mutation this is completely wrong.
-    # 3. If the RIPL afterwards can be mutated which they can.
-    _last_metadata = None
-    _last_cgpm = None
     @classmethod
     def from_metadata(cls, metadata, rng=None):
-        if cls._last_metadata is metadata:
-            cgpm = cls._last_cgpm
-        else:
-            cgpm = cls._from_metadata(metadata, rng=rng)
-            cls._last_metadata = metadata
-            cls._last_cgpm = cgpm
-        return cgpm
-
-    @classmethod
-    def _from_metadata(cls, metadata, rng=None):
         ripl = vs.make_lite_ripl()
         ripl.loads(base64.b64decode(metadata['binary']))
         cgpm = VsCGpm(
