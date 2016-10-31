@@ -16,7 +16,6 @@
 
 import importlib
 import itertools
-import multiprocessing
 import pickle
 
 from collections import namedtuple
@@ -25,6 +24,7 @@ import numpy as np
 
 from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
+from cgpm.utils.parallel_map import parallel_map
 
 
 # Wrapper for a simple cgpm for optimized dependence_probability.
@@ -35,24 +35,21 @@ DummyCgpm = namedtuple('DummyCgpm', ['outputs', 'inputs'])
 
 def _intialize((X, rng, kwargs)):
     state = State(X, rng=rng, **kwargs)
-    return state.to_metadata()
+    return state
 
-def _modify((method, metadata, args)):
-    state = State.from_metadata(metadata, rng=metadata['rng'])
+def _modify((method, state, args)):
     getattr(state, method)(*args)
-    return state.to_metadata()
+    return state
 
-def _compose((method, metadata, cgpm_metadata, args)):
+def _compose((method, state, cgpm_metadata, args)):
     builder = getattr(
         importlib.import_module(cgpm_metadata['factory'][0]),
         cgpm_metadata['factory'][1])
-    cgpm = builder.from_metadata(cgpm_metadata, rng=metadata['rng'])
-    state = State.from_metadata(metadata, rng=metadata['rng'])
+    cgpm = builder.from_metadata(cgpm_metadata, rng=state.rng)
     getattr(state, method)(cgpm, *args)
-    return state.to_metadata()
+    return state
 
-def _evaluate((method, metadata, args)):
-    state = State.from_metadata(metadata, rng=metadata['rng'])
+def _evaluate((method, state, args)):
     return getattr(state, method)(*args)
 
 
@@ -60,233 +57,163 @@ class Engine(object):
     """Multiprocessing engine for a stochastic ensemble of parallel States."""
 
     def __init__(self, X, num_states=1, rng=None, multiprocess=1, **kwargs):
+        mapper = parallel_map if multiprocess else map
         self.rng = gu.gen_rng(1) if rng is None else rng
         self.X = np.asarray(X)
-        pool, mapper = self._get_mapper(multiprocess)
-        args = ((X, rng, kwargs) for rng in self._get_rngs(num_states))
+        args = [(X, rng, kwargs) for rng in self._get_rngs(num_states)]
         self.states = mapper(_intialize, args)
-        self._close_mapper(pool)
 
     # --------------------------------------------------------------------------
     # External
 
     def transition(self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('transition', self.states[i],
                 (N, S, kernels, rowids, cols, views, progress))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
-        self._close_mapper(pool)
 
     def transition_lovecat(self, N=None, S=None, kernels=None, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('transition_lovecat', self.states[i],
                 (N, S, kernels))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
-        self._close_mapper(pool)
 
     def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
             distargs=None, v=None, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('incorporate_dim', self.states[i],
                 (T, outputs, inputs, cctype, distargs, v))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
-        self._close_mapper(pool)
 
     def unincorporate_dim(self, col, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('unincorporate_dim', self.states[i],
                 (col,))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
-        self._close_mapper(pool)
 
     def incorporate(self, rowid, query, evidence=None, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('incorporate', self.states[i],
                 (rowid, query, evidence))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
-        self._close_mapper(pool)
 
     def unincorporate(self, rowid, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('unincorporate', self.states[i],
                 (rowid,))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
-        self._close_mapper(pool)
 
     def update_cctype(self, col, cctype, distargs=None, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('update_cctype', self.states[i],
                 (col, cctype, distargs))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
-        self._close_mapper(pool)
 
     def compose_cgpm(self, cgpms, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('compose_cgpm', self.states[i], cgpms[i].to_metadata(),
                 ())
                 for i in xrange(self.num_states())]
         self.states = mapper(_compose, args)
-        self._close_mapper(pool)
 
     def logpdf(self, rowid, query, evidence=None, accuracy=None, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('logpdf', self.states[i],
                 (rowid, query, evidence, accuracy))
             for i in xrange(self.num_states())]
         logpdfs = mapper(_evaluate, args)
-        self._close_mapper(pool)
         return logpdfs
 
     def logpdf_bulk(self, rowids, queries, evidences=None, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('logpdf_bulk', self.states[i],
                 (rowids, queries, evidences))
                 for i in xrange(self.num_states())]
         logpdfs = mapper(_evaluate, args)
-        self._close_mapper(pool)
         return logpdfs
 
     def logpdf_score(self, multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('logpdf_score', self.states[i],
                 ())
                 for i in xrange(self.num_states())]
         logpdf_scores = mapper(_evaluate, args)
-        self._close_mapper(pool)
         return logpdf_scores
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None,
             multiprocess=1):
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('simulate', self.states[i],
                 (rowid, query, evidence, N, accuracy))
                 for i in xrange(self.num_states())]
         samples = mapper(_evaluate, args)
-        self._close_mapper(pool)
         return samples
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
             multiprocess=1):
         """Returns list of simualate_bulk, one for each state."""
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('simulate_bulk', self.states[i],
                 (rowids, queries, evidences, Ns))
                 for i in xrange(self.num_states())]
         samples = mapper(_evaluate, args)
-        self._close_mapper(pool)
         return samples
 
     def mutual_information(self, col0, col1, evidence=None, T=None, N=None,
             progress=None, multiprocess=1):
         """Returns list of mutual information estimates, one for each state."""
-        pool, mapper = self._get_mapper(multiprocess)
+        mapper = parallel_map if multiprocess else map
         args = [('mutual_information', self.states[i],
                 (col0, col1, evidence, T, N, progress))
                 for i in xrange(self.num_states())]
         mis = mapper(_evaluate, args)
-        self._close_mapper(pool)
         return mis
 
     def dependence_probability(self, col0, col1, multiprocess=1):
-        """Compute dependence probability between col0 and col1 as float."""
+        """Compute dependence probabilities between col0 and col1."""
         # XXX Ignore multiprocess.
-        return [
-            self._dependence_probability_state(s, col0, col1)
-            for s in self.states
-        ]
-
-    def _dependence_probability_state(self, state, col0, col1):
-        cgpms = [
-            DummyCgpm(m['outputs'], m['inputs'])
-            for m in state['hooked_cgpms'].itervalues()
-        ] + [DummyCgpm(state['outputs'], [])]
-        return State._dependence_probability(
-            cgpms, dict(state['Zv']), col0, col1)
+        return [s.dependence_probability(col0, col1) for s in self.states]
 
     def dependence_probability_pairwise(self):
         """Compute dependence probability between all pairs as matrix."""
-        n_cols = len(self.states[0]['X'][0])
-        D = np.eye(n_cols)
-        for i,j in itertools.combinations(range(n_cols), 2):
-            d = np.mean(self.dependence_probability(i,j))
+        D = np.eye(len(self.states[0].outputs))
+        for i,j in itertools.combinations(self.states[0].outputs, 2):
+            d = np.mean(self.dependence_probability(i, j))
             D[i,j] = D[j,i] = d
         return D
 
-    def row_similarity(
-            self, row0, row1, cols=None, states=None, multiprocess=1):
-        """Compute similiarty between row0 and row1 as float."""
-        if states is None: states = xrange(self.num_states())
-        if cols is None: cols = range(len(self.states[0]['cctypes']))
-        def row_sim_state(s):
-            Zv = dict(self.states[s]['Zv'])
-            Zrv = dict(self.states[s]['Zrv'])
-            Zrs = [Zrv[v] for v in set(Zv[c] for c in cols)]
-            return sum([Zr[row0]==Zr[row1] for Zr in Zrs]) / float(len(Zrv))
-        return [row_sim_state(s) for s in states]
+    def row_similarity(self, row0, row1, cols=None, multiprocess=1):
+        """Compute similiarties between row0 and row1."""
+        return [s.row_similarity(row0, row1, cols) for s in self.states]
 
-    def row_similarity_pairwise(self, cols=None, states=None):
+    def row_similarity_pairwise(self, cols=None):
         """Compute dependence probability between all pairs as matrix."""
-        n_rows = len(self.states[0]['X'])
+        n_rows = self.states[0].n_rows()
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
-            s = np.mean(self.row_similarity(i,j, cols=cols, states=states))
+            s = np.mean(self.row_similarity(i,j, cols))
             S[i,j] = S[j,i] = s
         return S
 
     def get_state(self, index):
-        self._populate_metadata()
-        return State.from_metadata(self.states[index])
-
-    def get_states(self, indices):
-        self._populate_metadata()
-        return [self.get_state(i) for i in indices]
+        return self.states[index]
 
     def drop_state(self, index):
         del self.states[index]
-
-    def drop_states(self, indices):
-        drop = set(indices)
-        self.states = [m for i,m in enumerate(self.states) if i not in drop]
 
     def num_states(self):
         return len(self.states)
 
     # --------------------------------------------------------------------------
     # Internal
-
-    def _get_mapper(self, multiprocess):
-        self._populate_metadata() # XXX Right place?
-        pool, mapper = None, map
-        if multiprocess:
-            pool = multiprocessing.Pool(multiprocessing.cpu_count())
-            mapper = pool.map
-        return pool, mapper
-
-    def _close_mapper(self, pool):
-        if pool is not None:
-            pool.close()
-
-    def _populate_metadata(self):
-        if not hasattr(self, 'states'):
-            return
-        for rng, state in zip(self._get_rngs(), self.states):
-            state['rng'] = rng
-            state['X'] = self.X
-
-    def _depopulate_metadata(self):
-        if not hasattr(self, 'states'):
-            return
-        for state in self.states:
-            state.pop('rng', None)
-            state.pop('X', None)
 
     def _get_rngs(self, N=None):
         num_states = N if N is not None else self.num_states()
@@ -316,10 +243,11 @@ class Engine(object):
     # Serialize
 
     def to_metadata(self):
-        self._depopulate_metadata()
         metadata = dict()
         metadata['X'] = self.X.tolist()
-        metadata['states'] = self.states
+        metadata['states'] = [s.to_metadata() for s in self.states]
+        for m in metadata['states']:
+            del m['X']
         metadata['factory'] = ('cgpm.crosscat.engine', 'Engine')
         return metadata
 
@@ -327,18 +255,19 @@ class Engine(object):
     def from_metadata(cls, metadata, rng=None, multiprocess=1):
         if rng is None:
             rng = gu.gen_rng(0)
-        # XXX Backward compatability.
-        if 'states' not in metadata:
-            metadata['states'] = metadata['state_metadatas']
-        if 'X' not in metadata:
-            metadata['X'] = metadata['states'][0]['X']
         engine = cls(
             X=metadata['X'],
             num_states=0,
             rng=rng,
             multiprocess=multiprocess)
-        engine.states = metadata['states']
-        engine._populate_metadata()
+        # Repopulate the states with the dataset.
+        for m in metadata['states']:
+            m['X'] = metadata['X']
+        num_states = len(metadata['states'])
+        engine.states = [
+            State.from_metadata(s, rng=r) for s, r
+            in zip(metadata['states'], engine._get_rngs(num_states))
+        ]
         return engine
 
     def to_pickle(self, fileptr):

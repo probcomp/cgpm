@@ -364,6 +364,14 @@ class State(CGpm):
         return 0.
 
     # --------------------------------------------------------------------------
+    # Row similarity.
+
+    def row_similarity(self, row0, row1, cols=None):
+        if cols is None: cols = self.outputs
+        views = set(self.view_for(c) for c in cols)
+        return np.mean([v.Zr(row0)==v.Zr(row1) for v in views])
+
+    # --------------------------------------------------------------------------
     # Mutual information
 
     def _mutual_information_estimator(self, col0, col1, evidence=None, N=None):
