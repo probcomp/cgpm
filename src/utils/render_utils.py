@@ -5,23 +5,24 @@ import matplotlib.gridspec as gridspec
 
 seaborn.set_style("white")
 
-def predict_axis_size_viz_data(data, row_names, col_names):
+def predict_plot_size_viz_data(data, row_names, col_names):
     if isinstance(data, list): data = np.array(data)
-    row_height = max(map(len, map(str, row_names)))
-    col_width = max(map(len, map(str, col_names)))
-    height = data.shape[0] #/ 2. + row_height
-    width = data.shape[1] #/ 2. + col_width
-    return height, width
+    row_width = max(map(len, map(str, row_names)))
+    col_height = max(map(len, map(str, col_names)))
+    height = data.shape[0]
+    width = data.shape[1]
+    return height, width, row_width, col_height * np.cos(np.pi/4)
 
 def viz_data_raw(data, ax=None, row_names=None,
-                 col_names=None, cmap=None, title=None):
+                 col_names=None, cmap=None, title=None,
+                 labelsize=None):
     if isinstance(data, list): data = np.array(data)
     if ax is None: ax = plt.gca()
     if cmap is None: cmap = "YlGn"
     if row_names is None: row_names = range(data.shape[0])
     if col_names is None: col_names = range(data.shape[1])
-
-    height, width = predict_axis_size_viz_data(data, row_names, col_names)
+    if labelsize is None: labelsize = 12
+    height, width, _, _ = predict_plot_size_viz_data(data, row_names, col_names)
         
     data_normed = nannormalize(data)
 
@@ -36,14 +37,14 @@ def viz_data_raw(data, ax=None, row_names=None,
     yticklabelsize = size - height
     if row_names is not None:
         ax.set_yticks(range(data_normed.shape[0]))
-        ax.set_yticklabels(row_names, ha='right', size='x-large')
+        ax.set_yticklabels(row_names, ha='right', size=labelsize)
 #         ax.set_yticklabels(row_names, ha='right')
         
     xticklabelsize = size - width/3.
     if col_names is not None:
         ax.set_xticks(range(data_normed.shape[1]))
         ax.set_xticklabels(col_names, rotation=45, rotation_mode='anchor',
-                            ha='left', size='x-large')
+                            ha='left', size=labelsize)
 #         ax.set_xticklabels(col_names, rotation=45, rotation_mode='anchor',
 #                             ha='left')
     # Hack to set grids off-center
@@ -54,7 +55,7 @@ def viz_data_raw(data, ax=None, row_names=None,
     return ax
 
 def viz_data(data, ax=None, row_names=None, col_names=None, 
-             cmap=None, title=None, savefile=None):
+             cmap=None, title=None, savefile=None, labelsize=None):
     """
     Vizualize heterogeneous data.
     Standardize data across columns.
@@ -64,8 +65,8 @@ def viz_data(data, ax=None, row_names=None, col_names=None,
     if row_names is None: row_names = range(data.shape[0])
     if col_names is None: col_names = range(data.shape[1])
 
-    ax = viz_data_raw(data, ax, row_names, col_names, cmap, title)
-    height, width = predict_axis_size_viz_data(data, row_names, col_names)
+    ax = viz_data_raw(data, ax, row_names, col_names, cmap, title, labelsize)
+    height, width, _, _ = predict_plot_size_viz_data(data, row_names, col_names)
     
     fig = ax.get_figure()
     fig.set_figheight(height)
@@ -76,7 +77,7 @@ def viz_data(data, ax=None, row_names=None, col_names=None,
         fig.savefig(savefile)
     return ax
 
-def viz_view_raw(view, ax=None, row_names=None, col_names=None):
+def viz_view_raw(view, ax=None, row_names=None, col_names=None, labelsize=None):
     """ 
     Order rows according to clusters and draw line between clusters.
     Visualize this using imshow with two colors only.
@@ -109,7 +110,7 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None):
         col_names = col_names[output_cols]
 
     # Plot clustered data 
-    ax = viz_data_raw(clustered_data, ax, row_names, col_names)
+    ax = viz_data_raw(clustered_data, ax, row_names, col_names, labelsize=labelsize)
     
     # Plot lines between clusters
     for bd in cluster_boundaries:
@@ -119,9 +120,8 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None):
 
     return ax
 
-
 def viz_view(view, ax=None, row_names=None, col_names=None, 
-             savefile=None):
+             savefile=None, labelsize=None):
     """ 
     Order rows according to clusters and draw line between clusters.
     Visualize this using imshow with two colors only.
@@ -136,9 +136,9 @@ def viz_view(view, ax=None, row_names=None, col_names=None,
     if savefile is None: savefile = "view_foo.png"
     if isinstance(row_names, list): row_names = np.array(row_names)
 
-    ax = viz_view_raw(view, ax, row_names, col_names)
+    ax = viz_view_raw(view, ax, row_names, col_names, labelsize=labelsize)
     
-    height, width = predict_axis_size_viz_data(data_arr, row_names, col_names)
+    height, width, _, _ = predict_plot_size_viz_data(data_arr, row_names, col_names)
     
     fig = ax.get_figure()
     fig.set_figheight(height)
@@ -148,6 +148,70 @@ def viz_view(view, ax=None, row_names=None, col_names=None,
     if savefile:
         fig.savefig(savefile)
     return ax
+
+def viz_state_nogs(state, row_names=None, col_names=None, savefile=None, labelsize=None):
+    """ 
+    For each each view call viz_view as defined above. 
+    Plot each view next to each other.
+    Do not use gridspec
+    """
+    data_arr = np.array(state.X.values()).T
+
+    if row_names is None: row_names = range(data_arr.shape[0])
+    if col_names is None: col_names = range(data_arr.shape[1])
+    if savefile is None: savefile = "state_foo.png"
+
+    D = data_arr.shape[1]
+    views = state.views.keys()
+    
+    # Get the subplot widths
+    view_widths = []
+    for view in views:
+        data_view = np.array(get_view_data(state.views[view]).values()).T
+        height, width, row_width, col_height = predict_plot_size_viz_data(
+            data_view, row_names, col_names)
+        view_widths.append(width)
+
+    wspace = row_width/1.3
+    all_wspace = wspace * len(views)
+    right_margin = col_height / 2.
+    fig_width = sum(view_widths + [all_wspace] + [right_margin]) * 1.
+    fig_height = height
+    Z = 5.
+
+    fig = plt.figure(figsize=(fig_width/Z, fig_height/Z))
+    # Create grid for subplots 
+
+    def get_ax_param_list(view_widths, wspace, fig_width, right_margin):
+        assert np.allclose(fig_width, sum(view_widths + [wspace] * len(
+            view_widths) + [right_margin]))
+        ymin = 0.05
+        dy = 0.65
+        dx_list = [w / fig_width for w in view_widths]
+        norm_wspace = wspace / fig_width
+        xmin_list = [norm_wspace]
+        for i, _ in enumerate(view_widths[:-1]):
+            xmin_list.append(xmin_list[i] + dx_list[i] + norm_wspace)
+        
+        return [(xmin, ymin, dx, dy) for (xmin, dx) in zip(xmin_list, dx_list)]
+        
+
+    # Plot data for each viewx
+    ax_param_list = get_ax_param_list(view_widths, wspace,
+                                      fig_width, right_margin)
+    ax_list = []
+    for (i, view) in enumerate(views):
+        ax_params = ax_param_list[i]
+        ax_list.append(fig.add_axes(ax_params))
+        ax_list[-1] = viz_view_raw(
+            state.views[view], ax_list[-1], row_names, col_names, labelsize=labelsize)
+        
+    # gs.tight_layout(fig)
+    fig.subplots_adjust(right=0.95)
+    if savefile:
+        fig.savefig(savefile)
+    return ax_list
+ 
 
 def viz_state(state, row_names=None, col_names=None, savefile=None):
     """ 
@@ -169,15 +233,27 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
     view_heights = []
     for view in views:
         data_view = np.array(get_view_data(state.views[view]).values()).T
-        height, width = predict_axis_size_viz_data(data_view, row_names, col_names)
+        height, width, row_width, col_height = predict_plot_size_viz_data(data_view, row_names, col_names)
         view_widths.append(width)
-        view_heights.append(1)
+        view_heights.append(height)
 
-    fig = plt.figure(figsize=(32, 18))
+    # compute xlabelsize adaptively
+
+    # wspace = row_width/2. # compute wspace as a function of the number of max(map(len, col_names))
+    # norm_factor = 4.
+    wspace = row_width
+    all_wspace = wspace * (len(views)-1)
+    fig_width = sum(view_widths + [all_wspace]) / 4
+    fig_height = view_heights[0] / 4
+
+    fig = plt.figure(figsize=(fig_width, fig_height))
     # Create grid for subplots 
     gs = gridspec.GridSpec(
-        1, len(views), width_ratios=view_widths, wspace=1)
-# , height_ratios=view_heights)
+        1, len(views), width_ratios=view_widths)
+    
+    # Figsize in pixels
+    # [ ] Force width space in pixels
+    # [ ] Force column width in pixels
 
     # Plot data for each view
     ax_list = []
@@ -188,9 +264,8 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
                                    row_names, col_names)
         # ax_list[-1].set_xlabel("View %d" % (view), size='x-large')
         
-
-    # fig.tight_layout(True)
-    plt.subplots_adjust(top=0.84)
+    # gs.tight_layout(fig)
+    plt.subplots_adjust(top=0.7, bottom=0.05, right=0.95, left=0.05)
     if savefile:
         fig.savefig(savefile)
     return ax_list
