@@ -55,43 +55,43 @@ def render_states_to_disk(engine, name, iters=None):
     for i in range(num_states):
         savefile = filepath + "/state_%d" %(i,)
         state = engine.get_state(i)
-        ru.viz_state(state, row_names=animal_names, col_names=animal_features,savefile=savefile);
+        ru.viz_state_old(state, row_names=animal_names, col_names=animal_features,savefile=savefile);
     plt.close()
 
 # # TESTS # #
+
+def test_render_many_views_old():
+    savefile = OUT + "test_render_many_views_old.png"
+    state = engine_cc.get_state(12)
+    ru.viz_state_old(state, row_names=animal_names,
+                 col_names=animal_features, savefile=savefile)
+
+def test_render_couple_views_old():
+    savefile = OUT + "test_render_couple_views_old.png"
+    state = engine_lovecat.get_state(32)
+    ru.viz_state_old(state, row_names=animal_names,
+                 col_names=animal_features, savefile=savefile)
+
+def test_render_one_view_old():
+    savefile = OUT + "test_render_one_view_old.png"
+    state = engine_cc.get_state(0)
+    ru.viz_state_old(state, row_names=animal_names,
+                 col_names=animal_features, savefile=savefile)
 
 def test_render_many_views():
     savefile = OUT + "test_render_many_views.png"
     state = engine_cc.get_state(12)
     ru.viz_state(state, row_names=animal_names,
-                 col_names=animal_features, savefile=savefile)
+                      col_names=animal_features, savefile=savefile)
 
 def test_render_couple_views():
     savefile = OUT + "test_render_couple_views.png"
     state = engine_lovecat.get_state(32)
     ru.viz_state(state, row_names=animal_names,
-                 col_names=animal_features, savefile=savefile)
+                      col_names=animal_features, savefile=savefile)
 
 def test_render_one_view():
     savefile = OUT + "test_render_one_view.png"
     state = engine_cc.get_state(0)
     ru.viz_state(state, row_names=animal_names,
-                 col_names=animal_features, savefile=savefile)
-
-def test_render_many_views_nogs():
-    savefile = OUT + "test_render_many_views_nogs.png"
-    state = engine_cc.get_state(12)
-    ru.viz_state_nogs(state, row_names=animal_names,
-                      col_names=animal_features, savefile=savefile)
-
-def test_render_couple_views_nogs():
-    savefile = OUT + "test_render_couple_views_nogs.png"
-    state = engine_lovecat.get_state(32)
-    ru.viz_state_nogs(state, row_names=animal_names,
-                      col_names=animal_features, savefile=savefile)
-
-def test_render_one_view_nogs():
-    savefile = OUT + "test_render_one_view_nogs.png"
-    state = engine_cc.get_state(0)
-    ru.viz_state_nogs(state, row_names=animal_names,
                       col_names=animal_features, savefile=savefile)

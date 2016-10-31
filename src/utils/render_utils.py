@@ -149,7 +149,7 @@ def viz_view(view, ax=None, row_names=None, col_names=None,
         fig.savefig(savefile)
     return ax
 
-def viz_state_nogs(state, row_names=None, col_names=None, savefile=None, labelsize=None):
+def viz_state(state, row_names=None, col_names=None, savefile=None, labelsize=None):
     """ 
     For each each view call viz_view as defined above. 
     Plot each view next to each other.
@@ -213,7 +213,7 @@ def viz_state_nogs(state, row_names=None, col_names=None, savefile=None, labelsi
     return ax_list
  
 
-def viz_state(state, row_names=None, col_names=None, savefile=None):
+def viz_state_old(state, row_names=None, col_names=None, savefile=None):
     """ 
     For each each view call viz_view as defined above. 
     Plot each view next to each other.
