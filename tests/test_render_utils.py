@@ -111,20 +111,21 @@ def test_viz_view():
     savefile = OUT + "test_viz_view.png"
     ru.viz_view(view3, savefile=savefile)
 
-
 def test_viz_view_with_names():
     savefile = OUT + "test_viz_view_with_names.png"
     ru.viz_view(view3, row_names=row_names3,
                 col_names=col_names3, savefile=savefile)
     
-
 def test_viz_state():
     savefile = OUT + "test_viz_state.png"
     ru.viz_state(state3, savefile=savefile)
     
-
 def test_viz_state_with_names():
     savefile = OUT + "test_viz_state_with_names.png"
     ru.viz_state(state3, row_names=row_names3,
                  col_names=col_names3, savefile=savefile)
     
+def test_viz_state_curlette():
+    savefile = OUT + "test_viz_state_curlette.png"
+    ru.viz_state(state3, savefile=savefile,
+                 col_names=[str(i) for i in range(12)])
