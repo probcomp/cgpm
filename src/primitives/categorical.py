@@ -141,7 +141,7 @@ class Categorical(DistributionGpm):
     @staticmethod
     def calc_predictive_logp(x, N, counts, alpha):
         numer = log(alpha + counts[x])
-        denom = log(np.sum(counts) + alpha * len(counts))
+        denom = log(np.sum(counts) + alpha * (len(counts) / self.k))
         return numer - denom
 
     @staticmethod
