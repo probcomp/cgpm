@@ -107,7 +107,7 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, labelsize=None):
     if col_names is None:
         col_names = output_cols
     elif len(col_names) == len(view.X.values()):
-        col_names = col_names[output_cols]
+        col_names = [col_names[i] for i in output_cols]
 
     # Plot clustered data 
     ax = viz_data_raw(clustered_data, ax, row_names, col_names, labelsize=labelsize)
@@ -157,8 +157,14 @@ def viz_state(state, row_names=None, col_names=None, savefile=None, labelsize=No
     """
     data_arr = np.array(state.X.values()).T
 
+    if col_names is None: col_names = state.outputs
+    if len(col_names) != len(state.outputs):
+        raise ValueError("len(col_names) != len(state.outputs), %d != %d" %(
+            len(col_names), len(state.outputs)))
+    elif not isinstance(col_names, dict):
+        col_names = dict(zip(state.outputs, col_names))
+        
     if row_names is None: row_names = range(data_arr.shape[0])
-    if col_names is None: col_names = range(data_arr.shape[1])
     if savefile is None: savefile = "state_foo.png"
 
     D = data_arr.shape[1]
@@ -180,22 +186,6 @@ def viz_state(state, row_names=None, col_names=None, savefile=None, labelsize=No
     Z = 5.
 
     fig = plt.figure(figsize=(fig_width/Z, fig_height/Z))
-    # Create grid for subplots 
-
-    def get_ax_param_list(view_widths, wspace, fig_width, right_margin):
-        assert np.allclose(fig_width, sum(view_widths + [wspace] * len(
-            view_widths) + [right_margin]))
-        ymin = 0.05
-        dy = 0.65
-        dx_list = [w / fig_width for w in view_widths]
-        norm_wspace = wspace / fig_width
-        xmin_list = [norm_wspace]
-        for i, _ in enumerate(view_widths[:-1]):
-            xmin_list.append(xmin_list[i] + dx_list[i] + norm_wspace)
-        
-        return [(xmin, ymin, dx, dy) for (xmin, dx) in zip(xmin_list, dx_list)]
-        
-
     # Plot data for each viewx
     ax_param_list = get_ax_param_list(view_widths, wspace,
                                       fig_width, right_margin)
@@ -205,13 +195,24 @@ def viz_state(state, row_names=None, col_names=None, savefile=None, labelsize=No
         ax_list.append(fig.add_axes(ax_params))
         ax_list[-1] = viz_view_raw(
             state.views[view], ax_list[-1], row_names, col_names, labelsize=labelsize)
-        
-    # gs.tight_layout(fig)
+
     fig.subplots_adjust(right=0.95)
     if savefile:
         fig.savefig(savefile)
     return ax_list
  
+def get_ax_param_list(view_widths, wspace, fig_width, right_margin):
+    assert np.allclose(fig_width, sum(view_widths + [wspace] * len(
+        view_widths) + [right_margin]))
+    ymin = 0.05
+    dy = 0.65
+    dx_list = [w / fig_width for w in view_widths]
+    norm_wspace = wspace / fig_width
+    xmin_list = [norm_wspace]
+    for i, _ in enumerate(view_widths[:-1]):
+        xmin_list.append(xmin_list[i] + dx_list[i] + norm_wspace)
+
+    return [(xmin, ymin, dx, dy) for (xmin, dx) in zip(xmin_list, dx_list)]
 
 def viz_state_old(state, row_names=None, col_names=None, savefile=None):
     """ 

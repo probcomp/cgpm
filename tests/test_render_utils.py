@@ -1,6 +1,7 @@
 import cgpm.utils.render_utils as ru
 import matplotlib.pyplot as plt 
 import numpy as np
+import os 
 
 from random import choice
 from string import ascii_uppercase
@@ -8,7 +9,7 @@ from string import ascii_uppercase
 from cgpm.crosscat.state import State
 from cgpm.mixtures.view import View
 
-
+PKLDIR = 'tests/resources/pkl/'
 OUT = 'tests/resources/out/'
 RNG = np.random.RandomState(7)
 # Define Data
@@ -125,7 +126,24 @@ def test_viz_state_with_names():
     ru.viz_state(state3, row_names=row_names3,
                  col_names=col_names3, savefile=savefile)
     
-def test_viz_state_curlette():
-    savefile = OUT + "test_viz_state_curlette.png"
-    ru.viz_state(state3, savefile=savefile,
-                 col_names=[str(i) for i in range(12)])
+def test_viz_state_curlette_no_colnames():
+    filepath = PKLDIR + 'state_curlette.pkl'
+    if not os.path.isfile(filepath):
+        raise Warning("%s file does not exist. Aborting", (filepath,))
+        pass 
+    else:
+        with open(filepath, 'rb') as fileptr:
+            state = State.from_pickle(fileptr)
+        savefile = OUT + "test_viz_state_curlette_no_colnames.png"
+        ru.viz_state(state, savefile=savefile)
+
+def test_viz_state_curlette_with_colnames():
+    filepath = PKLDIR + 'state_curlette.pkl'
+    if not os.path.isfile(filepath):
+        raise Warning("%s file does not exist. Aborting", (filepath,))
+        pass 
+    else:
+        with open(PKLDIR + 'state_curlette.pkl', 'rb') as fileptr:
+            state = State.from_pickle(fileptr)
+        savefile = OUT + "test_viz_state_curlette_with_colnames.png"
+        ru.viz_state(state, savefile=savefile, col_names=[str(i) for i in range(35)])
