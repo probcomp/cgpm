@@ -36,6 +36,9 @@ from cgpm.mixtures.view import View
 
 OUT = 'tests/resources/out/'
 
+# TODO: rewrite tests fixing all the parameters for view and not analyzing
+# (there is no point in analyzing, I'm not debugging inference)
+
 @pytest.fixture(params=[(seed, D) for seed in range(3) for D in [1, 5]])
 def priorCGPM(request):
     seed = request.param[0]
@@ -186,7 +189,7 @@ def test_bayes(priorCGPM):
     left_5 = log_conditional_t(dx2[0], dx1) 
     right_5 = (log_conditional_t(dx1[0], dx2) + log_marginal_t(dx2[0]) - 
                log_marginal_t(dx1[0]))
-    assert np.allclose(left_5, right_5)
+    assert np.allclose(left_5, right_5, atol=1e-4)
 
 def test_generative_logscore(priorCGPM):
     posteriorCGPM = analyze(priorCGPM)

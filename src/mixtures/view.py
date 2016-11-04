@@ -276,37 +276,94 @@ class View(CGpm):
         query: dict{col: value}
         evidence: dict{rowid: dict{col: value}}
         """
-        return self.logpdf_multirow_hypothetical_helper(
-            i=0, rowid=rowid, query=query, evidence=evidence)  
+        # self.logpdf_latents = {}  # variable for debugging
+        # self.logpdf_latents["partial_assignments"] = [np.nan] * len(evi
+        logpdf_value = self.logpdf_multirow_new_design(
+            0, rowid=rowid, query=query, evidence=evidence)  
+        # del self.logpdf_latents  # return cgpm to its previous state
+        return logpdf_value
 
-    def logpdf_multirow_hypothetical_helper(self, i, rowid,
-                                            query, evidence):
-        n = len(evidence)
-        K = self.crp.clusters[0].gibbs_tables(-1)
-        S = -np.float("inf")
+    def logpdf_multirow_new_design(self, ix_evid, rowid, query, evidence=None):
+        """
+        P(x_q = vq | x_e1=v1, ..., x_en=vn) =
+          sum_{k1, k2,..., kn} 
+            P(z_e1=k1 | x_e1=v1) P(z_e2=k2 | z_e1=k1, x_e2=v2) ...
+              P(z_en=kn | z_e1=k1,..., z_e{LEN_EVIDENCE-1}=k{LEN_EVIDENCE-1}, x_en=vn)
+                P(x_q=vq | z_e1=k1,..., z_en=kn, x_e1=v1, ..., x_en=vn)
+
+        The posterior predictive of a query row x_q taking value
+        v_q, conditioned on a set of evidence rows {x_e1, ...,
+        x_en} taking values {v1, ..., vn} equals the sum over all
+        cluster assignments over query and evidence rows of the
+        product of:
+        1. probability of each evidence cluster assignment given
+           evidence values and all previous evidence cluster assignments
+           P(z_ej=kj | z_e1=k1,..., z_e{cluster-1}=k{cluster-1}, x_ej=vj)
+        2. probability of query value conditioned on all evidence cluster 
+           assignments and all evidence values
+           P(x_q=vq | z_q=kq, z_e1=k1,..., z_en=kn, x_e1=v1, ..., x_en=vn)
+
+        In this new code design, I would like to isolate steps 1. and 2. 
+        and make them more accessible to ease the debugging process. 
+
+        Params
+        ------
+        ix_evid        - <int>, counter
+        rowid    - <int>, row id for query row (DOES NOT MAKE A DIFFERENCE YET)
+        query    - dict{col: value}
+        evidence - dict{rowid: dict{col: value}}
+        lw_state - dict, 
+        """
+        # TODO: CHANGE ix_evid FOR evid_rowid
+        # TODO: STORE LATENT VALUES ON GLOBAL VARIABLE
+        
+        # STATIC_VARIABLES
+        LEN_EVIDENCE = len(evidence) 
+        CLUSTER_LABELS = self.crp.clusters[0].gibbs_tables(-1)
+
+        out = -np.float("inf")
         network = self.build_network()
-        if i == n:  # base case
-            S = gu.logsumexp([S, self.logpdf(rowid, query)])
-        else:  # recursive case
-            row_evidence = evidence[i]
-            row_evidences = [merged(
-                row_evidence, {self.outputs[0]: k}) for k in K]
-            for j in range(len(K)):
-                # Compute posterior_crp_logpdf
+        if ix_evid == LEN_EVIDENCE:  # base case: compute query conditional_logpredictive.
+            # TODO: expose current assigned clusters for each evidence row
+            conditional_logpredictive = self.logpdf(rowid, query)
+            out = gu.logsumexp([out, conditional_logpredictive])
+
+        else:  # recursive case: sequentially incorporate evidence rows.
+            evidence_row = evidence[ix_evid]
+            cluster_assignment = self.outputs[0]
+            evidence_assigned_to_each_cluster = [
+                merged(evidence_row, {cluster_assignment: k})
+                for k in CLUSTER_LABELS]
+            
+            for cluster in range(len(CLUSTER_LABELS)):
+                # Step 1: Compute posterior_crp_logpdf P(z_ix | x_ix, z{i<ix_evid})
+                # TODO: what is lp_evidence_unorm exactly? P(xj | zj) ?
+                # TODO: if that is the case, I need to multiply it by p(zj)
+                # TODO: Create a test case to check for the question above
                 lp_evidence_unorm = [
-                    network.logpdf(rowid, ev) for ev in row_evidences]
+                    network.logpdf(rowid, ev)
+                    for ev in evidence_assigned_to_each_cluster]
+
                 lp_evidence = gu.log_normalize(lp_evidence_unorm)
-                posterior_crp_logpdf = lp_evidence[j] 
-                # incorporate row_evidence into cgpm with latent cluster k
+                posterior_crp_logpdf = lp_evidence[cluster] 
+
+                # Incorporate evidence_row into cgpm with latent cluster 'cluster'
                 self.incorporate(
-                    rowid=42000+i, query=row_evidences[j])
-                S = gu.logsumexp([
-                    S, posterior_crp_logpdf +
-                    self.logpdf_multirow_hypothetical_helper(
-                        i+1, rowid, query, evidence)])
-                self.unincorporate(42000+i)
-        return S
-             
+                    rowid=42000+ix_evid,
+                    query=evidence_assigned_to_each_cluster[cluster])
+
+                # Step 1: logsumexp_{cluster} posterior_crp_logpdf(i < ix_evid) *
+                #    logpdf_multirow(query | z_ix_evid, evidence)
+                # TODO: make it possible to condition on latent variables
+                out = gu.logsumexp([
+                    out, posterior_crp_logpdf +
+                    self.logpdf_multirow_new_design(
+                        ix_evid+1, rowid, query, evidence)])
+
+                self.unincorporate(42000+ix_evid)
+
+        return out
+
     # --------------------------------------------------------------------------
     # simulate
 
