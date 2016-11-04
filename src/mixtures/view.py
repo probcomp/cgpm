@@ -269,7 +269,7 @@ class View(CGpm):
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
         return gu.logsumexp(np.add(lp_evidence, lp_query))
  
-    def logpdf_multirow(self, rowid, query, evidence=None):
+    def logpdf_multirow(self, rowid, query, evidence=None, debug=False):
         """
         Parameters:
         -----------
@@ -279,17 +279,18 @@ class View(CGpm):
         self.debug = {}  # variable for debugging
         self.debug['posterior_crp_logpdf'] = []
         self.debug['conditional_logpredictive'] = []
-        logpdf_value = self.logpdf_multirow_new_design(
-            0, rowid=rowid, query=query, evidence=evidence)  
-        del self.debug  # return cgpm to its previous state
+        logpdf_value = self._logpdf_multirow_new_design(
+            0, rowid, query, evidence)
+        if not debug:
+            del self.debug
         return logpdf_value
 
-    def logpdf_multirow_new_design(self, ix_evid, rowid, query, evidence=None):
+    def _logpdf_multirow_new_design(self, ix_evid, rowid, query, evidence=None):
         """
         P(x_q = vq | x_e1=v1, ..., x_en=vn) =
           sum_{k1, k2,..., kn} 
             P(z_e1=k1 | x_e1=v1) P(z_e2=k2 | z_e1=k1, x_e2=v2) ...
-              P(z_en=kn | z_e1=k1,..., z_e{LEN_EVIDENCE-1}=k{LEN_EVIDENCE-1}, x_en=vn)
+              P(z_en=kn | z_e1=k1,..., z_e{n-1}=k{n-1}, x_en=vn)
                 P(x_q=vq | z_e1=k1,..., z_en=kn, x_e1=v1, ..., x_en=vn)
 
         The posterior predictive of a query row x_q taking value
@@ -316,9 +317,9 @@ class View(CGpm):
         lw_state - dict, 
         """
         # TODO: [ ] CHANGE ix_evid FOR evid_rowid
-        # TODO: [ ] STORE LATENT VALUES ON GLOBAL VARIABLE
-        #       -   [ ] All query conditional logpdf
-        #       -   [ ] All posterior crp logpdf
+        # TODO: [~] STORE LATENT VALUES ON GLOBAL VARIABLE
+        #       -   [X] All query conditional logpdf
+        #       -   [X] All posterior crp logpdf
         
         # STATIC_VARIABLES
         LEN_EVIDENCE = len(evidence) 
@@ -365,7 +366,7 @@ class View(CGpm):
                 # TODO: [ ] make it possible to condition on latent variables
                 out = gu.logsumexp([
                     out, posterior_crp_logpdf +
-                    self.logpdf_multirow_new_design(
+                    self._logpdf_multirow_new_design(
                         ix_evid+1, rowid, query, evidence)])
 
                 self.unincorporate(42000+ix_evid)
