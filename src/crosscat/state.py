@@ -908,7 +908,11 @@ class State(CGpm):
 
     @classmethod
     def from_pickle(cls, fileptr, rng=None):
-        metadata = pickle.load(fileptr)
+        if isinstance(fileptr, str):
+            with open(fileptr, 'r') as f:
+                metadata = pickle.load(f)
+        else:
+            metadata = pickle.load(fileptr)
         return cls.from_metadata(metadata, rng=rng)
 
 

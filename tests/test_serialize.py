@@ -56,9 +56,14 @@ def serialize_generic(Model, additional=None):
         with open(temp.name, 'w') as f:
             model.to_pickle(f)
         with open(temp.name, 'r') as f:
+            # Use the file itself
             model = Model.from_pickle(f, rng=gu.gen_rng(10))
             if additional:
                 additional(model)
+        # Use the filename as a string
+        model = Model.from_pickle(temp.name, rng=gu.gen_rng(10))
+        if additional:
+            additional(model)
 
 
 def test_state_serialize():
