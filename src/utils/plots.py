@@ -100,18 +100,35 @@ def plot_clustermap(D, xticklabels=None, yticklabels=None):
     import seaborn as sns
     if xticklabels is None: xticklabels = range(D.shape[0])
     if yticklabels is None: yticklabels = range(D.shape[1])
-    zmat = sns.clustermap(D, yticklabels=yticklabels, xticklabels=xticklabels,
+    zmat = sns.clustermap(
+        D, yticklabels=yticklabels, xticklabels=xticklabels,
         linewidths=0.2, cmap='BuGn')
     plt.setp(zmat.ax_heatmap.get_yticklabels(), rotation=0)
     plt.setp(zmat.ax_heatmap.get_xticklabels(), rotation=90)
     return zmat
 
-def plot_heatmap(D, xticklabels=None, yticklabels=None):
+def plot_heatmap(
+        D, xordering=None, yordering=None, xticklabels=None,
+        yticklabels=None, ax=None):
     import seaborn as sns
-    if xticklabels is None: xticklabels = range(D.shape[0])
-    if yticklabels is None: yticklabels = range(D.shape[1])
-    ax = sns.heatmap(D, yticklabels=yticklabels, xticklabels=xticklabels,
-        linewidths=0.2, cmap='BuGn')
+    D = np.copy(D)
+
+    if ax is None:
+        _, ax = plt.subplots()
+    if xticklabels is None:
+        xticklabels = np.arange(D.shape[0])
+    if yticklabels is None:
+        yticklabels = np.arange(D.shape[1])
+    if xordering is not None:
+        xticklabels = xticklabels[xordering]
+        D = D[:,xordering]
+    if yordering is not None:
+        yticklabels = yticklabels[yordering]
+        D = D[yordering,:]
+
+    sns.heatmap(
+        D, yticklabels=yticklabels, xticklabels=xticklabels,
+        linewidths=0.2, cmap='BuGn', ax=ax)
     ax.set_xticklabels(xticklabels, rotation=90)
     ax.set_yticklabels(yticklabels, rotation=0)
     return ax
