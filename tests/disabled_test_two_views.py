@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -23,29 +24,36 @@ from cgpm.utils import plots as pu
 from cgpm.utils import test as tu
 
 
-D, Zv, Zc = tu.gen_data_table(
-    n_rows=150,
-    view_weights=None,
-    cluster_weights=[[.2,.2,.2,.4], [.3,.2,.5],],
-    cctypes=['normal']*6,
-    distargs=[None]*6,
-    separation=[0.95]*6,
-    view_partition=[0,0,0,1,1,1],
-    rng=gu.gen_rng(12))
+# -------------------- Normal Component Models ------------------------------- #
+
+def retrieve_normal_dataset():
+    D, Zv, Zc = tu.gen_data_table(
+        n_rows=150,
+        view_weights=None,
+        cluster_weights=[[.2,.2,.2,.4], [.3,.2,.5],],
+        cctypes=['normal']*6,
+        distargs=[None]*6,
+        separation=[0.95]*6,
+        view_partition=[0,0,0,1,1,1],
+        rng=gu.gen_rng(12))
+    return D
 
 
 @pytest.mark.parametrize('lovecat', [True, False])
-def test_two_views_row_partition__ci_(lovecat):
+def test_two_views_row_partition_normal__ci_(lovecat):
+    D = retrieve_normal_dataset()
+
     engine = Engine(
         D.T, cctypes=['normal']*len(D),
         Zv={0:0, 1:0, 2:0, 3:1, 4:1, 5:1},
         rng=gu.gen_rng(12), num_states=64)
+
     if lovecat:
         engine.transition_lovecat(
             N=100,
             kernels=[
-                'row_partition_hyperparameters'
                 'row_partition_assignments',
+                'row_partition_hyperparameters',
                 'column_hyperparameters',
         ])
     else:
@@ -60,19 +68,22 @@ def test_two_views_row_partition__ci_(lovecat):
     R1 = engine.row_similarity_pairwise(cols=[0,1,2])
     R2 = engine.row_similarity_pairwise(cols=[3,4,5])
 
-    # XXX TODO: Find a way to test the actual row similarity matrices with the
-    # theoretical Zc structure.
+    pu.plot_clustermap(R1)
+    pu.plot_clustermap(R2)
+    return engine
 
 
 @pytest.mark.parametrize('lovecat', [True, False])
-def test_two_views_column_partition__ci_(lovecat):
+def test_two_views_column_partition_normal__ci_(lovecat):
+    D = retrieve_normal_dataset()
+
     engine = Engine(
         D.T, cctypes=['normal']*len(D), rng=gu.gen_rng(12), num_states=64)
 
     if lovecat:
         engine.transition_lovecat(N=200)
     else:
-        engine.transition(N=200, multiprocess=1)
+        engine.transition(N=200)
 
     P = engine.dependence_probability_pairwise()
     R1 = engine.row_similarity_pairwise(cols=[0,1,2])
@@ -90,6 +101,97 @@ def test_two_views_column_partition__ci_(lovecat):
         [0,0,0,1,1,1],
         [0,0,0,1,1,1],
     ]
+    return engine
 
-    # XXX TODO: Find a way to test the actual dependence probability matrix
-    # with the THEORY matrix.
+# -------------------- Bernoulli Component Models ---------------------------- #
+
+def retrieve_bernoulli_dataset():
+    D, Zv, Zc = tu.gen_data_table(
+        n_rows=150,
+        view_weights=None,
+        cluster_weights=[[.5,.5], [.1,.9],],
+        cctypes=['bernoulli']*4,
+        distargs=[None]*4,
+        separation=[0.95]*4,
+        view_partition=[0,0,1,1],
+        rng=gu.gen_rng(12))
+    return D
+
+
+@pytest.mark.parametrize('lovecat', [True, False])
+def test_two_views_row_partition_bernoulli__ci_(lovecat):
+    D = retrieve_bernoulli_dataset()
+
+    if lovecat:
+        engine = Engine(
+            D.T,
+            cctypes=['categorical']*len(D),
+            distargs=[{'k':2}]*len(D),
+            Zv={0:0, 1:0, 2:1, 3:1},
+            rng=gu.gen_rng(12), num_states=64)
+        engine.transition_lovecat(
+            N=100,
+            kernels=[
+                'row_partition_assignments',
+                'row_partition_hyperparameters',
+                'column_hyperparameters',
+        ])
+    else:
+        engine = Engine(
+            D.T,
+            cctypes=['bernoulli']*len(D),
+            Zv={0:0, 1:0, 2:1, 3:1},
+            rng=gu.gen_rng(12), num_states=64)
+        engine.transition(
+            N=100,
+            kernels=[
+                'view_alphas',
+                'rows',
+                'column_hypers',
+        ])
+
+    R1 = engine.row_similarity_pairwise(cols=[0,1])
+    R2 = engine.row_similarity_pairwise(cols=[2,3])
+
+    pu.plot_clustermap(R1)
+    pu.plot_clustermap(R2)
+    return engine
+
+
+@pytest.mark.parametrize('lovecat', [True, False])
+def test_two_views_column_partition_bernoulli__ci_(lovecat):
+    D = retrieve_bernoulli_dataset()
+
+    engine = Engine(
+        D.T,
+        cctypes=['categorical']*len(D),
+        distargs=[{'k':2}]*len(D),
+        rng=gu.gen_rng(12),
+        num_states=64)
+    if lovecat:
+        engine.transition_lovecat(N=200)
+    else:
+        # engine = Engine(
+        #     D.T,
+        #     cctypes=['bernoulli']*len(D),
+        #     rng=gu.gen_rng(12),
+        #     num_states=64)
+        engine.transition(N=200)
+
+    P = engine.dependence_probability_pairwise()
+    R1 = engine.row_similarity_pairwise(cols=[0,1])
+    R2 = engine.row_similarity_pairwise(cols=[2,3])
+
+    pu.plot_clustermap(P)
+    pu.plot_clustermap(R1)
+    pu.plot_clustermap(R2)
+
+    P_THEORY = [
+        [1,1,1,0,0,0],
+        [1,1,1,0,0,0],
+        [1,1,1,0,0,0],
+        [0,0,0,1,1,1],
+        [0,0,0,1,1,1],
+        [0,0,0,1,1,1],
+    ]
+    return engine
