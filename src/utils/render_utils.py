@@ -26,10 +26,7 @@ seaborn.set_style('white')
 
 
 def compute_axis_size_viz_data(data, row_names, col_names):
-    if isinstance(data, list):
-        data = np.array(data)
-    row_height = max(map(len, map(str, row_names)))
-    col_width = max(map(len, map(str, col_names)))
+    data = np.array(data)
     height = data.shape[0] #/ 2. + row_height
     width = data.shape[1] #/ 2. + col_width
     return height, width
@@ -64,7 +61,6 @@ def viz_data_raw(
     if row_names is not None:
         ax.set_yticks(range(data_normed.shape[0]))
         ax.set_yticklabels(row_names, ha='right', size='x-large')
-        # ax.set_yticklabels(row_names, ha='right')
 
     xticklabelsize = size - width/3.
     if col_names is not None:
@@ -72,10 +68,8 @@ def viz_data_raw(
         ax.set_xticklabels(
             col_names, rotation=45, rotation_mode='anchor', ha='left',
             size='x-large')
-        # ax.set_xticklabels(
-        # col_names, rotation=45, rotation_mode='anchor', ha='left')
 
-    # Hack to set grids off-center
+    # Hack to set grids off-center.
     ax.set_xticks([x - 0.5 for x in ax.get_xticks()][1:], minor='true')
     ax.set_yticks([y - 0.5 for y in ax.get_yticks()][1:], minor='true')
     ax.grid(True, which='minor')
@@ -109,7 +103,7 @@ def viz_data(
 def viz_view_raw(view, ax=None, row_names=None, col_names=None):
     """Order rows according to clusters and draw line between clusters.
 
-    Visualize this using imshow with two colors only.
+    Visualize using imshow with two colors only.
     """
     if ax is None:
         ax = plt.gca()
@@ -118,11 +112,11 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None):
     if isinstance(col_names, list):
         col_names = np.array(col_names)
 
-    # Get data restricted to current view's outputs.
+    # Retrieve the dataset restricted to this view's outputs.
     data_dict = get_view_data(view)
     data_arr = np.array(data_dict.values()).T
 
-    # Partition data into clusters.
+    # Partition rows based on their cluster assignments.
     customers = view.Zr()
     tables = set(view.Zr().values())
     clustered_rows_raw = [
@@ -220,9 +214,9 @@ def viz_view(view, ax=None, row_names=None, col_names=None, savefile=None):
 
 
 def viz_state(state, row_names=None, col_names=None, savefile=None):
-    """For each each view call viz_view as defined above.
+    """Calls viz_view on each view in the state.
 
-    Plot each view next to each other.
+    Plot views next to one another.
     """
     data_arr = np.array(state.X.values()).T
 
@@ -234,7 +228,7 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
     views = state.views.keys()
     views = sorted(views, key=lambda v: len(state.views[v].outputs))[::-1]
 
-    # Get the subplot widths
+    # Retrieve the subplot widths.
     view_widths = []
     view_heights = []
     for view in views:
@@ -269,18 +263,18 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
 # # Helpers # #
 
 def nanptp(array, axis=0):
-    """Return peak-to-peak distance of an array ignoring nan values."""
+    """Returns peak-to-peak distance of an array ignoring nan values."""
     ptp = np.nanmax(array, axis=axis) - np.nanmin(array, axis=0)
     ptp_without_null = [i if i != 0 else 1. for i in ptp]
     return ptp_without_null
 
 def nannormalize(data):
-    """Normalize data across the columns ignoring nan values."""
+    """Normalizes data across the columns, ignoring nan values."""
     return (data - np.nanmin(data, axis=0)) / nanptp(data, axis=0)
 
 
 def get_view_data(view):
-    """Gets the columns of the data for which there is an output variable.
+    """Returns the columns of the data for which there is an output variable.
 
     Returns a dict.
     """
