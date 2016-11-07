@@ -164,7 +164,7 @@ class View(CGpm):
         Fill in missing values in query with NaN.
         """
         exposed_outputs = self.outputs[1:]
-        filled_query = {0: query.get(self.outputs[0], 0)}
+        filled_query = {self.outputs[0]: query.get(self.outputs[0], 0)}
         for d in exposed_outputs:
             filled_query[d] = query.get(d, np.nan)
         return filled_query
@@ -328,12 +328,11 @@ class View(CGpm):
         out = -np.float("inf")
         network = self.build_network()
         if ix_evid == LEN_EVIDENCE:  # base case: compute query conditional_logpredictive.
-            # TODO: expose current assigned clusters for each evidence row
             conditional_logpredictive = self.logpdf(rowid, query)
             self.debug['conditional_logpredictive'].append(
                 conditional_logpredictive)
+            import pdb; pdb.set_trace()
             out = gu.logsumexp([out, conditional_logpredictive])
-            
 
         else:  # recursive case: sequentially incorporate evidence rows.
             evidence_row = evidence[ix_evid]
@@ -342,7 +341,7 @@ class View(CGpm):
                 merged(evidence_row, {cluster_assignment_var: k})
                 for k in CLUSTER_LABELS]
             
-            for cluster in range(len(CLUSTER_LABELS)):
+            for cluster in CLUSTER_LABELS:
                 # Step 1: Compute posterior_crp_logpdf P(z_ix | x_ix, z{i<ix_evid})
                 # TODO: what is lp_evidence_unorm exactly? P(xj | zj) ?
                 #  - p(z,xE) according to Feras' comment
@@ -357,9 +356,11 @@ class View(CGpm):
                 self.debug['posterior_crp_logpdf'].append(posterior_crp_logpdf)
 
                 # Incorporate evidence_row into cgpm with latent cluster 'cluster'
+                ix_incorporate = 42000 + ix_evid
                 self.incorporate(
-                    rowid=42000+ix_evid,
+                    rowid=ix_incorporate,
                     query=evidence_assigned_to_cluster[cluster])
+                assert self.Zr()[ix_incorporate] == cluster
 
                 # Step 1: logsumexp_{cluster} posterior_crp_logpdf(i < ix_evid) *
                 #    logpdf_multirow(query | z_ix_evid, evidence)

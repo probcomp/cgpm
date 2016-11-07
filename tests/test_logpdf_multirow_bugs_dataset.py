@@ -76,6 +76,32 @@ def dpmm_2clusters():
     )
     return dpmm_2clusters
 
+@pytest.fixture(scope="session")
+def one_view_one_row():
+    seed = 7
+    data = [[0, 0, 0, 0, 0, 0]]
+    D = len(data[0])
+    outputs = range(D)
+    Zv = OrderedDict((i, 0) for i in outputs)
+    Zr = [0]
+    Zrv = {0: Zr}
+    view_alphas = [1.]
+    cctypes = ['categorical']*D
+    distargs = {i: {'k': 2} for i in range(D)}
+    hypers = {i: {'alpha': 1.} for i in range(D)}
+    one_view_one_row = State(
+        data,
+        outputs=outputs,
+        cctypes=cctypes,
+        rng=np.random.RandomState(seed),
+        distargs=distargs,
+        hypers=hypers,
+        Zv=Zv,
+        Zrv=Zrv,
+        view_alphas=view_alphas
+    )
+    return one_view_one_row
+
 def test_logpdf_given_cluster_one_col(dpmm_2clusters):
     dim = dpmm_2clusters.views[0].dims[0]
 
@@ -184,8 +210,6 @@ def test_posterior_query_logpdf_multirow_one_col(dpmm_2clusters):
     assert np.allclose(math_out, test_out)
     del view.debug
 
-    # BUG
-
 def test_logpdf_multirow_one_col(dpmm_2clusters):
     # P(x = 1 | y = 1) 
     #  = sum_{i,j}  P(zy=i | y=1) P(zx=j | zy=i)  P(x=1| zx=j, zy=i, y=1)
@@ -223,3 +247,44 @@ def test_logpdf_multirow_one_col(dpmm_2clusters):
     test_out = dpmm_2clusters.logpdf_multirow(
         -1, {0: 0}, {0: {0: 1}})  
     assert np.allclose(math_out, test_out)
+
+
+def test_logpdf_given_cluster_one_col_after_incorporate_on_cluster_0(dpmm_2clusters):
+    view = dpmm_2clusters.views[0]
+    # Before incorporate
+
+    # P(col_0=1 | z=0) = 0.833
+    math_out = np.log(5. / 6.)
+    test_out = view.logpdf(-1, {0: 1}, {view.outputs[0]: 0})
+    assert np.allclose(math_out, test_out)
+
+    # incorporate row
+    view.incorporate(rowid=42001, query={0: 1, view.outputs[0]: 0})
+    assert view.Zr()[42001] == 0
+    
+    # P(col_0=1 | z=0) after incorporate = 6./7.
+    math_out = np.log(6. / 7.)
+    test_out = view.logpdf(-1, {0: 1}, {view.outputs[0]: 0})
+    assert np.allclose(math_out, test_out)
+
+    view.unincorporate(rowid=42001)
+
+def test_logpdf_given_cluster_one_col_after_incorporate_on_cluster_1(dpmm_2clusters):
+    view = dpmm_2clusters.views[0]
+    # Before incorporate
+
+    # P(col_0=1 | z=1) = 2./6
+    math_out = np.log(2. / 6.)
+    test_out = view.logpdf(-1, {0: 1}, {view.outputs[0]: 1})
+    assert np.allclose(math_out, test_out)
+
+    # incorporate row
+    view.incorporate(rowid=42001, query={0: 1, view.outputs[0]: 1})
+    assert view.Zr()[42001] == 1
+
+    # P(col_0=1 | z=1) after incorporate = 3./7.
+    math_out = np.log(3. / 7.)
+    test_out = view.logpdf(-1, {0: 1}, {view.outputs[0]: 1})
+    assert np.allclose(math_out, test_out)
+
+
