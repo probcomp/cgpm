@@ -218,7 +218,7 @@ def test_perigee_period_given_apogee():
 
     # Load the satellites dataset.
     filename = os.path.join(
-        os.path.dirname(__file__), 'resources/satellites.csv')
+        os.path.dirname(__file__), 'graphical/resources/satellites.csv')
     satellites = pd.read_csv(filename)
 
     # Extract target columns of interest.
