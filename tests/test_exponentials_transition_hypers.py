@@ -46,7 +46,7 @@ def test_transition_hypers(cctype):
     hypers_previous = model.get_hypers()
     for rowid, x in enumerate(np.ravel(D)[:25]):
         model.incorporate(rowid, {0:x}, evidence=None)
-    model.transition_hypers(N=2)
+    model.transition_hypers(N=3)
     hypers_new = model.get_hypers()
     assert not all(
         np.allclose(hypers_new[hyper], hypers_previous[hyper])
@@ -54,7 +54,7 @@ def test_transition_hypers(cctype):
 
     for rowid, x in enumerate(np.ravel(D)[:25]):
         model.incorporate(rowid+25, {0:x}, evidence=None)
-    model.transition_hypers(N=2)
+    model.transition_hypers(N=3)
     hypers_newer = model.get_hypers()
     assert not all(
         np.allclose(hypers_new[hyper], hypers_newer[hyper])
