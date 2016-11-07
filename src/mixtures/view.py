@@ -276,6 +276,8 @@ class View(CGpm):
         query: dict{col: value}
         evidence: dict{rowid: dict{col: value}}
         """
+        if debug is None:
+            debug = False 
         self.debug = {}  # variable for debugging
         self.debug['posterior_crp_logpdf'] = []
         self.debug['conditional_logpredictive'] = []
@@ -331,7 +333,6 @@ class View(CGpm):
             conditional_logpredictive = self.logpdf(rowid, query)
             self.debug['conditional_logpredictive'].append(
                 conditional_logpredictive)
-            import pdb; pdb.set_trace()
             out = gu.logsumexp([out, conditional_logpredictive])
 
         else:  # recursive case: sequentially incorporate evidence rows.
