@@ -32,6 +32,7 @@ animal_values = animals.values
 animal_names = animals.index.values
 animal_features = animals.columns.values
 
+# XXX This function should be parametrized better!
 def launch_analysis():
     engine = Engine(
         animals.values.astype(float),
@@ -56,13 +57,20 @@ def render_states_to_disk(filepath, prefix):
         savefile = '%s-%d' % (prefix, i)
         state = engine.get_state(i)
         ru.viz_state(
-            state, row_names=animal_names, col_names=animal_features,
-            savefile=savefile)
+            state, row_names=animal_names,
+            col_names=animal_features, savefile=savefile)
 
-# render_states_to_disk(
-#     'resources/animals/animals-normal.engine',
-#     'resources/animals/normal/cc-normal')
-# render_states_to_disk(
-#     'resources/animals/animals-normal-lovecat.engine',
-#     'resources/animals/normal/lv-normal')
 
+def compare_dependence_heatmap():
+    e1 = Engine.from_pickle('resources/animals/animals.engine')
+    e2 = Engine.from_pickle('resources/animals/animals-lovecat.engine')
+
+    D1 = e1.dependence_probability_pairwise()
+    D2 = e2.dependence_probability_pairwise()
+    C1 = pu.plot_clustermap(D1)
+
+    ordering = C1.dendrogram_row.reordered_ind
+
+    fig, ax = plt.subplots(nrows=1, ncols=2)
+    pu.plot_heatmap(D1, xordering=ordering, yordering=ordering, ax=ax[0])
+    pu.plot_heatmap(D2, xordering=ordering, yordering=ordering, ax=ax[1])
