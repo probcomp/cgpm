@@ -27,10 +27,12 @@ from cgpm.utils import plots as pu
 from cgpm.utils import test as tu
 from cgpm.utils import render as ru
 
+
 animals = pd.read_csv('resources/animals/animals.csv', index_col=0)
 animal_values = animals.values
 animal_names = animals.index.values
 animal_features = animals.columns.values
+
 
 # XXX This function should be parametrized better!
 def launch_analysis():
