@@ -179,7 +179,6 @@ def test_logpdf_given_two_rows(dpmm_simple):
     assert np.allclose(test_out, math_out)
     del view.debug
 
-
 def normalize_list(lst):
     sum_lst = sum(lst)
     return [float(i)/sum_lst for i in lst]
