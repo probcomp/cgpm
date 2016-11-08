@@ -284,7 +284,8 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # logpdf_multirow
 
-    def logpdf_multirow(self, rowid, query, evidence=None, accuracy=None):
+    def logpdf_multirow(self, rowid, query, evidence=None, accuracy=None,
+                        debug=None):
         """
         - Partition query and evidence into the appropriate views.
           - For each view
@@ -295,6 +296,12 @@ class State(CGpm):
                 using the intersections above
         - Return sum logpdf multirow over all views
         """
+        if debug is None:
+            debug = False
+
+        self.debug = {}
+        self.debug['view_logpdf'] = []
+
         ## Sanity checks ##
         if evidence is None:  # call logpdf if not conditioning on row
             return self.logpdf(rowid, query, accuracy=accuracy)
@@ -318,8 +325,13 @@ class State(CGpm):
                 evidence_view[row] = {
                     col: evidence[row][col] for col in common_cols}
 
-            logp += view.logpdf_multirow(
-                rowid, query=query_view, evidence=evidence_view)
+            view_logpdf = view.logpdf_multirow(
+                rowid, query=query_view, evidence=evidence_view, debug=debug)
+            self.debug['view_logpdf'].append(logp)
+            logp += view_logpdf
+
+        if not debug:
+            del self.debug
 
         return logp
     # --------------------------------------------------------------------------
