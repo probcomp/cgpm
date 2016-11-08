@@ -36,7 +36,8 @@ def get_paper_vars(target, query, hypers):
     big_dc = np.array(query)
     big_n = big_dc.shape[0]
 
-    if not hypers: hypers = {}
+    if not hypers: 
+        hypers = {}
     alpha = np.array(hypers.get('alpha', [1.] * big_j))
     beta = np.array(hypers.get('beta', [1.] * big_j))
     alpha_tilde = alpha + big_dc.sum(axis=0)
@@ -59,6 +60,40 @@ def get_paper_vars(target, query, hypers):
     return PaperVariables(
         x_dot, big_j, big_dc, big_n, alpha, beta,
         alpha_tilde, beta_tilde, small_c, small_q)
+
+def binary_score_alternative(target, query, hypers=None):
+    p_target = eval_betabernoulli(target, hypers=hypers)
+    p_target_given_query = eval_betabernoulli(target, query, hypers=hypers)
+    
+    return p_target_given_query / p_target
+
+def eval_betabernoulli(target, query_set=None, hypers=None):
+    target = np.array(target)
+    query_set = np.array(query_set)
+
+    D = target.shape[0]
+    if query_set.all() and query_set.shape[1] != D:
+        raise ValueError("target and query_set should have same row length")
+
+    # Initialize hypers to 1.
+    if hypers is None:
+        hypers = {}
+    alpha = np.array(hypers.get('alpha', [1.] * D))
+    beta = np.array(hypers.get('beta', [1.] * D))
+
+    # For marginal predictive, set params to 0
+    if not query_set.all():
+        n_ones = 0
+        N = 0
+    else:
+        n_ones = query_set.sum(axis=0)
+        N = query_set.shape[0]
+
+    prob = (
+        (alpha + n_ones)**target * (beta + N - n_ones)**(1-target) /
+        (alpha + beta + N)).prod()
+
+    return prob
 
 def binary_score(target, query, hypers=None):
     """ Calculate Bayesian Sets score for binary data

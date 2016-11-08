@@ -199,10 +199,10 @@ def score_dataset(dataset, query, score_function):
     score_array = init_array(size=(num_datapoints, 1))
     for i in range(num_datapoints):
         score_array[i] = score_function(dataset[i, :], query)
-    
+
     sorted_indices = np.argsort(score_array, axis=0).T[0][::-1]
     sorted_dataset = dataset[sorted_indices, :]
-
+    
     return score_array, sorted_indices, sorted_dataset
 
 def experimental_setup(dataset, query, save, n, name, score_function=None):
