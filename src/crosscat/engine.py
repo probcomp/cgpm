@@ -81,6 +81,14 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
 
+    def transition_foreign(self, N=None, S=None, cols=None, progress=True,
+            multiprocess=1):
+        mapper = parallel_map if multiprocess else map
+        args = [('transition_foreign', self.states[i],
+                (N, S, cols, progress))
+                for i in xrange(self.num_states())]
+        self.states = mapper(_modify, args)
+
     def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
             distargs=None, v=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map

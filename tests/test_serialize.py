@@ -171,7 +171,7 @@ def test_serialize_composite_cgpm():
     # Compose CGPMs, instructing State to run the transitions.
     token_forest = state.compose_cgpm(forest)
     token_linreg = state.compose_cgpm(linreg)
-    state.transition(N=10, cols=[forest.outputs[0], linreg.outputs[0]])
+    state.transition_foreign(N=10, cols=[forest.outputs[0], linreg.outputs[0]])
 
     # Now run the serialization.
     metadata = state.to_metadata()
@@ -199,7 +199,7 @@ def test_serialize_composite_cgpm():
         distargs=distargs[2:], num_states=2, rng=rng)
     e.compose_cgpm([forest, forest], multiprocess=1)
     e.compose_cgpm([linreg, linreg], multiprocess=1)
-    e.transition(N=1, cols=[forest.outputs[0], linreg.outputs[0]])
+    e.transition_foreign(N=1, cols=[forest.outputs[0], linreg.outputs[0]])
     e.dependence_probability(0,1)
     e.simulate(-1, [0,1], {2:1})
     e.logpdf(-1, {1:1}, {2:1, 0:0}, multiprocess=0)

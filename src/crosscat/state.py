@@ -434,14 +434,8 @@ class State(CGpm):
         # Moreover if cols contains a value that is neither modeled by gpmcc or
         # a foreign the transition will proceed silently without throwing an
         # error.
-
-        cols_gpmcc = None
-        cols_foreign = None
-
-        if cols is not None:
-            # Filter out the gpmcc from foreign variables.
-            cols_gpmcc = [c for c in cols if c in self.outputs]
-            cols_foreign = [c for c in cols if c not in self.outputs]
+        if cols and any(c not in self.outputs for c in cols):
+            raise ValueError('Only CrossCat columns may be transitioned.')
 
         # Default order of crosscat kernels is important.
         _kernel_lookup = OrderedDict([
@@ -450,27 +444,14 @@ class State(CGpm):
             ('view_alphas',
                 lambda : self.transition_view_alphas(views=views)),
             ('column_params',
-                lambda : self.transition_dim_params(cols=cols_gpmcc)),
+                lambda : self.transition_dim_params(cols=cols)),
             ('column_hypers',
-                lambda : self.transition_dim_hypers(cols=cols_gpmcc)),
+                lambda : self.transition_dim_hypers(cols=cols)),
             ('rows',
                 lambda : self.transition_view_rows(views=views, rows=rowids)),
             ('columns' ,
-                lambda : self.transition_dims(cols=cols_gpmcc)),
+                lambda : self.transition_dims(cols=cols)),
         ])
-
-        # Build foreign kernels.
-        f_kernels = self._build_foreign_transition(cols_foreign)
-        _kernel_lookup.update([('k%d'%i, fk) for i, fk in enumerate(f_kernels)])
-
-        # If only transitioning foreign, ignore gpmcc kernels.
-        if cols_foreign and (cols_gpmcc is not None and len(cols_gpmcc) == 0):
-            del _kernel_lookup['alpha']
-            del _kernel_lookup['view_alphas']
-            del _kernel_lookup['column_params']
-            del _kernel_lookup['column_hypers']
-            del _kernel_lookup['rows']
-            del _kernel_lookup['columns']
 
         # Run all kernels by default.
         if kernels is None:
@@ -546,7 +527,28 @@ class State(CGpm):
         # we have no way to obtain from lovecat the number of realized
         # iterations.
 
-    def _transition_generic(self, kernels, N=None, S=None, progress=None):
+    def transition_foreign(
+            self, N=None, S=None, cols=None, progress=None):
+        # Build foreign kernels.
+        if cols is None:
+            cols = list(itertools.chain.from_iterable(
+                c.outputs for c in self.hooked_cgpms.values()))
+        if any(c in self.outputs for c in cols):
+            raise ValueError('Only foreign variables allowed: %s' % (cols,))
+        def build_transition(token):
+            def kernel():
+                self.hooked_cgpms[token].transition()
+                self._increment_iterations('foreign-%s' % (token,))
+            return kernel
+        kernels= [
+            build_transition(token)
+            for token in self.hooked_cgpms
+            if any(i in self.hooked_cgpms[token].outputs for i in cols)
+        ]
+        self._transition_generic(kernels, N=N, S=S, progress=progress)
+
+    def _transition_generic(
+            self, kernels, N=None, S=None, progress=None, checkpoint=None):
 
         def _proportion_done(N, S, iters, start):
             if S is None:
@@ -583,23 +585,6 @@ class State(CGpm):
         if progress:
             print '\rCompleted: %d iterations in %f seconds.' % \
                 (iters, time.time()-start)
-
-    def _build_foreign_transition(self, cols=None):
-        if cols is None:
-            cols = list(itertools.chain.from_iterable(
-                c.outputs for c in self.hooked_cgpms.values()))
-        if any(c in self.outputs for c in cols):
-            raise ValueError('Only foreign variables allowed: %s' % cols)
-        def build_transition(token):
-            def kernel():
-                self.hooked_cgpms[token].transition()
-                self._increment_iterations('foreign-%s'%token)
-            return kernel
-        tokens = filter(
-            lambda tok: any(i in self.hooked_cgpms[tok].outputs for i in cols),
-            self.hooked_cgpms)
-        kernels = map(build_transition, tokens)
-        return kernels
 
     def _increment_iterations(self, kernel, N=1):
         self.iterations[kernel] = self.iterations.get(kernel, 0) + N
