@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 from cgpm.crosscat.engine import Engine
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
@@ -23,35 +25,46 @@ def retrieve_normal_dataset():
     D, Zv, Zc = tu.gen_data_table(
         n_rows=20,
         view_weights=None,
-        cluster_weights=[[.2,.2,.2,.4],],
-        cctypes=['normal'],
-        distargs=[None],
-        separation=[0.95],
-        view_partition=[0],
+        cluster_weights=[[.2,.2,.2,.4],[.2,.8],],
+        cctypes=['normal', 'normal'],
+        distargs=[None]*2,
+        separation=[0.95]*2,
+        view_partition=[0,1],
         rng=gu.gen_rng(12))
     return D
 
 
 def test_simple_diagnostics():
     D = retrieve_normal_dataset()
-    engine = Engine(D.T, cctypes=['normal']*len(D), rng=gu.gen_rng(12))
-    engine.transition(N=20, checkpoint=2, multiprocess=True)
+    engine = Engine(
+            D.T, cctypes=['normal']*len(D),  num_states=4, rng=gu.gen_rng(12),)
+    engine.transition(N=20, checkpoint=2)
     assert all(
         all(len(v) == 10 for v in state.diagnostics.itervalues())
         for state in engine.states
     )
-    engine.transition(N=7, checkpoint=2, multiprocess=True)
+    engine.transition(N=7, checkpoint=2)
     assert all(
         all(len(v) == 13 for v in state.diagnostics.itervalues())
         for state in engine.states
     )
-    engine.transition(S=0.5, multiprocess=True)
+    engine.transition_lovecat(N=7, checkpoint=3)
     assert all(
-        all(len(v) == 13 for v in state.diagnostics.itervalues())
+        all(len(v) == 15 for v in state.diagnostics.itervalues())
         for state in engine.states
     )
-    engine.transition(S=0.5, checkpoint=1, multiprocess=True)
+    engine.transition(S=0.5)
     assert all(
-        all(len(v) > 13 for v in state.diagnostics.itervalues())
+        all(len(v) == 15 for v in state.diagnostics.itervalues())
         for state in engine.states
     )
+    engine.transition(S=0.5, checkpoint=1)
+    assert all(
+        all(len(v) > 15 for v in state.diagnostics.itervalues())
+        for state in engine.states
+    )
+    # Add a timed analysis with diagnostic overrides large iterations, due
+    # to oddness of diagnostic tracing in lovecat.
+    start = time.time()
+    engine.transition_lovecat(N=20000, S=1, checkpoint=1)
+    assert 1 < time.time() - start < 3

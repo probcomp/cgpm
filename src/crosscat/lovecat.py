@@ -239,8 +239,27 @@ def _update_state(state, M_c, X_L, X_D):
     state._check_partitions()
 
 
+def _update_diagnostics(state, diagnostics):
+    # Update logscore.
+    new_logscore = diagnostics.get('logscore', [])
+    state.diagnostics['logscore'].extend(new_logscore)
 
-def transition(state, N=None, S=None, kernels=None, seed=None):
+    # Update column_crp_alpha.
+    new_column_crp_alpha = diagnostics.get('column_crp_alpha', [])
+    state.diagnostics['column_crp_alpha'].extend(new_column_crp_alpha)
+
+    # Update column_partition.
+    def convert_column_partition(assignments):
+        return [(col, assignments[i]) for i, col in enumerate(state.outputs)]
+    new_column_partition = diagnostics.get('column_partition_assignments', [])
+    if len(new_column_partition) > 0:
+        assert len(new_column_partition) == len(state.outputs)
+        trajectories = np.transpose(new_column_partition)[0]
+        state.diagnostics['column_partition'].extend(
+            map(convert_column_partition, trajectories))
+
+
+def transition(state, N=None, S=None, kernels=None, seed=None, checkpoint=None):
     """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
     # Permittable kernels:
     #   column_partition_hyperparameter
@@ -277,8 +296,19 @@ def transition(state, N=None, S=None, kernels=None, seed=None):
 
     from crosscat.LocalEngine import LocalEngine
     LE = LocalEngine(seed=seed)
-    X_L_new, X_D_new = LE.analyze(
-        M_c, T, X_L, X_D, seed,
-        kernel_list=kernels, n_steps=n_steps, max_time=max_time)
+
+    if checkpoint is None:
+        X_L_new, X_D_new = LE.analyze(
+            M_c, T, X_L, X_D, seed,
+            kernel_list=kernels, n_steps=n_steps, max_time=max_time)
+        diagnostics_new = dict()
+    else:
+        X_L_new, X_D_new, diagnostics_new = LE.analyze(
+            M_c, T, X_L, X_D, seed,
+            kernel_list=kernels, n_steps=n_steps, max_time=max_time,
+            do_diagnostics=True, diagnostics_every_N=checkpoint)
 
     _update_state(state, M_c, X_L_new, X_D_new)
+
+    if diagnostics_new:
+        _update_diagnostics(state, diagnostics_new)

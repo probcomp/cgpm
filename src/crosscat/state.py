@@ -521,7 +521,7 @@ class State(CGpm):
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
 
-    def transition_lovecat(self, N=None, S=None, kernels=None):
+    def transition_lovecat(self, N=None, S=None, kernels=None, checkpoint=None):
         # This function in its entirely is one major hack.
         # XXX TODO: Temporarily convert all cctypes into normal/categorical.
         if any(c not in ['normal','categorical'] for c in self.cctypes()):
@@ -531,7 +531,8 @@ class State(CGpm):
             raise ValueError('Cannot transition lovecat with conditional dims.')
         from cgpm.crosscat import lovecat
         seed = self.rng.randint(1, 2**31-1)
-        lovecat.transition(self, N=N, S=S, kernels=kernels, seed=seed)
+        lovecat.transition(
+            self, N=N, S=S, kernels=kernels, seed=seed, checkpoint=checkpoint)
         self.transition_dim_hypers()
         # XXX self._increment_iterations should be called, but if N is None
         # we have no way to obtain from lovecat the number of realized
