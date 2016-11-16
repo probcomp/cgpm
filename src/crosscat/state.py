@@ -22,6 +22,7 @@ import sys
 import time
 
 from collections import OrderedDict
+from collections import defaultdict
 from math import isnan
 
 import numpy as np
@@ -120,20 +121,15 @@ class State(CGpm):
             self.views[v] = view
 
         # -- Iteration metadata-------------------------------------------------
-        self.iterations = iterations if iterations is not None else {}
+        self.iterations = iterations if iterations is not None else dict()
 
         # -- Foreign CGpms -----------------------------------------------------
         self.token_generator = itertools.count(start=57481)
         self.hooked_cgpms = dict()
 
         # -- Diagnostic Checkpoints---------------------------------------------
-        if diagnostics:
-            self.diagnostics = diagnostics
-        else:
-            self.diagnostics = dict()
-            self.diagnostics['logscore'] = []
-            self.diagnostics['column_crp_alpha'] = []
-            self.diagnostics['column_partition'] = []
+        self.diagnostics = diagnostics if diagnostics is not None else\
+            defaultdict(list)
 
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
