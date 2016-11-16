@@ -43,7 +43,7 @@ class State(CGpm):
             self, X, outputs=None, inputs=None, cctypes=None,
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, iterations=None,
-            rng=None):
+            diagnostics=None, rng=None):
         # -- Seed --------------------------------------------------------------
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -125,6 +125,15 @@ class State(CGpm):
         # -- Foreign CGpms -----------------------------------------------------
         self.token_generator = itertools.count(start=57481)
         self.hooked_cgpms = dict()
+
+        # -- Diagnostic Checkpoints---------------------------------------------
+        if diagnostics:
+            self.diagnostics = diagnostics
+        else:
+            self.diagnostics = dict()
+            self.diagnostics['logscore'] = []
+            self.diagnostics['column_crp_alpha'] = []
+            self.diagnostics['column_partition'] = []
 
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
@@ -429,7 +438,7 @@ class State(CGpm):
 
     def transition(
             self, N=None, S=None, kernels=None, rowids=None,
-            cols=None, views=None, progress=True):
+            cols=None, views=None, progress=True, checkpoint=None):
         # XXX Many combinations of the above kwargs will cause havoc.
         # Moreover if cols contains a value that is neither modeled by gpmcc or
         # a foreign the transition will proceed silently without throwing an
@@ -460,7 +469,8 @@ class State(CGpm):
         kernel_funcs = [_kernel_lookup[k] for k in kernels]
         assert kernel_funcs
 
-        self._transition_generic(kernel_funcs, N=N, S=S, progress=progress)
+        self._transition_generic(
+            kernel_funcs, N=N, S=S, progress=progress, checkpoint=checkpoint)
 
     def transition_crp_alpha(self):
         self.crp.transition_hypers()
@@ -579,6 +589,8 @@ class State(CGpm):
                 kernel()
             else:
                 iters += 1
+                if checkpoint and (iters % checkpoint == 0):
+                    self._increment_diagnostics()
                 continue
             break
 
@@ -588,6 +600,11 @@ class State(CGpm):
 
     def _increment_iterations(self, kernel, N=1):
         self.iterations[kernel] = self.iterations.get(kernel, 0) + N
+
+    def _increment_diagnostics(self):
+        self.diagnostics['logscore'].append(self.logpdf_score())
+        self.diagnostics['column_crp_alpha'].append(self.alpha())
+        self.diagnostics['column_partition'].append(self.Zv().items())
 
     def _progress(self, percentage):
         progress = ' ' * 30
@@ -851,6 +868,9 @@ class State(CGpm):
             metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
             metadata['view_alphas'].append((v, view.alpha()))
 
+        # Diagnostic data.
+        metadata['diagnostics'] = self.diagnostics.items()
+
         # Hooked CGPMs.
         metadata['hooked_cgpms'] = dict()
         for token, cgpm in self.hooked_cgpms.iteritems():
@@ -881,6 +901,7 @@ class State(CGpm):
             view_alphas=to_dict(metadata.get('view_alphas', None)),
             hypers=metadata.get('hypers', None),
             iterations=metadata.get('iterations', None),
+            diagnostics=to_dict(metadata.get('diagnostics', None)),
             rng=rng)
         # Hook up the composed CGPMs.
         for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():
