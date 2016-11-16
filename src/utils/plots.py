@@ -109,7 +109,7 @@ def plot_clustermap(D, xticklabels=None, yticklabels=None):
 
 def plot_heatmap(
         D, xordering=None, yordering=None, xticklabels=None,
-        yticklabels=None, ax=None):
+        yticklabels=None, vmin=None, vmax=None, ax=None):
     import seaborn as sns
     D = np.copy(D)
 
@@ -128,7 +128,7 @@ def plot_heatmap(
 
     sns.heatmap(
         D, yticklabels=yticklabels, xticklabels=xticklabels,
-        linewidths=0.2, cmap='BuGn', ax=ax)
+        linewidths=0.2, cmap='BuGn', ax=ax, vmin=vmin, vmax=vmax)
     ax.set_xticklabels(xticklabels, rotation=90)
     ax.set_yticklabels(yticklabels, rotation=0)
     return ax
@@ -139,4 +139,46 @@ def plot_samples(X, ax=None):
         ax.set_ylim([0, 10])
     for x in X:
         ax.vlines(x, 0, 1., linewidth=1)
+    return ax
+
+def partition_to_zmatrix(Zv, ordering=None):
+    """Convert a cgpm.crosscat.State view partition Zv into a binary zmatrix."""
+    # Default ordering of columns by increasing index.
+    if ordering is None:
+        ordering = sorted(Zv)
+
+    # Converts a column index to its 0-based index in ordering.
+    column_to_index = {col: ordering.index(col) for col in Zv}
+
+    # block_vectors[i] is a binary vector, with 1 for columns in that view.
+    views = set(Zv.values())
+    block_vectors = {view: np.zeros(len(Zv)) for view in views}
+    for view in views:
+        cols = [column_to_index[c] for c, v in Zv.iteritems() if v == view]
+        block_vectors[view][cols] = 1
+
+    D = np.zeros((len(Zv), len(Zv)))
+    for col in Zv:
+        D[column_to_index[col]] = block_vectors[Zv[col]]
+
+    return D
+
+def partitions_to_zmatrix(Zvs, ordering=None):
+    """Converts a collection cgpm.crosscat.State view partitions Zvs
+    into a real-valued zmatrix, which is the mean of all Zv."""
+    Ds = [partition_to_zmatrix(Zv, ordering=ordering) for Zv in Zvs]
+    return np.mean(Ds, axis=0)
+
+
+def plot_logscore(logscores, ax=None):
+    assert all(len(l) == len(logscores[0]) for l in logscores)
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    for logscore in logscores:
+        ax.plot(range(len(logscores[0])), logscore)
+
+    ax.set_xlabel('Number of Full Gibbs Sweeps')
+    ax.set_ylabel('Log Score')
+    ax.grid()
     return ax
