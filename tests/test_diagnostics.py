@@ -42,32 +42,34 @@ def test_simple_diagnostics():
     except ImportError:
         pytest.skip('no crosscat installation')
         return
+    def diagnostics_without_iters(diagnostics):
+        return (v for k, v in diagnostics.iteritems() if k != 'iterations')
     D = retrieve_normal_dataset()
     engine = Engine(
             D.T, cctypes=['normal']*len(D),  num_states=4, rng=gu.gen_rng(12),)
     engine.transition(N=20, checkpoint=2)
     assert all(
-        all(len(v) == 10 for v in state.diagnostics.itervalues())
+        all(len(v) == 10 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
     )
     engine.transition(N=7, checkpoint=2)
     assert all(
-        all(len(v) == 13 for v in state.diagnostics.itervalues())
+        all(len(v) == 13 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
     )
     engine.transition_lovecat(N=7, checkpoint=3)
     assert all(
-        all(len(v) == 15 for v in state.diagnostics.itervalues())
+        all(len(v) == 15 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
     )
     engine.transition(S=0.5)
     assert all(
-        all(len(v) == 15 for v in state.diagnostics.itervalues())
+        all(len(v) == 15 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
     )
     engine.transition(S=0.5, checkpoint=1)
     assert all(
-        all(len(v) > 15 for v in state.diagnostics.itervalues())
+        all(len(v) > 15 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
     )
     # Add a timed analysis with diagnostic overrides large iterations, due
