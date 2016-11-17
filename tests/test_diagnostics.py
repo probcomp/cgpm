@@ -16,6 +16,8 @@
 
 import time
 
+import pytest
+
 from cgpm.crosscat.engine import Engine
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
@@ -35,6 +37,11 @@ def retrieve_normal_dataset():
 
 
 def test_simple_diagnostics():
+    try:
+        import crosscat
+    except ImportError:
+        pytest.skip('no crosscat installation')
+        return
     D = retrieve_normal_dataset()
     engine = Engine(
             D.T, cctypes=['normal']*len(D),  num_states=4, rng=gu.gen_rng(12),)
