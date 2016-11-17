@@ -228,8 +228,10 @@ def load_docstrings(module):
             List of inference kernels to run in this transition. Default all.
         views, rows, cols : list<int>, optional
             View, row and column numbers to apply the kernels. Default all.
-        do_plot : boolean, optional
-            Plot the state of the sampler (real-time), 24 columns max. Unstable.
+        checkpoint : int, optional
+            Number of transitions between recording inference diagnostics
+            from the latent state (such as logscore and row/column partitions).
+            Defaults to no checkpointing.
         progress : boolean, optional
             Show a progress bar for number of target iterations or elapsed time.
         """

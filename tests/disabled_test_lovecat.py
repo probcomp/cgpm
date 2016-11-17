@@ -162,7 +162,8 @@ def test_cgpm_lovecat_integration():
         start = time.time()
         X_L_new, X_D_new = LE.analyze(
             M_c_prime, lovecat._crosscat_T(state, M_c_prime),
-            X_L, X_D, 1, max_time=20, n_steps=100000000)
+            X_L, X_D, 1, max_time=20, n_steps=100000000,
+            progress=lovecat._progress)
         assert np.allclose(time.time() - start, 20, atol=2)
 
         # This function call updates the cgpm.state internals to
