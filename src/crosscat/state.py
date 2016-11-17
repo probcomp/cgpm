@@ -43,8 +43,8 @@ class State(CGpm):
     def __init__(
             self, X, outputs=None, inputs=None, cctypes=None,
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
-            hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, iterations=None,
-            diagnostics=None, rng=None):
+            hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, diagnostics=None,
+            rng=None):
         # -- Seed --------------------------------------------------------------
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -120,16 +120,16 @@ class State(CGpm):
                 hypers=v_hypers, rng=self.rng)
             self.views[v] = view
 
-        # -- Iteration metadata-------------------------------------------------
-        self.iterations = iterations if iterations is not None else dict()
-
         # -- Foreign CGpms -----------------------------------------------------
         self.token_generator = itertools.count(start=57481)
         self.hooked_cgpms = dict()
 
         # -- Diagnostic Checkpoints---------------------------------------------
-        self.diagnostics = diagnostics if diagnostics is not None else\
-            defaultdict(list)
+        if diagnostics is None:
+            self.diagnostics = defaultdict(list)
+            self.diagnostics['iterations'] = dict()
+        else:
+            self.diagnostics = diagnostics
 
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
@@ -596,7 +596,8 @@ class State(CGpm):
                 (iters, time.time()-start)
 
     def _increment_iterations(self, kernel, N=1):
-        self.iterations[kernel] = self.iterations.get(kernel, 0) + N
+        previous = self.diagnostics['iterations'].get(kernel, 0)
+        self.diagnostics['iterations'][kernel] = previous + N
 
     def _increment_diagnostics(self):
         self.diagnostics['logscore'].append(self.logpdf_score())
@@ -841,9 +842,6 @@ class State(CGpm):
         metadata['X'] = np.asarray(self.X.values()).T.tolist()
         metadata['outputs'] = self.outputs
 
-        # Iteration counts.
-        metadata['iterations'] = self.iterations
-
         # View partition data.
         metadata['alpha'] = self.alpha()
         metadata['Zv'] = self.Zv().items()
@@ -866,7 +864,7 @@ class State(CGpm):
             metadata['view_alphas'].append((v, view.alpha()))
 
         # Diagnostic data.
-        metadata['diagnostics'] = self.diagnostics.items()
+        metadata['diagnostics'] = self.diagnostics
 
         # Hooked CGPMs.
         metadata['hooked_cgpms'] = dict()
@@ -897,8 +895,7 @@ class State(CGpm):
             Zrv=to_dict(metadata.get('Zrv', None)),
             view_alphas=to_dict(metadata.get('view_alphas', None)),
             hypers=metadata.get('hypers', None),
-            iterations=metadata.get('iterations', None),
-            diagnostics=to_dict(metadata.get('diagnostics', None)),
+            diagnostics=metadata.get('diagnostics', None),
             rng=rng)
         # Hook up the composed CGPMs.
         for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():

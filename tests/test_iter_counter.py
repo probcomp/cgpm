@@ -30,7 +30,7 @@ def test_all_kernels():
     X = rng.normal(size=(5,5))
     state = State(X, cctypes=['normal']*5)
     state.transition(N=5)
-    for k, n in state.to_metadata()['iterations'].iteritems():
+    for k, n in state.to_metadata()['diagnostics']['iterations'].iteritems():
         assert n == 5
 
 def test_individual_kernels():
@@ -38,15 +38,17 @@ def test_individual_kernels():
     X = rng.normal(size=(5,5))
     state = State(X, cctypes=['normal']*5)
     state.transition(N=3, kernels=['alpha', 'rows'])
-    check_expected_counts(state.iterations, {'alpha':3, 'rows':3})
+    check_expected_counts(
+        state.diagnostics['iterations'],
+        {'alpha':3, 'rows':3})
     state.transition(N=5, kernels=['view_alphas', 'column_params'])
     check_expected_counts(
-        state.to_metadata()['iterations'],
+        state.to_metadata()['diagnostics']['iterations'],
         {'alpha':3, 'rows':3, 'view_alphas':5, 'column_params':5})
     state.transition(
         N=1, kernels=['view_alphas', 'column_params', 'column_hypers'])
     check_expected_counts(
-        state.to_metadata()['iterations'],
+        state.to_metadata()['diagnostics']['iterations'],
         {'alpha':3, 'rows':3, 'view_alphas':6, 'column_params':6,
         'column_hypers':1})
 
@@ -59,19 +61,19 @@ def test_transition_foreign():
     token_a = state.compose_cgpm(FourWay(outputs=[12], inputs=[0,1], rng=rng))
     state.transition_foreign(cols=[12], N=5)
     check_expected_counts(
-        state.iterations,
+        state.diagnostics['iterations'],
         {'foreign-%s'%token_a: 5})
 
     token_b = state.compose_cgpm(TwoWay(outputs=[22], inputs=[2], rng=rng))
     state.transition_foreign(cols=[22], N=1)
     check_expected_counts(
-        state.iterations,
+        state.diagnostics['iterations'],
         {'foreign-%s'%token_a: 5, 'foreign-%s'%token_b: 1})
 
 
     state.transition_foreign(N=3)
     check_expected_counts(
-        state.iterations,
+        state.diagnostics['iterations'],
         {'foreign-%s'%token_a: 8, 'foreign-%s'%token_b: 4})
 
     start = time.time()
