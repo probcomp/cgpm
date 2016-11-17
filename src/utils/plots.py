@@ -107,6 +107,11 @@ def plot_clustermap(D, xticklabels=None, yticklabels=None):
     plt.setp(zmat.ax_heatmap.get_xticklabels(), rotation=90)
     return zmat
 
+def clustermap_ordering(D):
+    zmat = plot_clustermap(D)
+    plt.close(zmat.fig)
+    return zmat.dendrogram_row.reordered_ind
+
 def plot_heatmap(
         D, xordering=None, yordering=None, xticklabels=None,
         yticklabels=None, vmin=None, vmax=None, ax=None):
@@ -182,3 +187,17 @@ def plot_logscore(logscores, ax=None):
     ax.set_ylabel('Log Score')
     ax.grid()
     return ax
+
+
+def engine_to_zmatrix_history(engine, ordering=None):
+    num_transitions = len(engine.states[0].diagnostics['column_partition'])
+    Zvs = [[dict(state.diagnostics['column_partition'][i])
+        for state in engine.states] for i in xrange(num_transitions)]
+
+    # Find the ordering at the final step.
+    if ordering is None:
+        D = partitions_to_zmatrix(Zvs[-1])
+        ordering = clustermap_ordering(D)
+
+    # Return the history of zmatrices.
+    return [partitions_to_zmatrix(Z, ordering=ordering) for Z in Zvs]
