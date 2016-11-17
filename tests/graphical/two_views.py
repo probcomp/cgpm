@@ -195,3 +195,45 @@ def test_two_views_column_partition_bernoulli__ci_(lovecat):
         [0,0,0,1,1,1],
     ]
     return engine
+
+engine = Engine.from_pickle('two-views-lovecat.engine')
+
+from cgpm.utils import plots as pu
+
+# Retrieve a 64 x 2000 list of Zvs.
+iters = len(engine.states[0].diagnostics['column_partition'])
+Zvs = [
+    [dict(s.diagnostics['column_partition'][i]) for s in engine.states]
+    for i in xrange(iters)
+]
+
+# Find the best zmatrix.
+zmatrix = engine.dependence_probability_pairwise()
+clustermap = pu.plot_clustermap(zmatrix)
+ordering = clustermap.dendrogram_col.reordered_ind
+
+Ds = [pu.partitions_to_zmatrix(Zv, ordering=ordering) for Zv in Zvs]
+for i, D in enumerate(Ds):
+    print '\r%d'%(i,)
+    import sys
+    sys.stdout.flush()
+    ax = pu.plot_heatmap(
+        D, xordering=ordering, yordering=ordering, vmin=0.4, vmax=1)
+    fig = ax.get_figure()
+    fig.set_tight_layout(True)
+    fig.set_size_inches((3,3))
+    fig.savefig('animation/zmatrix/%d.png' % (i,))
+    plt.close('all')
+
+logscores = [s.diagnostics['logscore'] for s in engine.states]
+for i in xrange(1, iters):
+    ax = pu.plot_logscore([l[:i] for l in logscores])
+    print '\r%d'%(i,)
+    import sys
+    sys.stdout.flush()
+    ax.set_ylim([-3700, -1500])
+    fig = ax.get_figure()
+    fig.set_tight_layout(True)
+    fig.set_size_inches((3,3))
+    fig.savefig('animation/logscore/%d.png' % (i,))
+    plt.close('all')

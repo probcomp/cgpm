@@ -43,11 +43,12 @@ def launch_analysis():
         distargs=[{'k':2}]*len(animals.values[0]),
         rng=gu.gen_rng(7))
 
-    engine.transition(N=900)
-    with open('resources/animals/animals.engine', 'w') as f:
+    engine.transition(N=900, checkpoint=2)
+    fname = 'resources/20161117-animals/animals-cgpm-categorical.engine'
+    with open(fname, 'w') as f:
         engine.to_pickle(f)
 
-    engine = Engine.from_pickle(open('resources/animals/animals.engine','r'))
+    engine = Engine.from_pickle(open(fname,'r'))
     D = engine.dependence_probability_pairwise()
     pu.plot_clustermap(D)
 
@@ -62,7 +63,6 @@ def render_states_to_disk(filepath, prefix):
             state, row_names=animal_names,
             col_names=animal_features, savefile=savefile)
 
-
 def compare_dependence_heatmap():
     e1 = Engine.from_pickle('resources/animals/animals.engine')
     e2 = Engine.from_pickle('resources/animals/animals-lovecat.engine')
@@ -76,3 +76,30 @@ def compare_dependence_heatmap():
     fig, ax = plt.subplots(nrows=1, ncols=2)
     pu.plot_heatmap(D1, xordering=ordering, yordering=ordering, ax=ax[0])
     pu.plot_heatmap(D2, xordering=ordering, yordering=ordering, ax=ax[1])
+
+# fname = 'resources/20161117-animals/animals-lovecat-categorical.engine'
+# engine = Engine.from_pickle(file(fname, 'r'))
+# num_transitions = len(engine.states[0].diagnostics['column_partition'])
+# Zvs = [
+#     [dict(state.diagnostics['column_partition'][i]) for state in engine.states]
+#     for i in xrange(num_transitions)
+# ]
+
+# D = pu.partitions_to_zmatrix(Zvs[-1])
+# ordering = pu.clustermap_ordering(D)
+
+# Ds = [pu.partitions_to_zmatrix(Z, ordering=ordering) for Z in Zvs]
+
+# # for i, D in enumerate(Ds[:100]):
+# from cgpm.utils.parallel_map import parallel_map
+# def plot(i):
+#     print '\r%d' % (i,)
+#     import sys; sys.stdout.flush()
+#     # We don't need to use the `ordering` keyword since they are already in the
+#     # the correct order from partitions_to_zmatrix.
+#     ax = pu.plot_heatmap(
+#         Ds[i], xticklabels=[], yticklabels=[], vmin=0, vmax=1)
+#     ax.collections[0].colorbar.set_ticks([])
+#     ax.get_figure().savefig('animation/animals/video/%04d.png' % (i,))
+#     plt.close('all')
+# map(plot, range(200))
