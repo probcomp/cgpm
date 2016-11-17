@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import numpy as np
 
 from cgpm.mixtures.view import View
@@ -259,6 +261,21 @@ def _update_diagnostics(state, diagnostics):
             map(convert_column_partition, trajectories))
 
 
+def _progress(n_steps, max_time, step_idx, elapsed_secs, end=None):
+    if end:
+        print '\rCompleted: %d iterations in %f seconds.' %\
+            (step_idx, elapsed_secs)
+    else:
+        p_seconds = elapsed_secs / max_time if max_time != -1 else 0
+        p_iters = float(step_idx) / n_steps
+        percentage = max(p_iters, p_seconds)
+        progress = ' ' * 30
+        fill = int(percentage * len(progress))
+        progress = '[' + '=' * fill + progress[fill:] + ']'
+        print '\r{} {:1.2f}%'.format(progress, 100 * percentage),
+        sys.stdout.flush()
+
+
 def transition(state, N=None, S=None, kernels=None, seed=None, checkpoint=None):
     """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
     # Permittable kernels:
@@ -300,13 +317,15 @@ def transition(state, N=None, S=None, kernels=None, seed=None, checkpoint=None):
     if checkpoint is None:
         X_L_new, X_D_new = LE.analyze(
             M_c, T, X_L, X_D, seed,
-            kernel_list=kernels, n_steps=n_steps, max_time=max_time)
+            kernel_list=kernels, n_steps=n_steps, max_time=max_time,
+            progress=_progress)
         diagnostics_new = dict()
     else:
         X_L_new, X_D_new, diagnostics_new = LE.analyze(
             M_c, T, X_L, X_D, seed,
             kernel_list=kernels, n_steps=n_steps, max_time=max_time,
-            do_diagnostics=True, diagnostics_every_N=checkpoint)
+            do_diagnostics=True, diagnostics_every_N=checkpoint,
+            progress=_progress)
 
     _update_state(state, M_c, X_L_new, X_D_new)
 
