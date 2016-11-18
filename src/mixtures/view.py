@@ -86,6 +86,9 @@ class View(CGpm):
             assert len(hypers) == len(cctypes)
         self.outputs = list(outputs)
 
+        # -- Latents -----------------------------------------------------------
+        self.latents = [self.outputs[0]]
+
         # -- Row CRP -----------------------------------------------------------
         self.crp = Dim(
             [self.outputs[0]], [-1],
@@ -251,6 +254,9 @@ class View(CGpm):
             # XXX DETERMINE ME!
             if not self.hypothetical(rowid): rowid = -1
             return network.logpdf(rowid, query, evidence)
+        elif self.outputs[0] in query:
+            # No need to marginalize P(xQ, z)
+            return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
         evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
@@ -258,6 +264,29 @@ class View(CGpm):
         lp_evidence = gu.log_normalize(lp_evidence_unorm)
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
         return gu.logsumexp(np.add(lp_evidence, lp_query))
+
+    # --------------------------------------------------------------------------
+    # logpdf multirow
+
+    def logpdf_multirow(self, query, evidence=None):
+        return np.nan
+
+    def _joint_logpdf_multirow(self, query, clusters):
+        # check that all the rows in clusters are in query
+        # check that no latent column is both in query and clusters
+
+        # Store in T the query rows already in dataset
+        # For rows in T
+        # Unincorporate rows from the GPM
+
+        # Compute Joint Logpdf applying the chain rule recursively
+
+        # for rows in T
+        # reincorporate rows to the dataset
+        return np.nan
+
+    def _joint_logpdf_multirow_helper(self, counter, query, category):
+        return np.nan
 
     # --------------------------------------------------------------------------
     # simulate
