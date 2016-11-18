@@ -161,7 +161,7 @@ setup(
         'cgpm': 'src',
     },
     install_requires=[
-        'matplotlib>=1.5.0',
+        'matplotlib>=1.3.1',
         'numpy',
         'pandas',
         'scipy>=0.13.3',
