@@ -20,10 +20,6 @@ libdir="${root}/build/lib"
 plat_libdir="${libdir}.${platform}-${version}"
 export PYTHONPATH="${libdir}:${plat_libdir}${PYTHONPATH:+:${PYTHONPATH}}"
 
-for egg in ./*.egg; do
-    export PYTHONPATH="$egg:$PYTHONPATH"
-done
-
 bindir="${root}/build/scripts-${version}"
 export PATH="${bindir}${PATH:+:${PATH}}"
 
