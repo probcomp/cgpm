@@ -42,6 +42,9 @@ def merged(*dicts):
         result.update(d)
     return result
 
+def is_disjoint(*args):
+    return not set.intersection(*(set(a) for a in args))
+
 def log_normalize(logp):
     """Normalizes a np array of log probabilites."""
     return np.subtract(logp, logsumexp(logp))
