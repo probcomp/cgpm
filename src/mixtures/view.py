@@ -302,13 +302,22 @@ class View(CGpm):
     # logpdf multirow
 
     def logpdf_multirow(self, query, evidence=None):
+        # store query and evidence rows already in the dataset 
+        # unincorporate those query and evidence rows
+
+        # compute the joint of query and evidence (given categories)
+        # compute the joint of evidence (given categories)
+
+        # reincorporate rows
         return np.nan
 
-    def _joint_logpdf_multirow(self, query, clusters):
-        # check that all the rows in clusters are in query
-        # check that no latent column is both in query and clusters
+    def _joint_logpdf_multirow(self, query, evidence):
+        # TODO:
+        # [ ] check that all the rows in evidence are in query
+        # [ ] check that no latent column is both in query and clusters
+        # [ ] check that no observable is in evidence
 
-        # Store in T the query rows already in dataset
+        T = ()  # Store in T the query rows already in dataset
         # For rows in T
         # Unincorporate rows from the GPM
 
@@ -318,8 +327,42 @@ class View(CGpm):
         # reincorporate rows to the dataset
         return np.nan
 
-    def _joint_logpdf_multirow_helper(self, counter, query, category):
-        return np.nan
+    def _joint_logpdf_multirow_helper(self, counter, query, evidence):
+        p = - np.float("inf")  # initialize output as log space zero
+        rowid = query.keys()[counter]  # retrieve id of current row 
+
+        if counter == len(query):  # base case, end of chain rule
+            p = 0  
+
+        elif rowid in evidence.keys():  # if current row has an assigned cluster 
+            p_row = self.logpdf( 
+                rowid=rowid, query=query[rowid], evidence=evidence[rowid]
+            )  # evaluate log p(query | cluster)
+            self.incorporate(
+                rowid=rowid, query=merged(query[rowid], evidence[rowid])
+            )  # incorporate row with cluster given by evidence
+            p_row += self._joint_logpdf_multirow_helper(
+                counter+1, query, evidence
+            )  # recursion: chain rule p(row)*p(other_rows|row)
+            p = gu.logsumexp(p, p_row)  # marginalize out clusters
+            self.unincorporate(rowid=rowid)  # unincorporate incorporated row
+
+        else:  # if current row is not in evidence
+            K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
+            for k in K:  # for each possible cluster assignments
+                p_row = self.logpdf(
+                    rowid=rowid, query=merged(query[rowid], evidence[rowid])
+                )  # compute the single row joint 
+                self.incorporate(
+                    rowid=rowid, query=merged(query[rowid], evidence[rowid])
+                )  # incorporate row into table into respective cluster
+                p_row += self._joint_logpdf_multirow_helper(
+                    counter+1, query, evidence
+                )  # recursion: chain rule p(row)*p(other_rows|row)
+                p = gu.logsumexp(p, p_row)  # marginalize out clusters
+                self.unincorporate(rowid=rowid)  # unincorporate current row
+
+        return p      # return output probability
 
     # --------------------------------------------------------------------------
     # simulate
