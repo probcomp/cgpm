@@ -84,9 +84,10 @@ def viz_data(
 
     Standardizes data across columns. Ignores nan values (plotted white).
     """
-    if savefile is None: savefile = "viz_data_foo.png"
-    if row_names is None: row_names = range(data.shape[0])
-    if col_names is None: col_names = range(data.shape[1])
+    if row_names is None:
+        row_names = range(data.shape[0])
+    if col_names is None:
+        col_names = range(data.shape[1])
 
     ax = viz_data_raw(data, ax, row_names, col_names, cmap, title)
     height, width = compute_axis_size_viz_data(data, row_names, col_names)
@@ -98,6 +99,7 @@ def viz_data(
     fig.set_tight_layout(True)
     if savefile:
         fig.savefig(savefile)
+
     return ax
 
 def viz_view_raw(view, ax=None, row_names=None, col_names=None):
@@ -193,11 +195,15 @@ def viz_view(view, ax=None, row_names=None, col_names=None, savefile=None):
     data_dict = get_view_data(view)
     data_arr = np.array(data_dict.values()).T
 
-    if ax is None: ax = plt.gca()
-    if row_names is None: row_names = range(data_arr.shape[0])
-    if col_names is None: col_names = range(data_arr.shape[1])
-    if savefile is None: savefile = "view_foo.png"
-    if isinstance(row_names, list): row_names = np.array(row_names)
+    if ax is None:
+        ax = plt.gca()
+    if row_names is None:
+        row_names = range(data_arr.shape[0])
+    if col_names is None:
+        col_names = range(data_arr.shape[1])
+
+    if isinstance(row_names, list):
+        row_names = np.array(row_names)
 
     ax = viz_view_raw(view, ax, row_names, col_names)
 

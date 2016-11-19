@@ -248,7 +248,7 @@ class View(CGpm):
         network = self.build_network()
         # Condition on cluster.
         if self.outputs[0] in evidence:
-            # XXX DETERMINE ME!
+            # XXX https://github.com/probcomp/cgpm/issues/116
             if not self.hypothetical(rowid): rowid = -1
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
@@ -267,7 +267,7 @@ class View(CGpm):
         network = self.build_network()
         # Condition on cluster.
         if self.outputs[0] in evidence:
-            # XXX DETERMINE ME!
+            # XXX https://github.com/probcomp/cgpm/issues/116
             if not self.hypothetical(rowid): rowid = -1
             return network.simulate(rowid, query, evidence, N)
         # Static query analysis.

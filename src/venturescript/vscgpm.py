@@ -114,8 +114,8 @@ class VsCGpm(CGpm):
 
     def transition(self, program=None, N=None):
         if program is None:
-            if N is None: N =1
-            self.ripl.infer('(transition %d)' % N)
+            num_iters = N if N is not None else 1
+            self.ripl.infer('(transition %d)' % (num_iters,))
         else:
             self.ripl.execute_program(program)
 

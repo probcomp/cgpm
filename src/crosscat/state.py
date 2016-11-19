@@ -98,10 +98,13 @@ class State(CGpm):
             assert len(self.Zv()) == len(self.outputs)
 
         # -- View data ---------------------------------------------------------
-        if cctypes is None: cctypes = [None] * len(self.outputs)
-        if distargs is None: distargs = [None] * len(self.outputs)
-        if hypers is None: hypers = [None] * len(self.outputs)
-        if view_alphas is None: view_alphas = [None] * len(self.outputs)
+        cctypes = cctypes or [None] * len(self.outputs)
+        distargs = distargs or [None] * len(self.outputs)
+        hypers = hypers or [None] * len(self.outputs)
+        view_alphas = view_alphas or [None] * len(self.outputs)
+
+        # If the user specifies Zrv, then the keys of Zrv must match the views
+        # which are values in Zv.
         if Zrv is None:
             Zrv = [None] * len(self.outputs)
         else:
@@ -273,7 +276,8 @@ class State(CGpm):
     # logpdf
 
     def logpdf(self, rowid, query, evidence=None, accuracy=None):
-        if evidence is None: evidence = {}
+        if evidence is None:
+            evidence = {}
         assert isinstance(query, dict)
         assert isinstance(evidence, dict)
         vu.validate_query_evidence(
@@ -287,7 +291,8 @@ class State(CGpm):
     # Simulate
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
-        if evidence is None: evidence = {}
+        if evidence is None:
+            evidence = {}
         assert isinstance(query, list)
         assert isinstance(evidence, dict)
         vu.validate_query_evidence(
@@ -309,11 +314,14 @@ class State(CGpm):
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads evidence for a query from the dataset."""
-        if evidence is None: evidence = {}
+        if evidence is None:
+            evidence = {}
         if self.hypothetical(rowid): return evidence
-        data = {c: self.X[c][rowid] for c in self.outputs
+        data = {
+            c: self.X[c][rowid] for c in self.outputs
             if c not in evidence and c not in query
-            and not isnan(self.X[c][rowid])}
+            and not isnan(self.X[c][rowid])
+        }
         return gu.merged(evidence, data)
 
     # --------------------------------------------------------------------------
@@ -321,15 +329,20 @@ class State(CGpm):
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None: evidences = [{} for i in xrange(len(rowids))]
-        if Ns is None: Ns = [1 for i in xrange(len(rowids))]
+        if evidences is None:
+            evidences = [{} for i in xrange(len(rowids))]
+        if Ns is None:
+            Ns = [1 for i in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences) == len(Ns)
-        return [self.simulate(r, q, e, n)
-            for (r, q, e, n) in zip(rowids, queries, evidences, Ns)]
+        return [
+            self.simulate(r, q, e, n)
+            for (r, q, e, n) in zip(rowids, queries, evidences, Ns)
+        ]
 
     def logpdf_bulk(self, rowids, queries, evidences=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None: evidences = [{} for _ in xrange(len(rowids))]
+        if evidences is None:
+            evidences = [{} for _ in xrange(len(rowids))]
         assert len(rowids) == len(queries) == len(evidences)
         return [
             self.logpdf(r, q, e)
@@ -372,7 +385,8 @@ class State(CGpm):
     # Row similarity.
 
     def row_similarity(self, row0, row1, cols=None):
-        if cols is None: cols = self.outputs
+        if cols is None:
+            cols = self.outputs
         views = set(self.view_for(c) for c in cols)
         return np.mean([v.Zr(row0)==v.Zr(row1) for v in views])
 
@@ -422,9 +436,11 @@ class State(CGpm):
         def compute_mi(i, s):
             ev = gu.merged(e_evidence, s)
             m = self._mutual_information_estimator(col0, col1, ev, N=N)
-            if progress: self._progress(float(i)/T)
+            if progress:
+                self._progress(float(i)/T)
             return m
-        if progress: self._progress(0./T)
+        if progress:
+            self._progress(0./T)
         samples = self.simulate(-1, m_evidence, N=T)
         mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
         return mi / float(T)
@@ -882,7 +898,8 @@ class State(CGpm):
 
     @classmethod
     def from_metadata(cls, metadata, rng=None):
-        if rng is None: rng = gu.gen_rng(0)
+        if rng is None:
+            rng = gu.gen_rng(0)
         to_dict = lambda val: None if val is None else dict(val)
         # Build the State.
         state = cls(

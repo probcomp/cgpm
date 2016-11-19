@@ -111,19 +111,20 @@ class RandomForest(CGpm):
     ##################
 
     def transition(self, N=None):
-        if N is None: N = 1
-        self.transition_params(N=N)
+        num_transitions = N if N is not None else 1
+        self.transition_params(N=num_transitions)
 
     def transition_params(self, N=None):
-        if N is None: N = 1
-        for i in xrange(N):
+        num_transitions = N if N is not None else 1
+        for i in xrange(num_transitions):
             # Transition noise parameter.
             alphas = np.linspace(0.01, 0.99, 30)
             alpha_logps = [
                 RandomForest.calc_log_likelihood(
-                    self.data.x.values(), self.data.Y.values(), self.regressor,
-                    self.counts, a)
-                for a in alphas]
+                    self.data.x.values(), self.data.Y.values(),
+                    self.regressor, self.counts, a)
+                for a in alphas
+            ]
             self.alpha = gu.log_pflip(alpha_logps, array=alphas, rng=self.rng)
             # Transition forest.
             if len(self.data.Y) > 0:
