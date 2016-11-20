@@ -272,9 +272,11 @@ class View(CGpm):
             return network.simulate(rowid, query, evidence, N)
         # Static query analysis.
         unwrap = N is None
-        if unwrap: N = 1
+        if unwrap:
+            N = 1
         exposed = self.outputs[0] in query
-        if exposed: query = [q for q in query if q != self.outputs[0]]
+        if exposed:
+            query = [q for q in query if q != self.outputs[0]]
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
         evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
