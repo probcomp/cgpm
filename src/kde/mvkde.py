@@ -151,10 +151,11 @@ class MultivariateKde(CGpm):
         if self.N == 0:
             raise ValueError('KDE requires at least one observation.')
         evidence = self.populate_evidence(rowid, query, evidence)
-        if not query: raise ValueError('No query: %s.' % query)
+        if not query:
+            raise ValueError('No query: %s.' % query)
         if any(q not in self.outputs for q in query):
-            raise ValueError('Unknown variables: (%s,%s).'
-                % (query, self.outputs))
+            raise ValueError(
+                'Unknown variables: (%s,%s).' % (query, self.outputs))
         if any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         if evidence:

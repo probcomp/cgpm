@@ -60,8 +60,7 @@ class TwoWay(CGpm):
         assert int(y) == float(y)
         assert y in [0, 1]
         x = query[self.outputs[0]]
-        if x not in [0, 1]: return -float('inf')
-        return np.log(self.probabilities[y][x])
+        return np.log(self.probabilities[y][x]) if x in [0,1] else -float('inf')
 
     def transition(self, N=None):
         time.sleep(.1)

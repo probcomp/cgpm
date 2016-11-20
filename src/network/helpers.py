@@ -33,8 +33,10 @@ def retrieve_variable_to_cgpm(cgpms):
 
 def retrieve_adjacency(cgpms, v_to_c):
     """Return map of cgpm index to list of indexes of its parent cgpms."""
-    return {i: list(set(v_to_c[p] for p in c.inputs if p in v_to_c))
-        for i, c in enumerate(cgpms)}
+    return {
+        i: list(set(v_to_c[p] for p in c.inputs if p in v_to_c))
+        for i, c in enumerate(cgpms)
+    }
 
 
 def retrieve_extraneous_inputs(cgpms, v_to_c):
@@ -46,7 +48,8 @@ def retrieve_extraneous_inputs(cgpms, v_to_c):
 def retrieve_ancestors(cgpms, q):
     """Return list of all variables that are ancestors of q."""
     v_to_c = retrieve_variable_to_cgpm(cgpms)
-    if q not in v_to_c: raise ValueError('Invalid node: %s, %s' % (q, v_to_c))
+    if q not in v_to_c:
+        raise ValueError('Invalid node: %s, %s' % (q, v_to_c))
     def ancestors(v):
         parents = cgpms[v_to_c[v]].inputs if v in v_to_c else []
         parent_ancestors = [ancestors(v) for v in parents]
