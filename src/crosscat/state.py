@@ -67,8 +67,12 @@ class State(CGpm):
         crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp_id = 5**8
         self.crp = Dim(
-            [self.crp_id], [-1], cctype='crp', hypers=crp_alpha,
-            rng=self.rng)
+            outputs=[self.crp_id],
+            inputs=[-1],
+            cctype='crp',
+            hypers=crp_alpha,
+            rng=self.rng
+        )
         self.crp.transition_hyper_grids([1]*self.n_cols())
         if Zv is None:
             for c in self.outputs:
@@ -118,9 +122,16 @@ class State(CGpm):
             v_distargs = [distargs[self.outputs.index(c)] for c in v_outputs]
             v_hypers = [hypers[self.outputs.index(c)] for c in v_outputs]
             view = View(
-                self.X, outputs=[10**7+v]+v_outputs, inputs=None, Zr=Zrv[v],
-                alpha=view_alphas[v], cctypes=v_cctypes, distargs=v_distargs,
-                hypers=v_hypers, rng=self.rng)
+                self.X,
+                outputs=[10**7+v]+v_outputs,
+                inputs=None,
+                Zr=Zrv[v],
+                alpha=view_alphas[v],
+                cctypes=v_cctypes,
+                distargs=v_distargs,
+                hypers=v_hypers,
+                rng=self.rng
+            )
             self.views[v] = view
 
         # -- Foreign CGpms -----------------------------------------------------
@@ -168,8 +179,12 @@ class State(CGpm):
         # Create the dimension.
         # XXX Does not handle conditional models; consider moving to view?
         D = Dim(
-            outputs=outputs, inputs=[view.outputs[0]], cctype=cctype,
-            distargs=distargs, rng=self.rng)
+            outputs=outputs,
+            inputs=[view.outputs[0]],
+            cctype=cctype,
+            distargs=distargs,
+            rng=self.rng
+        )
         D.transition_hyper_grids(self.X[col])
         view.incorporate_dim(D)
         self.crp.incorporate(col, {self.crp_id: v_add}, {-1:0})

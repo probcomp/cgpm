@@ -78,9 +78,9 @@ class View(CGpm):
             raise ValueError('View needs at least one output.')
         if len(outputs) > 1:
             if not distargs:
-                distargs = [None]*len(cctypes)
+                distargs = [None] * len(cctypes)
             if not hypers:
-                hypers = [None]*len(cctypes)
+                hypers = [None] * len(cctypes)
             assert len(outputs[1:])==len(cctypes)
             assert len(distargs) == len(cctypes)
             assert len(hypers) == len(cctypes)
@@ -88,10 +88,12 @@ class View(CGpm):
 
         # -- Row CRP -----------------------------------------------------------
         self.crp = Dim(
-            [self.outputs[0]], [-1],
+            outputs=[self.outputs[0]],
+            inputs=[-1],
             cctype='crp',
             hypers=None if alpha is None else {'alpha': alpha},
-            rng=self.rng)
+            rng=self.rng
+        )
         self.crp.transition_hyper_grids([1]*self.n_rows())
         if Zr is None:
             for i in xrange(self.n_rows()):
@@ -105,8 +107,13 @@ class View(CGpm):
         self.dims = dict()
         for i, c in enumerate(self.outputs[1:]):
             dim = Dim(
-                outputs=[c], inputs=[self.outputs[0]], cctype=cctypes[i],
-                hypers=hypers[i], distargs=distargs[i], rng=self.rng)
+                outputs=[c],
+                inputs=[self.outputs[0]],
+                cctype=cctypes[i],
+                hypers=hypers[i],
+                distargs=distargs[i],
+                rng=self.rng
+            )
             dim.transition_hyper_grids(self.X[c])
             if dim.is_conditional():
                 raise ValueError('Use incorporate for conditional dims.')
@@ -263,37 +270,40 @@ class View(CGpm):
     # simulate
 
     def simulate(self, rowid, query, evidence=None, N=None):
+        # XXX https://github.com/probcomp/cgpm/issues/116
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network()
-        # Condition on cluster.
+        # Condition on the cluster assignment.
         if self.outputs[0] in evidence:
-            # XXX https://github.com/probcomp/cgpm/issues/116
             if not self.hypothetical(rowid):
                 rowid = -1
             return network.simulate(rowid, query, evidence, N)
-        # Static query analysis.
-        unwrap = N is None
-        if unwrap:
+        # Determine how many samples to return.
+        unwrap_result = N is None
+        if unwrap_result:
             N = 1
+        # Expose cluster assignments to the samples?
         exposed = self.outputs[0] in query
         if exposed:
             query = [q for q in query if q != self.outputs[0]]
-        # Marginalize over clusters.
+        # Weight cluster assignments by likelihood of evidence in each cluster.
         K = self.crp.clusters[0].gibbs_tables(-1)
         evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
+        # Find number of samples in each cluster.
         Ks = gu.log_pflip(lp_evidence_unorm, array=K, size=N, rng=self.rng)
         counts = {k:n for k, n in enumerate(np.bincount(Ks)) if n > 0}
+        # Add the cluster assignment to the evidence and sample the rest.
         evidences = {k: merged(evidence, {self.outputs[0]: k}) for k in counts}
         samples = [network.simulate(rowid, query, evidences[k], counts[k])
             for k in counts]
-        # Expose the CRP to the sample.
+        # If cluster assignments are exposed, append them to the samples.
         if exposed:
             expose = lambda S, k: [merged(l, {self.outputs[0]: k}) for l in S]
             samples = [expose(s, k) for s, k in zip(samples, counts)]
-        # Return samples.
+        # Return 1 sample if N is None, otherwise a list.
         result = list(itertools.chain.from_iterable(samples))
-        return result[0] if unwrap else result
+        return result[0] if unwrap_result else result
 
     # --------------------------------------------------------------------------
     # Internal simulate/logpdf helpers
