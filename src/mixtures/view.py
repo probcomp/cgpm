@@ -249,14 +249,14 @@ class View(CGpm):
         # XXX https://github.com/probcomp/cgpm/issues/116
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network()
-        # Condition on the cluster assignment.
         if self.outputs[0] in evidence:
+            # Condition on the cluster assignment.
             # p(xQ|xE,z=k)                      computed directly by network.
             if not self.hypothetical(rowid):
                 rowid = -1
             return network.logpdf(rowid, query, evidence)
-        # Query the cluster assignment.
         elif self.outputs[0] in query:
+            # Query the cluster assignment.
             # p(z=k,xQ|xE)
             # = p(z=k,xQ,xE) / p(xE)            Bayes rule
             # = p(z=k)p(xQ,xE|z=k) / p(xE)      chain rule on numerator
@@ -273,8 +273,8 @@ class View(CGpm):
                 if query_numer else 0)
             lp_denom = self.logpdf(rowid, evidence) if evidence else 0
             return (lp_cluster + lp_numer) - lp_denom
-        # Marginalize over cluster assignment by enumeration.
         else:
+            # Marginalize over cluster assignment by enumeration.
             # Let K be a list of values for the support of z:
             # P(xQ|xE)
             # = \sum_k p(xQ|z=k,xE)p(z=k|xE)            marginalization
