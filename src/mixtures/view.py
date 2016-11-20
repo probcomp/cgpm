@@ -268,7 +268,8 @@ class View(CGpm):
         # Condition on cluster.
         if self.outputs[0] in evidence:
             # XXX https://github.com/probcomp/cgpm/issues/116
-            if not self.hypothetical(rowid): rowid = -1
+            if not self.hypothetical(rowid):
+                rowid = -1
             return network.simulate(rowid, query, evidence, N)
         # Static query analysis.
         unwrap = N is None
