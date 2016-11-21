@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import pytest
 import numpy as np
 
 from cgpm.crosscat.engine import Engine
@@ -56,8 +56,8 @@ def test_bernoulli():
     p1_uob = engine.logpdf(-1, {0:1}, multiprocess=multiprocess)[0]
     assert np.allclose(gu.logsumexp([p0_uob, p1_uob]), 0)
 
-    # Ensure normalized observed probabilities.
-    # XXX DETERMINE ME
-    p0_obs = engine.logpdf(1, {0:0}, multiprocess=multiprocess)[0]
-    p1_obs = engine.logpdf(1, {0:1}, multiprocess=multiprocess)[0]
-    assert np.allclose(gu.logsumexp([p0_obs, p1_obs]), 0)
+    # A logpdf query constraining an observed returns an error.
+    with pytest.raises(ValueError):
+        engine.logpdf(1, {0:0}, multiprocess=multiprocess)
+    with pytest.raises(ValueError):
+        engine.logpdf(1, {0:1}, multiprocess=multiprocess)

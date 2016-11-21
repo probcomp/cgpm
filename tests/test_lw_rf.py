@@ -66,8 +66,8 @@ def test_simulate_conditional__ci_(state):
 
 
 def test_logpdf_unconditional__ci_(state):
-    for rowid, k in zip([-1, 1], xrange(5)):
-        assert state.logpdf(rowid, {0: k}) < 0
+    for k in xrange(5):
+        assert state.logpdf(None, {0: k}) < 0
 
 
 def test_logpdf_deterministic__ci_(state):
@@ -80,13 +80,12 @@ def test_logpdf_deterministic__ci_(state):
         assert np.allclose(lp1, lp2)
     # Observed cell already has parents in evidence.
     # Currently, logpdf for a non-nan observed cell is not possible.
-    # XXX DETERMINE ME
-    # for k in xrange(5):
-    #     with pytest.raises(ValueError):
-    #         lp1 = state.logpdf(1, {0:k, 3:0})
-    #     with pytest.raises(ValueError):
-    #         lp2 = state.logpdf(1, {0:k, 3:0})
-    #     assert np.allclose(lp1, lp2)
+    for k in xrange(5):
+        with pytest.raises(ValueError):
+            lp1 = state.logpdf(1, {0:k, 3:0})
+        with pytest.raises(ValueError):
+            lp2 = state.logpdf(1, {0:k, 3:0})
+        assert np.allclose(lp1, lp2)
 
 
 def test_logpdf_impute__ci_(state):

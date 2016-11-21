@@ -291,14 +291,8 @@ class State(CGpm):
     # logpdf
 
     def logpdf(self, rowid, query, evidence=None, accuracy=None):
-        if evidence is None:
-            evidence = {}
         assert isinstance(query, dict)
-        assert isinstance(evidence, dict)
-        vu.validate_query_evidence(
-            self.X, rowid, self.hypothetical(rowid),
-            query, evidence=evidence)
-        evidence = self._populate_evidence(rowid, query, evidence)
+        assert evidence is None or isinstance(evidence, dict)
         network = self.build_network(accuracy=accuracy)
         return network.logpdf(rowid, query, evidence)
 
@@ -306,14 +300,8 @@ class State(CGpm):
     # Simulate
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
-        if evidence is None:
-            evidence = {}
         assert isinstance(query, list)
-        assert isinstance(evidence, dict)
-        vu.validate_query_evidence(
-            self.X, rowid, self.hypothetical(rowid),
-            query, evidence=evidence)
-        evidence = self._populate_evidence(rowid, query, evidence)
+        assert evidence is None or isinstance(evidence, dict)
         network = self.build_network(accuracy=accuracy)
         return network.simulate(rowid, query, evidence, N)
 
@@ -326,18 +314,6 @@ class State(CGpm):
 
     def build_cgpms(self):
         return [self.views[v] for v in self.views] + self.hooked_cgpms.values()
-
-    def _populate_evidence(self, rowid, query, evidence):
-        """Loads evidence for a query from the dataset."""
-        if evidence is None:
-            evidence = {}
-        if self.hypothetical(rowid): return evidence
-        data = {
-            c: self.X[c][rowid] for c in self.outputs
-            if c not in evidence and c not in query
-            and not isnan(self.X[c][rowid])
-        }
-        return gu.merged(evidence, data)
 
     # --------------------------------------------------------------------------
     # Bulk operations
