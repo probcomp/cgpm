@@ -59,6 +59,25 @@ def test_error_when_incorporating_same_row_twice():
     with pytest.raises(ValueError):
         view.incorporate(rowid=1, query=row)
 
+def test_incorporate_samples_cluster_assignment_if_not_given():
+    view = initialize_view()
+
+    # Incorporate rows into successive clusters
+    for k in xrange(1, 5):
+        row = {0: 1, 1: 1, view.exposed_latent: k}
+        view.incorporate(
+            rowid=k, query=row)
+
+    # Incorporate rows without cluster assigment
+    test_lst = []
+    for i in xrange(5, 15):
+        row = {0: 1, 1: 1}
+        view.incorporate(rowid=i, query=row)
+        test_lst += [view.Zr()[i]]
+
+    # Check that rows are not all zero 
+    assert np.any(test_lst)
+
 def test_incorporate_changes_cluster_assignment():
     view = initialize_view()
 
