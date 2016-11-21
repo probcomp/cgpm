@@ -156,13 +156,14 @@ class View(CGpm):
         
         # Cluster assignment
         k = query.get(self.exposed_latent, 0)
-        # if self.exposed_latent not in query:  # simulate if no cluster 
-        #     k = self.simulate(
-        #         -1, query=[self.exposed_latent], evidence=query).values()[0] 
-        #     # get simulated cluster, conditioned on query
+        if self.exposed_latent not in query:  # simulate if no cluster 
+            k = self.simulate(
+                -1, query=[self.exposed_latent], evidence=query).values()[0] 
+            # get simulated cluster, conditioned on query
 
         filled_query = self.fill_in_missing_values(query)
-        transition = [rowid] if self.outputs[0] not in query else []
+        transition = [rowid] if k is None else []
+        # transition = [rowid] if self.outputs[0] not in query else []
         self.crp.incorporate(rowid, {self.exposed_latent: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
