@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import numpy as np
+import pytest
 
 from cgpm.crosscat.state import State
 from cgpm.utils import config as cu
@@ -58,24 +59,17 @@ def test_crash_simulate_joint_observed(state):
     state.simulate(1, [0, 1, 2, 3, 4, 5, 6, 7, 8], N=10)
 
 def test_crash_logpdf_joint_observed(state):
-    # XXX DETERMINE ME
-    state.logpdf(1, {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8})
+    with pytest.raises(ValueError):
+        state.logpdf(1, {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8})
 
 def test_crash_simulate_conditional_observed(state):
-    try:
+    with pytest.raises(ValueError):
         state.simulate(1, [1, 4, 5, 6, 7, 8], evidence={0:1, 2:1, 3:3}, N=10)
-        assert False
-    except:
-        pass
 
 def test_crash_logpdf_conditional_observed(state):
-    try:
+    with pytest.raises(ValueError):
         state.logpdf(
             1, {1:2, 4:1, 5:10, 6:.4, 7:2, 8:1.8}, evidence={0:1, 2:1, 3:3})
-        assert False
-    except:
-        pass
-
 
 # Plot!
 state.plot()
