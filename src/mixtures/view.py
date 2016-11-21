@@ -154,14 +154,15 @@ class View(CGpm):
             has a generative model for k, unlike Dim which takes k as evidence.
         """
         k = query.get(self.outputs[0], 0)
-        transition = [rowid] if k is None else []
         self.crp.incorporate(rowid, {self.outputs[0]: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
                 query={d: query[d]},
                 evidence=self._get_evidence(rowid, self.dims[d], k))
-        self.transition_rows(rows=transition)
+        # If the user did not specify a cluster assignment, sample one.
+        if self.outputs[0] not in query:
+            self.transition_rows(rows=[rowid])
 
     def unincorporate(self, rowid):
         # Unincorporate from dims.
