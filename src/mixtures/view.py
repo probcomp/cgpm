@@ -304,14 +304,29 @@ class View(CGpm):
     # logpdf multirow
 
     def logpdf_multirow(self, query, evidence=None):
-        # store query and evidence rows already in the dataset 
-        # unincorporate those query and evidence rows
+        # TODO:
+        # [ ] Check that the evidence for _joint_logpdf_multirow is passed
+
+        joint_input = merged(query, evidence) 
+
+        # Store query and evidence rows already in the dataset 
+        T = {}
+        for rowid in joint_input.keys():  # For rows in query or evidence
+            if not self.hypothetical(rowid):  # if row in dataset
+                T[rowid] = self.retrieve_row_as_dict(rowid=rowid)  # store row in T
+                self.unincorporate(rowid=rowid)  # Unincorporate row
 
         # compute the joint of query and evidence (given categories)
-        # compute the joint of evidence (given categories)
+        log_joint = self._joint_logpdf_multirow(query=joint_input)
 
-        # reincorporate rows
-        return np.nan
+        # compute the joint of evidence (given categories)
+        log_marginal = self._joint_logpdf_multirow(query=evidence)
+
+        # Reincorporate rows in T to dataset
+        for rowid, row in T:
+            self.incorporate(rowid=rowid, query=row)
+
+        return log_joint - log_marginal
 
     def _joint_logpdf_multirow(self, query, evidence):
         """
@@ -323,19 +338,30 @@ class View(CGpm):
         # [ ] check that no latent column is both in query and clusters
         # [ ] check that no observable is in evidence
 
-        # Store query rows already in dataset
-        # rowids_in_input = set(query.keys() + evidence.keys())
-        # for row in rowids_in_input:  # For rows in query and evidence
-        #     if not self.hypothetical(rowid):  # if row in dataset
-        #     T = [rowid: {}]  # Store values in T
-        # For rows in T
-        # Unincorporate rows from the GPM
+        # Store query rows already in dataset and Unincorporate
+        T = {}
+        for rowid in query.keys():  # For rows in query
+            if not self.hypothetical(rowid):  # if row in dataset
+                T[rowid] = self.retrieve_row_as_dict(rowid=rowid)  # store row in T
+                self.unincorporate(rowid=rowid)  # Unincorporate row
 
         # Compute Joint Logpdf applying the chain rule recursively
+        counter = 0
+        p = self._joint_logpdf_multirow_helper(counter, query, evidence)
 
-        # for rows in T
-        # reincorporate rows to the dataset
-        return np.nan
+        # Reincorporate rows in T to dataset
+        for rowid, row in T:
+            self.incorporate(rowid=rowid, query=row)
+  
+        return p
+
+    def retrieve_row_as_dict(self, rowid):
+        """
+        Returns {outputs: value, exposed_latent: value}
+        """
+        observed_row = {c: self.X[rowid][c] for c in self.outputs}
+        latent = {self.exposed_latent: self.Zr()[rowid]}
+        return merged(observed_row, latent)
 
     def _joint_logpdf_multirow_helper(self, counter, query, evidence):
         p = - np.float("inf")  # initialize output as log space zero
