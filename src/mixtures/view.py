@@ -154,7 +154,13 @@ class View(CGpm):
             raise ValueError(
                 "Rowid cannot be larger than %d" % (n_rows,))
         
+        # Cluster assignment
         k = query.get(self.exposed_latent, 0)
+        if self.exposed_latent not in query:  # simulate if no cluster 
+            k = self.simulate(
+                -1, query=[self.exposed_latent], evidence=query).values()[0] 
+            # get simulated cluster, conditioned on query
+
         filled_query = self.fill_in_missing_values(query)
         transition = [rowid] if k is None else []
         self.crp.incorporate(rowid, {self.exposed_latent: k}, {-1: 0})
@@ -380,8 +386,10 @@ class View(CGpm):
         if unwrap: N = 1
         exposed = self.exposed_latent in query
         if exposed: query = [q for q in query if q != self.exposed_latent]
-        # Marginalize over clusters.
-        K = self.crp.clusters[0].gibbs_tables(-1)
+        K = [0]
+        # If there are multiple clusters, marginalize over them
+        if self.crp.clusters[0].counts:
+            K = self.crp.clusters[0].gibbs_tables(-1)
         evidences = [merged(evidence, {self.exposed_latent: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         Ks = gu.log_pflip(lp_evidence_unorm, array=K, size=N, rng=self.rng)
