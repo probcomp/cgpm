@@ -155,7 +155,7 @@ class View(CGpm):
                 "Rowid cannot be larger than %d" % (n_rows,))
         
         # Cluster assignment
-        # k = query.get(self.exposed_latent, 0)
+        k = query.get(self.exposed_latent, 0)
         # if self.exposed_latent not in query:  # simulate if no cluster 
         #     k = self.simulate(
         #         -1, query=[self.exposed_latent], evidence=query).values()[0] 
