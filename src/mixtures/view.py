@@ -87,28 +87,28 @@ class View(CGpm):
         self.outputs = list(outputs)
 
         # -- Latents -----------------------------------------------------------
-        self.latents = [self.outputs[0]]
+        self.exposed_latent = self.outputs[0]
 
         # -- Row CRP -----------------------------------------------------------
         self.crp = Dim(
-            [self.outputs[0]], [-1],
+            [self.exposed_latent], [-1],
             cctype='crp',
             hypers=None if alpha is None else {'alpha': alpha},
             rng=self.rng)
         self.crp.transition_hyper_grids([1]*self.n_rows())
         if Zr is None:
             for i in xrange(self.n_rows()):
-                s = self.crp.simulate(i, [self.outputs[0]], {-1:0})
+                s = self.crp.simulate(i, [self.exposed_latent], {-1:0})
                 self.crp.incorporate(i, s, {-1:0})
         else:
             for i, z in enumerate(Zr):
-                self.crp.incorporate(i, {self.outputs[0]: z}, {-1:0})
+                self.crp.incorporate(i, {self.exposed_latent: z}, {-1:0})
 
         # -- Dimensions --------------------------------------------------------
         self.dims = dict()
         for i, c in enumerate(self.outputs[1:]):
             dim = Dim(
-                outputs=[c], inputs=[self.outputs[0]], cctype=cctypes[i],
+                outputs=[c], inputs=[self.exposed_latent], cctype=cctypes[i],
                 hypers=hypers[i], distargs=distargs[i], rng=self.rng)
             dim.transition_hyper_grids(self.X[c])
             if dim.is_conditional():
@@ -123,7 +123,7 @@ class View(CGpm):
 
     def incorporate_dim(self, dim, reassign=True):
         """Incorporate dim into View. If not reassign, partition should match."""
-        dim.inputs[0] = self.outputs[0]
+        dim.inputs[0] = self.exposed_latent
         if reassign:
             self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
@@ -145,13 +145,13 @@ class View(CGpm):
             Fresh, non-negative rowid.
         query : dict{output:val}
             Keys of the query must exactly be the output (Github issue 89).
-            Optionally, use {self.outputs[0]: k} for latent cluster assignment
+            Optionally, use {self.exposed_latent: k} for latent cluster assignment
             of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
-        k = query.get(self.outputs[0], 0)
+        k = query.get(self.exposed_latent, 0)
         transition = [rowid] if k is None else []
-        self.crp.incorporate(rowid, {self.outputs[0]: k}, {-1: 0})
+        self.crp.incorporate(rowid, {self.exposed_latent: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
@@ -167,14 +167,14 @@ class View(CGpm):
             Fresh, non-negative rowid.
         query : dict{output:val}
             Keys of the query must exactly be the output (Github issue 89).
-            Optionally, use {self.outputs[0]: k} for latent cluster assignment
+            Optionally, use {self.exposed_latent: k} for latent cluster assignment
             of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
         query = self.fill_in_missing_values(query)  # missing output -> nan
-        k = query.get(self.outputs[0], 0)
+        k = query.get(self.exposed_latent, 0)
         transition = [rowid] if k is None else []
-        self.crp.incorporate(rowid, {self.outputs[0]: k}, {-1: 0})
+        self.crp.incorporate(rowid, {self.exposed_latent: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
@@ -187,7 +187,7 @@ class View(CGpm):
         Fill in missing values in query with NaN.
         """
         exposed_outputs = self.outputs[1:]
-        filled_query = {self.outputs[0]: query.get(self.outputs[0], 0)}
+        filled_query = {self.exposed_latent: query.get(self.exposed_latent, 0)}
         for d in exposed_outputs:
             filled_query[d] = query.get(d, np.nan)
         return filled_query
@@ -224,7 +224,7 @@ class View(CGpm):
             }
         D_old = self.dims[col]
         D_new = Dim(
-            outputs=[col], inputs=[self.outputs[0]]+inputs,
+            outputs=[col], inputs=[self.exposed_latent]+inputs,
             cctype=cctype, distargs=distargs, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
@@ -283,16 +283,16 @@ class View(CGpm):
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network()
         # Condition on cluster.
-        if self.outputs[0] in evidence:
+        if self.exposed_latent in evidence:
             # XXX DETERMINE ME!
             if not self.hypothetical(rowid): rowid = -1
             return network.logpdf(rowid, query, evidence)
-        elif self.outputs[0] in query:
+        elif self.exposed_latent in query:
             # No need to marginalize P(xQ, z)
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
-        evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
+        evidences = [merged(evidence, {self.exposed_latent: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         lp_evidence = gu.log_normalize(lp_evidence_unorm)
         lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
@@ -317,7 +317,11 @@ class View(CGpm):
         # [ ] check that no latent column is both in query and clusters
         # [ ] check that no observable is in evidence
 
-        T = ()  # Store in T the query rows already in dataset
+        # rowids_in_input = sorted(
+        #     set(query.keys() + evidence.keys())
+        # for row in rowids:  # For rows in query and evidence
+        #     if not self.hypothetical(rowid):  # if row in dataset
+        #     T = [rowid: {}]  # Store values in T
         # For rows in T
         # Unincorporate rows from the GPM
 
@@ -371,27 +375,27 @@ class View(CGpm):
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network()
         # Condition on cluster.
-        if self.outputs[0] in evidence:
+        if self.exposed_latent in evidence:
             # XXX DETERMINE ME!
             if not self.hypothetical(rowid): rowid = -1
             return network.simulate(rowid, query, evidence, N)
         # Static query analysis.
         unwrap = N is None
         if unwrap: N = 1
-        exposed = self.outputs[0] in query
-        if exposed: query = [q for q in query if q != self.outputs[0]]
+        exposed = self.exposed_latent in query
+        if exposed: query = [q for q in query if q != self.exposed_latent]
         # Marginalize over clusters.
         K = self.crp.clusters[0].gibbs_tables(-1)
-        evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
+        evidences = [merged(evidence, {self.exposed_latent: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         Ks = gu.log_pflip(lp_evidence_unorm, array=K, size=N, rng=self.rng)
         counts = {k:n for k, n in enumerate(np.bincount(Ks)) if n > 0}
-        evidences = {k: merged(evidence, {self.outputs[0]: k}) for k in counts}
+        evidences = {k: merged(evidence, {self.exposed_latent: k}) for k in counts}
         samples = [network.simulate(rowid, query, evidences[k], counts[k])
             for k in counts]
         # Expose the CRP to the sample.
         if exposed:
-            expose = lambda S, k: [merged(l, {self.outputs[0]: k}) for l in S]
+            expose = lambda S, k: [merged(l, {self.exposed_latent: k}) for l in S]
             samples = [expose(s, k) for s, k in zip(samples, counts)]
         # Return samples.
         result = list(itertools.chain.from_iterable(samples))
@@ -424,7 +428,7 @@ class View(CGpm):
             self.unincorporate(rowid)
             query = merged(
                 {d: self.X[d][rowid] for d in self.dims},
-                {self.outputs[0]: z_b})
+                {self.exposed_latent: z_b})
             self.incorporate(rowid, query)
         self._check_partitions()
 
@@ -475,13 +479,13 @@ class View(CGpm):
         data = {c: self.X[c][rowid] for c in self.outputs[1:]
             if c not in evidence and c not in query
             and not isnan(self.X[c][rowid])}
-        cluster = {self.outputs[0]: self.Zr(rowid)}
+        cluster = {self.exposed_latent: self.Zr(rowid)}
         return merged(evidence, data, cluster)
 
     def _get_evidence(self, rowid, dim, k):
         """Prepare the evidence for a Dim logpdf/simulate query."""
         inputs = {i: self.X[i][rowid] for i in dim.inputs[1:]}
-        cluster = {self.outputs[0]: k}
+        cluster = {self.exposed_latent: k}
         return merged(inputs, cluster)
 
     def _bulk_incorporate(self, dim):
@@ -514,7 +518,7 @@ class View(CGpm):
         assert set(Zr.values()) == set(Nk)
         for dim in self.dims.itervalues():
             # Assert first output is first input of the Dim.
-            assert self.outputs[0] == dim.inputs[0]
+            assert self.exposed_latent == dim.inputs[0]
             # Ensure number of clusters in each dim in views[v]
             # is the same and as described in the view (K, Nk).
             assignments = merged(dim.Zr, dim.Zi)
