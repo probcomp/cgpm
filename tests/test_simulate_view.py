@@ -34,14 +34,20 @@ def initialize_view():
         Zr=[0])
     return view
 
-def test_simulate_cluster_assignment_with_empty_view():
+def test_simulate_cluster_assignment_with_empty_data():
     view = initialize_view()
     
     view.unincorporate(0)
     view.simulate(-1, query=[view.exposed_latent])
 
-def test_simulate_data_with_empty_view():
+def test_simulate_data_with_empty_data():
     view = initialize_view()
 
     view.unincorporate(0)
     view.simulate(-1, query=[0, 1])
+
+def test_gibbs_tables_with_empty_data():
+    view = initialize_view()
+
+    view.unincorporate(0)
+    view.crp.clusters[0].gibbs_tables(-1)
