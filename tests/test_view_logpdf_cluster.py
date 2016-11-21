@@ -26,9 +26,9 @@ def retrieve_view():
     data = np.asarray([
         [1.1,   -2.1,    0],  # rowid=0
         [2.,      .1,    0],  # rowid=1
-        [1.5,      1,   .5],  # rowid=2
+        [1.5, np.nan,   .5],  # rowid=2
         [4.7,    7.4,   .5],  # rowid=3
-        [5.2,    9.6,   .5],  # rowid=4
+        [5.2,    9.6,   np.nan],  # rowid=4
     ])
 
     outputs = [0,1,2,]
@@ -41,16 +41,15 @@ def retrieve_view():
         Zr=[0,0,0,1,1,]
     )
 
-def test_crp_logpdf():
-    view = retrieve_view()
 
+def test_crp_prior_logpdf():
+    view = retrieve_view()
     crp_normalizer = view.alpha() + 5.
     cluster_logps = np.log(np.asarray([
         3 / crp_normalizer,
         2 / crp_normalizer,
         view.alpha() / crp_normalizer
     ]))
-
     # Test the crp probabilities agree for a hypothetical row.
     for k in [0,1,2]:
         expected_logpdf = cluster_logps[k]
@@ -59,10 +58,35 @@ def test_crp_logpdf():
         view_logpdf = view.logpdf(None, {view.outputs[0]: k})
         assert np.allclose(view_logpdf, crp_logpdf)
 
-# math_out = np.log(1./3)
-# test_out = view.crp.clusters[0].logpdf(rowid=0, query={1000: 0})
-# assert math_out == test_out  # Passes
 
-# # Same thing for view
-# test_out = view.logpdf(rowid=0, query={1000: 1})
-# assert math_out == test_out  # Fails with test_out == 0.0
+def test_crp_posterior_logpdf():
+    view = retrieve_view()
+    fresh_row = {0:2, 1:3, 2:.5}
+    logps = [
+        view.logpdf(None, {view.outputs[0]: k}, fresh_row)
+        for k in [0,1,2]
+    ]
+    assert np.allclose(gu.logsumexp(logps), 0)
+
+
+def test_logpdf_observed_nan():
+    view = retrieve_view()
+    logp_view = view.logpdf(2, {1:1})
+    logp_dim = view.dims[1].logpdf(2, {1:1}, {view.outputs[0]: view.Zr(2)})
+    assert np.allclose(logp_view, logp_dim)
+
+
+def test_logpdf_chain():
+    view = retrieve_view()
+    logp_cluster = view.logpdf(None, {view.outputs[0]: 0})
+    logp_data = view.logpdf(None, {1:1, 2:0}, {view.outputs[0]: 0})
+    logp_joint = view.logpdf(None, {1:1, 2:0, view.outputs[0]: 0})
+    assert np.allclose(logp_cluster+logp_data, logp_joint)
+
+
+def test_logpdf_bayes():
+    view = retrieve_view()
+    logp_posterior = view.logpdf(None, {view.outputs[0]: 0, 1:1}, {2:0})
+    logp_evidence = view.logpdf(None, {2:0})
+    logp_joint = view.logpdf(None, {1:1, 2:0, view.outputs[0]: 0})
+    assert np.allclose(logp_joint - logp_evidence, logp_posterior)

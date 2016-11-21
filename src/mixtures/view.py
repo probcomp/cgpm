@@ -245,15 +245,23 @@ class View(CGpm):
     # logpdf
 
     def logpdf(self, rowid, query, evidence=None):
-        # Algorithm.
-        # XXX https://github.com/probcomp/cgpm/issues/116
+        # As discussed in https://github.com/probcomp/cgpm/issues/116 for an
+        # observed rowid, we synthetize a new hypothetical row which is
+        # identical (in terms of observed and latent values) to the observed
+        # rowid. In this version of the implementation, the user may not
+        # override any non-null values in the observed rowid (_populate_evidence
+        # returns an error in this case). A user should either (i) use another
+        # rowid, since overriding existing values in the observed rowid no
+        # longer specifies that rowid, or (ii) use some sequence of
+        # incorporate/unicorporate depending on their query.
         evidence = self._populate_evidence(rowid, query, evidence)
+        if not self.hypothetical(rowid):
+            rowid = None
+        # Prepare the importance network.
         network = self.build_network()
         if self.outputs[0] in evidence:
             # Condition on the cluster assignment.
             # p(xQ|xE,z=k)                      computed directly by network.
-            if not self.hypothetical(rowid):
-                rowid = -1
             return network.logpdf(rowid, query, evidence)
         elif self.outputs[0] in query:
             # Query the cluster assignment.
@@ -293,13 +301,13 @@ class View(CGpm):
     # simulate
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        # XXX https://github.com/probcomp/cgpm/issues/116
+        # Refer to comment in logpdf.
         evidence = self._populate_evidence(rowid, query, evidence)
+        if not self.hypothetical(rowid):
+            rowid = None
         network = self.build_network()
         # Condition on the cluster assignment.
         if self.outputs[0] in evidence:
-            if not self.hypothetical(rowid):
-                rowid = -1
             return network.simulate(rowid, query, evidence, N)
         # Determine how many samples to return.
         unwrap_result = N is None
@@ -403,6 +411,8 @@ class View(CGpm):
         """Loads query evidence from the dataset."""
         if evidence is None:
             evidence = {}
+        self._validate_query_evidence(rowid, query, evidence)
+        # If the rowid is hypothetical, just return.
         if self.hypothetical(rowid):
             return evidence
         # Retrieve all other values for this rowid not in query or evidence.
@@ -412,9 +422,8 @@ class View(CGpm):
             if (c not in query) and (c not in evidence)
                 and (not isnan(self.X[c][rowid]))
         }
-        # Retrieve the cluster assignment of this rowid if unconstrained.
-        if self.outputs[0] not in query and self.outputs[0] not in evidence:
-            data[self.outputs[0]] = self.Zr(rowid)
+        # Add the cluster assignment.
+        data[self.outputs[0]] = self.Zr(rowid)
 
         return merged(evidence, data)
 
@@ -437,6 +446,29 @@ class View(CGpm):
                 evidence=self._get_evidence(rowid, dim, k))
         assert merged(dim.Zr, dim.Zi) == self.Zr()
         dim.transition_params()
+
+    def _validate_query_evidence(self, rowid, query, evidence):
+        # Is the query simulate or logpdf?
+        simulate = isinstance(query, list)
+        # Disallow duplicated query cols.
+        if simulate and len(set(query)) != len(query):
+            raise ValueError('Query columns must be unique.')
+        # Disallow overlap between query and evidence.
+        if len(set.intersection(set(query), set(evidence))) > 0:
+            raise ValueError('Query and evidence columns must be disjoint.')
+        # No further  check.
+        if self.hypothetical(rowid):
+            return
+        # Cannot constrain the cluster of observed rowid; unincorporate first.
+        if self.outputs[0] in query or self.outputs[0] in evidence:
+            raise ValueError('Cannot constrain cluster of an observed rowid.')
+        # Disallow evidence constraining observed cells.
+        if any(not np.isnan(self.X[e][rowid]) for e in evidence):
+            raise ValueError('Cannot constrain observed cell in evidence.')
+        # Disallow query constraining observed cells (XXX logpdf, not simulate)
+        if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
+            raise ValueError('Cannot constrain observed cell in query.')
+
 
     # --------------------------------------------------------------------------
     # Data structure invariants.

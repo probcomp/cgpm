@@ -14,56 +14,100 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import pytest
 
-import numpy as np
+from cgpm.mixtures.view import View
 
-from cgpm.crosscat.state import State
+"""Test suite for View._populate_evidence.
 
-
-@pytest.fixture(scope='module')
-def state():
-    X = [[1, np.nan, 2, -1, np.nan],
-        [1, 3, 2, -1, -5],
-        [1, np.nan, np.nan, np.nan, np.nan]]
-    s = State(X, cctypes=['normal']*5)
-    return s
+Ensures that View._populate_evidence correctly retrieves values from the
+dataset.
+"""
 
 
-def test_hypothetical_unchanged(state):
+def retrieve_view():
+    X = np.asarray([
+        [1,    np.nan,        2,      -1,      np.nan],
+        [1,         3,        2,      -1,          -5],
+        [1,    np.nan,   np.nan,  np.nan,      np.nan],
+    ])
+    outputs = [0,1,2,3,4]
+    return View(
+        {c: X[:,c].tolist() for c in outputs},
+        outputs=[-1] + outputs,
+        cctypes=['normal']*5,
+        Zr=[0,1,2])
+
+
+def test_hypothetical_unchanged():
+    view = retrieve_view()
+
     rowid = -1
     qr1 = {3:-1}
     ev1 = {1:1, 2:2}
-    ev2 = state._populate_evidence(rowid, qr1, ev1)
+    ev2 = view._populate_evidence(rowid, qr1, ev1)
     assert ev1 == ev2
 
 
-def test_nothing_to_populate(state):
+def test_only_rowid_to_populate():
+    view = retrieve_view()
+
+    # Can query X[2,0] for simulate.
     rowid = 2
-    qr1 = {0:1}
-    ev2 = state._populate_evidence(rowid, qr1, {})
-    assert ev2 == {}
+    qr1 = [0]
+    ev1 = {}
+    ev2 = view._populate_evidence(rowid, qr1, ev1)
+    assert ev2 == {-1: view.Zr(rowid)}
+
+    # Cannot query X[2,0] for logpdf.
+    rowid = 2
+    qr1 = {0:2}
+    ev1 = {}
+    with pytest.raises(ValueError):
+        ev2 = view._populate_evidence(rowid, qr1, ev1)
 
 
-def test_some_to_populate(state):
-    rowid = 0
-    qr1 = {1:1}
-    ev1 = {2:2}
-    ev2 = state._populate_evidence(rowid, qr1, ev1)
-    assert ev2 == {2:2, 0:1, 3:-1}
+def test_contrain_errors():
+    view = retrieve_view()
 
-
-def test_everything_to_populate(state):
     rowid = 1
     qr1 = {1:1, 4:1}
-    ev2 = state._populate_evidence(rowid, qr1, {})
-    assert ev2 == {0:1, 2:2, 3:-1}
+    ev1 = {}
+    with pytest.raises(ValueError):
+        view._populate_evidence(rowid, qr1, ev1)
 
-    qr1 = {1:3}     # Actual query not allowed.
+    rowid = 1
+    qr1 = {1:3}
     ev1 = {4:-5}
-    ev2 = state._populate_evidence(rowid, qr1, ev1)
-    assert ev2 == {0:1, 2:2, 3:-1, 4:-5}
+    with pytest.raises(ValueError):
+        view._populate_evidence(rowid, qr1, ev1)
 
-    qr1 = {0:1, 1:3} # Actual query not allowed.
-    ev2 = state._populate_evidence(rowid, qr1, {})
-    assert ev2 == {2:2, 3:-1, 4:-5}
+    rowid = 1
+    qr1 = {0:1, 1:3}
+    ev1 = {}
+    with pytest.raises(ValueError):
+        view._populate_evidence(rowid, qr1, ev1)
+
+    # Cannot constrain cluster assignment of observed rowid.
+    rowid = 1
+    qr1 = {-1: 2}
+    ev1 = {}
+    with pytest.raises(ValueError):
+        view._populate_evidence(rowid, qr1, ev1)
+
+
+def test_values_to_populate():
+    view = retrieve_view()
+
+    rowid = 0
+    qr1 = [1]
+    ev1 = {4:2}
+    ev2 = view._populate_evidence(rowid, qr1, ev1)
+    assert ev2 == {0:1, 2:2, 3:-1, 4:2, -1: view.Zr(rowid)}
+
+    rowid = 0
+    qr1 = {1:1}
+    ev1 = {4:2}
+    ev2 = view._populate_evidence(rowid, qr1, ev1)
+    assert ev2 == {2:2, 0:1, 3:-1, 4:2, -1: view.Zr(rowid)}
