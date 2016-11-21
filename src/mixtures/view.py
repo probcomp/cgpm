@@ -314,14 +314,18 @@ class View(CGpm):
         return np.nan
 
     def _joint_logpdf_multirow(self, query, evidence):
+        """
+        query - {rowid: {outputs: value, exposed_latent: value}}
+        evidence = {rowid: {exposed_latent: value}}
+        """
         # TODO:
         # [ ] check that all the rows in evidence are in query
         # [ ] check that no latent column is both in query and clusters
         # [ ] check that no observable is in evidence
 
-        # rowids_in_input = sorted(
-        #     set(query.keys() + evidence.keys())
-        # for row in rowids:  # For rows in query and evidence
+        # Store query rows already in dataset
+        # rowids_in_input = set(query.keys() + evidence.keys())
+        # for row in rowids_in_input:  # For rows in query and evidence
         #     if not self.hypothetical(rowid):  # if row in dataset
         #     T = [rowid: {}]  # Store values in T
         # For rows in T
@@ -474,7 +478,7 @@ class View(CGpm):
         return len(self.X[self.X.keys()[0]])
 
     def hypothetical(self, rowid):
-        return not (0 <= rowid < len(self.Zr()))
+        return rowid not in self.Zr() 
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
