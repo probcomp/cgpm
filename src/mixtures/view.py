@@ -149,20 +149,20 @@ class View(CGpm):
             of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
-        n_rows = len(self.X[0])
+        n_rows = len(self.X[self.outputs[-1]])
         if rowid > n_rows:  # if rowid would be skipped for incorporate
             raise ValueError(
                 "Rowid cannot be larger than %d" % (n_rows,))
         
         # Cluster assignment
-        k = query.get(self.exposed_latent, 0)
-        if self.exposed_latent not in query:  # simulate if no cluster 
-            k = self.simulate(
-                -1, query=[self.exposed_latent], evidence=query).values()[0] 
-            # get simulated cluster, conditioned on query
+        # k = query.get(self.exposed_latent, 0)
+        # if self.exposed_latent not in query:  # simulate if no cluster 
+        #     k = self.simulate(
+        #         -1, query=[self.exposed_latent], evidence=query).values()[0] 
+        #     # get simulated cluster, conditioned on query
 
         filled_query = self.fill_in_missing_values(query)
-        transition = [rowid] if k is None else []
+        transition = [rowid] if self.outputs[0] not in query else []
         self.crp.incorporate(rowid, {self.exposed_latent: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
@@ -172,18 +172,19 @@ class View(CGpm):
         self.transition_rows(rows=transition)
         self._add_to_dataset(rowid=rowid, query=filled_query)
 
-    def fill_in_missing_values(self, query):
+    def fill_in_missing_values(self, query, fill_entire_row=False):
         """
         Fill in missing values in query with NaN.
         """
         exposed_outputs = self.outputs[1:]
         filled_query = {self.exposed_latent: query.get(self.exposed_latent, 0)}
-        for d in exposed_outputs:
-            filled_query[d] = query.get(d, np.nan)
+        columns_to_fill = self.X.keys() if fill_entire_row else exposed_outputs
+        for c in columns_to_fill:
+                filled_query[c] = query.get(c, np.nan)
         return filled_query
     
     def _add_to_dataset(self, rowid, query):
-        filled_query = self.fill_in_missing_values(query)
+        filled_query = self.fill_in_missing_values(query, fill_entire_row=True)
         for c in self.X.keys():
             if rowid < len(self.X[c]):  # if row has been unincorporated
                 self.X[c][rowid] = filled_query[c]
