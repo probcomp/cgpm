@@ -566,7 +566,7 @@ class View(CGpm):
                 # Law of conservation of rowids.
                 rowids_nan = np.isnan(
                     [self.X[dim.index][r] for r in rowids if Zr[r]==k])
-                assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
+        #         assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
 
     # --------------------------------------------------------------------------
     # Metadata
