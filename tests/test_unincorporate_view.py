@@ -34,43 +34,47 @@ def initialize_view():
         Zr=[0])
     return view
 
-def test_incorporate_adds_to_dataset():
+def test_unincorporate_removes_from_dataset():
     view = initialize_view()
 
     row = {0: 1, 1: 1}
-    view.incorporate(rowid=1, query=row)
-    assert view.X[1] == row
+    view.unincorporate(0)
+    assert not view.X[0]
 
-def test_incorporate_changes_cluster_assignment():
+def test_unincorporate_changes_row_cluster_assignment():
     view = initialize_view()
 
     row = {0: 1, 1: 1, 1000: 1}
     view.incorporate(rowid=1, query=row)
-    assert view.Zr()[1] == 1
-            
-def test_incorporate_updates_bernoulli_suffstats():
+    view.unincorporate(rowid=1)
+    assert 1 not in view.Zr().keys()
+
+def test_unincorporate_updates_bernoulli_suffstats():
     view = initialize_view()
 
     row = {0: 1, 1: 1, 1000: 0}
     view.incorporate(rowid=1, query=row)
-    assert view.dims[0].clusters[0].x_sum == 2
-    assert view.dims[0].clusters[0].N == 2
-    assert view.dims[1].clusters[0].x_sum == 2
-    assert view.dims[1].clusters[0].N == 2
+    view.unincorporate(rowid=1)
+    assert view.dims[0].clusters[0].x_sum == 1
+    assert view.dims[0].clusters[0].N == 1
+    assert view.dims[1].clusters[0].x_sum == 1
+    assert view.dims[1].clusters[0].N == 1
 
-def test_incorporate_with_missing_value_changes_cluster_assignment():
+def test_unincorporate_with_missing_value_changes_row_assignment():
     view = initialize_view()
 
     row = {0: 1, 1000: 1}
     view.incorporate(rowid=1, query=row)
-    assert view.Zr()[1] == 1
+    view.unincorporate(rowid=1)
+    assert 1 not in view.Zr().keys()
 
-def test_incorporate_with_missing_value_updates_bernoulli_suffstats():
+def test_unincorporate_with_missing_value_changes_bernoulli_suffstats():
     view = initialize_view()
 
     row = {0: 1, 1000: 0}
     view.incorporate(rowid=1, query=row)
-    assert view.dims[0].clusters[0].x_sum == 2
-    assert view.dims[0].clusters[0].N == 2
+    view.unincorporate(rowid=1)
+    assert view.dims[0].clusters[0].x_sum == 1
+    assert view.dims[0].clusters[0].N == 1
     assert view.dims[1].clusters[0].x_sum == 1
     assert view.dims[1].clusters[0].N == 1
