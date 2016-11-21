@@ -41,6 +41,14 @@ def test_incorporate_adds_to_dataset():
     view.incorporate(rowid=1, query=row)
     assert view.X[1] == row
 
+def test_error_when_incorporating_same_row_twice():
+    view = initialize_view()
+
+    row = {0: 1, 1: 1}
+    view.incorporate(rowid=1, query=row)
+    with pytest.raises(ValueError):
+        view.incorporate(rowid=1, query=row)
+
 def test_incorporate_changes_cluster_assignment():
     view = initialize_view()
 
