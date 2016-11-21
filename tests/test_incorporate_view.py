@@ -111,3 +111,15 @@ def test_incorporate_with_missing_value_updates_bernoulli_suffstats():
     assert view.dims[0].clusters[0].N == 2
     assert view.dims[1].clusters[0].x_sum == 1
     assert view.dims[1].clusters[0].N == 1
+
+
+def test_hypothetical():
+    view = initialize_view()
+
+    row = {0: 1, 1000: 0}
+    view.incorporate(rowid=1, query=row)
+    view.incorporate(rowid=2, query=row)
+    view.unincorporate(rowid=1)
+
+    assert view.hypothetical(1)
+    assert not view.hypothetical(2)
