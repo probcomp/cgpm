@@ -329,7 +329,7 @@ class View(CGpm):
 
         return log_joint - log_marginal
 
-    def _joint_logpdf_multirow(self, query, evidence):
+    def _joint_logpdf_multirow(self, query, evidence=None):
         """
         query - {rowid: {outputs: value, exposed_latent: value}}
         evidence = {rowid: {exposed_latent: value}}
@@ -360,11 +360,11 @@ class View(CGpm):
         """
         Returns {outputs: value, exposed_latent: value}
         """
-        observed_row = {c: self.X[rowid][c] for c in self.outputs}
+        observed_row = {c: self.X[rowid][c] for c in self.outputs[1::]}
         latent = {self.exposed_latent: self.Zr()[rowid]}
         return merged(observed_row, latent)
 
-    def _joint_logpdf_multirow_helper(self, counter, query, evidence):
+    def _joint_logpdf_multirow_helper(self, counter, query, evidence=None):
         p = - np.float("inf")  # initialize output as log space zero
         rowid = query.keys()[counter]  # retrieve id of current row 
 
