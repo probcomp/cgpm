@@ -39,16 +39,7 @@ def test_unincorporate_removes_from_dataset():
 
     row = {0: 1, 1: 1}
     view.unincorporate(0)
-    assert not view.X[0]
-
-def test_error_when_unincorporating_same_row_twice():
-    view = initialize_view()
-
-    row = {0: 1, 1: 1}
-    view.incorporate(rowid=2, query=row)
-    view.unincorporate(rowid=2)
-    with pytest.raises(ValueError):
-        view.unincorporate(rowid=1)
+    assert np.isnan(view.X[0][0])
 
 def test_unincorporate_changes_row_cluster_assignment():
     view = initialize_view()

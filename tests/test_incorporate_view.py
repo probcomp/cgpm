@@ -37,9 +37,19 @@ def initialize_view():
 def test_incorporate_adds_to_dataset():
     view = initialize_view()
 
+    rowid = 1
     row = {0: 1, 1: 1}
-    view.incorporate(rowid=1, query=row)
-    assert view.X[1] == row
+    view.incorporate(rowid=rowid, query=row)
+    assert view.X[1][rowid] == 1
+
+def test_incorporate_after_unincorporate_adds_to_dataset():
+    view = initialize_view()
+
+    rowid = 0
+    row = {0: 1, 1: 1}
+    view.unincorporate(rowid=0)
+    view.incorporate(rowid=0, query=row)
+    assert view.X[0][rowid] == 1
 
 def test_error_when_incorporating_same_row_twice():
     view = initialize_view()

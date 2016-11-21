@@ -149,38 +149,22 @@ class View(CGpm):
             of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
+        n_rows = len(self.X[0])
+        if rowid > n_rows:  # if rowid would be skipped for incorporate
+            raise ValueError(
+                "Rowid cannot be larger than %d" % (n_rows,))
+        
         k = query.get(self.exposed_latent, 0)
+        filled_query = self.fill_in_missing_values(query)
         transition = [rowid] if k is None else []
         self.crp.incorporate(rowid, {self.exposed_latent: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
-                query={d: query[d]},
+                query={d: filled_query[d]},
                 evidence=self._get_evidence(rowid, self.dims[d], k))
         self.transition_rows(rows=transition)
-
-    def incorporate(self, rowid, query, evidence=None):
-        """Incorporate an observation into the View.
-        Parameters
-        ----------
-        rowid : int
-            Fresh, non-negative rowid.
-        query : dict{output:val}
-            Keys of the query must exactly be the output (Github issue 89).
-            Optionally, use {self.exposed_latent: k} for latent cluster assignment
-            of rowid. The cluster is a query variable since View
-            has a generative model for k, unlike Dim which takes k as evidence.
-        """
-        query = self.fill_in_missing_values(query)  # missing output -> nan
-        k = query.get(self.exposed_latent, 0)
-        transition = [rowid] if k is None else []
-        self.crp.incorporate(rowid, {self.exposed_latent: k}, {-1: 0})
-        for d in self.dims:
-            self.dims[d].incorporate(
-                rowid,
-                query={d: query[d]},
-                evidence=self._get_evidence(rowid, self.dims[d], k))
-        self.transition_rows(rows=transition)
+        self._add_to_dataset(rowid=rowid, query=filled_query)
 
     def fill_in_missing_values(self, query):
         """
@@ -191,6 +175,14 @@ class View(CGpm):
         for d in exposed_outputs:
             filled_query[d] = query.get(d, np.nan)
         return filled_query
+    
+    def _add_to_dataset(self, rowid, query):
+        filled_query = self.fill_in_missing_values(query)
+        for c in self.X.keys():
+            if rowid < len(self.X[c]):  # if row has been unincorporated
+                self.X[c][rowid] = filled_query[c]
+            else:  # if row is to be inserted in the end of dataset
+                self.X[c] += [filled_query[c]]
 
     def unincorporate(self, rowid):
         # Unincorporate from dims.
@@ -202,7 +194,11 @@ class View(CGpm):
         if k not in self.Nk():
             for dim in self.dims.itervalues():
                 del dim.clusters[k]     # XXX Abstract me!
+        self._remove_from_dataset(rowid=rowid)
 
+    def _remove_from_dataset(self, rowid):
+        for c in self.X.keys():
+            self.X[c][rowid] = np.nan  # puts a placeholder to preserve order 
     # --------------------------------------------------------------------------
     # Update schema.
 
