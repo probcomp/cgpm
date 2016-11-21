@@ -68,7 +68,7 @@ def test_unidimensional_crp_logpdf_hypothetical():
 
     # P(z[1] = 0) = 1./2
     # Hypothetical row: rowid=1
-    query = {view.latents[0]: 0}
+    query = {view.exposed_latent: 0}
     math_out = np.log(1./2)
     test_out = view.logpdf(rowid=1, query=query) 
     assert np.allclose(math_out, test_out)
@@ -78,7 +78,7 @@ def test_unidimensional_logpdf_crp_nonhypothetical():
 
     # P(z[0] = 0) = 1.
     # Non-hypothetical row: rowid=0
-    query = {view.latents[0]: 0}
+    query = {view.exposed_latent: 0}
     math_out = np.log(1)
     test_out = view.logpdf(rowid=0, query=query) 
     assert np.allclose(math_out, test_out)
@@ -89,7 +89,7 @@ def test_unidimensional_logpdf_crp_conditional_hypothetical():
     # P(x[1,0] = 1, z[1] = 0) = 1./4
     # Hypothetical row: rowid=1
     query = {0: 1}
-    evidence = {view.latents[0]: 0}
+    evidence = {view.exposed_latent: 0}
     math_out = np.log(2./3)
     test_out = view.logpdf(rowid=1, query=query, evidence=evidence) 
     assert np.allclose(math_out, test_out)
@@ -99,7 +99,7 @@ def test_unidimensional_logpdf_crp_joint_hypothetical():
 
     # P(x[1,0] = 1, z[1] = 0) = 1./4
     # Hypothetical row: rowid=1
-    query = {view.latents[0]: 0, 0: 1}
+    query = {view.exposed_latent: 0, 0: 1}
     math_out = np.log(1./3)
     test_out = view.logpdf(rowid=1, query=query) 
     assert np.allclose(math_out, test_out)
@@ -121,3 +121,41 @@ def test_bidimensional_logpdf():
     test_out = view.logpdf(rowid=0, query=query) 
     assert np.allclose(math_out, test_out)
 
+
+# -- Tests from Feras -- #
+def retrieve_view():
+    data = np.asarray([
+        [1.1,   -2.1,    0],  # rowid=0
+        [2.,      .1,    0],  # rowid=1
+        [1.5,      1,   .5],  # rowid=2
+        [4.7,    7.4,   .5],  # rowid=3
+        [5.2,    9.6,   .5],  # rowid=4
+    ])
+
+    outputs = [0,1,2,]
+
+    return View(
+        {c: data[:,i].tolist() for i, c in enumerate(outputs)},
+        outputs=[1000] + outputs,
+        alpha=2.,
+        cctypes=['normal'] * len(outputs),
+        Zr=[0,0,0,1,1,]
+    )
+
+def test_crp_logpdf():
+    view = retrieve_view()
+
+    crp_normalizer = view.alpha() + 5.
+    cluster_logps = np.log(np.asarray([
+        3 / crp_normalizer,
+        2 / crp_normalizer,
+        view.alpha() / crp_normalizer
+    ]))
+
+    # Test the crp probabilities agree for a hypothetical row.
+    for k in [0,1,2]:
+        expected_logpdf = cluster_logps[k]
+        crp_logpdf = view.crp.clusters[0].logpdf(None, {view.outputs[0]: k})
+        assert np.allclose(expected_logpdf, crp_logpdf)
+        view_logpdf = view.logpdf(None, {view.outputs[0]: k})
+        assert np.allclose(view_logpdf, crp_logpdf)
