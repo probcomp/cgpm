@@ -463,11 +463,15 @@ class View(CGpm):
         z_b = gu.log_pflip(p_cluster, array=K, rng=self.rng)
         # Migrate the row.
         if z_b != self.Zr(rowid):
+            import copy
+            X = copy.deepcopy(self.X)  # QUICK FIX. TODO: copy just a row.
             self.unincorporate(rowid)
             query = merged(
-                {d: self.X[d][rowid] for d in self.dims},
+                # {d: self.X[d][rowid] for d in self.dims},
+                {d: X[d][rowid] for d in self.dims},
                 {self.exposed_latent: z_b})
             self.incorporate(rowid, query)
+            assert np.allclose(X.values(), self.X.values())
         self._check_partitions()
 
     def _logpdf_row_gibbs(self, rowid, K):
