@@ -65,10 +65,10 @@ class FourWay(CGpm):
 
     @staticmethod
     def lookup_quadrant(y0, y1):
-        if y0 > 0 and y1 > 0: return 0
-        if y0 < 0 and y1 > 0: return 1
-        if y0 > 0 and y1 < 0: return 2
-        if y0 < 0 and y1 < 0: return 3
+        if y0 >= 0 and y1 >= 0: return 0
+        if y0 <= 0 and y1 >= 0: return 1
+        if y0 >= 0 and y1 <= 0: return 2
+        if y0 <= 0 and y1 <= 0: return 3
         raise ValueError('Invalid value: %s' % str((y0, y1)))
 
     @staticmethod
