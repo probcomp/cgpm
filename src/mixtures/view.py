@@ -309,6 +309,8 @@ class View(CGpm):
         # TODO:
         # [ ] Check that the evidence for _joint_logpdf_multirow is passed
 
+        if evidence is None:
+            evidence = {}
         joint_input = merged(query, evidence) 
 
         # Store query and evidence rows already in the dataset 
@@ -330,7 +332,7 @@ class View(CGpm):
 
         return log_joint - log_marginal
 
-    def _joint_logpdf_multirow(self, query, evidence=None):
+    def _joint_logpdf_multirow(self, query, evidence):
         """
         query - {rowid: {outputs: value, exposed_latent: value}}
         evidence = {rowid: {exposed_latent: value}}
@@ -361,11 +363,11 @@ class View(CGpm):
         """
         Returns {outputs: value, exposed_latent: value}
         """
-        observed_row = {c: self.X[rowid][c] for c in self.outputs[1::]}
+        observed_row = {c: self.X[c][rowid] for c in self.outputs[1::]}
         latent = {self.exposed_latent: self.Zr()[rowid]}
         return merged(observed_row, latent)
 
-    def _joint_logpdf_multirow_helper(self, counter, query, evidence=None):
+    def _joint_logpdf_multirow_helper(self, counter, query, evidence):
         p = - np.float("inf")  # initialize output as log space zero
         rowid = query.keys()[counter]  # retrieve id of current row 
 
