@@ -395,10 +395,12 @@ class View(CGpm):
                 K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
             for k in K:  # for each possible cluster assignments
                 p_row = self.logpdf(
-                    rowid=rowid, query=merged(query[rowid], evidence[rowid])
+                    rowid=rowid, query=merged(
+                        query[rowid], evidence.get(rowid, {}))
                 )  # compute the single row joint 
                 self.incorporate(
-                    rowid=rowid, query=merged(query[rowid], evidence[rowid])
+                    rowid=rowid, query=merged(
+                        query[rowid], evidence.get(rowid, {}))
                 )  # incorporate row into table into respective cluster
                 p_row += self._joint_logpdf_multirow_helper(
                     counter+1, query, evidence
