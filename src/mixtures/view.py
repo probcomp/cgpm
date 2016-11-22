@@ -153,12 +153,12 @@ class View(CGpm):
         if rowid > n_rows:  # if rowid would be skipped for incorporate
             raise ValueError(
                 "Rowid cannot be larger than %d" % (n_rows,))
-        
+
         # Cluster assignment
         k = query.get(self.exposed_latent, 0)
-        if self.exposed_latent not in query:  # simulate if no cluster 
+        if self.exposed_latent not in query:  # simulate if no cluster
             k = self.simulate(
-                -1, query=[self.exposed_latent], evidence=query).values()[0] 
+                -1, query=[self.exposed_latent], evidence=query).values()[0]
             # get simulated cluster, conditioned on query
 
         filled_query = self.fill_in_missing_values(query)
@@ -173,23 +173,28 @@ class View(CGpm):
         self.transition_rows(rows=transition)
         self._add_to_dataset(rowid=rowid, query=filled_query)
 
-    def fill_in_missing_values(self, query, fill_entire_row=False):
+    def fill_in_missing_values(self, query):
         """
-        Fill in missing values in query with NaN.
+        Fill in missing values of output columns in query with NaN.
         """
         exposed_outputs = self.outputs[1:]
-        filled_query = {self.exposed_latent: query.get(self.exposed_latent, 0)}
-        columns_to_fill = self.X.keys() if fill_entire_row else exposed_outputs
+        filled_query = {
+            self.exposed_latent: query.get(self.exposed_latent, np.nan)}
+        columns_to_fill = exposed_outputs
         for c in columns_to_fill:
                 filled_query[c] = query.get(c, np.nan)
         return filled_query
-    
+
     def _add_to_dataset(self, rowid, query):
-        filled_query = self.fill_in_missing_values(query, fill_entire_row=True)
-        for c in self.X.keys():
+        """
+        Only adds to the data the subset of each row which is in
+        self.outputs.
+        """
+        filled_query = self.fill_in_missing_values(query)
+        for c in self.outputs[1::]:
             if rowid < len(self.X[c]):  # if row has been unincorporated
                 self.X[c][rowid] = filled_query[c]
-            else:  # if row is to be inserted in the end of dataset
+            else:  # if row has new rowid
                 self.X[c] += [filled_query[c]]
 
     def unincorporate(self, rowid):
@@ -205,8 +210,11 @@ class View(CGpm):
         self._remove_from_dataset(rowid=rowid)
 
     def _remove_from_dataset(self, rowid):
-        for c in self.X.keys():
-            self.X[c][rowid] = np.nan  # puts a placeholder to preserve order 
+        """
+        Replaces the values of self.outputs in rowid by nan.
+        """
+        for c in self.outputs[1::]:
+            self.X[c][rowid] = np.nan  # puts a placeholder to preserve order
     # --------------------------------------------------------------------------
     # Update schema.
 
@@ -313,16 +321,16 @@ class View(CGpm):
 
         if evidence is None:
             evidence = {}
-        joint_input = merged(query, evidence) 
+        joint_input = merged(query, evidence)
 
-        # Store query and evidence rows already in the dataset 
+        # Store query and evidence rows already in the dataset
         T = {}
         for rowid in joint_input.keys():  # For rows in query or evidence
             if not self.hypothetical(rowid):  # if row in dataset
                 T[rowid] = self.retrieve_row_as_dict(rowid=rowid)  # store row in T
                 self.unincorporate(rowid=rowid)  # Unincorporate row
 
-        cluster_evidence = evidence  # QUICK FIX. TODO: restrict evidence to cluster 
+        cluster_evidence = evidence  # QUICK FIX. TODO: restrict evidence to cluster
         # compute the joint of query and evidence (given categories)
         log_joint = self._joint_logpdf_multirow(
             query=joint_input, evidence=cluster_evidence)
@@ -361,10 +369,58 @@ class View(CGpm):
         p = self._joint_logpdf_multirow_helper(counter, query, evidence)
 
         # Reincorporate rows in T to dataset
-        for rowid, row in T:
+        for rowid, row in T.iteritems():
             self.incorporate(rowid=rowid, query=row)
-  
         return p
+
+    def _joint_logpdf_multirow_helper(self, counter, query, evidence):
+        p = - np.float("inf")  # initialize output as log space zero
+
+        # Base Case
+        if counter == len(query):  # base case, end of chain rule
+            p = 0
+
+        # Recursive Case
+        else:
+            rowid = query.keys()[counter]  # retrieve id of current row
+            evidence_row = evidence.get(rowid, {})
+            Z = self.exposed_latent
+            z_row = evidence_row.get(Z, None)
+            evidence_cluster_row = {Z: z_row} if z_row else {}
+            query_row = query[rowid]
+            if rowid in evidence.keys():  # if current row has assigned cluster
+                p_row = self.logpdf(
+                    rowid=rowid, query=query_row, evidence=evidence_cluster_row
+                )  # evaluate log p(query | cluster)
+                self.incorporate(
+                    rowid=rowid, query=merged(query_row, evidence_cluster_row)
+                )  # incorporate row with cluster given by evidence
+                p_row += self._joint_logpdf_multirow_helper(
+                    counter+1, query, evidence
+                )  # recursion: chain rule p(row)*p(other_rows|row)
+                p = gu.logsumexp([p, p_row])  # marginalize out clusters
+                self.unincorporate(rowid=rowid)  # unincorporate incorporated row
+
+            else:  # if current row does not have assigned cluster
+                K = [0]
+                if self.crp.clusters[0].N > 0:  # if there is some some cluster
+                    K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
+                for k in K:  # for each possible cluster assignments
+                    p_row = self.logpdf(
+                        rowid=rowid, query=merged(
+                            query_row, evidence_cluster_row)
+                    )  # compute the single row joint
+                    self.incorporate(
+                        rowid=rowid, query=merged(
+                            query_row, evidence_cluster_row)
+                    )  # incorporate row into table into respective cluster
+                    p_row += self._joint_logpdf_multirow_helper(
+                        counter+1, query, evidence
+                    )  # recursion: chain rule p(row)*p(other_rows|row)
+                    p = gu.logsumexp([p, p_row])  # marginalize out clusters
+                    self.unincorporate(rowid=rowid)  # unincorporate current row
+
+        return p      # return output probability
 
     def retrieve_row_as_dict(self, rowid):
         """
@@ -373,48 +429,6 @@ class View(CGpm):
         observed_row = {c: self.X[c][rowid] for c in self.outputs[1::]}
         latent = {self.exposed_latent: self.Zr()[rowid]}
         return merged(observed_row, latent)
-
-    def _joint_logpdf_multirow_helper(self, counter, query, evidence):
-        p = - np.float("inf")  # initialize output as log space zero
-        rowid = query.keys()[counter]  # retrieve id of current row 
-
-        if counter == len(query):  # base case, end of chain rule
-            p = 0  
-
-        elif rowid in evidence.keys():  # if current row has an assigned cluster 
-            p_row = self.logpdf( 
-                rowid=rowid, query=query[rowid], evidence=evidence[rowid]
-            )  # evaluate log p(query | cluster)
-            self.incorporate(
-                rowid=rowid, query=merged(query[rowid], evidence[rowid])
-            )  # incorporate row with cluster given by evidence
-            p_row += self._joint_logpdf_multirow_helper(
-                counter+1, query, evidence
-            )  # recursion: chain rule p(row)*p(other_rows|row)
-            p = gu.logsumexp(p, p_row)  # marginalize out clusters
-            self.unincorporate(rowid=rowid)  # unincorporate incorporated row
-
-        else:  # if current row is not in evidence
-            K = [0]
-            if self.crp.clusters[0].N > 0:  # if there is some some cluster
-                K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
-            for k in K:  # for each possible cluster assignments
-                p_row = self.logpdf(
-                    rowid=rowid, query=merged(
-                        query[rowid], evidence.get(rowid, {}))
-                )  # compute the single row joint 
-                self.incorporate(
-                    rowid=rowid, query=merged(
-                        query[rowid], evidence.get(rowid, {}))
-                )  # incorporate row into table into respective cluster
-                p_row += self._joint_logpdf_multirow_helper(
-                    counter+1, query, evidence
-                )  # recursion: chain rule p(row)*p(other_rows|row)
-                p = gu.logsumexp(p, p_row)  # marginalize out clusters
-                self.unincorporate(rowid=rowid)  # unincorporate current row
-
-        return p      # return output probability
-
     # --------------------------------------------------------------------------
     # simulate
 
@@ -482,7 +496,6 @@ class View(CGpm):
                 {d: X[d][rowid] for d in self.dims},
                 {self.exposed_latent: z_b})
             self.incorporate(rowid, query)
-            assert np.allclose(X.values(), self.X.values())
         self._check_partitions()
 
     def _logpdf_row_gibbs(self, rowid, K):
@@ -523,7 +536,7 @@ class View(CGpm):
         return len(self.X[self.X.keys()[0]])
 
     def hypothetical(self, rowid):
-        return rowid not in self.Zr() 
+        return rowid not in self.Zr()
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
