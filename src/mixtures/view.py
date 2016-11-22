@@ -322,14 +322,19 @@ class View(CGpm):
                 T[rowid] = self.retrieve_row_as_dict(rowid=rowid)  # store row in T
                 self.unincorporate(rowid=rowid)  # Unincorporate row
 
+        cluster_evidence = evidence  # QUICK FIX. TODO: restrict evidence to cluster 
         # compute the joint of query and evidence (given categories)
-        log_joint = self._joint_logpdf_multirow(query=joint_input)
+        log_joint = self._joint_logpdf_multirow(
+            query=joint_input, evidence=cluster_evidence)
 
         # compute the joint of evidence (given categories)
-        log_marginal = self._joint_logpdf_multirow(query=evidence)
+        log_marginal = 0  # if there is no evidence
+        if evidence:
+            log_marginal = self._joint_logpdf_multirow(
+                query=evidence, evidence=cluster_evidence)
 
         # Reincorporate rows in T to dataset
-        for rowid, row in T:
+        for rowid, row in T.iteritems():
             self.incorporate(rowid=rowid, query=row)
 
         return log_joint - log_marginal
