@@ -46,8 +46,8 @@ def test_simulate_data_with_empty_data():
     view.unincorporate(0)
     view.simulate(-1, query=[0, 1])
 
-def test_gibbs_tables_with_empty_data():
-    view = initialize_view()
+# def test_gibbs_tables_with_empty_data():
+#     view = initialize_view()
 
-    view.unincorporate(0)
-    view.crp.clusters[0].gibbs_tables(-1)
+#     view.unincorporate(0)
+#     view.crp.clusters[0].gibbs_tables(-1)
