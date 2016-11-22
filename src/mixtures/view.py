@@ -295,7 +295,9 @@ class View(CGpm):
             # No need to marginalize P(xQ, z)
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
-        K = self.crp.clusters[0].gibbs_tables(-1)
+        K = [0]
+        if self.crp.clusters[0].N > 0:
+            K = self.crp.clusters[0].gibbs_tables(-1)
         evidences = [merged(evidence, {self.exposed_latent: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         lp_evidence = gu.log_normalize(lp_evidence_unorm)
