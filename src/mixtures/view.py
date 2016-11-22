@@ -388,7 +388,9 @@ class View(CGpm):
             self.unincorporate(rowid=rowid)  # unincorporate incorporated row
 
         else:  # if current row is not in evidence
-            K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
+            K = [0]
+            if self.crp.clusters[0].N > 0:  # if there is some some cluster
+                K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
             for k in K:  # for each possible cluster assignments
                 p_row = self.logpdf(
                     rowid=rowid, query=merged(query[rowid], evidence[rowid])
