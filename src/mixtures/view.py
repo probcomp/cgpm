@@ -315,13 +315,17 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # logpdf multirow
 
-    def logpdf_multirow(self, query, evidence=None):
+    def logpdf_multirow(self, query, evidence=None, debug=False):
         # TODO:
         # [ ] Check that the evidence for _joint_logpdf_multirow is passed
 
         if evidence is None:
             evidence = {}
         joint_input = merged(query, evidence)
+
+        # Check that internal state of CGPM does not change 
+        if debug:
+            stored_metadata = self.to_metadata()
 
         # Store query and evidence rows already in the dataset
         T = {}
@@ -344,6 +348,9 @@ class View(CGpm):
         # Reincorporate rows in T to dataset
         for rowid, row in T.iteritems():
             self.incorporate(rowid=rowid, query=row)
+
+        if debug:
+            assert stored_metadata == self.to_metadata()
 
         return log_joint - log_marginal
 
