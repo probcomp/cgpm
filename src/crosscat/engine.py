@@ -273,10 +273,12 @@ class Engine(object):
         for m in metadata['states']:
             m['X'] = metadata['X']
         num_states = len(metadata['states'])
-        engine.states = [
-            State.from_metadata(s, rng=r) for s, r
-            in zip(metadata['states'], engine._get_rngs(num_states))
-        ]
+        def retrieve_state((state, rng)):
+            return State.from_metadata(state, rng=rng)
+        mapper = parallel_map if multiprocess else map
+        engine.states = mapper(
+            retrieve_state,
+            zip(metadata['states'], engine._get_rngs(num_states)))
         return engine
 
     def to_pickle(self, fileptr):
