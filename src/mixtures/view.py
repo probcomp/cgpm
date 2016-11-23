@@ -390,7 +390,7 @@ class View(CGpm):
         # Recursive Case
         else:
             rowid = query.keys()[counter]  # retrieve id of current row
-            evidence_row = evidence.get(rowid, {})
+            evidence_row = evidence.get(rowid, {})  #TODO: make it shorter
             Z = self.exposed_latent
             z_row = evidence_row.get(Z, None)
             evidence_cluster_row = {Z: z_row} if z_row else {}
@@ -412,18 +412,17 @@ class View(CGpm):
                 K = [0]
                 if self.crp.clusters[0].N > 0:  # if there is some some cluster
                     K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
+
+                # Marginalize out cluster assignment from p(query, cluster) 
                 for k in K:  # for each possible cluster assignments
-                    p_row = self.logpdf(
-                        rowid=rowid, query=merged(
-                            query_row, evidence_cluster_row)
-                    )  # compute the single row joint
-                    self.incorporate(
-                        rowid=rowid, query=merged(
-                            query_row, evidence_cluster_row)
-                    )  # incorporate row into table into respective cluster
+                    query_row[self.exposed_latent] = k  # assign cluster
+                    p_row = self.logpdf(rowid=rowid, query=query_row
+                    )  # compute the single row joint: p(query, cluster=k)
+                    self.incorporate(rowid=rowid, query=query_row
+                    )  # incorporate query_row into cluster k
                     p_row += self._joint_logpdf_multirow_helper(
                         counter+1, query, evidence
-                    )  # recursion: chain rule p(row)*p(other_rows|row)
+                    )  # recursion: chain rule p(query_row)*p(other_rows|query_row)
                     p = gu.logsumexp([p, p_row])  # marginalize out clusters
                     self.unincorporate(rowid=rowid)  # unincorporate current row
 
