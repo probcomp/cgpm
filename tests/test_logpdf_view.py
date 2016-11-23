@@ -56,10 +56,10 @@ def test_unidimensional_logpdf_hypothetical():
 def test_unidimensional_logpdf_nonhypothetical():
     view = initialize_view()
 
-    # P(x[0,0] = 1) = 2./3
+    # P(x[0,0] = 1) = 1./2
     # Non-hypothetical row: rowid=0
     query = {0: 1}
-    math_out = np.log(2./3)
+    math_out = np.log(1./2)
     test_out = view.logpdf(rowid=0, query=query) 
     assert np.allclose(math_out, test_out)
 

@@ -235,6 +235,14 @@ def test_joint_logpdf_multirow_in_two_columns_factorizes():
 
     assert np.allclose(log_joint, log_conditional + log_marginal)
 
+def test_logpdf_in_test_joint_logpdf_factorizes():
+    view = initialize_view()
+    row0 = {0: {0: 1, 1: 1}}
+
+    log_marginal = view.logpdf_multirow(query=row0)
+    assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
+    
+
 def test_joint_logpdf_in_two_columns_marginalizes():
     """
     p(row 1) = sum_{row 0} p(row 0, row 1)
@@ -254,6 +262,11 @@ def test_joint_logpdf_in_two_columns_marginalizes():
 
     assert np.allclose(log_marginal, log_marginalized_joint)
 
+def test_logpdf_in_test_joint_logpdf_marginalizes():
+    view = initialize_view()
+    row1 = {1: {0: 0, 1: 0}}
+    log_marginal = view.logpdf_marginal(query=row1)  # log_p(row1)
+    assert np.allclose(log_marginal, view.logpdf(rowid=1, query=row1[1]))
 
 def test_bayes_inversion_of_logpdf_multirow_in_two_columns_conditioned_on_another_row():
     """
@@ -277,3 +290,19 @@ def test_bayes_inversion_of_logpdf_multirow_in_two_columns_conditioned_on_anothe
 
     assert np.allclose(
         log_posterior, log_likelihood + log_prior - log_marginal)
+
+def test_logpdf_in_test_bayes_inversion():
+    """
+    p(row 1 | row 0) = p(row 0| row 1) p(row 1) / p(row 0)
+    log_p(row 1 | row 0) = log_p(row 0| row 1) + log_p(row 1) - log_p(row 0)
+    log_posterior = log_likelihood + log_prior - log_marginal
+    """
+    view = initialize_view()
+    row1 = {1: {0: 0, 1: 0}}
+    row0 = {0: {0: 1, 1: 1}}
+
+    log_prior = view.logpdf_multirow(query=row1)
+    assert np.allclose(log_prior, view.logpdf(rowid=1, query=row1[1]))
+
+    log_marginal = view.logpdf_multirow(query=row0)
+    assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
