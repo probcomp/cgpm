@@ -435,6 +435,12 @@ class View(CGpm):
         observed_row = {c: self.X[c][rowid] for c in self.outputs[1::]}
         latent = {self.exposed_latent: self.Zr()[rowid]}
         return merged(observed_row, latent)
+
+    # --------------------------------------------------------------------------
+    # relevance score
+    def relevance_score(self, query, evidence):
+        return np.nan
+
     # --------------------------------------------------------------------------
     # simulate
 
