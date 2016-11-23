@@ -194,7 +194,8 @@ class VsCGpm(CGpm):
         if rowid in self.obs:
             if any(q in self.obs[rowid]['labels'] for q in query):
                 raise ValueError('Observation exists: %d, %s' % (rowid, query))
-            if evidence: self._check_matched_evidence(rowid, evidence)
+            if evidence:
+                self._check_matched_evidence(rowid, evidence)
         else:
             self.obs[rowid]['evidence'] = dict(evidence)
         return self.obs[rowid]['evidence']
@@ -220,7 +221,9 @@ class VsCGpm(CGpm):
         return ev_in, ev_out
 
     def _check_matched_evidence(self, rowid, evidence):
-        if evidence != self.obs[rowid]['evidence']:
+        # Avoid creating 'evidence' by the defaultdict.
+        exists = (rowid in self.obs) and ('evidence' in self.obs[rowid])
+        if exists and evidence != self.obs[rowid]['evidence']:
             raise ValueError(
                 'Given evidence contradicts dataset: %d, %s, %s' %
                 (rowid, evidence, self.obs[rowid]['evidence']))
