@@ -20,8 +20,10 @@ https://docs.google.com/document/d/15_JGb39TuuSup_0gIBJTuMHYs8HS4m_TzjJ-AOXnh9M/
 """
 
 import numpy as np
+from itertools import product
 
 from cgpm.mixtures.view import View
+from cgpm.utils.general import logsumexp, merged
 
 OUT = 'tests/resources/out/'
 
@@ -169,8 +171,20 @@ def test_joint_logpdf_multirow_in_one_column_conditioned_on_cluster_assignments(
     test_out = view.logpdf_multirow(query=query, evidence=evidence, debug=True)
     assert np.allclose(math_out, test_out)
 
+def test_joint_logpdf_multirow_in_two_columns():
+    view = initialize_view()
 
-def test_logpdf_multirow_conditional_in_one_column():
+    # P(x[0,:] = [1,1], x[1,:] = [1,1]) = 25./288
+    query = {0: {0: 1, 1: 1},
+             1: {0: 1, 1: 1}}
+    math_out = np.log(25./288)
+    test_out = view._joint_logpdf_multirow(query=query, evidence={})
+    assert np.allclose(math_out, test_out)
+
+    test_out = view.logpdf_multirow(query=query, debug=True)
+    assert np.allclose(math_out, test_out)
+
+def test_logpdf_multirow_in_one_column_conditioned_on_another_row():
     view = initialize_view()
 
     # P(x[1,0] = 1 | x[0,0] = 1) = 7./12
@@ -189,25 +203,10 @@ def test_logpdf_multirow_conditional_in_one_column():
     test_out = view.logpdf_multirow(query=query, evidence=evidence, debug=True)
     assert np.allclose(math_out, test_out)
 
-def test_bidimensional_joint_logpdf_multirow():
-    view = initialize_view()
-
-    # P(x[0,:] = [1,1], x[1,:] = [1,1]) = 25./288
-    # Missing column and non-hypothetical row
-    query = {0: {0: 1, 1: 1},
-             1: {0: 1, 1: 1}}
-    math_out = np.log(25./288)
-    test_out = view._joint_logpdf_multirow(query=query, evidence={})
-    assert np.allclose(math_out, test_out)
-
-    test_out = view.logpdf_multirow(query=query, debug=True)
-    assert np.allclose(math_out, test_out)
-
-def test_bidimensional_conditional_logpdf_multirow():
+def test_logpdf_multirow_in_two_columns_conditioned_on_another_row():
     view = initialize_view()
 
     # P(x[1,:] = [1,1] | x[0,:] = [1,1]) = 25./72
-    # Missing column and non-hypothetical row
     query = {1: {0: 1, 1: 1}}
     evidence = {0: {0: 1, 1: 1}}
     math_out = np.log(25./72)
