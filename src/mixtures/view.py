@@ -317,116 +317,93 @@ class View(CGpm):
 
     def logpdf_multirow(self, query, evidence=None, debug=False):
         # TODO:
-        # [ ] Check that the evidence for _joint_logpdf_multirow is passed
-
-        if evidence is None:
-            evidence = {}
-        joint_input = merged(query, evidence)
-
+        # [ ] Add way of adding whole row to query.
+        
         # Check that internal state of CGPM does not change 
         if debug:
             stored_metadata = self.to_metadata()
 
+        query, evidence = self._check_multirow_query_evidence(query, evidence)
+        joint_input = merged(query, evidence)
+
         # Store query and evidence rows already in the dataset
-        T = {}
-        for rowid in joint_input.keys():  # For rows in query or evidence
-            if not self.hypothetical(rowid):  # if row in dataset
-                T[rowid] = self.retrieve_row_as_dict(rowid=rowid)  # store row in T
-                self.unincorporate(rowid=rowid)  # Unincorporate row
+        T = self._pop_unincorporate(joint_input)
 
-        cluster_evidence = evidence  # QUICK FIX. TODO: restrict evidence to cluster
-        # compute the joint of query and evidence (given categories)
-        log_joint = self._joint_logpdf_multirow(
-            query=joint_input, evidence=cluster_evidence)
+        # compute the joint of query and evidence
+        log_joint = self._joint_logpdf_multirow(joint_input)
 
-        # compute the joint of evidence (given categories)
-        log_marginal = 0  # if there is no evidence
-        if evidence:
-            log_marginal = self._joint_logpdf_multirow(
-                query=evidence, evidence=cluster_evidence)
+        # compute the joint of evidence
+        log_marginal = self._joint_logpdf_multirow_helper(
+            0, query=evidence) if evidence else 0
 
         # Reincorporate rows in T to dataset
-        for rowid, row in T.iteritems():
-            self.incorporate(rowid=rowid, query=row)
-
+        self._push_incorporate(T)
         if debug:
             assert stored_metadata == self.to_metadata()
 
         return log_joint - log_marginal
 
-    def _joint_logpdf_multirow(self, query, evidence):
-        """
-        query - {rowid: {outputs: value, exposed_latent: value}}
-        evidence = {rowid: {exposed_latent: value}}
-        """
-        # TODO:
-        # [ ] check that all the rows in evidence are in query
-        # [ ] check that no latent column is both in query and clusters
-        # [ ] check that no observable is in evidence
 
-        # Store query rows already in dataset and Unincorporate
-        T = {}
-        for rowid in query.keys():  # For rows in query
-            if not self.hypothetical(rowid):  # if row in dataset
-                T[rowid] = self.retrieve_row_as_dict(rowid=rowid)  # store row in T
-                self.unincorporate(rowid=rowid)  # Unincorporate row
-
-        # Compute Joint Logpdf applying the chain rule recursively
+    def _joint_logpdf_multirow(self, query):
         counter = 0
-        p = self._joint_logpdf_multirow_helper(counter, query, evidence)
+        return self._joint_logpdf_multirow_helper(counter, query)
 
-        # Reincorporate rows in T to dataset
-        for rowid, row in T.iteritems():
-            self.incorporate(rowid=rowid, query=row)
-        return p
-
-    def _joint_logpdf_multirow_helper(self, counter, query, evidence):
-        p = - np.float("inf")  # initialize output as log space zero
+    def _joint_logpdf_multirow_helper(self, counter, query):
+        log_p = - np.float("inf")  # initialize output as 0 in logspace
 
         # Base Case
-        if counter == len(query):  # base case, end of chain rule
-            p = 0
+        if counter == len(query):
+            log_p = 0
 
-        # Recursive Case
+        # Recursive Case: log p(this row)*p(other_rows| this row)
         else:
             rowid = query.keys()[counter]  # retrieve id of current row
-            evidence_row = evidence.get(rowid, {})  #TODO: make it shorter
-            Z = self.exposed_latent
-            z_row = evidence_row.get(Z, None)
-            evidence_cluster_row = {Z: z_row} if z_row else {}
             query_row = query[rowid]
-            if rowid in evidence.keys():  # if current row has assigned cluster
-                p_row = self.logpdf(
-                    rowid=rowid, query=query_row, evidence=evidence_cluster_row
-                )  # evaluate log p(query | cluster)
-                self.incorporate(
-                    rowid=rowid, query=merged(query_row, evidence_cluster_row)
-                )  # incorporate row with cluster given by evidence
-                p_row += self._joint_logpdf_multirow_helper(
-                    counter+1, query, evidence
-                )  # recursion: chain rule p(row)*p(other_rows|row)
-                p = gu.logsumexp([p, p_row])  # marginalize out clusters
-                self.unincorporate(rowid=rowid)  # unincorporate incorporated row
+            assigned_cluster = query_row.get(self.exposed_latent, None)
 
-            else:  # if current row does not have assigned cluster
-                K = [0]
-                if self.crp.clusters[0].N > 0:  # if there is some some cluster
-                    K = self.crp.clusters[0].gibbs_tables(-1)  # get possible clusters
+            if assigned_cluster is not None:  # if row has cluster 
+                K = [assigned_cluster]  # Do not marginalize
+            else:  
+                K = [0]  # assignment if table is empty
+                if self.crp.clusters[0].N > 0:  # get possible clusters
+                    K = self.crp.clusters[0].gibbs_tables(-1)  # do marginalize
+            
+            # Marginalization: log sum_k p(observed_values, cluster=k)
+            for k in K:
+                query_row[self.exposed_latent] = k
+                p_row = self.logpdf(rowid, query_row)  # log_p(row, cluster=k)
+                self.incorporate(rowid, query_row)  # incorporate into k
 
-                # Marginalize out cluster assignment from p(query, cluster) 
-                for k in K:  # for each possible cluster assignments
-                    query_row[self.exposed_latent] = k  # assign cluster
-                    p_row = self.logpdf(rowid=rowid, query=query_row
-                    )  # compute the single row joint: p(query, cluster=k)
-                    self.incorporate(rowid=rowid, query=query_row
-                    )  # incorporate query_row into cluster k
-                    p_row += self._joint_logpdf_multirow_helper(
-                        counter+1, query, evidence
-                    )  # recursion: chain rule p(query_row)*p(other_rows|query_row)
-                    p = gu.logsumexp([p, p_row])  # marginalize out clusters
-                    self.unincorporate(rowid=rowid)  # unincorporate current row
+                # Recursion: log_p(this_row) + log_p(other_rows | this_row)
+                p_row += self._joint_logpdf_multirow_helper(counter+1, query)  
 
-        return p      # return output probability
+                log_p = gu.logsumexp([log_p, p_row])  # marginalize out k
+                self.unincorporate(rowid=rowid) 
+
+        return log_p      # return output probability
+
+    def _pop_unincorporate(self, joint_input):
+        table = {}
+        for rowid in joint_input.keys():  # For rows in query or evidence
+            if not self.hypothetical(rowid):  # if row in dataset
+                table[rowid] = self.retrieve_row_as_dict(rowid=rowid)
+                self.unincorporate(rowid=rowid)  # Unincorporate row
+        return table
+    
+    def _push_incorporate(self, table):
+        for rowid, row in table.iteritems():
+            self.incorporate(rowid=rowid, query=row)
+
+    def _check_multirow_query_evidence(self, query, evidence):
+        if evidence is None:
+            evidence = {}
+        for rowid in merged(query, evidence):
+            if rowid in query and rowid in evidence:
+                if set(query[rowid].keys()).intersection(
+                        set(evidence[rowid].keys())):
+                    raise ValueError(
+                        "Intersection between query and evidence ")
+        return query, evidence
 
     def retrieve_row_as_dict(self, rowid):
         """
