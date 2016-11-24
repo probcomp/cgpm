@@ -107,6 +107,7 @@ def pflip(p, array=None, size=None, rng=None):
     return rng.choice(array, size=size, p=p)
 
 def logsumexp(array):
+    # https://github.com/probcomp/bayeslite/blob/master/src/math_util.py
     if len(array) == 0:
         return float('-inf')
     m = max(array)
@@ -124,6 +125,7 @@ def logsumexp(array):
     return m + math.log(sum(math.exp(a - m) for a in array))
 
 def logmeanexp(array):
+    # https://github.com/probcomp/bayeslite/blob/master/src/math_util.py
     inf = float('inf')
     if len(array) == 0:
         # logsumexp will DTRT, but math.log(len(array)) will fail.
@@ -147,6 +149,24 @@ def logmeanexp(array):
     #   = log(sum(map(exp, logprobs))) - log(len(logprobs))
     #   = logsumexp(logprobs) - log(len(logprobs))
     return logsumexp(noninfs) - math.log(len(array))
+
+def logmeanexp_weighted(log_A, log_W):
+    # https://github.com/probcomp/bayeslite/blob/master/src/math_util.py
+    # Given log W_0, log W_1, ..., log W_{n-1} and log A_0, log A_1,
+    # ... log A_{n-1}, compute
+    #
+    #   log ((W_0 A_0 + ... + W_{n-1} A_{n-1})/(W_0 + ... + W_{n-1}))
+    #   = log (exp log (W_0 A_0) + ... + exp log (W_{n-1} A_{n-1}))
+    #     - log (exp log W_0 + ... + exp log W_{n-1})
+    #   = log (exp (log W_0 + log A_0) + ... + exp (log W_{n-1} + log A_{n-1}))
+    #     - log (exp log W_0 + ... + exp log W_{n-1})
+    #   = logsumexp (log W_0 + log A_0, ..., log W_{n-1} + log A_{n-1})
+    #     - logsumexp (log W_0, ..., log W_{n-1})
+    #
+    # XXX Pathological cases -- infinities, NaNs.
+    assert len(log_W) == len(log_A)
+    return logsumexp([log_w + log_a for log_w, log_a in zip(log_W, log_A)]) \
+        - logsumexp(log_W)
 
 def log_linspace(a, b, n):
     """linspace from a to b with n entries over log scale."""
