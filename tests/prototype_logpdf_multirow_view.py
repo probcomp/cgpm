@@ -116,16 +116,14 @@ def test_logpdf_multirow_in_singlerow_cluster_nonhypothetical():
     test_out = view.logpdf_multirow(query=query, debug=True)
     assert np.allclose(math_out, test_out)
 
-
 def test_joint_logpdf_multirow_in_one_column():
     view = initialize_view()
 
     # P(x[0,0] = 1, x[1,0] = 1) = 7./24
+    # (= 1./2 * 1 * (2./3 * 1./2 + 1./2 * 1./2)
     # Missing column and non-hypothetical row
     query = {0: {0: 1}, 1: {0: 1}}
     math_out = np.log(7./24)
-    test_out = view._joint_logpdf_multirow(query=query, evidence={})
-    assert np.allclose(math_out, test_out)
 
     test_out = view.logpdf_multirow(query=query, debug=True)
     assert np.allclose(math_out, test_out)
@@ -133,11 +131,10 @@ def test_joint_logpdf_multirow_in_one_column():
 def test_joint_logpdf_multirow_in_two_columns_with_missing_values():
     view = initialize_view()
 
-    # P(x[0,0] = 1, x[1,1]=1) = 7./24
+    # P(x[0,0] = 1, x[1,1]=1)
+    # = 1./2 * 1 * (1./2 * 1./2 + 1./2 * 1./2)
     query = {0: {0: 1}, 1: {1: 1}}
-    math_out = np.log(7./24)
-    test_out = view._joint_logpdf_multirow(query=query, evidence={})
-    assert np.allclose(math_out, test_out)
+    math_out = np.log(1./4)
 
     test_out = view.logpdf_multirow(query=query, debug=True)
     assert np.allclose(math_out, test_out)
@@ -146,25 +143,24 @@ def test_joint_logpdf_multirow_in_one_column_with_cluster_assignments():
     view = initialize_view()
 
     # P(row 0: {0: 1, z: 0}, row 1: {0: 1, z: 1}) = 1./8
+    # 1./2 * 1 * (1./2 * 1./2)
     z = view.exposed_latent
     query = {0: {0: 1, z: 0}, 1: {0: 1, z: 1}}
     math_out = np.log(1./8)
-    test_out = view._joint_logpdf_multirow(query=query, evidence={})
-    assert np.allclose(math_out, test_out)
 
+    # import pudb; pudb.set_trace()
     test_out = view.logpdf_multirow(query=query, debug=True)
     assert np.allclose(math_out, test_out)
 
 def test_joint_logpdf_multirow_in_one_column_conditioned_on_cluster_assignments():
     view = initialize_view()
 
-    # P({row 0: {0: 1}, row 1: {0: 1}} | {0: {z: 0}, 1: {z: 1}}) = 1./4
+    # p({row 0: {0: 1}, row 1: {0: 1}} | {0: {z: 0}, 1: {z: 1}}) = 1./3
+    # =
     z = view.exposed_latent
     query = {0: {0: 1}, 1: {0: 1}}
     evidence = {0: {z: 0}, 1: {z: 1}}
-    math_out = np.log(1./4)
-    test_out = view._joint_logpdf_multirow(query=query, evidence=evidence)
-    assert np.allclose(math_out, test_out)
+    math_out = np.log(1./3)
 
     test_out = view.logpdf_multirow(query=query, evidence=evidence, debug=True)
     assert np.allclose(math_out, test_out)
@@ -176,8 +172,6 @@ def test_joint_logpdf_multirow_in_two_columns():
     query = {0: {0: 1, 1: 1},
              1: {0: 1, 1: 1}}
     math_out = np.log(25./288)
-    test_out = view._joint_logpdf_multirow(query=query, evidence={})
-    assert np.allclose(math_out, test_out)
 
     test_out = view.logpdf_multirow(query=query, debug=True)
     assert np.allclose(math_out, test_out)
@@ -241,7 +235,7 @@ def test_logpdf_in_test_joint_logpdf_factorizes():
 
     log_marginal = view.logpdf_multirow(query=row0)
     assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
-    
+
 
 def test_joint_logpdf_in_two_columns_marginalizes():
     """
@@ -251,7 +245,7 @@ def test_joint_logpdf_in_two_columns_marginalizes():
     """
     view = initialize_view()
     row1 = {1: {0: 0, 1: 0}}
-    log_marginal = view.logpdf_marginal(query=row1)  # log_p(row1)
+    log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1)
 
     log_marginalized_joint = - np.float("inf")  # initialize logsumexp to 0 in log space
     for values in product((0, 1), (0, 1)):  # marginalize values in row 0
@@ -265,7 +259,7 @@ def test_joint_logpdf_in_two_columns_marginalizes():
 def test_logpdf_in_test_joint_logpdf_marginalizes():
     view = initialize_view()
     row1 = {1: {0: 0, 1: 0}}
-    log_marginal = view.logpdf_marginal(query=row1)  # log_p(row1)
+    log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1)
     assert np.allclose(log_marginal, view.logpdf(rowid=1, query=row1[1]))
 
 def test_bayes_inversion_of_logpdf_multirow_in_two_columns_conditioned_on_another_row():
