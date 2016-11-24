@@ -536,7 +536,10 @@ class State(CGpm):
         seed = self.rng.randint(1, 2**31-1)
         lovecat.transition(
             self, N=N, S=S, kernels=kernels, seed=seed, checkpoint=checkpoint)
-        self.transition_dim_hypers()
+        # Transition the column hyperparameters.
+        num_transitions = int(np.sqrt(len(self.outputs)))
+        for _ in xrange(num_transitions):
+            self.transition_dim_hypers()
         # XXX self._increment_iterations should be called, but if N is None
         # we have no way to obtain from lovecat the number of realized
         # iterations.
