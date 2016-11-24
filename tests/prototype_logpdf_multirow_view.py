@@ -19,6 +19,7 @@ Find the math for these tests in
 https://docs.google.com/document/d/15_JGb39TuuSup_0gIBJTuMHYs8HS4m_TzjJ-AOXnh9M/edit
 """
 
+import pytest
 import numpy as np
 from itertools import product
 
@@ -290,33 +291,55 @@ def test_bayes_inversion_of_logpdf_multirow_in_two_columns():
     assert np.allclose(
         log_posterior, log_likelihood + log_prior - log_marginal)
 
-### TEST CONCORDANCE WITH LOGPDF
-
-def test_logpdf_in_test_joint_logpdf_factorizes():
+def test_quick_query_logpdf_multirow_with_full_row():
     view = initialize_view()
+
+    row0_short = {0 : {}}
     row0 = {0: {0: 1, 1: 1}}
 
-    log_marginal = view.logpdf_multirow(query=row0)
-    assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
+    assert np.allclose(
+        view.logpdf_multirow(row0_short), view.logpdf_multirow(row0))
 
-def test_logpdf_in_test_joint_logpdf_marginalizes():
+    with pytest.raises(ValueError):
+        view.logpdf_multirow({1: {}})
+
+def test_quick_query_logpdf_multirow_hypothetical():
     view = initialize_view()
-    row1 = {1: {0: 0, 1: 0}}
-    log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1)
-    assert np.allclose(log_marginal, view.logpdf(rowid=1, query=row1[1]))
+    
+    row1 = {1: {0: 1, 1: 1}}
+    row1_short = {-1: {0: 1, 1: 1}}
 
-def test_logpdf_in_test_bayes_inversion():
-    """
-    p(row 1 | row 2) = p(row 2| row 1) p(row 1) / p(row 2)
-    log_p(row 1 | row 2) = log_p(row 2| row 1) + log_p(row 1) - log_p(row 2)
-    log_posterior = log_likelihood + log_prior - log_marginal
-    """
-    view = initialize_view()
-    row1 = {1: {0: 0, 1: 0}}
-    row0 = {0: {0: 1, 1: 1}}
+    assert np.allclose(
+        view.logpdf_multirow(row1), view.logpdf_multirow(row1_short))
 
-    log_prior = view.logpdf_multirow(query=row1)
-    assert np.allclose(log_prior, view.logpdf(rowid=1, query=row1[1]))
+ # TEST CONCORDANCE WITH LOGPDF
+ # Deactivated, logpdf works differently for non-hypothetical rows
+# def test_logpdf_in_test_joint_logpdf_factorizes():
+#     view = initialize_view()
+#     row0 = {0: {0: 1, 1: 1}}
 
-    log_marginal = view.logpdf_multirow(query=row0)
-    assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
+#     log_marginal = view.logpdf_multirow(query=row0)
+#     assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
+
+# def test_logpdf_in_test_joint_logpdf_marginalizes():
+#     view = initialize_view()
+#     row1 = {1: {0: 0, 1: 0}}
+#     log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1)
+#     assert np.allclose(log_marginal, view.logpdf(rowid=1, query=row1[1]))
+
+# def test_logpdf_in_test_bayes_inversion():
+#     """
+#     p(row 1 | row 2) = p(row 2| row 1) p(row 1) / p(row 2)
+#     log_p(row 1 | row 2) = log_p(row 2| row 1) + log_p(row 1) - log_p(row 2)
+#     log_posterior = log_likelihood + log_prior - log_marginal
+#     """
+#     view = initialize_view()
+#     row1 = {1: {0: 0, 1: 0}}
+#     row0 = {0: {0: 1, 1: 1}}
+
+#     log_prior = view.logpdf_multirow(query=row1)
+#     assert np.allclose(log_prior, view.logpdf(rowid=1, query=row1[1]))
+
+#     log_marginal = view.logpdf_multirow(query=row0)
+#     assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
+

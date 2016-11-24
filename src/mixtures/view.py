@@ -318,8 +318,8 @@ class View(CGpm):
 
     def logpdf_multirow(self, query, evidence=None, debug=False):
         # TODO:
-        # [ ] Add way of adding whole row to query.
-        # [ ] Add way of adding new row (rowid -1)
+        # [X] Add way of adding whole row to query.
+        # [X] Add way of adding new row (rowid -1)
 
         # Check that internal state of CGPM does not change 
         if debug:
@@ -396,14 +396,37 @@ class View(CGpm):
             self.incorporate(rowid=rowid, query=row)
 
     def _check_multirow_query_evidence(self, query, evidence):
+        # TODO: [X] ASSIGN FULL ROW TO QUERY IF QUERY = {ID: {}}
+        # TODO: [X] ASSIGN NEW ROWID TO -1 ROW
         if evidence is None:
             evidence = {}
+        
+        # Assign new rowid to hypothetical row        
+        new_rowid = max(self.Zr().values()) + 1
+        if -1 in query.keys():
+            query[new_rowid] = query[-1]
+            del query[-1]
+        if -1 in evidence.keys():
+            evidence[new_rowid] = evidence[-1]
+            del evidence[-1]
+
+        # If query = {ID: {}} assign full row
+        for key, val in query.iteritems():
+            if val == {}:
+                if self.hypothetical(key):
+                    raise ValueError("Cannot guess values for hypothetical row.")
+                query[key] = {  # add column to query if not in evidence
+                    c: self.X[c][key] for c in self.outputs[1::]
+                    if c not in evidence.get(key, {}).keys()}
+
+        # Check for same variable in query and evidence
         for rowid in deep_merged(query, evidence):
             if rowid in query and rowid in evidence:
                 if set(query[rowid].keys()).intersection(
                         set(evidence[rowid].keys())):
                     raise ValueError(
-                        "Intersection between query and evidence ")
+                        "Intersection between query and evidence")
+
         return query, evidence
 
     def retrieve_row_as_dict(self, rowid):
