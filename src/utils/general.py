@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import math
 import warnings
 
@@ -41,6 +42,24 @@ def merged(*dicts):
     for d in dicts:
         result.update(d)
     return result
+
+def deep_merged(*dicts):
+    result = {}
+    for d in dicts:
+        result = deep_update(result, d)
+    return result
+
+def deep_update(dct, new_dct):
+    """
+    http://stackoverflow.com/questions/3232943
+    """
+    for key, value in new_dct.iteritems():
+        if isinstance(value, collections.Mapping):
+            r = deep_update(dct.get(key, {}), value)
+            dct[key] = r
+        else:
+            dct[key] = new_dct[key]
+    return dct
 
 def log_normalize(logp):
     """Normalizes a np array of log probabilites."""

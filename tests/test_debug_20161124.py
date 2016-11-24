@@ -21,7 +21,7 @@ import numpy as np
 from itertools import product
 
 from cgpm.mixtures.view import View
-from cgpm.utils.general import logsumexp, merged
+from cgpm.utils.general import logsumexp, deep_merged
 
 def initialize_view():
     data = np.array([[1, 1]])
@@ -43,6 +43,6 @@ def test_merged():
     evidence = {0: {1000: 1}, 1: {1000: 1}}
     joint_input = {0: {0: 1, 1000: 1},
                    1: {0: 1, 1000: 1}}
-    
-    merged_input = merged([query, evidence])
+
+    merged_input = deep_merged(query, evidence)
     assert joint_input == merged_input
