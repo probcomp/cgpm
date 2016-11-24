@@ -26,7 +26,7 @@ from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils.config import cctype_class
-from cgpm.utils.general import merged
+from cgpm.utils.general import merged, deep_merged
 
 
 class View(CGpm):
@@ -149,8 +149,9 @@ class View(CGpm):
             of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
+        # TODO: [ ] Check whether incorporate accepts rowid -1 (and what happens if so).
         n_rows = len(self.X[self.outputs[-1]])
-        if rowid > n_rows:  # if rowid would be skipped for incorporate
+        if rowid > n_rows:  # if input rowid is non-contiguous with dataset
             raise ValueError(
                 "Rowid cannot be larger than %d" % (n_rows,))
 
@@ -318,13 +319,14 @@ class View(CGpm):
     def logpdf_multirow(self, query, evidence=None, debug=False):
         # TODO:
         # [ ] Add way of adding whole row to query.
-        
+        # [ ] Add way of adding new row (rowid -1)
+
         # Check that internal state of CGPM does not change 
         if debug:
             stored_metadata = self.to_metadata()
 
         query, evidence = self._check_multirow_query_evidence(query, evidence)
-        joint_input = merged(query, evidence)
+        joint_input = deep_merged(query, evidence)
 
         # Store query and evidence rows already in the dataset
         T = self._pop_unincorporate(joint_input)
@@ -397,7 +399,7 @@ class View(CGpm):
     def _check_multirow_query_evidence(self, query, evidence):
         if evidence is None:
             evidence = {}
-        for rowid in merged(query, evidence):
+        for rowid in deep_merged(query, evidence):
             if rowid in query and rowid in evidence:
                 if set(query[rowid].keys()).intersection(
                         set(evidence[rowid].keys())):
