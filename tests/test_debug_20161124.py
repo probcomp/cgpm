@@ -38,11 +38,19 @@ def initialize_view():
         Zr=[0])
     return view
 
-def test_merged():
+def test_deep_merged_multirow():
     query = {0: {0: 1}, 1: {0: 1}}
     evidence = {0: {1000: 1}, 1: {1000: 1}}
     joint_input = {0: {0: 1, 1000: 1},
                    1: {0: 1, 1000: 1}}
+
+    merged_input = deep_merged(query, evidence)
+    assert joint_input == merged_input
+
+def test_deep_merged_singlerow():
+    query = {0: 1}
+    evidence = {1000: 1}
+    joint_input = {0: 1, 1000: 1}
 
     merged_input = deep_merged(query, evidence)
     assert joint_input == merged_input

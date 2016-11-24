@@ -345,7 +345,6 @@ class View(CGpm):
 
         return log_joint - log_marginal
 
-
     def _joint_logpdf_multirow(self, query):
         counter = 0
         return self._joint_logpdf_multirow_helper(counter, query)
@@ -360,7 +359,7 @@ class View(CGpm):
         # Recursive Case: log p(this row)*p(other_rows| this row)
         else:
             rowid = query.keys()[counter]  # retrieve id of current row
-            query_row = query[rowid]
+            query_row = query[rowid].copy()
             assigned_cluster = query_row.get(self.exposed_latent, None)
 
             if assigned_cluster is not None:  # if row has cluster 

@@ -23,7 +23,9 @@ import numpy as np
 from itertools import product
 
 from cgpm.mixtures.view import View
-from cgpm.utils.general import logsumexp, merged
+from cgpm.utils.general import logsumexp, deep_merged
+
+# TODO: BUILD TESTS UPON EACH OTHER
 
 def initialize_view():
     data = np.array([[1, 1]])
@@ -148,19 +150,18 @@ def test_joint_logpdf_multirow_in_one_column_with_cluster_assignments():
     query = {0: {0: 1, z: 0}, 1: {0: 1, z: 1}}
     math_out = np.log(1./8)
 
-    # import pudb; pudb.set_trace()
     test_out = view.logpdf_multirow(query=query, debug=True)
     assert np.allclose(math_out, test_out)
 
 def test_joint_logpdf_multirow_in_one_column_conditioned_on_cluster_assignments():
     view = initialize_view()
 
-    # p({row 0: {0: 1}, row 1: {0: 1}} | {0: {z: 0}, 1: {z: 1}}) = 1./3
-    # =
+    # p({row 0: {0: 1}, row 1: {0: 1}} | {0: {z: 0}, 1: {z: 1}}) = 1./4
+    # = 1./8 * 1./(1./2)
     z = view.exposed_latent
     query = {0: {0: 1}, 1: {0: 1}}
     evidence = {0: {z: 0}, 1: {z: 1}}
-    math_out = np.log(1./3)
+    math_out = np.log(1./4)
 
     test_out = view.logpdf_multirow(query=query, evidence=evidence, debug=True)
     assert np.allclose(math_out, test_out)
@@ -212,7 +213,7 @@ def test_logpdf_multirow_in_two_columns_conditioned_on_another_row():
     test_out = view.logpdf_multirow(query=query, evidence=evidence, debug=True)
     assert np.allclose(math_out, test_out)
 
-def test_joint_logpdf_multirow_in_two_columns_factorizes():
+def test_factorization_of_joint_logpdf_multirow_in_two_columns():
     """
     p(row 1, row 0) = p(row 1| row 0) p(row 0)
     log_p(row 1, row 0) = log_p(row 1| row 0) + log_p(row 0)
@@ -222,12 +223,74 @@ def test_joint_logpdf_multirow_in_two_columns_factorizes():
     row1 = {1: {0: 0, 1: 0}}
     row0 = {0: {0: 1, 1: 1}}
 
-    log_joint = view.logpdf_multirow(query=merged(row0, row1))
+    log_joint = view.logpdf_multirow(query=deep_merged(row0, row1))
     log_conditional = view.logpdf_multirow(query=row1, evidence=row0)
     log_marginal = view.logpdf_multirow(query=row0)
-    assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
 
     assert np.allclose(log_joint, log_conditional + log_marginal)
+
+def test_marginalization_of_joint_logpdf_in_two_columns():
+    """
+    THIS MIGHT BE WRONG DUE TO THE DIFFERENCE BETWEEN HYPOTHETICAL AND NON-HYPOTHETICAL
+    p(row 1) = sum_{row 2} p(row 2, row 1)
+    log_p(row 1) = logsumexp_{row 2} log_p(row 2, row 1)
+    log_marginal = log_marginalized_joint
+    """
+    view = initialize_view()
+    row1 = {1: {0: 1, 1: 1}}
+    log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1)
+    # p({1: {0: 1, 1: 1}}) = 1./4 * 1./2 + 4./9 * 1./2 
+
+    log_marginalized_joint = - np.float("inf")  # initialize logsumexp to 0 in log space
+    for values in product((0, 1), (0, 1)):  # marginalize values in row 2
+        row2 = {2: {c: i for c, i in zip([0, 1], values)}}
+        log_joint = view.logpdf_multirow(query=deep_merged(row2, row1))
+        log_marginalized_joint = logsumexp(
+            [log_marginalized_joint, log_joint])
+
+    assert np.allclose(log_marginal, log_marginalized_joint)
+
+def test_marginalization_of_joint_logpdf_in_one_column():
+    """
+    p({1: {0: 0}) = p({1: {0: 0}, 2: {0: 0}) + p({1: {0: 0}, 2: {0: 1})
+    """
+    view = initialize_view()
+    row1 = {1: {0: 0}}
+    log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1) = log(1./3 * 1./2 + 1./2 * 1./2)
+
+    log_marginalized_joint = - np.float("inf")  # initialize logsumexp to 0 in log space
+    for value in [0, 1]:  # marginalize values in row 2
+        row2 = {2: {0: value}}
+        log_joint = view.logpdf_multirow(query=deep_merged(row2, row1))
+        log_marginalized_joint = logsumexp(
+            [log_marginalized_joint, log_joint])
+
+    assert np.allclose(log_marginal, log_marginalized_joint)
+
+def test_bayes_inversion_of_logpdf_multirow_in_two_columns():
+    """
+    p(row 1 | row 2) = p(row 2| row 1) p(row 1) / p(row 2)
+    log_p(row 1 | row 2) = log_p(row 2| row 1) + log_p(row 1) - log_p(row 2)
+    log_posterior = log_likelihood + log_prior - log_marginal
+    """
+    view = initialize_view()
+    row1 = {1: {0: 0, 1: 0}}
+    row2 = {2: {0: 1, 1: 1}}
+
+    log_posterior = view.logpdf_multirow(query=row1, evidence=row2)
+
+    log_likelihood = view.logpdf_multirow(query=row2, evidence=row1)
+
+    log_prior = view.logpdf_multirow(query=row1)
+    assert np.allclose(log_prior, view.logpdf(rowid=1, query=row1[1]))
+
+    log_marginal = view.logpdf_multirow(query=row2)
+    # assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row2[0]))
+
+    assert np.allclose(
+        log_posterior, log_likelihood + log_prior - log_marginal)
+
+### TEST CONCORDANCE WITH LOGPDF
 
 def test_logpdf_in_test_joint_logpdf_factorizes():
     view = initialize_view()
@@ -236,59 +299,16 @@ def test_logpdf_in_test_joint_logpdf_factorizes():
     log_marginal = view.logpdf_multirow(query=row0)
     assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
 
-
-def test_joint_logpdf_in_two_columns_marginalizes():
-    """
-    p(row 1) = sum_{row 0} p(row 0, row 1)
-    log_p(row 1) = logsumexp_{row 0} log_p(row 0, row 1)
-    log_marginal = log_marginalized_joint
-    """
-    view = initialize_view()
-    row1 = {1: {0: 0, 1: 0}}
-    log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1)
-
-    log_marginalized_joint = - np.float("inf")  # initialize logsumexp to 0 in log space
-    for values in product((0, 1), (0, 1)):  # marginalize values in row 0
-        row0 = {0: {c: i for c, i in zip([0, 1], values)}}
-        log_joint = view.logpdf_multirow(query=merged(row0, row1))
-        log_marginalized_joint = logsumexp(
-            [log_marginalized_joint, log_joint])
-
-    assert np.allclose(log_marginal, log_marginalized_joint)
-
 def test_logpdf_in_test_joint_logpdf_marginalizes():
     view = initialize_view()
     row1 = {1: {0: 0, 1: 0}}
     log_marginal = view.logpdf_multirow(query=row1)  # log_p(row1)
     assert np.allclose(log_marginal, view.logpdf(rowid=1, query=row1[1]))
 
-def test_bayes_inversion_of_logpdf_multirow_in_two_columns_conditioned_on_another_row():
-    """
-    p(row 1 | row 0) = p(row 0| row 1) p(row 1) / p(row 0)
-    log_p(row 1 | row 0) = log_p(row 0| row 1) + log_p(row 1) - log_p(row 0)
-    log_posterior = log_likelihood + log_prior - log_marginal
-    """
-    view = initialize_view()
-    row1 = {1: {0: 0, 1: 0}}
-    row0 = {0: {0: 1, 1: 1}}
-
-    log_posterior = view.logpdf_multirow(query=row1, evidence=row0)
-
-    log_likelihood = view.logpdf_multirow(query=row0, evidence=row1)
-
-    log_prior = view.logpdf_multirow(query=row1)
-    assert np.allclose(log_prior, view.logpdf(rowid=1, query=row1[1]))
-
-    log_marginal = view.logpdf_multirow(query=row0)
-    assert np.allclose(log_marginal, view.logpdf(rowid=0, query=row0[0]))
-
-    assert np.allclose(
-        log_posterior, log_likelihood + log_prior - log_marginal)
-
 def test_logpdf_in_test_bayes_inversion():
     """
-    p(row 1 | row 0) = p(row 0| row 1) p(row 1) / p(row 0)
-    log_p(row 1 | row 0) = log_p(row 0| row 1) + log_p(row 1) - log_p(row 0)
+    p(row 1 | row 2) = p(row 2| row 1) p(row 1) / p(row 2)
+    log_p(row 1 | row 2) = log_p(row 2| row 1) + log_p(row 1) - log_p(row 2)
     log_posterior = log_likelihood + log_prior - log_marginal
     """
     view = initialize_view()
