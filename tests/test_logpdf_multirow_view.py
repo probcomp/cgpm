@@ -312,26 +312,39 @@ def test_quick_query_logpdf_multirow_hypothetical():
     assert np.allclose(
         view.logpdf_multirow(row1), view.logpdf_multirow(row1_short))
 
-
-def test_same_rowid_of_query_and_evidence_hypothetical():
+def test_quick_query_joint_logpdf_multirow_hypothetical():
     view = initialize_view()
     
-    # P({1: {0: 1}} | {1: {0: 1}}) hypothetical row
-    row1 = {1: {0: 1}}
-    row2 = {2: {0: 1}}
-    math_out = view.logpdf_multirow(query=row2, evidence=row1)
-    test_out = view.logpdf_multirow(query=row1, evidence=row1)
-    assert np.allclose(math_out, test_out)
+    row1 = {1: {0: 1, 1: 1}}
+    row2 = {2: {0: 1, 1: 1}}
+    row1_short = {-1: {0: 1, 1: 1}}
+    row2_short = {-2: {0: 1, 1: 1}}
 
-def test_same_rowid_of_query_and_evidence_nonhypothetical():
-    view = initialize_view()
+    assert np.allclose(
+        view.logpdf_multirow(deep_merged(row1, row2)),
+        view.logpdf_multirow(deep_merged(row1_short, row2_short)))
 
-    # P({0: {0:1} | {0: {0: 1}) non-hypothetical row
-    row0 = {0: {0: 1}}
-    row1 = {1: {0:1 }}
-    math_out = view.logpdf_multirow(query=row1, evidence=row0)
-    test_out = view.logpdf_multirow(query=row0, evidence=row0)
-    assert np.allclose(math_out, test_out)
+
+# DISABLED
+# def test_same_rowid_of_query_and_evidence_hypothetical():
+#     view = initialize_view()
+    
+#     # P({1: {0: 1}} | {1: {0: 1}}) hypothetical row
+#     row1 = {1: {0: 1}}
+#     row2 = {2: {0: 1}}
+#     math_out = view.logpdf_multirow(query=row2, evidence=row1)
+#     test_out = view.logpdf_multirow(query=row1, evidence=row1)
+#     assert np.allclose(math_out, test_out)
+
+# def test_same_rowid_of_query_and_evidence_nonhypothetical():
+#     view = initialize_view()
+
+#     # P({0: {0:1} | {0: {0: 1}) non-hypothetical row
+#     row0 = {0: {0: 1}}
+#     row1 = {1: {0: 1}}
+#     math_out = view.logpdf_multirow(query=row1, evidence=row0)
+#     test_out = view.logpdf_multirow(query=row0, evidence=row0)
+#     assert np.allclose(math_out, test_out)
 
  # TEST CONCORDANCE WITH LOGPDF
  # Deactivated, logpdf works differently for non-hypothetical rows

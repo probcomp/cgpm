@@ -317,10 +317,17 @@ class View(CGpm):
     # logpdf multirow
 
     def logpdf_multirow(self, query, evidence=None, debug=False):
-        # TODO:
-        # [X] Add way of adding whole row to query.
-        # [X] Add way of adding new row (rowid -1)
-
+        """
+        Evaluate logpdf of query given evidence, where both query 
+        and evidence may contain multiple rows. 
+        If any of the rows in query or evidence has already been 
+        incorporated, unincorporate them before evaluating the 
+        logpdf.
+        
+        QUESTION:
+        - For nonhypothetical rows in the evidence, should I not
+        marginalize the latents?
+        """
         # Check that internal state of CGPM does not change 
         if debug:
             stored_metadata = self.to_metadata()
@@ -396,19 +403,22 @@ class View(CGpm):
             self.incorporate(rowid=rowid, query=row)
 
     def _check_multirow_query_evidence(self, query, evidence):
-        # TODO: [X] ASSIGN FULL ROW TO QUERY IF QUERY = {ID: {}}
-        # TODO: [X] ASSIGN NEW ROWID TO -1 ROW
         if evidence is None:
             evidence = {}
         
-        # Assign new rowid to hypothetical row        
-        new_rowid = max(self.Zr().values()) + 1
-        if -1 in query.keys():
-            query[new_rowid] = query[-1]
-            del query[-1]
-        if -1 in evidence.keys():
-            evidence[new_rowid] = evidence[-1]
-            del evidence[-1]
+        # Assign new rowid to hypothetical row
+        i = 0 
+        last_rowid = max(self.Zr().values())
+        for rowid in query.keys():
+            if rowid < 0:
+                i += 1
+                query[last_rowid + i] = query[rowid]
+                del query[rowid]
+        for rowid in evidence.keys():
+            if rowid < 0:
+                i += 1
+                evidence[last_rowid + i] = evidence[rowid]
+                del evidence[rowid]
 
         # If query = {ID: {}} assign full row
         for key, val in query.iteritems():
@@ -424,8 +434,9 @@ class View(CGpm):
             if rowid in query and rowid in evidence:
                 if set(query[rowid].keys()).intersection(
                         set(evidence[rowid].keys())):
-                    raise ValueError(
-                        "Intersection between query and evidence")
+                    if rowid >= 0:
+                        raise ValueError(
+                            "Intersection between query and evidence")
 
         return query, evidence
 
