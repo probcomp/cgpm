@@ -415,7 +415,7 @@ class View(CGpm):
 
     # --------------------------------------------------------------------------
     # relevance score
-    def relevance_score(self, query, evidence):
+    def relevance_score(self, query, evidence, debug=False):
         """
         Compute the relevance score as the likelihood ratio of the joint 
         query and evidence given two hypotheses:
@@ -430,6 +430,9 @@ class View(CGpm):
             query, evidence)
         joint_input = deep_merged(query, evidence)
 
+        # Check that internal state of CGPM does not change 
+        if debug:
+            stored_metadata = self.to_metadata()
         # Store query and evidence rows already in the dataset
         T = self._pop_unincorporate(joint_input)
 
@@ -455,8 +458,9 @@ class View(CGpm):
 
                 # P(query, evidence | clusters_query, clusters_evidence)
                 logp_joint = self.logpdf_multirow(
-                    query=joint_input, evidence=deep_merged(
-                        clusters_query, clusters_evidence))  # compute joint logpdf
+                    query=joint_input,
+                    evidence=deep_merged(clusters_query, clusters_evidence),
+                    debug=debug)  # compute joint logpdf
 
                 if kq == ke:  # hypothesis one, clusters_query == clusters_evidence
                     l1 = gu.logsumexp((l1, logp_joint))
@@ -466,8 +470,23 @@ class View(CGpm):
         # Reincorporate rows in T to dataset
         self._push_incorporate(T)
 
+        if debug:
+            assert stored_metadata == self.to_metadata()
         logscore = l1 - l2
         return logscore 
+
+    def relevance_search(self, evidence, debug=False):
+        """
+        Computes the relevance_score wrt evidence for each row of the dataset.
+        """
+        score = {}
+        for row in xrange(len(self.X.values()[0])):  # for each row in the dataset
+            score[row] = self.relevance_score(
+                query={row: {}}, evidence=evidence,
+                debug=debug)
+        sorted_score = sorted(
+            score.items(), key=lambda x: x[1], reverse=True)
+        return sorted_score
 
     def _assign_cluster_to_set_of_rows(self, row_dct, k):
         """

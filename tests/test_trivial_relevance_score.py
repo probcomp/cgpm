@@ -55,7 +55,7 @@ def test_trivial_relevance_score_of_first_row_with_itself():
     logp_H2 = np.log(1./8)
     math_out = logp_H1 - logp_H2
 
-    test_out = view.relevance_score(query={0: {}}, evidence={0: {}})
+    test_out = view.relevance_score(query={0: {}}, evidence={0: {}}, debug=True)
 
     assert np.allclose(math_out, test_out)
 
@@ -69,7 +69,7 @@ def test_trivial_relevance_score_of_first_row_with_hypothetical_same_row():
     logp_H2 = np.log(1./8)
     math_out = logp_H1 - logp_H2
 
-    test_out = view.relevance_score(query={1: {0: 1}}, evidence={0: {}})
+    test_out = view.relevance_score(query={1: {0: 1}}, evidence={0: {}}, debug=True)
 
     assert np.allclose(math_out, test_out)
 
@@ -83,7 +83,7 @@ def test_trivial_relevance_score_of_first_row_with_different_hypothetical_row():
     logp_H2 = np.log(1./8)
     math_out = logp_H1 - logp_H2
 
-    test_out = view.relevance_score(query={1: {0: 0}}, evidence={0: {}})
+    test_out = view.relevance_score(query={1: {0: 0}}, evidence={0: {}}, debug=True)
 
     assert np.allclose(math_out, test_out)
 
