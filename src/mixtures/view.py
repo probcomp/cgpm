@@ -331,7 +331,7 @@ class View(CGpm):
         if debug:
             stored_metadata = self.to_metadata()
 
-        query, evidence = self._check_multirow_query_evidence(query, evidence)
+        query, evidence = self._rectify_multirow_query_evidence(query, evidence)
         joint_input = deep_merged(query, evidence)
 
         # Store query and evidence rows already in the dataset
@@ -424,7 +424,8 @@ class View(CGpm):
         2 - query and evidence belong to two different clusters.
         """
 
-        query, evidence = self._check_relevance_query_evidence(query, evidence)
+        query, evidence = self._rectify_relevance_query_evidence(
+            query, evidence)
         
         l1 = - np.float("inf")
         l2 = - np.float("inf")
@@ -461,8 +462,7 @@ class View(CGpm):
         ------
         new_row_dct: dict, {rowid: {col: val, cluster: k}}
         """
-
-        new_row_dct = row_dct
+        new_row_dct = row_dct.copy()
         if not isinstance(row_dct.values()[0], dict):
             raise TypeError(
                 "Input is not a dict of the form {rowid: {col:val}}.")
@@ -470,24 +470,40 @@ class View(CGpm):
             new_row_dct[key][self.exposed_latent] = k
         return new_row_dct
 
-    def _check_multirow_query_evidence(self, query, evidence):
+    def _rectify_multirow_query_evidence(self, query, evidence):
         out_query = query.copy()
         out_evidence = {} if evidence is None else evidence.copy()
 
-        # If query = {ID: {}} return full row
+        # If row  = {ID: {}} return full row
+        out_query = self._complete_implicit_rows(out_query)
+        out_evidence = self._complete_implicit_rows(out_evidence)
+        
+        # If rowid is less than zero (hypothetical row),
+        #  assign a positive rowid.
+        out_query, out_evidence, i = self._make_rowid_positive(
+            out_query, out_evidence)
+       
+        # Check for same variable in out_query and out_evidence
+        out_query, out_evidence = self._correct_repeated_rowid(
+            out_query, out_evidence, i)
+        return out_query, out_evidence
+
+    def _complete_implicit_rows(self, query):
+        out_query = query.copy()
         for key, val in out_query.iteritems():
             if val == {}:
                 if self.hypothetical(key):
                     raise ValueError(
                         "Cannot guess values for hypothetical row.")
-                out_query[key] = {  # add column to out_query if not in out_evidence
-                    c: self.X[c][key] for c in self.outputs[1::]
-                    if c not in out_evidence.get(key, {}).keys()}
-        
-        # If rowid is less than zero (hypothetical row),
-        #  assign a positive rowid.
+                out_query[key] = {  # add all columns to out_query
+                    c: self.X[c][key] for c in self.outputs[1::]}
+        return out_query
+
+    def _make_rowid_positive(self, query, evidence):
+        out_query = query.copy()
+        out_evidence = evidence.copy()
         i = 1 
-        last_rowid = max(self.Zr().values())
+        last_rowid = max(self.Zr())
         for rowid in out_query.keys():
             if rowid < 0:
                 while last_rowid+i in deep_merged(out_query, out_evidence):
@@ -500,25 +516,31 @@ class View(CGpm):
                     i += 1
                 out_evidence[last_rowid + i] = out_evidence[rowid]
                 del out_evidence[rowid]
+        return out_query, out_evidence, i
 
-        # Check for same variable in out_query and out_evidence
+    def _correct_repeated_rowid(self, query, evidence, i):
+        out_query = query.copy()
+        out_evidence = evidence.copy()
+        last_rowid = max(self.Zr())
         for rowid in deep_merged(out_query, out_evidence):
             if rowid in out_query and rowid in out_evidence:
                 if set(out_query[rowid].keys()).intersection(
                         set(out_evidence[rowid].keys())):
-                    while last_rowid+i in deep_merged(out_query, out_evidence):
+                    while last_rowid+i in deep_merged(
+                            out_query, out_evidence):
                         i += 1
                     warnings.warn(
                         """
-                        Query and out_evidence refer to same columns in the 
-                        same row. Changing rowid of row %d in out_query to %d.
+                        Query and out_evidence refer to same columns
+                        in the same row. Changing rowid of row %d in
+                        out_query to %d.
                         """ % (rowid, last_rowid + i),
                         UserWarning)
-                    out_query[i] = out_query[rowid]
+                    out_query[last_rowid+i] = out_query[rowid]
                     del out_query[rowid]
         return out_query, out_evidence
 
-    def _check_relevance_query_evidence(self, query, evidence):
+    def _rectify_relevance_query_evidence(self, query, evidence):
         out_query = query.copy()
         out_evidence = {} if evidence is None else evidence.copy()
 
@@ -526,12 +548,14 @@ class View(CGpm):
             raise ValueError("Query must contain only one variable")
 
         # If out_query is present in out_evidence, make it hypothetical
-        for key, val in out_query.iteritems():
-            if key in out_evidence:
-                out_query[-1] = val
-                del out_query[key]
+        # for key, val in out_query.iteritems():
+        #     if key in out_evidence:
+        #         out_query[-1] = val
+        #         del out_query[key]
 
-        return self._check_multirow_query_evidence(out_query, out_evidence)
+        out_query, out_evidence = self._rectify_multirow_query_evidence(
+            out_query, out_evidence)
+        return out_query, out_evidence 
     # --------------------------------------------------------------------------
     # simulate
 
