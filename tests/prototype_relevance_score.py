@@ -63,10 +63,12 @@ def test_relevance_score_of_fourth_row_wrt_fourth_row():
     # 1.1 logp(row4, row4*| z4*=z4=0)
     logp_H1_z0 = np.log(
         5**2 * 4**3 * 2 * 4**2 * 3**3 * 1) - 6*np.log(30)
-    # 1.2 logp(row4, row4*| z4*=z4=0)
+    # 1.2 logp(row4, row4*| z4*=z4=1)
     logp_H1_z1 = np.log(
         3**4 * 2 * 5 * 2**4 * 1 * 4) - 6*np.log(30)
-    # 1.3 logp(row4, row4*| H1)
+    logp_H1_z2 = np.log(
+        3**4 * 2 * 5 * 2**4 * 1 * 4) - 6*np.log(30)
+    # 1.4 logp(row4, row4*| H1)
     logp_H1 = logsumexp([logp_H1_z0, logp_H1_z1])
 
     # 2.1 logp(row4, row4*| z4*=1, z4=0)
@@ -76,9 +78,10 @@ def test_relevance_score_of_fourth_row_wrt_fourth_row():
     logp_H2_z0z1 = np.log(
         4**2 * 3**3 * 1 * 2**4 * 1 * 4) - 6*np.log(25)
     # 1.3 logp(row4, row4*| H1)
-    logp_H2 = logsumexp([logp_H1_z0, logp_H1_z1])
+    logp_H2 = logsumexp((logp_H2_z0z1, logp_H2_z1z0))
 
     math_out = logp_H1 - logp_H2
+    # import pudb; pudb.set_trace()
     test_out = view.relevance_score(query={4: {}}, evidence={4: {}})
 
     assert np.allclose(math_out, test_out)
