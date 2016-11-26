@@ -399,43 +399,6 @@ class View(CGpm):
         for rowid, row in table.iteritems():
             self.incorporate(rowid=rowid, query=row)
 
-    def _check_multirow_query_evidence(self, query, evidence):
-        if evidence is None:
-            evidence = {}
-        
-        # Assign new rowid to hypothetical row
-        i = 0 
-        last_rowid = max(self.Zr().values())
-        for rowid in query.keys():
-            if rowid < 0:
-                i += 1
-                query[last_rowid + i] = query[rowid]
-                del query[rowid]
-        for rowid in evidence.keys():
-            if rowid < 0:
-                i += 1
-                evidence[last_rowid + i] = evidence[rowid]
-                del evidence[rowid]
-
-        # If query = {ID: {}} assign full row
-        for key, val in query.iteritems():
-            if val == {}:
-                if self.hypothetical(key):
-                    raise ValueError("Cannot guess values for hypothetical row.")
-                query[key] = {  # add column to query if not in evidence
-                    c: self.X[c][key] for c in self.outputs[1::]
-                    if c not in evidence.get(key, {}).keys()}
-
-        # Check for same variable in query and evidence
-        for rowid in deep_merged(query, evidence):
-            if rowid in query and rowid in evidence:
-                if set(query[rowid].keys()).intersection(
-                        set(evidence[rowid].keys())):
-                    if rowid >= 0:
-                        raise ValueError(
-                            "Intersection between query and evidence")
-
-        return query, evidence
 
     def retrieve_row_as_dict(self, rowid):
         """
@@ -445,11 +408,130 @@ class View(CGpm):
         latent = {self.exposed_latent: self.Zr()[rowid]}
         return merged(observed_row, latent)
 
+    def retrieve_available_clusters(self):
+        K = [0]  # assignment if table is empty
+        if self.crp.clusters[0].N > 0:  # get possible clusters
+            K = self.crp.clusters[0].gibbs_tables(-1)  # do marginalize
+        return K
+
     # --------------------------------------------------------------------------
     # relevance score
     def relevance_score(self, query, evidence):
-        return np.nan
+        """
+        Compute the relevance score as the likelihood ratio of the joint 
+        query and evidence given two hypotheses:
+        1 - query and evidence all belong to the same, unknown, cluster.
+        2 - query and evidence belong to two different clusters.
+        """
 
+        query, evidence = self._check_relevance_query_evidence(query, evidence)
+        
+        l1 = - np.float("inf")
+        l2 = - np.float("inf")
+
+        K = self.retrieve_available_clusters()
+        for ke in K:  # for each possible cluster for evidence  
+            evidence_ke = self._assign_cluster_to_set_of_rows(
+                evidence, ke)  # assign every row in evidence to cluster ke 
+
+            for kq in K:  # for each possible cluster for query
+                query_kq = self._assign_cluster_to_set_of_rows(
+                    query, kq)  # assign every row in query to cluster kq
+                logp_joint = self.logpdf_multirow(
+                    query=deep_merged(query_kq, evidence_ke))  # compute joint logpdf
+
+                if kq == ke:  # hypothesis one, query and evidence share cluster
+                    l1 = gu.logsumexp((l1, logp_joint))
+                else:  # hypothesis two, query and evidence do not share cluster
+                    l2 = gu.logsumexp((l2, logp_joint))
+
+        logscore = l1 - l2
+        return logscore 
+
+    def _assign_cluster_to_set_of_rows(self, row_dct, k):
+        """
+        Assign each row in row_dct to cluster k.
+        
+        INPUT
+        -----
+        row_dct: dict, {rowid: {col: val}}
+        k: int
+
+        OUTPUT
+        ------
+        new_row_dct: dict, {rowid: {col: val, cluster: k}}
+        """
+
+        new_row_dct = row_dct
+        if not isinstance(row_dct.values()[0], dict):
+            raise TypeError(
+                "Input is not a dict of the form {rowid: {col:val}}.")
+        for key in new_row_dct:
+            new_row_dct[key][self.exposed_latent] = k
+        return new_row_dct
+
+    def _check_multirow_query_evidence(self, query, evidence):
+        out_query = query.copy()
+        out_evidence = {} if evidence is None else evidence.copy()
+
+        # If query = {ID: {}} return full row
+        for key, val in out_query.iteritems():
+            if val == {}:
+                if self.hypothetical(key):
+                    raise ValueError(
+                        "Cannot guess values for hypothetical row.")
+                out_query[key] = {  # add column to out_query if not in out_evidence
+                    c: self.X[c][key] for c in self.outputs[1::]
+                    if c not in out_evidence.get(key, {}).keys()}
+        
+        # If rowid is less than zero (hypothetical row),
+        #  assign a positive rowid.
+        i = 1 
+        last_rowid = max(self.Zr().values())
+        for rowid in out_query.keys():
+            if rowid < 0:
+                while last_rowid+i in deep_merged(out_query, out_evidence):
+                    i += 1
+                out_query[last_rowid + i] = out_query[rowid]
+                del out_query[rowid]
+        for rowid in out_evidence.keys():
+            if rowid < 0:
+                while last_rowid+i in deep_merged(out_query, out_evidence):
+                    i += 1
+                out_evidence[last_rowid + i] = out_evidence[rowid]
+                del out_evidence[rowid]
+
+        # Check for same variable in out_query and out_evidence
+        for rowid in deep_merged(out_query, out_evidence):
+            if rowid in out_query and rowid in out_evidence:
+                if set(out_query[rowid].keys()).intersection(
+                        set(out_evidence[rowid].keys())):
+                    while last_rowid+i in deep_merged(out_query, out_evidence):
+                        i += 1
+                    warnings.warn(
+                        """
+                        Query and out_evidence refer to same columns in the 
+                        same row. Changing rowid of row %d in out_query to %d.
+                        """ % (rowid, last_rowid + i),
+                        UserWarning)
+                    out_query[i] = out_query[rowid]
+                    del out_query[rowid]
+        return out_query, out_evidence
+
+    def _check_relevance_query_evidence(self, query, evidence):
+        out_query = query.copy()
+        out_evidence = {} if evidence is None else evidence.copy()
+
+        if len(out_query.keys()) > 1:
+            raise ValueError("Query must contain only one variable")
+
+        # If out_query is present in out_evidence, make it hypothetical
+        for key, val in out_query.iteritems():
+            if key in out_evidence:
+                out_query[-1] = val
+                del out_query[key]
+
+        return self._check_multirow_query_evidence(out_query, out_evidence)
     # --------------------------------------------------------------------------
     # simulate
 
