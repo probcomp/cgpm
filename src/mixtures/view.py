@@ -399,7 +399,6 @@ class View(CGpm):
         for rowid, row in table.iteritems():
             self.incorporate(rowid=rowid, query=row)
 
-
     def retrieve_row_as_dict(self, rowid):
         """
         Returns {outputs: value, exposed_latent: value}
@@ -422,29 +421,50 @@ class View(CGpm):
         query and evidence given two hypotheses:
         1 - query and evidence all belong to the same, unknown, cluster.
         2 - query and evidence belong to two different clusters.
+
+        score = log p(query, evidence | same cluster) 
+                - log p(query, evidence | different cluster)
         """
 
         query, evidence = self._rectify_relevance_query_evidence(
             query, evidence)
-        
+        joint_input = deep_merged(query, evidence)
+
+        # Store query and evidence rows already in the dataset
+        T = self._pop_unincorporate(joint_input)
+
         l1 = - np.float("inf")
         l2 = - np.float("inf")
 
-        K = self.retrieve_available_clusters()
-        for ke in K:  # for each possible cluster for evidence  
-            evidence_ke = self._assign_cluster_to_set_of_rows(
-                evidence, ke)  # assign every row in evidence to cluster ke 
+        # BUG: unincorporate query and evidence in the beginning
+        Ke = self.retrieve_available_clusters()
+        for ke in Ke:  # for each possible cluster for evidence  
+            # evidence_ke = self._assign_cluster_to_set_of_rows(
+                # evidence, ke)  # assign every row in evidence to cluster ke 
+            clusters_evidence = {
+                row: {self.exposed_latent: ke} for row in evidence}
 
-            for kq in K:  # for each possible cluster for query
-                query_kq = self._assign_cluster_to_set_of_rows(
-                    query, kq)  # assign every row in query to cluster kq
+            Kq = Ke
+            if ke == Ke[-1]:  # if evidence is assigned a new cluster
+                Kq = Ke + [ke+1]  # query may be assigned a different new cluster
+            for kq in Kq:  # for each possible cluster for query
+                # query_kq = self._assign_cluster_to_set_of_rows(
+                    # query, kq)  # assign every row in query to cluster kq
+                clusters_query = {
+                    row: {self.exposed_latent: kq} for row in query}
+
+                # P(query, evidence | clusters_query, clusters_evidence)
                 logp_joint = self.logpdf_multirow(
-                    query=deep_merged(query_kq, evidence_ke))  # compute joint logpdf
+                    query=joint_input, evidence=deep_merged(
+                        clusters_query, clusters_evidence))  # compute joint logpdf
 
-                if kq == ke:  # hypothesis one, query and evidence share cluster
+                if kq == ke:  # hypothesis one, clusters_query == clusters_evidence
                     l1 = gu.logsumexp((l1, logp_joint))
-                else:  # hypothesis two, query and evidence do not share cluster
+                else:  # hypothesis two, clusters_query != clusters_evidence
                     l2 = gu.logsumexp((l2, logp_joint))
+
+        # Reincorporate rows in T to dataset
+        self._push_incorporate(T)
 
         logscore = l1 - l2
         return logscore 
@@ -502,8 +522,9 @@ class View(CGpm):
     def _make_rowid_positive(self, query, evidence):
         out_query = query.copy()
         out_evidence = evidence.copy()
+        
         i = 1 
-        last_rowid = max(self.Zr())
+        last_rowid = max(self.Zr()) if self.Zr() else -1 #  if table is empty, rowid starts at -1 + 1
         for rowid in out_query.keys():
             if rowid < 0:
                 while last_rowid+i in deep_merged(out_query, out_evidence):
@@ -521,7 +542,7 @@ class View(CGpm):
     def _correct_repeated_rowid(self, query, evidence, i):
         out_query = query.copy()
         out_evidence = evidence.copy()
-        last_rowid = max(self.Zr())
+        last_rowid = max(self.Zr()) if self.Zr() else -1
         for rowid in deep_merged(out_query, out_evidence):
             if rowid in out_query and rowid in out_evidence:
                 if set(out_query[rowid].keys()).intersection(
