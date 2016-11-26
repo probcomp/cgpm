@@ -19,6 +19,7 @@ import itertools
 from math import isnan
 
 import numpy as np
+import warnings
 
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
@@ -304,9 +305,7 @@ class View(CGpm):
             # No need to marginalize P(xQ, z)
             return network.logpdf(rowid, query, evidence)
         # Marginalize over clusters.
-        K = [0]
-        if self.crp.clusters[0].N > 0:
-            K = self.crp.clusters[0].gibbs_tables(-1)
+        K = self.retrieve_available_clusters()
         evidences = [merged(evidence, {self.exposed_latent: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         lp_evidence = gu.log_normalize(lp_evidence_unorm)
@@ -372,9 +371,7 @@ class View(CGpm):
             if assigned_cluster is not None:  # if row has cluster 
                 K = [assigned_cluster]  # Do not marginalize
             else:  
-                K = [0]  # assignment if table is empty
-                if self.crp.clusters[0].N > 0:  # get possible clusters
-                    K = self.crp.clusters[0].gibbs_tables(-1)  # do marginalize
+                K = self.retrieve_available_clusters()
             
             # Marginalization: log sum_k p(observed_values, cluster=k)
             for k in K:
@@ -469,10 +466,7 @@ class View(CGpm):
         if unwrap: N = 1
         exposed = self.exposed_latent in query
         if exposed: query = [q for q in query if q != self.exposed_latent]
-        K = [0]
-        # If there are multiple clusters, marginalize over them
-        if self.crp.clusters[0].counts:
-            K = self.crp.clusters[0].gibbs_tables(-1)
+        K = self.retrieve_available_clusters()
         evidences = [merged(evidence, {self.exposed_latent: k}) for k in K]
         lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
         Ks = gu.log_pflip(lp_evidence_unorm, array=K, size=N, rng=self.rng)
