@@ -347,6 +347,7 @@ class View(CGpm):
 
         # Reincorporate rows in T to dataset
         self._push_incorporate(T)
+
         if debug:
             assert stored_metadata == self.to_metadata()
 
@@ -423,8 +424,8 @@ class View(CGpm):
         1 - query and evidence all belong to the same, unknown, cluster.
         2 - query and evidence belong to two different clusters.
 
-        score = log p(query, evidence | same cluster) 
-                - log p(query, evidence | different cluster)
+        score = log p(query, evidence, same cluster) 
+                - log p(query, evidence, different cluster)
         """
 
         query, evidence = self._rectify_relevance_query_evidence(
@@ -445,7 +446,7 @@ class View(CGpm):
         for ke in Ke:  # for each possible cluster for evidence  
             # evidence_ke = self._assign_cluster_to_set_of_rows(
                 # evidence, ke)  # assign every row in evidence to cluster ke 
-            clusters_evidence = {
+            cluster_evidence = {
                 row: {self.exposed_latent: ke} for row in evidence}
 
             Kq = Ke
@@ -454,18 +455,18 @@ class View(CGpm):
             for kq in Kq:  # for each possible cluster for query
                 # query_kq = self._assign_cluster_to_set_of_rows(
                     # query, kq)  # assign every row in query to cluster kq
-                clusters_query = {
+                cluster_query = {
                     row: {self.exposed_latent: kq} for row in query}
 
-                # P(query, evidence | clusters_query, clusters_evidence)
+                # P(query, evidence, cluster_query, cluster_evidence)
                 logp_joint = self.logpdf_multirow(
-                    query=joint_input,
-                    evidence=deep_merged(clusters_query, clusters_evidence),
+                    query=deep_merged(
+                        joint_input, cluster_query, cluster_evidence),
                     debug=debug)  # compute joint logpdf
 
-                if kq == ke:  # hypothesis one, clusters_query == clusters_evidence
+                if kq == ke:  # hypothesis one, cluster_query == cluster_evidence
                     l1 = gu.logsumexp((l1, logp_joint))
-                else:  # hypothesis two, clusters_query != clusters_evidence
+                else:  # hypothesis two, cluster_query != cluster_evidence
                     l2 = gu.logsumexp((l2, logp_joint))
 
         # Reincorporate rows in T to dataset
@@ -473,6 +474,7 @@ class View(CGpm):
 
         if debug:
             assert stored_metadata == self.to_metadata()
+
         logscore = l1 - l2
         return logscore 
 
