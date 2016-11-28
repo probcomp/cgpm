@@ -45,7 +45,7 @@ def initialize_view():
         Zr=Zr)
     return view
 
-def test_trivial_relevance_score_of_first_row_with_itself():
+def test_score_of_first_row_with_itself():
     """
     score(row 0; row 0) = score({1: {0: [1]}} ; {0: {0: [1]}}) = log(4./3)
     """
@@ -59,7 +59,7 @@ def test_trivial_relevance_score_of_first_row_with_itself():
 
     assert np.allclose(math_out, test_out)
 
-def test_trivial_relevance_score_of_first_row_with_hypothetical_same_row():
+def test_score_of_first_row_with_hypothetical_same_row():
     """
     score({1: {0: [1]}} ; {0: {0: [1]}}) = log(4./3)
     """
@@ -73,7 +73,7 @@ def test_trivial_relevance_score_of_first_row_with_hypothetical_same_row():
 
     assert np.allclose(math_out, test_out)
 
-def test_trivial_relevance_score_of_first_row_with_different_hypothetical_row():
+def test_score_of_first_row_with_different_hypothetical_row():
     """
     score({1: {0: [0]}} ; {0: {0: [1]}}) = log(2./3)
     """
@@ -83,7 +83,48 @@ def test_trivial_relevance_score_of_first_row_with_different_hypothetical_row():
     logp_H2 = np.log(1./8)
     math_out = logp_H1 - logp_H2
 
-    test_out = view.relevance_score(query={1: {0: 0}}, evidence={0: {}}, debug=True)
+    test_out = view.relevance_score(
+        query={1: {0: 0}}, evidence={0: {}}, debug=True)
+    assert np.allclose(math_out, test_out)
+
+def test_score_of_hypothetical_row_with_another_hypothetical_row():
+    """
+    score({2: {0: 1}} ; {1: {0: 1}}) = l1 - l2
+
+    l1 = p({2: {0: 1, z:0}} ; {1: {0: 1, z: 0}}) + 
+         p({2: {0: 1, z:1}} ; {1: {0: 1, z: 1}})
+       = 3./4 * 2./3 * 2./3 * 1./2 + 
+         2./3 * 1./3 * 1./2 * 1./2
+
+    l2 = p({2: {0: 1, z:0}} ; {1: {0: 1, z: 1}}) + 
+         p({2: {0: 1, z:1}} ; {1: {0: 1, z: 0}}) +
+         p({2: {0: 1, z:2}} ; {1: {0: 1, z: 1}})
+       = 2./3 * 1./3 * 1./2 * 1./2 +
+         1./2 * 1./3 * 2./3 * 1./2 +
+         1./2 * 1./3 * 1./2 * 1./2
+    """
+    view = initialize_view()
+    
+    p_11 = np.log(3./4 * 2./3 * 2./3 * 1./2)
+    p_12 = np.log(2./3 * 1./3 * 1./2 * 1./2)
+    l1 = logsumexp((p_11, p_12))
+
+    p_21 = np.log(2./3 * 1./3 * 1./2 * 1./2)
+    p_22 = np.log(1./2 * 1./3 * 2./3 * 1./2)
+    p_23 = np.log(1./2 * 1./3 * 1./2 * 1./2)
+    l2 = logsumexp((p_21, p_22, p_23))
+
+    math_out = l1 - l2
+    test_out = view.relevance_score(query={2: {0: 1}}, evidence={1: {0: 1}}, debug=True)
 
     assert np.allclose(math_out, test_out)
 
+def test_trivial_relevance_search():
+    view = initialize_view()
+
+    sorted_score = view.relevance_search(evidence={0: {}})
+    
+    score = view.relevance_score(query={0: {}}, evidence={0: {}})
+    expected_out = [(0, score)]
+
+    assert sorted_score == expected_out
