@@ -18,6 +18,7 @@ import itertools
 
 from math import isnan
 
+import copy
 import numpy as np
 import warnings
 
@@ -329,7 +330,7 @@ class View(CGpm):
         """
         # Check that internal state of CGPM does not change 
         if debug:
-            stored_metadata = self.to_metadata()
+            stored_metadata = copy.deepcopy(self.to_metadata())
 
         query, evidence = self._rectify_multirow_query_evidence(query, evidence)
         joint_input = deep_merged(query, evidence)
@@ -432,7 +433,7 @@ class View(CGpm):
 
         # Check that internal state of CGPM does not change 
         if debug:
-            stored_metadata = self.to_metadata()
+            stored_metadata = copy.deepcopy(self.to_metadata())
         # Store query and evidence rows already in the dataset
         T = self._pop_unincorporate(joint_input)
 
