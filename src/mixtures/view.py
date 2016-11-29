@@ -360,6 +360,8 @@ class View(CGpm):
         return log_joint - log_marginal
 
     def _joint_logpdf_multirow(self, query):
+        query = self._make_rowid_contiguous(query)
+
         counter = 0
         return self._joint_logpdf_multirow_helper(counter, query)
 
