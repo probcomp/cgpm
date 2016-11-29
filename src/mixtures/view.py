@@ -399,15 +399,17 @@ class View(CGpm):
 
     def _pop_unincorporate(self, joint_input):
         table = {}
-        for rowid in joint_input.keys():  # For rows in query or evidence
+        sorted_joint_rows = sorted(joint_input.keys(), reverse=True)
+        for rowid in sorted_joint_rows:  # For rows in query or evidence
             if not self.hypothetical(rowid):  # if row in dataset
                 table[rowid] = self.retrieve_row_as_dict(rowid=rowid)
                 self.unincorporate(rowid=rowid)  # Unincorporate row
         return table
 
     def _push_incorporate(self, table):
-        for rowid, row in table.iteritems():
-            self.incorporate(rowid=rowid, query=row)
+        sorted_table_rows = sorted(table.keys())
+        for rowid in sorted_table_rows:
+            self.incorporate(rowid=rowid, query=table[rowid])
 
     def retrieve_row_as_dict(self, rowid):
         """
