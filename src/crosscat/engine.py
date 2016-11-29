@@ -233,10 +233,11 @@ class Engine(object):
             self, logpdfs, rowid, evidence=None, multiprocess=1):
         # Computes an importance sampling integral with likelihood weight.
         assert len(logpdfs) == len(self.states)
-        if not evidence:
-            return logpdfs
-        weights = self.logpdf(rowid, evidence, multiprocess=multiprocess)
-        return gu.logmeanexp_weighted(logpdfs, weights)
+        if evidence:
+            weights = self.logpdf(rowid, evidence, multiprocess=multiprocess)
+            return gu.logmeanexp_weighted(logpdfs, weights)
+        else:
+            return gu.logmeanexp(logpdfs)
 
     def _likelihood_weighted_resample(
             self, samples, rowid, evidence=None, multiprocess=1):
