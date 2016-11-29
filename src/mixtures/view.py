@@ -374,7 +374,7 @@ class View(CGpm):
 
         # Recursive Case: log p(this row)*p(other_rows| this row)
         else:
-            rowid = query.keys()[counter]  # retrieve id of current row
+            rowid = sorted(query.keys())[counter]  # retrieve id of current row
             query_row = query[rowid].copy()
             assigned_cluster = query_row.get(self.exposed_latent, None)
 
@@ -424,6 +424,10 @@ class View(CGpm):
         return K
 
     def _make_rowid_contiguous(self, query):
+        """
+        Reassign rowids to query so that they are 
+        contiguous to the rowids in the dataset. 
+        """
         out_query = {}
 
         last_row = max(self.Zr().keys()) if self.Zr() else -1
