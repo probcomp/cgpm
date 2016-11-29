@@ -284,6 +284,21 @@ class State(CGpm):
         return network.logpdf(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
+    # relevance score
+    def relevance_score(self, query, evidence, context, debug=False):
+        """
+        Compute the relevance score of query wrt evidence in the view
+        of variable context.
+        """
+        context_view = self.Zv()[context]
+        return self.views[context_view].relevance_score(
+            query, evidence, debug)
+
+    def relevance_search(self, evidence, context, debug=False):
+        context_view = self.Zv()[context]
+        return self.views[context_view].relevance_search(
+            evidence, debug)
+    # --------------------------------------------------------------------------
     # Simulate
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
