@@ -318,17 +318,17 @@ class View(CGpm):
 
     def logpdf_multirow(self, query, evidence=None, debug=False):
         """
-        Evaluate logpdf of query given evidence, where both query 
-        and evidence may contain multiple rows. 
-        If any of the rows in query or evidence has already been 
-        incorporated, unincorporate them before evaluating the 
+        Evaluate logpdf of query given evidence, where both query
+        and evidence may contain multiple rows.
+        If any of the rows in query or evidence has already been
+        incorporated, unincorporate them before evaluating the
         logpdf.
-        
+
         QUESTION:
         - For nonhypothetical rows in the evidence, should I not
         marginalize the latents?
         """
-        # Check that internal state of CGPM does not change 
+        # Check that internal state of CGPM does not change
         if debug:
             stored_metadata = copy.deepcopy(self.to_metadata())
 
@@ -370,11 +370,11 @@ class View(CGpm):
             query_row = query[rowid].copy()
             assigned_cluster = query_row.get(self.exposed_latent, None)
 
-            if assigned_cluster is not None:  # if row has cluster 
+            if assigned_cluster is not None:  # if row has cluster
                 K = [assigned_cluster]  # Do not marginalize
-            else:  
+            else:
                 K = self.retrieve_available_clusters()
-            
+
             # Marginalization: log sum_k p(observed_values, cluster=k)
             for k in K:
                 query_row[self.exposed_latent] = k
@@ -382,10 +382,10 @@ class View(CGpm):
                 self.incorporate(rowid, query_row)  # incorporate into k
 
                 # Recursion: log_p(this_row) + log_p(other_rows | this_row)
-                p_row += self._joint_logpdf_multirow_helper(counter+1, query)  
+                p_row += self._joint_logpdf_multirow_helper(counter+1, query)
 
                 log_p = gu.logsumexp([log_p, p_row])  # marginalize out k
-                self.unincorporate(rowid=rowid) 
+                self.unincorporate(rowid=rowid)
 
         return log_p      # return output probability
 
@@ -396,7 +396,7 @@ class View(CGpm):
                 table[rowid] = self.retrieve_row_as_dict(rowid=rowid)
                 self.unincorporate(rowid=rowid)  # Unincorporate row
         return table
-    
+
     def _push_incorporate(self, table):
         for rowid, row in table.iteritems():
             self.incorporate(rowid=rowid, query=row)
@@ -415,16 +415,26 @@ class View(CGpm):
             K = self.crp.clusters[0].gibbs_tables(-1)  # do marginalize
         return K
 
+    def _make_rowid_contiguous(self, query):
+        out_query = {}
+
+        last_row = max(self.Zr().keys()) if self.Zr() else -1
+        j = 1
+        for key in query.keys():
+            out_query[last_row + j] = query[key]
+            j += 1
+        return out_query
+
     # --------------------------------------------------------------------------
     # relevance score
     def relevance_score(self, query, evidence, debug=False):
         """
-        Compute the relevance score as the likelihood ratio of the joint 
+        Compute the relevance score as the likelihood ratio of the joint
         query and evidence given two hypotheses:
         1 - query and evidence all belong to the same, unknown, cluster.
         2 - query and evidence belong to two different clusters.
 
-        score = log p(query, evidence, same cluster) 
+        score = log p(query, evidence, same cluster)
                 - log p(query, evidence, different cluster)
         """
 
@@ -432,7 +442,7 @@ class View(CGpm):
             query, evidence)
         joint_input = deep_merged(query, evidence)
 
-        # Check that internal state of CGPM does not change 
+        # Check that internal state of CGPM does not change
         if debug:
             stored_metadata = copy.deepcopy(self.to_metadata())
         # Store query and evidence rows already in the dataset
@@ -443,9 +453,9 @@ class View(CGpm):
 
         # BUG: unincorporate query and evidence in the beginning
         Ke = self.retrieve_available_clusters()
-        for ke in Ke:  # for each possible cluster for evidence  
+        for ke in Ke:  # for each possible cluster for evidence
             # evidence_ke = self._assign_cluster_to_set_of_rows(
-                # evidence, ke)  # assign every row in evidence to cluster ke 
+                # evidence, ke)  # assign every row in evidence to cluster ke
             cluster_evidence = {
                 row: {self.exposed_latent: ke} for row in evidence}
 
@@ -476,7 +486,7 @@ class View(CGpm):
             assert stored_metadata == self.to_metadata()
 
         logscore = l1 - l2
-        return logscore 
+        return logscore
 
     def relevance_search(self, evidence, debug=False):
         """
@@ -494,7 +504,7 @@ class View(CGpm):
     def _assign_cluster_to_set_of_rows(self, row_dct, k):
         """
         Assign each row in row_dct to cluster k.
-        
+
         INPUT
         -----
         row_dct: dict, {rowid: {col: val}}
@@ -519,12 +529,12 @@ class View(CGpm):
         # If row  = {ID: {}} return full row
         out_query = self._complete_implicit_rows(out_query)
         out_evidence = self._complete_implicit_rows(out_evidence)
-        
+
         # If rowid is less than zero (hypothetical row),
         #  assign a positive rowid.
-        out_query, out_evidence, i = self._make_rowid_positive(
+        out_query, out_evidence, i = self._correct_hypothetical_rowid(
             out_query, out_evidence)
-       
+
         # Check for same variable in out_query and out_evidence
         out_query, out_evidence = self._correct_repeated_rowid(
             out_query, out_evidence, i)
@@ -541,11 +551,12 @@ class View(CGpm):
                     c: self.X[c][key] for c in self.outputs[1::]}
         return out_query
 
-    def _make_rowid_positive(self, query, evidence):
+    def _correct_hypothetical_rowid(self, query, evidence):
         out_query = query.copy()
         out_evidence = evidence.copy()
-        
-        i = 1 
+
+        # Make negative rowids positive
+        i = 1
         last_rowid = max(self.Zr()) if self.Zr() else -1 #  if table is empty, rowid starts at -1 + 1
         for rowid in out_query.keys():
             if rowid < 0:
@@ -559,6 +570,7 @@ class View(CGpm):
                     i += 1
                 out_evidence[last_rowid + i] = out_evidence[rowid]
                 del out_evidence[rowid]
+
         return out_query, out_evidence, i
 
     def _correct_repeated_rowid(self, query, evidence, i):
@@ -598,7 +610,7 @@ class View(CGpm):
 
         out_query, out_evidence = self._rectify_multirow_query_evidence(
             out_query, out_evidence)
-        return out_query, out_evidence 
+        return out_query, out_evidence
     # --------------------------------------------------------------------------
     # simulate
 
