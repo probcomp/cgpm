@@ -214,10 +214,16 @@ class View(CGpm):
 
     def _remove_from_dataset(self, rowid):
         """
-        Replaces the values of self.outputs in rowid by nan.
+        Replaces the values of self.outputs in rowid by nan
+        or remove it if last row.
         """
         for c in self.outputs[1::]:
-            self.X[c][rowid] = np.nan  # puts a placeholder to preserve order
+            last_row = len(self.X[c])-1
+            if rowid == last_row:  # if last row
+                del self.X[c][rowid]  # remove row from dataset
+            else:  # if not last row
+                self.X[c][rowid] = np.nan  # puts a placeholder to preserve order
+
     # --------------------------------------------------------------------------
     # Update schema.
 
