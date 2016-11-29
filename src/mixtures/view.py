@@ -348,8 +348,8 @@ class View(CGpm):
         log_joint = self._joint_logpdf_multirow(joint_input)
 
         # compute the joint of evidence
-        log_marginal = self._joint_logpdf_multirow_helper(
-            0, query=evidence) if evidence else 0
+        log_marginal = self._joint_logpdf_multirow(
+            query=evidence) if evidence else 0
 
         # Reincorporate rows in T to dataset
         self._push_incorporate(T)
