@@ -35,7 +35,7 @@ from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import validation as vu
-
+from cgpm.utils.render_utils import viz_state
 
 class State(CGpm):
     """CGpm representing Crosscat, built as a composition of smaller CGpms."""
@@ -846,6 +846,14 @@ class State(CGpm):
         assert vu.validate_crp_constrained_partition(
             [self.Zv(c) for c in self.outputs], self.Cd, self.Ci,
             self.Rd, self.Ri)
+
+    # --------------------------------------------------------------------------
+    # Rendering
+    def render(self, row_names=None, col_names=None, savefile=None,
+               labelsize=None):
+        viz_state(self, row_names=None, col_names=None, savefile=None,
+               labelsize=None)
+
 
     # --------------------------------------------------------------------------
     # Serialize

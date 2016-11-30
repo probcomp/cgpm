@@ -29,7 +29,7 @@ from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils.config import cctype_class
 from cgpm.utils.general import merged, deep_merged
-
+from cgpm.utils.render_utils import viz_view
 
 class View(CGpm):
     """CGpm represnting a multivariate Dirichlet process mixture of CGpms."""
@@ -625,6 +625,7 @@ class View(CGpm):
         out_query, out_evidence = self._rectify_multirow_query_evidence(
             out_query, out_evidence)
         return out_query, out_evidence
+
     # --------------------------------------------------------------------------
     # simulate
 
@@ -790,6 +791,13 @@ class View(CGpm):
                 rowids_nan = np.isnan(
                     [self.X[dim.index][r] for r in rowids if Zr[r]==k])
         #         assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
+
+    # --------------------------------------------------------------------------
+    # Rendering
+    def render(self, ax=None, row_names=None, col_names=None,
+               savefile=None, labelsize=None):
+
+        viz_view(self, ax, row_names, col_names, savefile, labelsize)
 
     # --------------------------------------------------------------------------
     # Metadata
