@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import base64
+import copy
 import math
 
 from collections import defaultdict
@@ -125,7 +126,8 @@ class VsCGpm(CGpm):
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['mode'] = self.mode
-        metadata['obs'] = {k: dict(v) for k, v in self.obs.iteritems()}
+        # Save the observations. We need to convert integer keys to strings.
+        metadata['obs'] = VsCGpm._obs_to_json(copy.deepcopy(self.obs))
         metadata['binary'] =  base64.b64encode(self.ripl.saves())
         metadata['factory'] = ('cgpm.venturescript.vscgpm', 'VsCGpm')
         return metadata
@@ -142,10 +144,12 @@ class VsCGpm(CGpm):
             mode=metadata['mode'],
             supress=True,
             rng=rng,)
-        # Restore the observations.
-        for k0, v0 in metadata['obs'].iteritems():
-            for k1, v1 in v0.iteritems():
-                cgpm.obs[k0][k1] = v1
+        # Restore the observations. We need to convert string keys to integers.
+        # XXX Eliminate this terrible defaultdict hack. See Github #187.
+        obs_converted = VsCGpm._obs_from_json(metadata['obs'])
+        cgpm.obs = defaultdict(lambda: defaultdict(dict))
+        for key, value in obs_converted.iteritems():
+            cgpm.obs[key] = defaultdict(dict, value)
         return cgpm
 
     # --------------------------------------------------------------------------
@@ -227,3 +231,25 @@ class VsCGpm(CGpm):
             raise ValueError(
                 'Given evidence contradicts dataset: %d, %s, %s' %
                 (rowid, evidence, self.obs[rowid]['evidence']))
+
+    @staticmethod
+    def _obs_to_json(obs):
+        def convert_key_int_to_str(d):
+            assert all(isinstance(c, int) for c in d)
+            return {str(c): v for c, v in d.iteritems()}
+        obs2 = convert_key_int_to_str(obs)
+        for r in obs2:
+            obs2[r]['evidence'] = convert_key_int_to_str(obs2[r]['evidence'])
+            obs2[r]['labels'] = convert_key_int_to_str(obs2[r]['labels'])
+        return obs2
+
+    @staticmethod
+    def _obs_from_json(obs):
+        def convert_key_str_to_int(d):
+            assert all(isinstance(c, (str, unicode)) for c in d)
+            return {int(c): v for c, v in d.iteritems()}
+        obs2 = convert_key_str_to_int(obs)
+        for r in obs2:
+            obs2[r]['evidence'] = convert_key_str_to_int(obs2[r]['evidence'])
+            obs2[r]['labels'] = convert_key_str_to_int(obs2[r]['labels'])
+        return obs2

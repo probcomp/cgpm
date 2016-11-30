@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import importlib
+import json
 
 from collections import namedtuple
 
@@ -202,17 +203,25 @@ def test_serialize(case):
     modname, attrname = binary['factory']
     module = importlib.import_module(modname)
     builder = getattr(module, attrname)
+
+    # Load binary from dictionary.
     cgpm2 = builder.from_metadata(binary)
 
-    assert cgpm.outputs == cgpm2.outputs
-    assert cgpm.inputs == cgpm2.inputs
-    assert cgpm.source == cgpm2.source
+    # Load binary from JSON.
+    cgpm3 = builder.from_metadata(json.loads(json.dumps(binary)))
 
-    sample = cgpm2.simulate(0, [0,1])
-    assert sample[0] == 1
-    assert sample[1] == 2
+    print
+    for cgpm_test in [cgpm2]:
+        assert cgpm.outputs == cgpm_test.outputs
+        assert cgpm.inputs == cgpm_test.inputs
+        assert cgpm.source == cgpm_test.source
+        assert cgpm.obs == cgpm_test.obs
 
-    sample = cgpm2.simulate(1, [1])
-    assert sample[1] == 15
+        sample = cgpm_test.simulate(0, [0,1])
+        assert sample[0] == 1
+        assert sample[1] == 2
 
-    cgpm2.incorporate(1, {0:10})
+        sample = cgpm_test.simulate(1, [1])
+        assert sample[1] == 15
+
+        cgpm_test.incorporate(1, {0:10})
