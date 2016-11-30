@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 
 from cgpm.mixtures.view import View
+from cgpm.crosscat.state import State
 
 """Test suite for View._populate_evidence.
 
@@ -25,6 +26,9 @@ Ensures that View._populate_evidence correctly retrieves values from the
 dataset.
 """
 
+
+# ------------------------------------------------------------------------------
+# Tests for cgpm.mixtures.view.View
 
 def retrieve_view():
     X = np.asarray([
@@ -37,10 +41,11 @@ def retrieve_view():
         {c: X[:,c].tolist() for c in outputs},
         outputs=[-1] + outputs,
         cctypes=['normal']*5,
-        Zr=[0,1,2])
+        Zr=[0,1,2]
+    )
 
 
-def test_hypothetical_unchanged():
+def test_view_hypothetical_unchanged():
     view = retrieve_view()
 
     rowid = -1
@@ -50,7 +55,7 @@ def test_hypothetical_unchanged():
     assert ev1 == ev2
 
 
-def test_only_rowid_to_populate():
+def test_view_only_rowid_to_populate():
     view = retrieve_view()
 
     # Can query X[2,0] for simulate.
@@ -60,34 +65,9 @@ def test_only_rowid_to_populate():
     ev2 = view._populate_evidence(rowid, qr1, ev1)
     assert ev2 == {-1: view.Zr(rowid)}
 
-    # Cannot query X[2,0] for logpdf.
-    rowid = 2
-    qr1 = {0:2}
-    ev1 = {}
-    with pytest.raises(ValueError):
-        ev2 = view._populate_evidence(rowid, qr1, ev1)
 
-
-def test_contrain_errors():
+def test_view_constrain_cluster():
     view = retrieve_view()
-
-    rowid = 1
-    qr1 = {1:1, 4:1}
-    ev1 = {}
-    with pytest.raises(ValueError):
-        view._populate_evidence(rowid, qr1, ev1)
-
-    rowid = 1
-    qr1 = {1:3}
-    ev1 = {4:-5}
-    with pytest.raises(ValueError):
-        view._populate_evidence(rowid, qr1, ev1)
-
-    rowid = 1
-    qr1 = {0:1, 1:3}
-    ev1 = {}
-    with pytest.raises(ValueError):
-        view._populate_evidence(rowid, qr1, ev1)
 
     # Cannot constrain cluster assignment of observed rowid.
     rowid = 1
@@ -97,7 +77,7 @@ def test_contrain_errors():
         view._populate_evidence(rowid, qr1, ev1)
 
 
-def test_values_to_populate():
+def test_view_values_to_populate():
     view = retrieve_view()
 
     rowid = 0
@@ -111,3 +91,52 @@ def test_values_to_populate():
     ev1 = {4:2}
     ev2 = view._populate_evidence(rowid, qr1, ev1)
     assert ev2 == {2:2, 0:1, 3:-1, 4:2, -1: view.Zr(rowid)}
+
+
+# ------------------------------------------------------------------------------
+# Tests for cgpm.crosscat.state.State
+
+def retrieve_state():
+    X = np.asarray([
+        [1,    np.nan,        2,      -1,      np.nan],
+        [1,         3,        2,      -1,          -5],
+        [1,    np.nan,   np.nan,  np.nan,      np.nan],
+    ])
+    outputs = [0,1,2,3,4]
+    return State(
+        X,
+        outputs=outputs,
+        cctypes=['normal']*5,
+        Zv={0:0, 1:0, 2:0, 3:0, 4:0},
+        Zrv={0:[0,1,2]}
+    )
+
+def test_state_constrain_logpdf():
+    state = retrieve_state()
+    # Cannot query X[2,0] for logpdf.
+    rowid = 2
+    qr1 = {0:2}
+    ev1 = {}
+    with pytest.raises(ValueError):
+        ev2 = state._populate_evidence(rowid, qr1, ev1)
+
+def test_view_constrain_errors():
+    state = retrieve_state()
+
+    rowid = 1
+    qr1 = {1:1, 4:1}
+    ev1 = {}
+    with pytest.raises(ValueError):
+        state._populate_evidence(rowid, qr1, ev1)
+
+    rowid = 1
+    qr1 = {1:3}
+    ev1 = {4:-5}
+    with pytest.raises(ValueError):
+        state._populate_evidence(rowid, qr1, ev1)
+
+    rowid = 1
+    qr1 = {0:1, 1:3}
+    ev1 = {}
+    with pytest.raises(ValueError):
+        state._populate_evidence(rowid, qr1, ev1)

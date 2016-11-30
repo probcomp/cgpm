@@ -293,6 +293,7 @@ class State(CGpm):
     def logpdf(self, rowid, query, evidence=None, accuracy=None):
         assert isinstance(query, dict)
         assert evidence is None or isinstance(evidence, dict)
+        evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network(accuracy=accuracy)
         return network.logpdf(rowid, query, evidence)
 
@@ -302,6 +303,7 @@ class State(CGpm):
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
         assert isinstance(query, list)
         assert evidence is None or isinstance(evidence, dict)
+        evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network(accuracy=accuracy)
         return network.simulate(rowid, query, evidence, N)
 
@@ -314,6 +316,48 @@ class State(CGpm):
 
     def build_cgpms(self):
         return [self.views[v] for v in self.views] + self.hooked_cgpms.values()
+
+    def _populate_evidence(self, rowid, query, evidence):
+        """Loads query evidence from the dataset."""
+        if evidence is None:
+            evidence = {}
+        self._validate_query_evidence(rowid, query, evidence)
+        # If the rowid is hypothetical, just return.
+        if self.hypothetical(rowid):
+            return evidence
+        # Retrieve all other values for this rowid not in query or evidence.
+        data = {
+            c: self.X[c][rowid]
+            for c in self.outputs[1:]
+            if not any([
+                (c in query),
+                (c in evidence),
+                (isnan(self.X[c][rowid]))
+            ])
+        }
+        return gu.merged(evidence, data)
+
+    def _validate_query_evidence(self, rowid, query, evidence):
+        # Is the query simulate or logpdf?
+        simulate = isinstance(query, list)
+        # Disallow duplicated query cols.
+        if simulate and len(set(query)) != len(query):
+            raise ValueError('Query columns must be unique.')
+        # Disallow overlap between query and evidence.
+        if len(set.intersection(set(query), set(evidence))) > 0:
+            raise ValueError('Query and evidence columns must be disjoint.')
+        # No further checks.
+        if self.hypothetical(rowid):
+            return
+        # Disallow evidence constraining/disagreeing with observed cells.
+        def good_evidence(rowid, e):
+            return (e not in self.outputs) or np.isnan(self.X[e][rowid]) \
+                or np.allclose(self.X[e][rowid], evidence[e])
+        if any(not good_evidence(rowid, e) for e in evidence):
+            raise ValueError('Cannot constrain observed cell in evidence.')
+        # Disallow query constraining observed cells (XXX logpdf, not simulate)
+        if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
+            raise ValueError('Cannot constrain observed cell in query.')
 
     # --------------------------------------------------------------------------
     # Bulk operations
