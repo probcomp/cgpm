@@ -463,12 +463,16 @@ class View(CGpm):
         # Cannot constrain the cluster of observed rowid; unincorporate first.
         if self.outputs[0] in query or self.outputs[0] in evidence:
             raise ValueError('Cannot constrain cluster of an observed rowid.')
-        # Disallow evidence constraining observed cells.
-        if any(not np.isnan(self.X[e][rowid]) for e in evidence):
+        # Disallow evidence constraining/disagreeing with observed cells.
+        def good_evidence(rowid, e):
+            return (e not in self.outputs) or np.isnan(self.X[e][rowid]) \
+                or np.allclose(self.X[e][rowid], evidence[e])
+        if any(not good_evidence(rowid, e) for e in evidence):
             raise ValueError('Cannot constrain observed cell in evidence.')
+        # The next check is enforced at the level of State not View.
         # Disallow query constraining observed cells (XXX logpdf, not simulate)
-        if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
-            raise ValueError('Cannot constrain observed cell in query.')
+        # if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
+        #     raise ValueError('Cannot constrain observed cell in query.')
 
 
     # --------------------------------------------------------------------------
