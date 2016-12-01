@@ -243,20 +243,25 @@ def _update_state(state, M_c, X_L, X_D):
 
 def _update_diagnostics(state, diagnostics):
     # Update logscore.
-    new_logscore = diagnostics.get('logscore', [])
+    cc_logscore = diagnostics.get('logscore', np.array([]))
+    new_logscore = map(float, np.ravel(cc_logscore).tolist())
     state.diagnostics['logscore'].extend(new_logscore)
 
     # Update column_crp_alpha.
-    new_column_crp_alpha = diagnostics.get('column_crp_alpha', [])
-    state.diagnostics['column_crp_alpha'].extend(new_column_crp_alpha)
+    cc_column_crp_alpha = diagnostics.get('column_crp_alpha', [])
+    new_column_crp_alpha = map(float, np.ravel(cc_column_crp_alpha).tolist())
+    state.diagnostics['column_crp_alpha'].extend(list(new_column_crp_alpha))
 
     # Update column_partition.
     def convert_column_partition(assignments):
-        return [(col, assignments[i]) for i, col in enumerate(state.outputs)]
+        return [
+            (col, int(assgn))
+            for col, assgn in zip(state.outputs, assignments)
+        ]
     new_column_partition = diagnostics.get('column_partition_assignments', [])
     if len(new_column_partition) > 0:
         assert len(new_column_partition) == len(state.outputs)
-        trajectories = np.transpose(new_column_partition)[0]
+        trajectories = np.transpose(new_column_partition)[0].tolist()
         state.diagnostics['column_partition'].extend(
             map(convert_column_partition, trajectories))
 
