@@ -143,7 +143,7 @@ class State(CGpm):
             self.diagnostics = defaultdict(list)
             self.diagnostics['iterations'] = dict()
         else:
-            self.diagnostics = diagnostics
+            self.diagnostics = defaultdict(list, diagnostics)
 
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
