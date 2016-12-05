@@ -52,6 +52,8 @@ class LinearRegression(CGpm):
         assert len(distargs['inputs']['stattypes']) == len(self.inputs)
         self.input_cctypes = distargs['inputs']['stattypes']
         self.input_ccargs = distargs['inputs']['statargs']
+        # Add a heuristic imputer?
+        self.impute = distargs.get('impute', None)
         # Determine number of covariates (with 1 bias term) and number of
         # categories for categorical covariates.
         p, counts = zip(*[
@@ -226,8 +228,9 @@ class LinearRegression(CGpm):
                 raise ValueError('Invalid query: %s.' % query)
         else:
             x = None
-        # XXX Should crash on missing inputs since it violates a CGPM contract!
-        # However we will impute anyway.
+        # Crash on missing inputs since it violates a CGPM contract!
+        # Skeleton code for imputation is here anyway and can be activated by
+        # passing in distargs['impute']
         # if set(evidence.keys()) != set(self.inputs):
         #     raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
         def impute(i, val):
@@ -236,13 +239,18 @@ class LinearRegression(CGpm):
             def impute_categorical(i, val):
                 k = self.inputs_discrete[i]
                 if (val is None) or (np.isnan(val)) or (not (0<=val<k)):
-                    return k-1
+                    if self.impute:
+                        return k-1
+                    else:
+                        raise ValueError()
                 else:
                     return val
             # Use mean value from the observations, or 0 if not exist.
             def impute_numerical(i, val):
                 if not (val is None or np.isnan(val)):
                     return val
+                elif not self.impute:
+                    raise ValueError()
                 if self.N == 0:
                     return 0
                 index = self.lookup_numerical_index[i]

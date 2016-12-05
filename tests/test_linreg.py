@@ -169,7 +169,8 @@ def test_missing_inputs():
         'inputs': {
             'stattypes': ['normal', 'categorical', 'categorical'],
             'statargs': [None, {'k': 4}, {'k': 1}]
-        }
+        },
+        'impute': True,
     }
     linreg = LinearRegression(
         outputs=outputs,
