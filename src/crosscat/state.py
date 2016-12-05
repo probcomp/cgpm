@@ -584,6 +584,8 @@ class State(CGpm):
         num_transitions = int(np.sqrt(len(self.outputs)))
         for _ in xrange(num_transitions):
             self.transition_dim_hypers()
+            self.transition_crp_alpha()
+            self.transition_view_alphas()
         # XXX self._increment_iterations should be called, but if N is None
         # we have no way to obtain from lovecat the number of realized
         # iterations.
