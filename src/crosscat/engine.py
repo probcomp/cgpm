@@ -66,7 +66,8 @@ class Engine(object):
     # --------------------------------------------------------------------------
     # External
 
-    def transition(self, N=None, S=None, kernels=None, rowids=None, cols=None,
+    def transition(
+            self, N=None, S=None, kernels=None, rowids=None, cols=None,
             views=None, progress=True, checkpoint=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         args = [('transition', self.states[i],
