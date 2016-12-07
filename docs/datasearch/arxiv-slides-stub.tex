@@ -140,7 +140,8 @@
 \maketitle
 
 \section{Pseudocode for CrossCat Logpdf}
--- Inline datatype specific math
+
+Shortened version of data-type specific logpdf's.
 
 \begin{algorithm}[h]
   \renewcommand{\thealgorithm}{}
@@ -150,27 +151,44 @@
       \texttt{GPM}: $\mG$,
       \texttt{query}: $Q := \set{(r_q, \bm{x_q}, z_q)}_{q=q_1}^{q_n}$,
       \texttt{evidence}: $E := \set{(r_e, \bm{x_e}, z_e)}_{e=e_1}^{e_m}$}
-      \small
+      \footnotesize
       \For{$B \in \pi$}
         \Comment{for each block $B$ in the variable partition}
-        \Let{$l$}{$\textsc{Compute-Cluster-Probabilities}(B)$}
+        \Let{$\mathbf{l}$}{$\textsc{Compute-Cluster-Probabilities}(B)$}
           \Comment{retrieve posterior probabilities of proposed clusters}
         \Let{$K$}{$|l|$} 
           \Comment{compute number of proposed clusters}
-        \For{$q \in (Q \cap B)$}
-          \Comment{for each query variable in block $B$}
-            \If{$\texttt{data-type}(q) = \text{binary}$}
-              \Comment{for binary variables}
-              \Let{$p_G(x_{(r,q)}| \phi_{(z_r=k,q)})$}{$
-                \textsc{Bernoulli}(x_{(r,q)};
-                \frac{\beta_1 + |\set{x_{(s, q)}: x_{(s, q)}=1, z_s = k}|}
-                {\beta_0 + \beta_1 + |\set{x_{(s, q)}: z_s = k}|}) $
-              } \Comment{\hl{Is this inline math too detailed?}}
-            \EndIf
+        \For{$k=1,\ldots,K$}
+          \Comment{for each proposed cluster}
+          \For{$q \in (Q \cap B)$}
+            \Comment{for each query variable in block $B$}
+              \If{$\texttt{data-type}(q) = \texttt{binary}$}
+                \Comment{for binary variables}
+                \Let{$p_G(x_{(r,q)}| \phi_{(z_r=k,q)})$}{$
+                  \textsc{BetaBernoulli}(x_{(r,q)};\phi_{(k, q)})$
+                } \Comment{compute Beta-Bernoulli density}
+              \EndIf
+              \If{$\texttt{data-type}(q) = \texttt{nominal}$}
+                \Comment{for nominal variables}
+                \Let{$p_G(x_{(r,q)}| \phi_{(k,q)})$}{$
+                  \textsc{DirichletMultinomial}(x_{(r,q)};\phi_{(k, q)})$
+                } \Comment{compute Dirichlet-Multinomial}
+              \EndIf
+              \If{$\texttt{data-type}(q) = \texttt{numerical}$}
+                \Comment{for numerical variables}
+                \Let{$p_G(x_{(r,q)}| \phi_{(k,q)})$}{$
+                  \textsc{NIGNormal}(x_{(r,q)};\phi_{(k, q)})$
+                } \Comment{compute Normal-Inverse-Gamma-Normal density}
+              \EndIf
+          \EndFor
         \EndFor
+        \Let{$t_B$}{$\displaystyle \sum_{k=1}^K \left(
+              \prod_{q \in (Q \cap B)} p_G(x_{(r,q)}| \phi_{(k,q)}) \right) l_k $}
+          \Comment{compute density for query variable in $B$}
       \EndFor
+      \State \Return{$\displaystyle \sum_{B \in \pi}\log(t_B)$}
+        \Comment{return overall log density of query}
     \EndFunction
-
   \end{algorithmic}
 \end{algorithm}
 
