@@ -125,8 +125,6 @@
 \newcommand{\red}[1]{\textcolor{red}{#1}}
 \newcommand{\blue}[1]{\textcolor{blue}{#1}}
 
-\input{subalg}
-
 \frenchspacing
 \setlength{\floatsep}{5pt plus 1.0pt minus 2.0pt}
 \setlength{\textfloatsep}{10pt plus 1.0pt minus 2.0pt}
@@ -139,360 +137,54 @@
 \begin{document}
 \title{Data Search for the DP Mixture}
 \author{Leo Casarsa}
-\maketitle 
-\section{GPM}
+\maketitle
 
-A generative population model (GPM) induces a random table with a finite number of columns $c=0,\ldots,T$ and an infinite number of rows $r=0, 1, \ldots$, where each cell contains a random variable $X_{(r,c)}$. 
-
-Each GPM contains a set of row-specific latent variables $\Z = \set{(r, z_{r})}_{r=0}^\infty$; a set of population-level latent variables $\bm{\Theta}$, including hyperparameters and mixture component parameters; and a finite set of observations, or a dataset, $\mD = \set{(r, c, x_{(r,c)})}_{\substack{c=0, \ldots, N \\ r=0, \ldots, T}}$.
-
-\begin{equation*}
-  (\mD, \Z, \bm{\Theta}) \subset \mG
-\end{equation*}
- 
-\section{Incorporate and Unincorporate}
-
-\begin{equation*}
-  \mG' = \textsc{Incorporate}(\mG, \texttt{rowid}=r, \texttt{observations}=\set{(r, c_j, x_{(r, c_j)}, z_r)}, \texttt{component}=z_r)
-\end{equation*}
-
-For the DP Mixture GPM, \textsc{incorporate} assigns the observations
-$\bm{x_r} := \set{(r, c_j, x_{(r, c_j)})}$ to empty row $r$ in the dataset $\mD$; 
-assigns a mixture component $z_r$ to $r$; and updates the corresponding
-mixture component parameters $\theta_{z_r}' \subset \bm{\Theta}'$.
-
-\begin{align*}
-  \mD' &= \mD \cup \bm{x_r}\\
-  \Z' &= \Z \cup z_r \\ 
-  \bm{\Theta}' &= \set{\bm{\Theta} \setminus \theta_{z_r}} \cup \theta_{z_r}'
-\end{align*}
+\section{Pseudocode for CrossCat Logpdf}
+-- Inline datatype specific math
 
 \begin{algorithm}[h]
   \renewcommand{\thealgorithm}{}
-  \caption{\textsc{Incorporate} in the DP Mixture}
+  \caption{\texttt{logpdf} for CrossCat}
   \begin{algorithmic}[1]
-    \Require{
-      \texttt{GPM}: $\mG$,
-      \texttt{rowid}: $r$,
-      \texttt{observations}: $(\bm{x_r}, z_r)$}
-    \small
-    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with $\mG$}
-    \Let{$\mD_{\mG'}$}{$\mD_\mG \cup \bm{x_r}$}
-      \Comment{assign the row observations into dataset $\mD$}
-    \If{\textsc{not} $z_r$} \Comment{if user did not specify mixture component} 
-      \Let{$z_r$}{\textsc{Simulate}$(\mG, r, z_r, \bm{x_r})$}
-        \Comment{sample component assignment from $\mG$ conditioned on observations}
-    \EndIf
-    \Let{$\Z_{\mG'}$}{$\Z_\mG \cup z_r$}
-      \Comment{include component assignment into the row-specific latents}
-    \Let{$\theta'_{z_r}$}{$\textsc{UpdateComponentParameters}(z_r)$}
-      \Comment{compute parameters of component $z_r$ after observing $\bm{x_r}$}
-    \Let{$\bm{\Theta}'$}{$\set{\bm{\Theta} \setminus \theta_{z_r}} \cup \theta_{z_r}'$}
-      \Comment{update parameter $\theta_{z_r}'$ in the population-level latents}
-    \State \Return{$\mG'$} \Comment{return GPM with incorporated observations}
-  \end{algorithmic}
-\end{algorithm}
-
-\begin{equation*}
-  \mG' = \textsc{Unincorporate}(\mG, \texttt{rowid}=r)
-\end{equation*}
-
-\textsc{Unincorporate} removes the observations of non-empty row $r$ from the dataset $\mD$; removes the component assignment $z_r$ from the row latents $\Z$; and updates the corresponding mixture component parameters $\bm{\Theta}$.
-
-\begin{align*}
-  \mD' &= \mD \setminus \bm{x_r}\\
-  \Z' &= \Z \setminus z_r \\
-  \bm{\Theta}' &= \set{\bm{\Theta} \setminus \theta_{z_r}} \cup \theta_{z_r}'
-\end{align*}
-
-\begin{algorithm}[h]
-  \renewcommand{\thealgorithm}{}
-  \caption{\textsc{Unincorporate} in the DP Mixture}
-  \begin{algorithmic}[1]
-    \Require{
-      \textsc{GPM}: $\mG$,
-      \textsc{rowid}: $r$}
-    \small
-    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with $\mG$}
-    \Let{$\mD_{\mG'}$}{$\mD_\mG \setminus \bm{x_r}$}
-      \Comment{remove observations $\bm{x_r}$ from the dataset}
-    \Let{$\Z_{\mG'}$}{$\Z_\mG \setminus z_r$}
-      \Comment{remove component assignment $z_r$ from the row-specific latents}
-         \Let{$\theta'_{z_r}$}{$\textsc{UpdateComponentParameter}(z_r)$}
-      \Comment{compute parameter of component $z_r$ after removing observations}
-    \Let{$\bm{\Theta}'$}{$\set{\bm{\Theta} \setminus \theta_{z_r}} \cup \theta_{z_r}'$}
-      \Comment{update parameter $\theta_{z_r}'$ in the population-level latents}
-    \State \Return{$\mG'$}
-  \end{algorithmic}
-\end{algorithm}
-
-
-
-\section{\textsc{Logpdf-Multirow}}
-
-\begin{equation*}
-  \log p = \textsc{LogPdf-Multirow}(\mG, \texttt{query}=\set{(r_q, c_q, x_{(r_q,c_q)})}, \texttt{evidence}=\set{(r_e, c_e, x_{(r_e,c_e)})})
-\end{equation*}
-
-Evaluate the log probability density of a query set of observations
-$Q:=\set{(r_q, c_q, x_{(r_q,c_q)})}_{r_q, c_q}$ conditioned on an evidence set of
-observations $E:= \set{(r_e, c_e, x_{(r_e,c_e)})}_{r_e, c_e}$, possibly
-spanning multiple rows: \footnote{how to define the limits of the
-query and evidence sets?}
-
-\begin{equation}
-  \label{eq:logp}
-  \log p = \log p(\set{X_{(r_q, c_q)}=x_{(r_q,c_q)}}|\set{X_{(r_e, c_e)}=x_{(r_e,c_e)}}, \mD, \bm{\Theta}, \bm{Z}) = \log p_\mG(Q|E)
-\end{equation}
-
-\subsection*{Derivation}
-
-If either $Q$ or $E$ contain observations for non-empty rows in $\mG$, we must \textsc{Unincorporate} these rows before evaluating the logpdf. We denote by $\mG'$ the GPM in which the necessary observations from query and evidence have been unincorporated.  
-
-We compute \eqref{eq:logp} by expressing the conditional as the
-ratio between the joint and the marginal,
-
-\begin{equation}
-  \label{eq:pdfmulti}
-  p_{\mG'}(Q|E) 
-    = \frac{p_{\mG'}(Q, E)}{p_{\mG'}(E)}.
-\end{equation}
-
-To evaluate the marginal $p_{\mG'}(E)$, we select the observations $\bm{x_{e_1}}$ of a single row $r_{e_1}$ from $E$, we marginalize out its component assignments and we factorize out$r_{e_1}$ using the product rule,
-
-\begin{equation}
-  \label{eq:jointpdf}
-  p_{\mG'}(E) = \sum_{z_{e_1}} p_{\mG'}(\bm{x_{e_1}}, z_{e_1}, E \setminus{\bm{x_{e_1}}})
-    = \sum_{z_{e_1}} p_{\mG'}(\bm{x_{e_1}}, z_{e_1}) p_{\mG'}(E \setminus \bm{x_{e_1}} | \bm{x_{e_1}}, z_{e_1})
-\end{equation}
-
-The density of the observations and component assignment in a single row $r_{e_1}$, $p_{\mG'}(\bm{x_{e_1}}, z_{e_1})$ can can be computed through the \textsc{LogPdf} GPM interface.
-
-\begin{equation*}
-  p_{\mG'}(\bm{x_{e_1}}, z_{e_1}) = \textsc{LogPdf}(
-    \texttt{rowid}=r_{e_1}, \texttt{query}=(\bm{x_{e_1}}, z_{e_1}))
-\end{equation*}
-
- We compute the conditional density term of \eqref{eq:jointpdf} by first \textsc{Incorporate}ing the observations $(\bm{x}_{e_1}, z_{e_1})$, and recursively factoring out each row of evidence.
-
-\begin{align*}
-  &\mG'' = \textsc{Incorporate}(\mG, \texttt{rowid}=r_{e_1}, \texttt{observations}=(\bm{x}_{e_1},z_{e_1}))\\
-   &p_{\mG'}(E \setminus \bm{x_{e_1}} | \bm{x_{e_1}}, z_{e_1}) =: p_{\mG''}(E') \\
-  &p_{\mG''}(E') = \sum_{z_{e_2}} p_{\mG''}(\bm{x_{e_2}}, z_{e_2}) p_{\mG''}(E' \setminus \bm{x_{e_2}} | \bm{x_{e_2}}, z_{e_2})
-\end{align*}
-
-The same procedure is used to evaluate the joint $p_{\mG'}(Q,E)$. 
-
-\begin{algorithm}[h]
-  \renewcommand{\thealgorithm}{}
-  \caption{\textsc{LogPdf-Multirow} - see equation \eqref{eq:pdfmulti}}
-  \begin{algorithmic}[1]
-    \Require{
+    \Function{LogPdf}{
       \texttt{GPM}: $\mG$,
       \texttt{query}: $Q := \set{(r_q, \bm{x_q}, z_q)}_{q=q_1}^{q_n}$,
       \texttt{evidence}: $E := \set{(r_e, \bm{x_e}, z_e)}_{e=e_1}^{e_m}$}
-    \small
-    \Let{$T$}{$\set{(r, x_r, z_r): r \in \mD_\mG \cap (Q \cup E)}$}
-      \Comment {store values and category of query and evidence rows already in dataset}
-    \For {$r \in T$} \Comment{for query and evidence rows already in the dataset}
-      \Let{$\mG'$}{\textsc{Unincorporate}$(\mG, r)$}
-        \Comment{unincorporate rows from the GPM before evaluating the logpdf}
-    \EndFor
-
-    \Let{$p_j$}{\textsc{Joint-LogPdf-Multirow}$(\mG', Q\cup E)$} 
-      \Comment{compute the joint logpdf of query and evidence}
-
-    \Let{$p_m$}{\textsc{Joint-LogPdf-Multirow}$(\mG',E)$}
-      \Comment{compute the marginal logpdf of evidence}
-
-    \State \Return{$p_j - p_m$}
-      \Comment{return $\log p_\mG(Q|E,C) = \log p_\mG(Q,E|C) - \log p_\mG(E|C_e)$}
-
-  \end{algorithmic}
-\end{algorithm}
-
-
-\begin{algorithm}[h]
-  \renewcommand{\thealgorithm}{}
-  \caption{\textsc{Joint-LogPdf-Multirow} - see equation \eqref{eq:jointpdf}}
-  \begin{algorithmic}[1]
-    \small
-    \Procedure{Joint-LogPdf-Multirow}{
-      \texttt{GPM}: $\mG$,
-      \texttt{query}: $Q := \set{(r_q, \bm{x_q}, z_q)}$}
-    
-    \Let{$i$}{$0$} \Comment{initialize counter}
-    \Let{$p_Q$}{$\textsc{Joint-LogPdf-Helper}(\mG, i, Q)$}
-      \Comment{compute multirow joint logpdf, recursively factoring out each row}  
-
-      \State \Return{$p_Q$} \Comment{return $\log p_\mG(Q)$}
-    \EndProcedure
-
-    \vspace{5 pt}
-    \noindent\rule{\linewidth}{0.4pt}
-    \setcounter{ALG@line}{0}
-    \Procedure{Joint-LogPdf-Helper}{
-      \texttt{GPM}: $\mG$,
-      \texttt{counter}: $i$,
-      \texttt{query}: $Q = \set{(r_q, \bm{x_q}, z_q)}_{q=1}^{q_n}$}
-
-    \Let{$p_Q$}{$\log(0)$} 
-      \Comment{initialize output log probability as $\log p_\mG(Q) = \log 0$}
-
-    \If{$i=|Q|$} \Comment{base case, reached after factoring out all rows in $Q$}
-      \Let{$p_Q$}{$0$} \Comment{base case output, $\log p_\mG(Q)=0$ when $Q=\emptyset$}
-
-    \vspace{5 pt}
-    \Else \Comment{recursive case, factorize density using chain rule}
-      \If{$z_{q_i} \in Q$} 
-        \Comment{if user specified a component for row $r_{q_i}$}
-        \Let{$K$}{$\set{z_{q_i}}$}
-          \Comment{only possible component is the assigned component}
-
-      \Else \Comment{if user did not specify a component for row $r_{q_i}$}
-        \Let{$n_K$}{$|\set{\Z_\mG}|+1$}
-          \Comment{get number of possible components}
-        \Let{$K$}{$\set{1,\ldots, n_k}$}
-          \Comment{store possible component assignments for row $r_{q_i}$}
-      \EndIf
-
-      \For {$k \in K$} \Comment{for each possible component}
-        \Let{$z_{q_i}$}{$k$} \Comment{component $k$ will be assigned to row}
-        \Let{$p_i$}{$\textsc{LogPdf}
-            (\mG, r_{q_i}, (x_{q_i}, z_{q_i}), \emptyset)$}
-            \Comment{evaluate joint density for row $r_{q_i}$}
-        \Let{$\mG'$}{\textsc{Incorporate}($\mG, r_{q_i}, (x_{q_i}, z_{q_i})$)}
-            \Comment{incorporate row and component assignment}
-      \Let{$p_i$}{$p_i + \textsc{Joint-LogPdf-Helper}(\mG', i+1, Q)$}
-        \Comment{factor out row $r_{q_i}$ from the joint density of query}
-      \Let{$p_Q$}{$\textsc{LogSumExp}(p_Q, p_i)$} 
-        \Comment{marginalize out the category assignments}
+      \small
+      \For{$B \in \pi$}
+        \Comment{for each block $B$ in the variable partition}
+        \Let{$l$}{$\textsc{Compute-Cluster-Probabilities}(B)$}
+          \Comment{retrieve posterior probabilities of proposed clusters}
+        \Let{$K$}{$|l|$} 
+          \Comment{compute number of proposed clusters}
+        \For{$q \in (Q \cap B)$}
+          \Comment{for each query variable in block $B$}
+            \If{$\texttt{data-type}(q) = \text{binary}$}
+              \Comment{for binary variables}
+              \Let{$p_G(x_{(r,q)}| \phi_{(z_r=k,q)})$}{$
+                \textsc{Bernoulli}(x_{(r,q)};
+                \frac{\beta_1 + |\set{x_{(s, q)}: x_{(s, q)}=1, z_s = k}|}
+                {\beta_0 + \beta_1 + |\set{x_{(s, q)}: z_s = k}|}) $
+              } \Comment{\hl{Is this inline math too detailed?}}
+            \EndIf
+        \EndFor
       \EndFor
-    \EndIf
-    \State \Return{$p_Q$}
-    \EndProcedure
+    \EndFunction
+
   \end{algorithmic}
 \end{algorithm}
 
-\newpage
-\section{Relevance Search}
 
-\subsection{Relevance Score}
-We formulate the relevance score $\mathcal{S}$ of a query row
-$Q:=(r_q, \bm{x}_q)$ with respect to an evidence set of rows
-$E:=\set{r_{e}, \bm{x}_e}_{e=1}^{e_m}$ as the log-posterior odds of
-the two following hypotheses:
+\section{PseudoCode for CrossCat Incorporate} 
+-- Inline math for incorporate
+\section{PseudoCode for CrossCat Logpdf-Set}
+-- Make context as an argument
+\section{PseudoCode for Joint Logpdf-Set}
+-- Remove helper
+\section{PseudoCode for Relevance Search}
+-- Add missing Unincorporate 
 
-\begin{enumerate}
-\item $H_1 = $ ``all rows in query and evidence belong to the same, unknown, component.''
-\item $H_2 = $ ``all rows in evidence belong to the same, unknown, component, which is different from the component of the query row.''
-\end{enumerate}
 
-\begin{align*}
-  \mathcal{S}(Q;E) &:= \frac{P(H_1|Q,E)}{P(H_2|Q,E)} = \frac{P(H_1,Q,E)}{P(H_2,Q,E)} \\
-      &= \frac{\sum_k P(z_Q=z_E=k,Q,E)}{\sum_{k_q \neq k_e} P(z_Q=k_q, z_E=k_e,Q,E)}
-\end{align*}
-
-where $z_q, z_e$ are the component assignments for the rows in query and evidence, respectively. The relevance score is computed straightforwardly through the \textsc{LogPdf-Multirow} interface: 
-
-\begin{algorithm}[h]
-  \renewcommand{\thealgorithm}{}
-  \caption{Relevance Score}
-  \begin{algorithmic}[1]
-  \Require{
-    \texttt{GPM}: $\mG$
-    \texttt{query}: $Q := (r_q, \bm{x_q})$,
-    \texttt{evidence}: $E := \set{(r_e, \bm{x_e})}_{e=e_1}^{e_m}$}
-  \small
-  \Let{$p_{H_1}, p_{H_2}$}{$0$} \Comment{initialize the hypotheses log-probabilities}
-  \Let{$n_K$}{$|\set{\Z_\mG}|+1$} 
-    \Comment{get number of possible components}
-  \For{$k_q \in \set{1,\ldots,n_K}$} 
-    \Comment{for each possible component assignment for the query row}
-    \Let{$\z_q$}{$(r_q,k_q)$} 
-      \Comment{name current component assignments for the query row}
-
-    \If{$k_q = n_K$} \Comment{if query has been assigned an empty component}
-      \Let{$n_k'$}{$n_k+1$} \Comment{evidence may be assigned another empty component}
-    \Else \Comment{otherwise}
-      \Let{$n_k'$}{$n_k$} \Comment{no need for another empty component}
-    \EndIf
-
-    \For{$k_e \in \set{1,\ldots,n_k'} $} 
-      \Comment{for each possible component assignment for the evidence set}
-      \Let{$z_e$}{$\set{(r_e,k_e)}$} 
-        \Comment{name current component assignment for the evidence set}
-
-        \Let{$p_J$}{$\textsc{LogPdf-Multirow} (
-          \mG, (Q, z_q, E, z_e))$}
-          \Comment{evaluate density of query and evidence with their respective components}
-    
-      \If{$k_t = k_q$} 
-        \Comment{$H_1$: query and target are in the same component}
-        \Let{$p_{H_1}$}{$\textsc{LogSumExp}(p_{H_1}, p_J)$ }
-          \Comment {marginalize over previous component assignments}
-
-      \vspace{5 pt}
-      \Else 
-        \Comment{$H_2$: query and target are in different categories}
-        \Let{$p_{H_2}$}{$\textsc{LogSumExp}(p_{H_2}, p_J)$ }
-          \Comment {marginalize over previous component assignments}
-      \EndIf
-    \EndFor
-  \EndFor 
-  \State \Return {$p_{H_1} - p_{H_2}$} \Comment{return the log of the relevance score}
-  \end{algorithmic}
-\end{algorithm}
-
-The relevance search algorithm ranks each row in the dataset $\mD$ according to their relevance score with respect to an evidence set $E$.
-
-\begin{algorithm}[h]
-  \renewcommand{\thealgorithm}{}
-  \caption{Relevance Search}
-  \begin{algorithmic}[1]
-  \Require{
-    \texttt{GPM}: $\mG$,
-    \texttt{evidence}: $E := \set{(r_e, \bm{x_e})}_{e=e_1}^{e_m}$}
-  \small
-  \For{$r \in \mD$} \Comment{for each row in the dataset}
-    \Let{$\mathcal{S}[r]$}{$\textsc{RelevanceScore}(\mG, r, E)$}
-      \Comment{compute and store the score for each row in the dataset}
-  \EndFor
-  \State \Return{$\textsc{Sorted}(\mathcal{S})$}
-    \Comment{return the sorted score for each row}
-  \end{algorithmic}
-\end{algorithm}
-
-\subsection{Relevance score with an empty GPM recovers Bayes Sets}
-
-The Bayes Sets score $\mathcal{S}_B$ of a query row
-$Q:=(r_q, \bm{x}_q)$ with respect to an evidence set of rows
-$E:=\set{r_{e}, \bm{x}_e}_{e=1}^{e_m}$ is formulated as:
-
-\begin{align*}
-  \mathcal{S}_B(Q;E) &:= \frac{P_0(Q,E)}{P_0(Q)P_0(E)}
-\end{align*}
-
-where $P_0$ is the prior predictive distribution. 
-
-We will show that the relevance score is equivalent up to constant
-factor to the Bayes sets score if the GPM has no incorporated
-observations.
-
-If the GPM has no incorporated observations, there are only
-two possible component assignments for the query and evidence
-sets,
-
-\begin{align*}
-  \mathcal{S}(Q;E) &= \frac{\sum_k P_\mG(z_Q=z_E=k,Q,E)}
-                     {\sum_{k_q \neq k_e} P_\mG(z_Q=k_q, z_E=k_e,Q,E)}\\
-                   &= \frac{P_\mG(z_Q=z_E=0,Q,E)} {P_\mG(z_Q=0, z_E=1,Q,E)}\\
-                   &=\frac{P_\mG(Q,E|z_Q=z_E=0)}{P_\mG(Q,E |z_Q=0, z_E=1)}
-                     \frac{P_\mG(z_Q=z_E=0)}{P_\mG(z_Q=0, z_E=1)} \\
-                   &\propto \frac{P_{z_0}(Q,E)}{P_{z_0}(Q)P_{z_0}(E)}
-\end{align*}
-
-where $C$ is constant with respect to the query row $Q$ and $P_{z_0}$ denotes the  predictive probability in a component with no incorporated rows. If 
 \end{document}
 
 
