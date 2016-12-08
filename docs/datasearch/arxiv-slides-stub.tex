@@ -192,15 +192,232 @@ Shortened version of data-type specific logpdf's.
   \end{algorithmic}
 \end{algorithm}
 
-
+\pagebreak
 \section{PseudoCode for CrossCat Incorporate} 
 -- Inline math for incorporate
+
+\begin{algorithm}[h]
+  \renewcommand{\thealgorithm}{}
+  \caption{\texttt{incorporate} for CrossCat}
+  \begin{algorithmic}[1]
+    \Function{Incorporate}{
+      \texttt{GPM}: $\mG$,
+      \texttt{rowid}: $r$,
+      \texttt{observation}: $(\x_r, \z_r)$}
+    \footnotesize
+    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with $\mG$}
+    \Let{$\mD_{\mG'}$}{$\mD_\mG \cup \bm{x_r}$}
+      \Comment{assign the row observations into dataset $\mD$}
+    \For{$B \in \pi$}
+      \Comment{for each block in the variable partition}
+      \If{$z_{(r,B)} = \emptyset$} 
+      \Comment{if user did not assign a mixture component
+        for the observation} 
+        \Let{$z_{(r,B)}$}{\textsc{Simulate}$(\mG, r, z_{(r,B)}, \bm{x_r})$}
+          \Comment{sample component assignment conditioned on observations}
+      \EndIf
+      \Let{$\Z_{\mG'}$}{$\Z_\mG \cup z_{(r, B)}$}
+        \Comment{include component assignment into row-specific latents}
+      \For{$v \in B$}
+        \Comment{for each variable in block $B$}
+        \Let{$\phi'_{(z_{(r,b)}, v)}$}{$\textsc{UpdateComponentParameters}(z_{(r,B)}, v)$}
+          \Comment{compute parameters for $v$ 
+            after observing $\bm{x_r}$}
+        \Let{$\bm{\Theta}'$}{$\set{\bm{\Theta} \setminus 
+            \phi_{(z_{(r,b)}, v)}} \cup \phi'_{(z_{(r,b)}, v)}$}
+          \Comment{update the population-level latents}
+       \EndFor
+    \EndFor
+    \State \Return{$\mG'$} \Comment{return GPM with incorporated observations}
+    \EndFunction
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[h]
+  \renewcommand{\thealgorithm}{}
+  \caption{\texttt{unincorporate} for CrossCat}
+  \begin{algorithmic}[1]
+    \Function{Unincorporate}{
+      \textsc{GPM}: $\mG$,
+      \textsc{rowid}: $r$}
+    \footnotesize
+    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with $\mG$}
+    \Let{$\mD_{\mG'}$}{$\mD_\mG \setminus \bm{x_r}$}
+      \Comment{remove observation $\bm{x_r}$ from the dataset}
+      \For{$B \in \pi$}
+        \Comment{for each block in the variable partition}
+            \Let{$\Z_{\mG'}$}{$\Z_\mG \setminus z_{(r, B)}$}
+          \Comment{remove component assignment from row-specific latents}
+        \For{$v \in B$}
+          \Comment{for each variable in block $B$}
+          \Let{$\phi'_{(z_{(r,b)}, v)}$}{$\textsc{UpdateComponentParameters}(z_{(r,B)}, v)$}
+            \Comment{compute parameters for $v$ 
+              after removing $\bm{x_r}$}
+          \Let{$\bm{\Theta}'$}{$\set{\bm{\Theta} \setminus 
+              \phi_{(z_{(r,b)}, v)}} \cup \phi'_{(z_{(r,b)}, v)}$}
+            \Comment{update the population-level latents}
+        \EndFor
+      \EndFor
+    \State \Return{$\mG'$} \Comment{return GPM with unincorporated row}
+    \EndFunction
+  \end{algorithmic}
+\end{algorithm}
+
 \section{PseudoCode for CrossCat Logpdf-Set}
 -- Make context as an argument
+
+\begin{algorithm}[h]
+  \renewcommand{\thealgorithm}{}
+  \caption{\texttt{logpdf-set} for CrossCat}
+  \begin{algorithmic}[1]
+    \Function{LogPdf-Set}{
+      \texttt{GPM}: $\mG$,
+      \texttt{query}: $Q := \set{(r_q, \bm{x_q}, z_q)}_{q=q_1}^{q_n}$,
+      \texttt{evidence}: $E := \set{(r_e, \bm{x_e}, z_e)}_{e=e_1}^{e_m}$,
+      \texttt{context-variable}: $v$}
+    \footnotesize
+    \Let{$T$}{$\set{(r, \x_r, \z_r): r \in \mD_\mG \cap (Q \cup E)}$}
+      \Comment {store values and category of query and evidence rows already in dataset}
+    \For {$r \in T$} \Comment{for query and evidence rows already in the dataset}
+      \Let{$\mG'$}{\textsc{Unincorporate}$(\mG, r)$}
+        \Comment{unincorporate rows from the GPM before evaluating the logpdf}
+    \EndFor
+
+    \Let{$p_j$}{\textsc{Joint-LogPdf-Set}$(\mG', Q \cup E, v, 0)$} 
+      \Comment{compute the joint logpdf of query and evidence in the context of $v$}
+
+    \Let{$p_m$}{\textsc{Joint-LogPdf-Set}$(\mG', E, v, 0)$}
+      \Comment{compute the marginal logpdf of evidence in the context of $v$}
+
+    \State \Return{$p_j - p_m$}
+      \Comment{return $\log p_\mG(Q|E,C) = \log p_\mG(Q,E|C) - \log p_\mG(E|C_e)$}
+    \EndFunction
+
+    \vspace{5 pt}
+    \noindent\rule{\linewidth}{0.4pt}
+    \setcounter{ALG@line}{0}
+    {\normalsize \Function{Joint-LogPdf-Set}{
+      \texttt{GPM}: $\mG$,
+      \texttt{query}: $Q = \set{(r_q, \bm{x_q}, z_q)}_{q=1}^{q_n}$,
+      \texttt{context-variable}: $v$,
+      \texttt{counter}: $i$}}
+
+    \Let{$Q_v$}{$\set{(r, x, z): (r, x, z) \in Q \cap B_v}$}    
+      \Comment{retrieve the query variables restricted to the block to which $v$ belongs}
+    \Let{$p_{Q_v}$}{$-\infty$} 
+      \Comment{initialize output log probability as $\log p_\mG(Q) = \log 0$}
+
+    \If{$i=|Q|$} \Comment{base case, reached after factoring out all rows in $Q$}
+      \Let{$p_{Q_v}$}{$0$} \Comment{base case output, $\log p_\mG(Q)=0$ when $Q=\emptyset$}
+
+    \vspace{5 pt}
+    \Else \Comment{recursive case, factorize density using chain rule}
+      \If{$z_{q_i}^v \in Q_v$} 
+        \Comment{if user specified a component for row $r_{q_i}$}
+        \Let{$K$}{$\set{z_{q_i}^v}$}
+          \Comment{only possible component is the assigned component}
+
+      \Else \Comment{if user did not specify a component for row $r_{q_i}$}
+        \Let{$n_K$}{$|\set{\Z_\mG}|+1$}
+          \Comment{get number of possible components}
+        \Let{$K$}{$\set{1,\ldots, n_k}$}
+          \Comment{store possible component assignments for row $r_{q_i}$}
+      \EndIf
+
+      \For {$k \in K$} \Comment{for each possible component}
+        \Let{$z_{q_i}^v$}{$k$} \Comment{component $k$ will be assigned to row}
+        \Let{$p_i^v$}{$\textsc{LogPdf}
+            (\mG, r_{q_i}, (x_{q_i}^v, z_{q_i}^v), \emptyset)$}
+            \Comment{evaluate joint density for row $r_{q_i}$}
+        \Let{$\mG'$}{\textsc{Incorporate}($\mG, r_{q_i}, (x_{q_i}^v, z_{q_i}^v)$)}
+            \Comment{incorporate row and component assignment}
+      \Let{$p_i$}{$p_i + \textsc{Joint-LogPdf-Set}(\mG', Q, v, i+1)$}
+        \Comment{factor out row $r_{q_i}$ from the joint density of query}
+      \Let{$p_{Q_v}$}{$\textsc{Log-Sum-Exp}(p_{Q_v}, p_i)$} 
+        \Comment{marginalize out the category assignments}
+      \EndFor
+    \EndIf
+    \State \Return{$p_{Q_v}$}
+    \EndFunction
+  \end{algorithmic}
+\end{algorithm}
+
+
+
 \section{PseudoCode for Joint Logpdf-Set}
 -- Remove helper
+
 \section{PseudoCode for Relevance Search}
 -- Add missing Unincorporate 
+
+\begin{algorithm}[h]
+  \renewcommand{\thealgorithm}{}
+  \caption{Relevance Search for CrossCat}
+  \begin{algorithmic}[1]
+  \footnotesize
+  \Function{Relevance-Score}{
+    \texttt{GPM}: $\mG$,
+    \texttt{query}: $Q := (r_q, \bm{x_q})$,
+    \texttt{evidence}: $E := \set{(r_e, \bm{x_e})}_{e=e_1}^{e_m}$,
+    \texttt{context-variable}: $v$}
+  \Let{$p_{H_1}, p_{H_2}$}{$0$} \Comment{initialize the hypotheses log-probabilities}
+  \For{$r \in Q \cup E$} \Comment{unincorporate each row before search}
+    \Let{$\mG'$}{$\textsc{Unincorporate}(\mG, r)$}
+  \EndFor
+  \Let{$n_K$}{$|\set{\Z_\mG^v}|+1$} 
+    \Comment{compute number of proposed components in the block of  $v$}
+  \For{$k_q \in \set{1,\ldots,n_K}$} 
+    \Comment{for each proposed component}
+    \Let{$\z_q$}{$(r_q,k_q)$} 
+      \Comment{name current component assignments for the query row}
+
+    \If{$k_q = n_K$} \Comment{if query has been assigned an empty component}
+      \Let{$n_k'$}{$n_k+1$} \Comment{evidence may be assigned another empty component}
+    \Else \Comment{otherwise}
+      \Let{$n_k'$}{$n_k$} \Comment{no need for another empty component}
+    \EndIf
+
+    \For{$k_e \in \set{1,\ldots,n_k'} $} 
+      \Comment{for each possible component assignment for the evidence set}
+      \Let{$z_e$}{$\set{(r_e,k_e)}$} 
+        \Comment{name current component assignment for the evidence set}
+
+        \Let{$p_J$}{$\textsc{LogPdf-Set} (
+          \mG, (Q, z_q, E, z_e), v)$}
+          \Comment{evaluate density of query and evidence with their respective components}
+    
+      \If{$k_t = k_q$} 
+        \Comment{$H_1$: query and target are in the same component}
+        \Let{$p_{H_1}$}{$\textsc{Log-Sum-Exp}(p_{H_1}, p_J)$ }
+          \Comment {marginalize over previous component assignments}
+
+      \vspace{5 pt}
+      \Else 
+        \Comment{$H_2$: query and target are in different categories}
+        \Let{$p_{H_2}$}{$\textsc{Log-Sum-Exp}(p_{H_2}, p_J)$ }
+          \Comment {marginalize over previous component assignments}
+      \EndIf
+    \EndFor
+  \EndFor 
+  \State \Return {$p_{H_1} - p_{H_2}$} \Comment{return the log of the relevance score}
+  \EndFunction
+
+  \vspace{5 pt}
+  \noindent\rule{\linewidth}{0.4pt}
+  \setcounter{ALG@line}{0}
+  \Function{Relevance-Search}{
+    \texttt{GPM}: $\mG$,
+    \texttt{evidence}: $E := \set{(r_e, \bm{x_e})}_{e=e_1}^{e_m}$,
+    \texttt{context-variable}: $v$}
+  \For{$r \in \mD$} \Comment{for each row in the dataset}
+    \Let{$\mathcal{S}[r]$}{$\textsc{Relevance-Score}(\mG, r, E, v)$}
+      \Comment{compute and store the score for each row in the dataset}
+  \EndFor
+  \State \Return{$\textsc{Sorted}(\mathcal{S})$}
+    \Comment{return the sorted score for each row} 
+  \EndFunction
+  \end{algorithmic}
+\end{algorithm}
 
 
 \end{document}
