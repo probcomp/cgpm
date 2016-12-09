@@ -28,6 +28,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{bm}
+\usepackage{bbm}
 \usepackage{chngcntr}
 \usepackage{mdframed}
 \usepackage{graphicx}
@@ -171,8 +172,8 @@ Shortened version of data-type specific logpdf's.
               \If{$\texttt{data-type}(q) = \texttt{nominal}$}
                 \Comment{for nominal variables}
                 \Let{$p_G(x_{(r,q)}| \phi_{(k,q)})$}{$
-                  \textsc{DirichletMultinomial}(x_{(r,q)};\phi_{(k, q)})$
-                } \Comment{compute Dirichlet-Multinomial}
+                  \textsc{DirichletCategorical}(x_{(r,q)};\phi_{(k, q)})$
+                } \Comment{compute Dirichlet-Categorical}
               \EndIf
               \If{$\texttt{data-type}(q) = \texttt{numerical}$}
                 \Comment{for numerical variables}
@@ -419,9 +420,75 @@ Shortened version of data-type specific logpdf's.
   \end{algorithmic}
 \end{algorithm}
 
+\section{Math for CrossCat generative model}
+-- Include the models for binary, categorical and numerical.
+
+\begin{align*}
+  \alpha_D &\sim \text{Gamma}(k=1, \theta=1)  & \\
+  \vec{\lambda_d} &\sim V_d(\cdot) & \text{for each } d \in [D]  \\
+  \pi_D &\sim \text{CRP}(\cdot; \alpha_D, [D]) & \text{partition variables into blocks}\\
+  \alpha_R^B &\sim \text{Gamma}(k=1, \theta=1)  & \text{for each block } B \in \pi_D \\
+  \pi_R^B &\sim \text{CRP}(\cdot; \alpha_B, [R]) &\text{partition rows for each } B \in \pi_D\\
+  x_{(r,d)} &\sim {\displaystyle ML_d(\cdot; \vec{\lambda_d}, \pi_R^{B_d})} 
+                                              & \text{for each row } r \in [R] \\
+           & & \text{and} \text{for each } d \in [D]
+\end{align*}
+
+\section{Math for CrossCat joint density}
+--
+\begin{align*}
+  P(\alpha_D,\set{\vec{\lambda_d}}, \pi_D, \set{\alpha_R^B}, \set{\pi_R^B}, \set{x_{(r,d)}})
+    &= P(\alpha_D) P(\pi_D|\alpha_D, [D]) \prod_{d \in [D]} P(\vec{\lambda_d}) 
+      P(\set{\alpha_R^{B_d}}) P(\pi_R^{B_d}|\alpha_B) 
+      \prod_r P(\set{x_{(r,d)}}| \lambda_d, \pi_R^{B_d})\\
+    &= e^{-\alpha_D} \text{CRP}(\pi_D; \alpha_D, [D]) \prod_{d \in [D]} V_d(\vec{\lambda_d}) 
+      e^{-\alpha_R^{B_d}} \prod_{r \in [R]} ML_d(\set{x_{(r,d)}}; \lambda_d, \pi_R^{B_d})\\
+\end{align*}
+
+\subsection{Marginal Likelihood}
+
+\subsubsection{$d$ is \texttt{binary}}
+
+\begin{align*}
+  \beta_i &\sim \text{Gamma}(1,1) & \text{for } i=0,1 \\
+  \lambda_d &= (\beta_1, \beta_0) & \\
+  \pi_R^{B_d} &= \set{z_1, \ldots, z_r,\ldots, z_R} & \\
+  \beta'_{i,k} &= \beta_i + \sum_{\set{r: z_r=k}}\mathbbm{1}\set{x_{(r,d)}=i} 
+                                  & \text{for } i=0,1 \\
+  ML_d&(x_{(r,d)}; \lambda_d, \pi_R^{B_d}) = \text{Bernoulli}(\frac{\beta'_{1,z_r}}{\beta'_{1,z_r}+\beta_{0,z_r}'}) &  
+\end{align*}
+
+I can probably remove the lines for $\lambda, \pi$.
+
+\subsubsection{$d$ is \texttt{nominal}}
+
+\begin{align*}
+  \beta_i &\sim \text{Gamma}(1,1) & \text{for } i=0,1,\ldots, l \\
+  \lambda_d &= (\beta_0, \ldots, \beta_{n_k}) & \\
+  \pi_R^{B_d} &= \set{z_1, \ldots, z_r,\ldots, z_R} & \\
+  \beta'_{i,k} &= \beta_i + \sum_{\set{r: z_r=k}}\mathbbm{1}\set{x_{(r,d)}=i} 
+                                  & \text{for } i=0,\ldots, l \\
+  ML_d&(x_{(r,d)}; \lambda_d, \pi_R^{B_d}) = \text{Categorical}
+        (\frac{\beta'_{0,z_r}}{\sum_{i=0}^{l} \beta'_{i,z_r}},\ldots, 
+        \frac{\beta'_{l,z_r}}{\sum_{i=0}^{l} \beta'_{i,z_r}}) &  
+\end{align*}
+
+\begin{align*}
+  ML_d(.|\vec{\lambda_d}) = 
+    \begin{cases}
+    \text{Bernoulli}(\frac{\beta_1'}{\beta_1'+\beta_0'}) 
+      , \text{if } d \text{ is \texttt{binary}}\\
+    \text{Categorical}(\frac{\alpha_1'}{\sum_i\alpha_i'},\ldots, 
+      \frac{\alpha_K'}{\sum_i\alpha_i'})
+      , \text{if } d \text{ is \texttt{nominal}}\\
+    \mathcal{T}_{2a_n}(m_n, \frac{b_n(1+V_n}{a_n}), \text{if } d \text{ is \texttt{numerical}}\\
+    \end{cases}
+\end{align*}
+
+\section{Math for recovering Bayes Sets}
+--
 
 \end{document}
-
 
 
 %%% Local Variables:
