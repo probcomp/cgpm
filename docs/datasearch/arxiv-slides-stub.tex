@@ -108,6 +108,7 @@
 \newcommand{\bxstar}{\bx^\star}
 \newcommand{\Dstar}{\text{D}^\star_n}
 \newcommand{\schema}{\mathcal{S}}
+\newcommand{\iV}{\mathit{V}}
 
 \newcommand{\variable}[1]{X_{(#1)}}
 \newcommand{\measurement}[1]{x_{(#1)}}
@@ -134,6 +135,11 @@
 \setlength{\abovedisplayskip}{5pt plus 1.0pt minus 2.0pt}
 \setlength{\belowdisplayskip}{5pt plus 1.0pt minus 2.0pt}
 
+\newcommand{\algorithmbreak}{%
+\vspace{5 pt}%
+\noindent\rule{\linewidth}{0.4pt}%
+\setcounter{ALG@line}{0}%
+}
 
 \begin{document}
 \title{Data Search for the DP Mixture}
@@ -144,52 +150,108 @@
 
 Shortened version of data-type specific logpdf's.
 
-\begin{algorithm}[h]
+\begin{algorithm}[H]
   \renewcommand{\thealgorithm}{}
   \caption{\texttt{logpdf} for CrossCat}
   \begin{algorithmic}[1]
+    \footnotesize
     \Function{LogPdf}{
       \texttt{GPM}: $\mG$,
-      \texttt{query}: $Q := \set{(r_q, \bm{x_q}, z_q)}_{q=q_1}^{q_n}$,
-      \texttt{evidence}: $E := \set{(r_e, \bm{x_e}, z_e)}_{e=e_1}^{e_m}$}
-      \footnotesize
-      \For{$B \in \pi$}
-        \Comment{for each block $B$ in the variable partition}
-        \Let{$\mathbf{l}$}{$\textsc{Compute-Cluster-Probabilities}(B)$}
-          \Comment{retrieve posterior probabilities of proposed clusters}
-        \Let{$K$}{$|l|$} 
+      \texttt{rowid}: $r$,
+      \texttt{query}: $Q := \set{x_{r,q}}_{q=q_1}^{q_n}$,
+      \texttt{evidence}: $E := \set{x_{r,e}}_{e=e_1}^{e_m}$}
+      \For{$\iV \in \mathcal{V}$}
+        \Comment{for each view $\iV$ in the variable partition $\mathcal{V}$}
+        \Let{$\mathbf{w}$}{$\textsc{CRPWeights}(\mG, \iV, E)$}
+          \Comment{retrieve posterior probabilities of proposed clusters given evidence}
+        \Let{$K$}{$|\mathbf{w}|$} 
           \Comment{compute number of proposed clusters}
         \For{$k=1,\ldots,K$}
           \Comment{for each proposed cluster}
-          \For{$q \in (Q \cap B)$}
-            \Comment{for each query variable in block $B$}
-              \If{$\texttt{data-type}(q) = \texttt{binary}$}
-                \Comment{for binary variables}
-                \Let{$p_G(x_{(r,q)}| \phi_{(z_r=k,q)})$}{$
-                  \textsc{BetaBernoulli}(x_{(r,q)};\phi_{(k, q)})$
-                } \Comment{compute Beta-Bernoulli density}
+          \Let{$\iV_Q$}{$\set{q \in \iV : x_{r,q} \in Q}$}
+            \Comment{retrieve the set of variables in the view $\iV$, 
+              for which there is a query query}
+          \For{$q \in \iV_Q$}
+            \Comment{for each query query $x_{r,q}$ whose variable 
+                     is in $\iV$}
+            \Let{$\phi_{k,q}$}{$\textsc{GetSufficientStatistics}(\mG, q, k)$}
+              \Comment{retrieve sufficient statistics of variable $q$ in cluster $k$}
+            \If{$\texttt{data-type}(q) = \texttt{binary}$}
+              \Comment{for binary variables}
+              \Let{$p_{r,q|k}$}{$
+                \textsc{BetaBernoulli}(x_{r,q};\phi_{k, q})$
+              } \Comment{compute Beta-Bernoulli density}
               \EndIf
+
               \If{$\texttt{data-type}(q) = \texttt{nominal}$}
                 \Comment{for nominal variables}
-                \Let{$p_G(x_{(r,q)}| \phi_{(k,q)})$}{$
-                  \textsc{DirichletCategorical}(x_{(r,q)};\phi_{(k, q)})$
+                \Let{$p_{r,q|k}$}{$
+                  \textsc{DirichletCategorical}(x_{r,q};\phi_{k, q})$
                 } \Comment{compute Dirichlet-Categorical}
               \EndIf
+
               \If{$\texttt{data-type}(q) = \texttt{numerical}$}
                 \Comment{for numerical variables}
-                \Let{$p_G(x_{(r,q)}| \phi_{(k,q)})$}{$
-                  \textsc{NIGNormal}(x_{(r,q)};\phi_{(k, q)})$
+                \Let{$p_{r,q|k}$}{$
+                  \textsc{NIGNormal}(x_{r,q};\phi_{k, q})$
                 } \Comment{compute Normal-Inverse-Gamma-Normal density}
               \EndIf
+
           \EndFor
         \EndFor
-        \Let{$t_B$}{$\displaystyle \sum_{k=1}^K \left(
-              \prod_{q \in (Q \cap B)} p_G(x_{(r,q)}| \phi_{(k,q)}) \right) l_k $}
-          \Comment{compute density for query variable in $B$}
+        \vspace{5pt}
+        \Let{$p_\iV$}{$\displaystyle \sum_{k=1}^K 
+              \left(\prod_{q \in \iV_Q} p_{r,q|k}\right) w_k$}
+          \Comment{compute density for query variable in $\iV$}
       \EndFor
-      \State \Return{$\displaystyle \sum_{B \in \pi}\log(t_B)$}
+      \State \Return{$\displaystyle \sum_{\iV \in \mathcal{V}}\log(p_\iV)$}
         \Comment{return overall log density of query}
     \EndFunction
+
+  \algorithmbreak
+  \Function{CRPWeights}{
+    \texttt{GPM}: $\mG$,
+    \texttt{view}: $\iV$,
+    \texttt{evidence}: $E$}
+  \EndFunction
+
+  \algorithmbreak
+  \Function{GetSufficientStatistics}{
+    \texttt{GPM}: $\mG$,
+    \texttt{dimension}: $d$,
+    \texttt{cluster}: $k$}
+  \EndFunction
+
+  \algorithmbreak
+  \Function{BetaBernoulli}{
+    \texttt{query}: $x$,
+    \texttt{parameters}: $\vec{\lambda} := \set{\beta_1', \beta_0'}$
+    }
+    \Let{$m$}{$\frac{\beta_1'}{\beta_0' + \beta_1'}$}
+      \Comment{compute parameter for collapsed Beta-Bernoulli}
+    \Let{$p_x$}{$m^x \, (1-m)^{1-x}$}
+      \Comment{compute density of Bernoulli with collapsed parameter}
+    \State \Return{$p_x$} \Comment{return Beta-Bernoulli density}
+  \EndFunction
+
+  \algorithmbreak
+  \Function{DirichletCategorical}{
+    \texttt{query}: $x$,
+    \texttt{parameters}: $\vec{\lambda} := \set{\beta_i'}_{i=1}^{c}$
+  }
+  \Let{$p_x$}{$\frac{\beta_{x}'}{\sum_{i=1}^c \beta_i'}$} 
+    \Comment{compute density of Categorical with collapsed parameters}
+  \State \Return{$p_x$} \Comment{return Dirichlet-Categorical density}
+  \EndFunction
+
+  \algorithmbreak
+  \Function{NIGNormal}{
+    \texttt{query}: $x$,
+    \texttt{parameters}: $\vec{\lambda} := \set{m', V', a', b'}$
+  }
+  \LineComment{The formula I found from Murphy follows an unfamiliar parameterization of the student-t}
+  \EndFunction
+
   \end{algorithmic}
 \end{algorithm}
 
@@ -197,77 +259,97 @@ Shortened version of data-type specific logpdf's.
 \section{PseudoCode for CrossCat Incorporate} 
 -- Inline math for incorporate
 
-\begin{algorithm}[h]
+\begin{algorithm}[H]
   \renewcommand{\thealgorithm}{}
   \caption{\texttt{incorporate} for CrossCat}
   \begin{algorithmic}[1]
+    \footnotesize
     \Function{Incorporate}{
       \texttt{GPM}: $\mG$,
       \texttt{rowid}: $r$,
-      \texttt{observation}: $(\x_r, \z_r)$}
-    \footnotesize
-    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with $\mG$}
-    \Let{$\mD_{\mG'}$}{$\mD_\mG \cup \bm{x_r}$}
-      \Comment{assign the row observations into dataset $\mD$}
-    \For{$B \in \pi$}
-      \Comment{for each block in the variable partition}
-      \If{$z_{(r,B)} = \emptyset$} 
-      \Comment{if user did not assign a mixture component
-        for the observation} 
-        \Let{$z_{(r,B)}$}{\textsc{Simulate}$(\mG, r, z_{(r,B)}, \bm{x_r})$}
-          \Comment{sample component assignment conditioned on observations}
+      \texttt{query}: $(Q_x,Q_z):=(\set{\x_{r,q}}_{q=q_1}^{q_n}, \set{\z_{r,\iV}}_{\iV=\iV_1}^{\iV_m})$}
+    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with input GPM $\mG$}
+    \Let{$\mD_{\mG'}$}{$\mD_\mG \cup (r,Q_x)$}
+      \Comment{append the observable query values to dataset $\mD$}
+    \For{$\iV \in \mathcal{V}$}
+      \Comment{for each view in the variable partition}
+      \If{$z_{r,\iV} \in Q_z$}
+        \Comment{if user assigned a mixture component to 
+                 the view}
+        \Let{$k$}{$z_{r,\iV}$}
+      \Else
+        \Comment{if user did not assign a mixture component
+        for the query} 
+        \Let{$k$}{\textsc{SimulateLatent}
+                  $(\mG, r, \iV, Q_x)$}
+          \Comment{sample component for view 
+                   $\iV$ conditioned on $Q_x$}
       \EndIf
-      \Let{$\Z_{\mG'}$}{$\Z_\mG \cup z_{(r, B)}$}
-        \Comment{include component assignment into row-specific latents}
-      \For{$v \in B$}
-        \Comment{for each variable in block $B$}
-        \Let{$\phi'_{(z_{(r,b)}, v)}$}{$\textsc{UpdateComponentParameters}(z_{(r,B)}, v)$}
-          \Comment{compute parameters for $v$ 
-            after observing $\bm{x_r}$}
-        \Let{$\bm{\Theta}'$}{$\set{\bm{\Theta} \setminus 
-            \phi_{(z_{(r,b)}, v)}} \cup \phi'_{(z_{(r,b)}, v)}$}
+      \Let{$\Z_{\mG'}$}{$\Z_\mG \cup (r, \iV, k)$}
+        \Comment{include component assignment into
+                 row-specific latents}
+      \For{$ \set{d \in \iV: x_{r,d} \in Q_x}$}
+        \Comment{for each variable in view $\iV$
+                 for which there is a query observation}
+        \Let{$\phi'_{(k, d)}$}{$\textsc{ComputeUpdatedParameters}(\mG', k, d)$}
+          \Comment{compute parameters for $d$ after observing $Q_x$}
+        \Let{$\bm{\Theta}_{\mG'}$}{$\set{\bm{\Theta}_\mG \setminus 
+            \phi_{k, d}} \cup \phi'_{k, d}$}
           \Comment{update the population-level latents}
        \EndFor
     \EndFor
-    \State \Return{$\mG'$} \Comment{return GPM with incorporated observations}
+    \State \Return{$\mG'$} \Comment{return GPM with incorporated queries}
     \EndFunction
-  \end{algorithmic}
-\end{algorithm}
+    
+    \algorithmbreak
+    \Function{SimulateLatent}{}
+    \State{ Should I write this?}
+    \EndFunction
 
-\begin{algorithm}[h]
-  \renewcommand{\thealgorithm}{}
-  \caption{\texttt{unincorporate} for CrossCat}
-  \begin{algorithmic}[1]
+    \algorithmbreak
+    \Function{ComputeUpdatedParameters}{}
+    \State {Not sure yet if I should Include this}
+    \EndFunction
+
+    \algorithmbreak
     \Function{Unincorporate}{
       \textsc{GPM}: $\mG$,
       \textsc{rowid}: $r$}
-    \footnotesize
-    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with $\mG$}
-    \Let{$\mD_{\mG'}$}{$\mD_\mG \setminus \bm{x_r}$}
-      \Comment{remove observation $\bm{x_r}$ from the dataset}
-      \For{$B \in \pi$}
-        \Comment{for each block in the variable partition}
-            \Let{$\Z_{\mG'}$}{$\Z_\mG \setminus z_{(r, B)}$}
-          \Comment{remove component assignment from row-specific latents}
-        \For{$v \in B$}
-          \Comment{for each variable in block $B$}
-          \Let{$\phi'_{(z_{(r,b)}, v)}$}{$\textsc{UpdateComponentParameters}(z_{(r,B)}, v)$}
-            \Comment{compute parameters for $v$ 
-              after removing $\bm{x_r}$}
-          \Let{$\bm{\Theta}'$}{$\set{\bm{\Theta} \setminus 
-              \phi_{(z_{(r,b)}, v)}} \cup \phi'_{(z_{(r,b)}, v)}$}
+    \Let{$\mG'$}{$\mG$} \Comment{initialize output GPM with input GPM $\mG$}
+    \Let{$Q_x$}{$\set{x_{r,d}}_{d=1}^{D}$}
+      \Comment{retrieve row values from dataset}
+    \Let{$\mD_{\mG'}$}{$\mD_\mG \setminus (r, Q_x)$}
+      \Comment{remove row $r$ from the dataset}
+      \For{$\iV \in \mathcal{V}$}
+        \Comment{for each view in the variable partition}
+        \Let{$k$}{$z_{r,\iV}$} 
+          \Comment{retrieve view component assignment}
+        \Let{$\Z_{\mG'}$}{$\Z_\mG \setminus (r, V, k)$}
+          \Comment{remove view component assignment from row-specific latents}
+        \For{$d \in \iV$}
+          \Comment{for each dimension/variable in view $\iV$}
+          \Let{$\phi'_{k, d}$}{$\textsc{ComputeRevertedParameters}(\mG', k, d)$}
+            \Comment{compute parameters for $d$ after removing $r$ from dataset}
+          \Let{$\bm{\Theta}_{\mG'}$}{$\set{\bm{\Theta}_\mG \setminus 
+              \phi_{k, d}} \cup \phi'_{k, d}$}
             \Comment{update the population-level latents}
         \EndFor
       \EndFor
     \State \Return{$\mG'$} \Comment{return GPM with unincorporated row}
     \EndFunction
+
+    \algorithmbreak
+    \Function{ComputeRevertedParameters}{}
+    \State {Should I write this?}
+    \EndFunction
+
   \end{algorithmic}
 \end{algorithm}
 
 \section{PseudoCode for CrossCat Logpdf-Set}
 -- Make context as an argument
 
-\begin{algorithm}[h]
+\begin{algorithm}[H]
   \renewcommand{\thealgorithm}{}
   \caption{\texttt{logpdf-set} for CrossCat}
   \begin{algorithmic}[1]
@@ -284,13 +366,13 @@ Shortened version of data-type specific logpdf's.
         \Comment{unincorporate rows from the GPM before evaluating the logpdf}
     \EndFor
 
-    \Let{$p_j$}{\textsc{Joint-LogPdf-Set}$(\mG', Q \cup E, v, 0)$} 
+    \Let{$\log p_j$}{\textsc{Joint-LogPdf-Set}$(\mG', Q \cup E, v, 0)$} 
       \Comment{compute the joint logpdf of query and evidence in the context of $v$}
 
-    \Let{$p_m$}{\textsc{Joint-LogPdf-Set}$(\mG', E, v, 0)$}
+    \Let{$\log p_m$}{\textsc{Joint-LogPdf-Set}$(\mG', E, v, 0)$}
       \Comment{compute the marginal logpdf of evidence in the context of $v$}
 
-    \State \Return{$p_j - p_m$}
+    \State \Return{$\log p_j - \log p_m$}
       \Comment{return $\log p_\mG(Q|E,C) = \log p_\mG(Q,E|C) - \log p_\mG(E|C_e)$}
     \EndFunction
 
@@ -303,13 +385,13 @@ Shortened version of data-type specific logpdf's.
       \texttt{context-variable}: $v$,
       \texttt{counter}: $i$}}
 
-    \Let{$Q_v$}{$\set{(r, x, z): (r, x, z) \in Q \cap B_v}$}    
-      \Comment{retrieve the query variables restricted to the block to which $v$ belongs}
-    \Let{$p_{Q_v}$}{$-\infty$} 
+    \Let{$Q_v$}{$\set{(r, x, z): (r, x, z) \in Q \cap \iV_v}$}    
+      \Comment{retrieve the query variables restricted to the view to which $v$ belongs}
+    \Let{$\log p_{Q_v}$}{$-\infty$} 
       \Comment{initialize output log probability as $\log p_\mG(Q) = \log 0$}
 
     \If{$i=|Q|$} \Comment{base case, reached after factoring out all rows in $Q$}
-      \Let{$p_{Q_v}$}{$0$} \Comment{base case output, $\log p_\mG(Q)=0$ when $Q=\emptyset$}
+      \Let{$\log p_{Q_v}$}{$0$} \Comment{base case output, $\log p_\mG(Q)=0$ when $Q=\emptyset$}
 
     \vspace{5 pt}
     \Else \Comment{recursive case, factorize density using chain rule}
@@ -327,18 +409,18 @@ Shortened version of data-type specific logpdf's.
 
       \For {$k \in K$} \Comment{for each possible component}
         \Let{$z_{q_i}^v$}{$k$} \Comment{component $k$ will be assigned to row}
-        \Let{$p_i^v$}{$\textsc{LogPdf}
+        \Let{$\log p_i^v$}{$\textsc{LogPdf}
             (\mG, r_{q_i}, (x_{q_i}^v, z_{q_i}^v), \emptyset)$}
             \Comment{evaluate joint density for row $r_{q_i}$}
         \Let{$\mG'$}{\textsc{Incorporate}($\mG, r_{q_i}, (x_{q_i}^v, z_{q_i}^v)$)}
             \Comment{incorporate row and component assignment}
-      \Let{$p_i$}{$p_i + \textsc{Joint-LogPdf-Set}(\mG', Q, v, i+1)$}
+      \Let{$\log p_i$}{$\log p_i + \textsc{Joint-LogPdf-Set}(\mG', Q, v, i+1)$}
         \Comment{factor out row $r_{q_i}$ from the joint density of query}
-      \Let{$p_{Q_v}$}{$\textsc{Log-Sum-Exp}(p_{Q_v}, p_i)$} 
+      \Let{$\log p_{Q_v}$}{$ \log \left( p_{Q_v} + p_i \right)$} 
         \Comment{marginalize out the category assignments}
       \EndFor
     \EndIf
-    \State \Return{$p_{Q_v}$}
+    \State \Return{$\log p_{Q_v}$}
     \EndFunction
   \end{algorithmic}
 \end{algorithm}
@@ -351,7 +433,7 @@ Shortened version of data-type specific logpdf's.
 \section{PseudoCode for Relevance Search}
 -- Add missing Unincorporate 
 
-\begin{algorithm}[h]
+\begin{algorithm}[H]
   \renewcommand{\thealgorithm}{}
   \caption{Relevance Search for CrossCat}
   \begin{algorithmic}[1]
@@ -361,46 +443,49 @@ Shortened version of data-type specific logpdf's.
     \texttt{query}: $Q := (r_q, \bm{x_q})$,
     \texttt{evidence}: $E := \set{(r_e, \bm{x_e})}_{e=e_1}^{e_m}$,
     \texttt{context-variable}: $v$}
-  \Let{$p_{H_1}, p_{H_2}$}{$0$} \Comment{initialize the hypotheses log-probabilities}
+  \Let{$\log p_{H_1}$}{$0$} \Comment{initialize the hypotheses log-probabilities}
+  \Let{$\log p_{H_2}$}{$0$}
   \For{$r \in Q \cup E$} \Comment{unincorporate each row before search}
     \Let{$\mG'$}{$\textsc{Unincorporate}(\mG, r)$}
   \EndFor
   \Let{$n_K$}{$|\set{\Z_\mG^v}|+1$} 
-    \Comment{compute number of proposed components in the block of  $v$}
+    \Comment{compute number of proposed components in the view of  $v$}
   \For{$k_q \in \set{1,\ldots,n_K}$} 
     \Comment{for each proposed component}
     \Let{$\z_q$}{$(r_q,k_q)$} 
       \Comment{name current component assignments for the query row}
 
     \If{$k_q = n_K$} \Comment{if query has been assigned an empty component}
-      \Let{$n_k'$}{$n_k+1$} \Comment{evidence may be assigned another empty component}
+      \Let{$n_K'$}{$n_K+1$} \Comment{evidence may be assigned another empty component}
     \Else \Comment{otherwise}
-      \Let{$n_k'$}{$n_k$} \Comment{no need for another empty component}
+      \Let{$n_K'$}{$n_K$} \Comment{no need for another empty component}
     \EndIf
 
-    \For{$k_e \in \set{1,\ldots,n_k'} $} 
+    \For{$k_e \in \set{1,\ldots,n_K'} $} 
       \Comment{for each possible component assignment for the evidence set}
       \Let{$z_e$}{$\set{(r_e,k_e)}$} 
         \Comment{name current component assignment for the evidence set}
-
-        \Let{$p_J$}{$\textsc{LogPdf-Set} (
-          \mG, (Q, z_q, E, z_e), v)$}
-          \Comment{evaluate density of query and evidence with their respective components}
+        
+        \Let{$J$}{$Q \cup E \cup \set{z_q} \cup \set{z_e}$}
+          \Comment{retrieve joint set of query and density with respective components}
+        \Let{$\log p_J$}{$\textsc{LogPdf-Set} (
+          \mG, J, v)$}
+          \Comment{evaluate joint density}
     
-      \If{$k_t = k_q$} 
-        \Comment{$H_1$: query and target are in the same component}
-        \Let{$p_{H_1}$}{$\textsc{Log-Sum-Exp}(p_{H_1}, p_J)$ }
+      \If{$k_q = k_t$} 
+        \Comment{$H_1$: query and evidence are in the same component}
+        \Let{$\log p_{H_1}$}{$\log \left( p_{H_1} + p_J\right)$ }
           \Comment {marginalize over previous component assignments}
 
       \vspace{5 pt}
       \Else 
         \Comment{$H_2$: query and target are in different categories}
-        \Let{$p_{H_2}$}{$\textsc{Log-Sum-Exp}(p_{H_2}, p_J)$ }
+        \Let{$\log p_{H_2}$}{$\log \left( p_{H_2} + p_J\right)$ }
           \Comment {marginalize over previous component assignments}
       \EndIf
     \EndFor
   \EndFor 
-  \State \Return {$p_{H_1} - p_{H_2}$} \Comment{return the log of the relevance score}
+  \State \Return {$\log p_{H_1} - \log p_{H_2}$} \Comment{return the log of the relevance score}
   \EndFunction
 
   \vspace{5 pt}
@@ -410,8 +495,8 @@ Shortened version of data-type specific logpdf's.
     \texttt{GPM}: $\mG$,
     \texttt{evidence}: $E := \set{(r_e, \bm{x_e})}_{e=e_1}^{e_m}$,
     \texttt{context-variable}: $v$}
-  \For{$r \in \mD$} \Comment{for each row in the dataset}
-    \Let{$\mathcal{S}[r]$}{$\textsc{Relevance-Score}(\mG, r, E, v)$}
+  \For{$R \in \mD$} \Comment{for each row in the dataset}
+    \Let{$\mathcal{S}[r]$}{$\textsc{Relevance-Score}(\mG, R, E, v)$}
       \Comment{compute and store the score for each row in the dataset}
   \EndFor
   \State \Return{$\textsc{Sorted}(\mathcal{S})$}
@@ -425,24 +510,31 @@ Shortened version of data-type specific logpdf's.
 
 \begin{align*}
   \alpha_D &\sim \text{Gamma}(k=1, \theta=1)  & \\
-  \vec{\lambda_d} &\sim V_d(\cdot) & \text{for each } d \in [D]  \\
-  \pi_D &\sim \text{CRP}(\cdot; \alpha_D, [D]) & \text{partition variables into blocks}\\
-  \alpha_R^B &\sim \text{Gamma}(k=1, \theta=1)  & \text{for each block } B \in \pi_D \\
-  \pi_R^B &\sim \text{CRP}(\cdot; \alpha_B, [R]) &\text{partition rows for each } B \in \pi_D\\
-  x_{(r,d)} &\sim {\displaystyle ML_d(\cdot; \vec{\lambda_d}, \pi_R^{B_d})} 
-                                              & \text{for each row } r \in [R] \\
-           & & \text{and} \text{for each } d \in [D]
+  \vec{\lambda_d} &\sim V_d & \text{for each } d \in [D]  \\
+  \mathcal{V}_D &\sim \text{CRP}( \alpha_D, [D]) & \text{partition variables into views}\\
+  \alpha_\iV &\sim \text{Gamma}(k=1, \theta=1)  & \text{for each view } \iV \in \mathcal{V}_D \\
+  \mathcal{C}_\iV &\sim \text{CRP}( \alpha_\iV, [R]) &\text{partition rows into components for each } \iV \in \mathcal{V}_D\\
+  x_{r,d} &\sim {\displaystyle \mathit{ML}_d( \vec{\lambda_d}, \mathcal{C}_{\iV,d})} 
+                                        & \text{for each } d \in [D]
 \end{align*}
 
 \section{Math for CrossCat joint density}
 --
 \begin{align*}
-  P(\alpha_D,\set{\vec{\lambda_d}}, \pi_D, \set{\alpha_R^B}, \set{\pi_R^B}, \set{x_{(r,d)}})
-    &= P(\alpha_D) P(\pi_D|\alpha_D, [D]) \prod_{d \in [D]} P(\vec{\lambda_d}) 
-      P(\set{\alpha_R^{B_d}}) P(\pi_R^{B_d}|\alpha_B) 
-      \prod_r P(\set{x_{(r,d)}}| \lambda_d, \pi_R^{B_d})\\
-    &= e^{-\alpha_D} \text{CRP}(\pi_D; \alpha_D, [D]) \prod_{d \in [D]} V_d(\vec{\lambda_d}) 
-      e^{-\alpha_R^{B_d}} \prod_{r \in [R]} ML_d(\set{x_{(r,d)}}; \lambda_d, \pi_R^{B_d})\\
+  P&(\alpha_D, \mathcal{V}_D, \set{\vec{\lambda_d}}, \set{\alpha_\iV}, \set{\mathcal{C}_\iV}, x_{r,d})
+    \\
+   &= P(\alpha_D)  \,   
+      P(\mathcal{V}_D|\alpha_D, [D])   
+      \prod_{d \in [D]} P(\vec{\lambda_d}) \, 
+      P(\set{\alpha_\iV}) \,
+      P(\mathcal{C}_{\iV,d}|\alpha_\iV) \,
+      P(x_{r,d}| \lambda_d, \mathcal{C}_{\iV,d})
+  \\
+    &= e^{-\alpha_D}\, 
+       \text{CRP}(\mathcal{V}_D; \alpha_D, [D])
+       \,\prod_{d \in [D]} V_d(\vec{\lambda_d}) \,
+       e^{-\alpha_\iV}\,
+       \mathit{ML}_d(x_{(r,d)}; \lambda_d, \mathcal{C}_{\iV, d})\\
 \end{align*}
 
 \subsection{Marginal Likelihood}
@@ -450,43 +542,128 @@ Shortened version of data-type specific logpdf's.
 \subsubsection{$d$ is \texttt{binary}}
 
 \begin{align*}
-  \beta_i &\sim \text{Gamma}(1,1) & \text{for } i=0,1 \\
-  \lambda_d &= (\beta_1, \beta_0) & \\
-  \pi_R^{B_d} &= \set{z_1, \ldots, z_r,\ldots, z_R} & \\
-  \beta'_{i,k} &= \beta_i + \sum_{\set{r: z_r=k}}\mathbbm{1}\set{x_{(r,d)}=i} 
-                                  & \text{for } i=0,1 \\
-  ML_d&(x_{(r,d)}; \lambda_d, \pi_R^{B_d}) = \text{Bernoulli}(\frac{\beta'_{1,z_r}}{\beta'_{1,z_r}+\beta_{0,z_r}'}) &  
+  \lambda_d &:= \set{\beta_i} 
+              \sim \set{\text{Gamma(1,1)}}_i & 
+              \text{for } i=0,1
+\\
+  \beta'_{i,k} &= \beta_i + 
+                 |\set{r: z_r=k, x_{r,d}=i}| &
+                 \text{for } i=0,1 
+\\
+  ML_d&(x_{(r,d)}; \lambda_d, \mathcal{C}_{\iV,d}) 
+        = \text{Bernoulli}\left(
+        \frac{\beta'_{1,k}}{\beta'_{1,k}+\beta_{0,k}'}
+        \right) &  
 \end{align*}
-
-I can probably remove the lines for $\lambda, \pi$.
 
 \subsubsection{$d$ is \texttt{nominal}}
 
 \begin{align*}
-  \beta_i &\sim \text{Gamma}(1,1) & \text{for } i=0,1,\ldots, l \\
-  \lambda_d &= (\beta_0, \ldots, \beta_{n_k}) & \\
-  \pi_R^{B_d} &= \set{z_1, \ldots, z_r,\ldots, z_R} & \\
-  \beta'_{i,k} &= \beta_i + \sum_{\set{r: z_r=k}}\mathbbm{1}\set{x_{(r,d)}=i} 
-                                  & \text{for } i=0,\ldots, l \\
-  ML_d&(x_{(r,d)}; \lambda_d, \pi_R^{B_d}) = \text{Categorical}
-        (\frac{\beta'_{0,z_r}}{\sum_{i=0}^{l} \beta'_{i,z_r}},\ldots, 
-        \frac{\beta'_{l,z_r}}{\sum_{i=0}^{l} \beta'_{i,z_r}}) &  
+  \lambda_d &:= \set{\beta_i} 
+              \sim \set{\text{Gamma(1,1)}}_i & 
+              \text{for } i=1,\ldots, c
+\\
+  \beta'_{i,k} &= \beta_i + 
+                 |\set{r: z_r=k, x_{r,d}=i}| &
+                 \text{for } i=1,\ldots, c
+\\
+  ML_d&(x_{(r,d)}; \lambda_d, \mathcal{C}_{\iV,d}) 
+        = \text{Categorical}\left(
+        \frac{\beta'_{1,k}}{\sum_{i=1}^c \beta'_{i,k}}
+        \right) &
 \end{align*}
 
+\subsubsection{$d$ is \texttt{numerical}}
+
 \begin{align*}
-  ML_d(.|\vec{\lambda_d}) = 
-    \begin{cases}
-    \text{Bernoulli}(\frac{\beta_1'}{\beta_1'+\beta_0'}) 
-      , \text{if } d \text{ is \texttt{binary}}\\
-    \text{Categorical}(\frac{\alpha_1'}{\sum_i\alpha_i'},\ldots, 
-      \frac{\alpha_K'}{\sum_i\alpha_i'})
-      , \text{if } d \text{ is \texttt{nominal}}\\
-    \mathcal{T}_{2a_n}(m_n, \frac{b_n(1+V_n}{a_n}), \text{if } d \text{ is \texttt{numerical}}\\
-    \end{cases}
+  \lambda_d &= (m, V, a, b) & 
+\\
+  n_k &:= |\set{r \in [R]: z_r = k}| 
+\\
+  \bar{x}_{d,k} &:= \frac{1}{n_k}\sum_{r: z_r = k}x_{(r, d)} & 
+\\
+  V_k^{-1} &:= V^{-1} + n_k & 
+\\
+  m_k &:= V'_k(V^{-1}m) + n_k\bar{x}_{d,k} &
+\\
+  a_k &:= a + \frac{n_k}{2} & 
+\\
+  b_k &:= b + \frac{1}{2} 
+         \left[m^2 V^{-1} + \sum_{r: z_r = k} x^{2}_{(r, d)} -m_k^2 V_k^{-1} \right]& 
+\\
+  ML_d&(x_{(r,d)}; \lambda_d, \mathcal{V}_R^{\iV_d}) = 
+        \text{Student-t}_{2a_k}
+        \left(m_k, \frac{b_k(1+V'_k)}{a_k}\right) &
 \end{align*}
+
+\section{Math for relevance score}
+
+We formulate the relevance score $\mathcal{S}$ of a query row
+$Q:=(r_q, \bm{x}_q)$ with respect to an evidence set of rows
+$E:=\set{r_{e}, \bm{x}_e}_{e=1}^{e_m}$ as the log-posterior odds of
+the two following hypotheses:
+
+\begin{enumerate}
+\item $H_1 = $ ``all rows in query and evidence belong to the same, unknown, component.''
+\item $H_2 = $ ``all rows in evidence belong to the same, unknown, component, which is different from the component of the query row.''
+\end{enumerate}
+
+\begin{align*}
+  \mathcal{S}(Q;E) &:= \frac{P(H_1|Q,E)}{P(H_2|Q,E)} = \frac{P(H_1,Q,E)}{P(H_2,Q,E)} \\
+      &= \frac{\sum_k P(z_Q=z_E=k,Q,E)}{\sum_{k_q \neq k_e} P(z_Q=k_q, z_E=k_e,Q,E)}
+\end{align*}
+
+where $z_Q, z_E$ are the component assignments for the rows in query and evidence, respectively. The relevance score is computed straightforwardly through the \textsc{LogPdf-Multirow} interface: 
+
+
 
 \section{Math for recovering Bayes Sets}
 --
+The Bayes Sets score $\mathcal{S}_\iV$ of a query row
+$Q:=(r_q, \bm{x}_q)$ with respect to an evidence set of rows
+$E:=\set{r_{e}, \bm{x}_e}_{e=1}^{e_m}$ is formulated as:
+
+
+\begin{align*}
+  \mathcal{S}_\iV(Q;E) &:= \frac{P_0(Q,E)}{P_0(Q)P_0(E)}
+\end{align*}
+
+where $P_0$ is the prior predictive distribution,
+
+\begin{align*}
+  P_0(x) &= \int p(x|\theta) \, p(\theta) \; d\theta \\
+  P_0(Q) &= \int \prod_{x_i \in Q} p(x_i|\theta)\, p(\theta)\; d\theta \\
+  P_0(E) &= \int \prod_{x_i \in E} p(x_i|\theta)\, p(\theta)\; d\theta \\
+  P_0(Q, E) &= \int \prod_{x_i \in Q \cup E} p(x_i|\theta)\, p(\theta)\; d\theta 
+\end{align*}
+
+where the probabilistic model $p(x|\theta)$ and the prior $p(\theta)$ 
+have been specified by the user.
+
+We will show that the relevance score is equivalent up to constant
+factor to the Bayes sets score if the GPM has no incorporated
+queries.
+
+If the GPM has no incorporated queries, there are only
+two possible component assignments for the query and evidence
+sets,
+
+\begin{align*}
+  \mathcal{S}(Q;E) &= \frac{\sum_k P_\mG(z_Q=z_E=k,Q,E)}
+                     {\sum_{k_q \neq k_e} P_\mG(z_Q=k_q, z_E=k_e,Q,E)}
+\\
+                   &= \frac{P_\mG(z_Q=z_E=0,Q,E)} 
+                      {P_\mG(z_Q=0, z_E=1,Q,E)}
+\\
+                   &=\frac{P_\mG(Q,E|z_Q=z_E=0)}
+                     {P_\mG(Q,E |z_Q=1, z_E=0)}
+                     \cdot
+                     \frac{P_\mG(z_Q=z_E=0)}
+                     {P_\mG(z_Q=0, z_E=1)} 
+\\
+                   &\propto \frac{P_{0}(Q,E)}
+                     {P_{0}(Q)P_{0}(E)}
+\end{align*}
 
 \end{document}
 
