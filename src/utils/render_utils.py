@@ -203,7 +203,7 @@ def viz_state(state, row_names=None, col_names=None, savefile=None, labelsize=No
     fig.subplots_adjust(right=0.95)
     if savefile:
         fig.savefig(savefile)
-    return ax_list
+    return fig, ax_list
  
 def get_ax_param_list(view_widths, wspace, fig_width, right_margin):
     assert np.allclose(fig_width, sum(view_widths + [wspace] * len(
