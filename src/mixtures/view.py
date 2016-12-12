@@ -29,7 +29,8 @@ from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils.config import cctype_class
 from cgpm.utils.general import merged, deep_merged
-from cgpm.utils.render_utils import viz_view
+# from cgpm.utils.render_utils import viz_view
+from cgpm.utils.render import viz_view
 
 class View(CGpm):
     """CGpm represnting a multivariate Dirichlet process mixture of CGpms."""
@@ -795,10 +796,9 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # Rendering
     def render(self, ax=None, row_names=None, col_names=None,
-               savefile=None, labelsize=None):
-
-        viz_view(self, ax, row_names, col_names, savefile, labelsize)
-
+               savefile=None):
+        return viz_view(self, ax, row_names, col_names, savefile)
+        
     # --------------------------------------------------------------------------
     # Metadata
 
