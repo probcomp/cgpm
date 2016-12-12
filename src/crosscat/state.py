@@ -851,9 +851,7 @@ class State(CGpm):
     # Rendering
     def render(self, row_names=None, col_names=None, savefile=None,
                labelsize=None):
-        viz_state(self, row_names=None, col_names=None, savefile=None,
-               labelsize=None)
-
+        return viz_state(self, row_names, col_names, savefile, labelsize)
 
     # --------------------------------------------------------------------------
     # Serialize
