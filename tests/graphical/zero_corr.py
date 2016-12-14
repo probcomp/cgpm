@@ -107,13 +107,13 @@ def get_latest_timestamp():
 
 
 simulators = {
-    'diamond': Diamond,
-    'dots': Dots,
+    # 'diamond': Diamond,
+    # 'dots': Dots,
     'linear': Linear,
-    'parabola': Parabola,
-    'ring': Ring,
-    'sin': Sin,
-    'xcross': XCross,
+    # 'parabola': Parabola,
+    # 'ring': Ring,
+    # 'sin': Sin,
+    # 'xcross': XCross,
     }
 
 
@@ -147,12 +147,23 @@ def filename_mi(dist, noise, timestamp):
     return '%s/mi_%s_%1.2f.txt'\
         % (filename_prefix(dist, timestamp), dist, noise)
 
+def filename_dp(dist, noise, timestamp):
+    return '%s/dp_%s_%1.2f.txt'\
+        % (filename_prefix(dist, timestamp), dist, noise)
+
 def filename_samples_figure(dist, noise, modelno, timestamp):
     return '%s/samples_%s_%1.2f_%d.png'\
         % (filename_prefix(dist, timestamp), dist, noise, modelno)
 
 def filename_mi_figure(dist, timestamp):
     return '%s/mi_%s.png' % (filename_prefix(dist, timestamp), dist)
+
+def filename_dp_figure(dist, timestamp):
+    return '%s/dp_%s.png' % (filename_prefix(dist, timestamp), dist)
+
+def filename_raw_figure(dist, noise, timestamp):
+    return '%s/raw_%s_%1.2f.png' \
+        % (filename_prefix(dist, timestamp), dist, noise)
 
 # --------------------------------------------------------------------------
 # Inference.
@@ -246,19 +257,134 @@ def plot_mi(mis, dist, noises, timestamp):
     """Plot estimates of the mutual information by noise level."""
     print 'Plotting mi %s' % (dist)
     fig, ax = plt.subplots()
-    ax.set_title('Mutual Information (%s) ' % dist, fontweight='bold')
-    ax.set_xlabel('Noise', fontweight='bold')
-    ax.set_ylabel('Mutual Information (Estimates)', fontweight='bold')
-    ax.plot(noises, np.mean(mis, axis=1), color='red', label='Emulator Mean')
+    # Set noises to covariances.
+    noises = 1 - np.array(noises)
+    ax.set_title(
+        'Mutual Information of (X,Y) ~ Bivariate Gaussian',
+        fontweight='bold')
+    ax.set_xlabel(
+        'Covariance of Bivariate Gaussian',
+        fontweight='bold')
+    ax.set_ylabel(
+        'Mutual Information (Nats)',
+        fontweight='bold')
+    # Plot MI Posterior Mean.
+    ax.plot(
+        noises, np.mean(mis, axis=1), color='red', label='MI Posterior Mean')
+    # Plot MI Posterior Samples.
     for i, row in enumerate(mis.T):
-        label = 'Emulator' if i == len(mis.T) - 1 else None
+        label = 'MI Posterior Samples' if i == len(mis.T) - 1 else None
         ax.scatter(noises, row, alpha=.2, color='green', label=label)
+    # Plot ground truth MI.
+    ax.plot(
+        noises, -.5*np.log(1-noises**2), color='blue', label='MI Ground Truth')
     ax.grid()
-    ax.legend(framealpha=0)
+    ax.legend(framealpha=0, loc='upper left')
+    # Adds some inline axes for noise 0.8.
+    T = simulate_dataset(dist, 0.15, 150)
+    ax2 = fig.add_axes((.525, .45, .15, .15))
+    ax2.scatter(T[:,0], T[:,1], color='k', alpha=.5, s=5)
+    ax2.set_xlim(simulator_limits[dist][0])
+    ax2.set_ylim(simulator_limits[dist][1])
+    ax2.set_xticklabels([])
+    ax2.set_yticklabels([])
+    ax2.grid()
+    ax2.set_title('Cov=0.65', fontsize=10, fontweight='bold')
+    # Adds some inline axes for noise 0.9.
+    T = simulate_dataset(dist, 0.85, 150)
+    ax3 = fig.add_axes((.3, .45, .15, .15))
+    ax3.scatter(T[:,0], T[:,1], color='k', alpha=.5, s=5)
+    ax3.set_xlim(simulator_limits[dist][0])
+    ax3.set_ylim(simulator_limits[dist][1])
+    ax3.set_xticklabels([])
+    ax3.set_yticklabels([])
+    ax3.grid()
+    ax3.set_title('Cov=0.25', fontsize=10, fontweight='bold')
+    # Arrows
+    ax.annotate(
+        '',
+        xytext=(0.65, 0.9), textcoords='data',
+        xy=(0.65, 0.4), xycoords='data',
+        arrowprops=dict(arrowstyle='->'),
+    )
+    ax.annotate(
+        '',
+        xytext=(0.25, 0.7), textcoords='data',
+        xy=(0.25, 0.20), xycoords='data',
+        arrowprops=dict(arrowstyle='->',),
+    )
     # Save.
     fig.savefig(filename_mi_figure(dist, timestamp))
     plt.close('all')
 
+def plot_dp(dps, dist, noises, timestamp):
+    """Plot estimates of the mutual information by noise level."""
+    print 'Plotting dp %s' % (dist)
+    fig, ax = plt.subplots()
+    # Set noises to covariances.
+    noises = 1 - np.array(noises)
+    ax.set_title(
+        'Dependence Probability of (X,Y) ~ Bivariate Gaussian',
+        fontweight='bold')
+    ax.set_xlabel(
+        'Covariance of Bivariate Gaussian',
+        fontweight='bold')
+    ax.set_ylabel(
+        'Dependence Probability',
+        fontweight='bold')
+    ax.plot(noises, np.mean(dps, axis=1), color='red')
+    ax.grid()
+    ax.set_ylim([0, 1.1])
+    # Save.
+    # Adds some inline axes for noise 0.8.
+    T = simulate_dataset(dist, 0.15, 150)
+    ax2 = fig.add_axes((.525, .45, .15, .15))
+    ax2.scatter(T[:,0], T[:,1], color='k', alpha=.5, s=5)
+    ax2.set_xlim(simulator_limits[dist][0])
+    ax2.set_ylim(simulator_limits[dist][1])
+    ax2.set_xticklabels([])
+    ax2.set_yticklabels([])
+    ax2.grid()
+    ax2.set_title('Cov=0.65', fontsize=10, fontweight='bold')
+    # Adds some inline axes for noise 0.9.
+    T = simulate_dataset(dist, 0.85, 150)
+    ax3 = fig.add_axes((.3, .45, .15, .15))
+    ax3.scatter(T[:,0], T[:,1], color='k', alpha=.5, s=5)
+    ax3.set_xlim(simulator_limits[dist][0])
+    ax3.set_ylim(simulator_limits[dist][1])
+    ax3.set_xticklabels([])
+    ax3.set_yticklabels([])
+    ax3.grid()
+    ax3.set_title('Cov=0.25', fontsize=10, fontweight='bold')
+    # Arrows
+    ax.annotate(
+        '',
+        xytext=(0.65, 0.75), textcoords='data',
+        xy=(0.65, 1), xycoords='data',
+        arrowprops=dict(arrowstyle='->'),
+    )
+    ax.annotate(
+        '',
+        xytext=(0.25, 0.6), textcoords='data',
+        xy=(0.25, 1), xycoords='data',
+        arrowprops=dict(arrowstyle='->',),
+    )
+    fig.savefig(filename_dp_figure(dist, timestamp))
+    plt.close('all')
+
+def plot_raw(dist, noise, timestamp):
+    print 'Plotting raw %s:%f' % (dist, noise,)
+    fig, ax = plt.subplots()
+    # Plot the observed samples.
+    T = simulate_dataset(dist, noise, 200)
+    ax.scatter(T[:,0], T[:,1], color='k', alpha=.5)
+    ax.set_xlim(simulator_limits[dist][0])
+    ax.set_ylim(simulator_limits[dist][1])
+    ax.grid()
+    # Save.
+    fig.set_size_inches(4,4)
+    fig.savefig(filename_raw_figure(dist, noise, timestamp))
+    plt.close('all')
 
 # --------------------------------------------------------------------------
 # Launchers for dist, noise.
@@ -289,8 +415,14 @@ def generate_samples(dist, noise, num_samples, timestamp):
 def generate_mi(dist, noise, timestamp):
     print 'Generating mi %s %f' % (dist, noise)
     engine = load_engine(dist, noise, timestamp)
-    mi = engine.mutual_information(0, 1)
+    mi = engine.mutual_information(0, 1, N=2000)
     np.savetxt(filename_mi(dist, noise, timestamp), [mi], delimiter=',')
+
+def generate_dp(dist, noise, timestamp):
+    print 'Generating dp %s %f' % (dist, noise)
+    engine = load_engine(dist, noise, timestamp)
+    dp = engine.dependence_probability(0, 1)
+    np.savetxt(filename_dp(dist, noise, timestamp), [dp], delimiter=',')
 
 def plot_samples_all(dist, noises, modelnos, num_samples, timestamp):
     for noise, modelno in itertools.product(noises, modelnos):
@@ -304,11 +436,16 @@ def plot_mi_all(dist, noises, timestamp):
     mis = np.asarray([np.loadtxt(f, delimiter=',') for f in filenames])
     plot_mi(mis, dist, noises, timestamp)
 
+def plot_dp_all(dist, noises, timestamp):
+    filenames = [filename_dp(dist, noise, timestamp) for noise in noises]
+    dps = np.asarray([np.loadtxt(f, delimiter=',') for f in filenames])
+    plot_dp(dps, dist, noises, timestamp)
 
 # --------------------------------------------------------------------------
 # Launchers for dist.
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
+if False:
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
