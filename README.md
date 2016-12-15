@@ -24,46 +24,6 @@ Probabilistic Data Analysis with Probabilistic Programming. Saad, F. and Mansing
 pip install .
 ```
 
-## Static Example
-
-The simplest example is creating a synthetic dataset where each variable is a
-mixture of one of the available DistributionGpms. Inference is run using
-[gpmcc](src/crosscat), an extended implementation of
-[crosscat](http://probcomp.csail.mit.edu/crosscat/) from the lens of
-compositions of composable generative population models.
-
-```
-$ python -i tests/graphical/one_view.py
-```
-
-A plot similar to ![images/one_view.png](images/one_view.png) should appear.
-
-## Interactive Example (Experimental)
-
-Single-particle SMC in a DP Mixture with Normal-InverseGamma base measure and
-normal obervations can be run interactively:
-
-```
-$ python -i tests/graphical/dpmm_nignormal.py
-```
-
-Click on the graph to produce observations and watch, the Gibbs kernel cycle
-through the hypothesis space
-
-![images/smc.gif](images/smc.gif)
-
-The values printed in the console after each click are estimates of the
-marginal-log-likelihood of observations, based on the single particle
-weight. The following output
-
-```
-Observation 8.000000: 0.209677
-[-8.0740236375201153]
-```
-
-means the eighth observation is 0.209677, and the estimated marginal
-log-liklelihood is -8.0740236375201153.
-
 ## Tests
 
 Running `./check.sh` will run a subset of the tests that are considered complete
