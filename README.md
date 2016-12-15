@@ -2,7 +2,8 @@
 
 The aim of this project is to provide a unified probabilistic programming
 framework to express different models and techniques from statistics, machine
-learning and non-parametric Bayes.
+learning and non-parametric Bayes. It serves as the primary modeling and
+inference runtime system for [BayesDB](https://github.com/probcomp/bayeslite).
 
 Composable generative population models (CGPM) provide a computational
 abstraction for probabilistic objects. They provide an interface that explicitly
