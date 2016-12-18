@@ -27,8 +27,11 @@ def test_search_row_146():
 
 def test_make_rowid_contiguous():
     view = load_view()
-    query = {146: {}}
+    
+    rowid = 146
+    query = {rowid: {}}
 
+    view.unincorporate(rowid)
     test_out = view._make_rowid_contiguous(query)
     exp_out = query
 
