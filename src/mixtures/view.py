@@ -436,8 +436,11 @@ class View(CGpm):
         last_row = max(self.Zr().keys()) if self.Zr() else -1
         j = 1
         for key in query.keys():
-            out_query[last_row + j] = query[key]
-            j += 1
+            if self.hypothetical(key):
+                out_query[last_row + j] = query[key]
+                j += 1
+            else:
+                out_query[key] = query[key]
         return out_query
 
     # --------------------------------------------------------------------------
@@ -466,7 +469,6 @@ class View(CGpm):
         l1 = - np.float("inf")
         l2 = - np.float("inf")
 
-        # BUG: unincorporate query and evidence in the beginning
         Ke = self.retrieve_available_clusters()
         for ke in Ke:  # for each possible cluster for evidence
             # evidence_ke = self._assign_cluster_to_set_of_rows(
