@@ -46,4 +46,6 @@ def test_incorporate_unincorporate_last_row():
     row = {0: 1.21904446391, 1: -0.23199466788400003, 1000: 0}
 
     view.incorporate(rowid, row)
+    assert len(view.X[0]) == 151
+
     view.unincorporate(rowid)
