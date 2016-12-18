@@ -21,6 +21,15 @@ def test_search_row_146():
     view = load_view()
 
     query = {146: {}}
-    import pudb; pudb.set_trace()
+    # import pudb; pudb.set_trace()
     view.relevance_search(query)
     pass
+
+def test_make_rowid_contiguous():
+    view = load_view()
+    query = {146: {}}
+
+    test_out = view._make_rowid_contiguous(query)
+    exp_out = query
+
+    assert exp_out == test_out
