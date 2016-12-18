@@ -198,7 +198,7 @@ class View(CGpm):
             if rowid < len(self.X[c]):  # if row has been unincorporated
                 self.X[c][rowid] = filled_query[c]
             else:  # if row has new rowid
-                self.X[c].append([filled_query[c]])
+                self.X[c].append(filled_query[c])
 
     def unincorporate(self, rowid):
         # Unincorporate from dims.
