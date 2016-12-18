@@ -28,11 +28,22 @@ def test_search_row_146():
 def test_make_rowid_contiguous():
     view = load_view()
     
-    rowid = 146
-    query = {rowid: {}}
+    rowid_lst = [0, 146]
+    query = {row: {} for row in rowid_lst}
 
-    view.unincorporate(rowid)
+    for row in rowid_lst:
+        view.unincorporate(row)
+
     test_out = view._make_rowid_contiguous(query)
     exp_out = query
 
     assert exp_out == test_out
+
+def test_incorporate_unincorporate_last_row():
+    view = load_view()
+
+    rowid = 150
+    row = {0: 1.21904446391, 1: -0.23199466788400003, 1000: 0}
+
+    view.incorporate(rowid, row)
+    view.unincorporate(rowid)
