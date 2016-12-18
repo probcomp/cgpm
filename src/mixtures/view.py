@@ -74,7 +74,7 @@ class View(CGpm):
         self.inputs = []
 
         # -- Dataset -----------------------------------------------------------
-        self.X = X
+        self.X = ensure_dict_of_lists(X)
 
         # -- Outputs -----------------------------------------------------------
         if len(outputs) < 1:
@@ -152,7 +152,6 @@ class View(CGpm):
             of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
-        # TODO: [ ] Check whether incorporate accepts rowid -1 (and what happens if so).
         n_rows = len(self.X[self.outputs[-1]])
         if rowid > n_rows:  # if input rowid is non-contiguous with dataset
             raise ValueError(
@@ -199,7 +198,7 @@ class View(CGpm):
             if rowid < len(self.X[c]):  # if row has been unincorporated
                 self.X[c][rowid] = filled_query[c]
             else:  # if row has new rowid
-                self.X[c] += [filled_query[c]]
+                self.X[c].append([filled_query[c]])
 
     def unincorporate(self, rowid):
         # Unincorporate from dims.
@@ -428,15 +427,15 @@ class View(CGpm):
 
     def _make_rowid_contiguous(self, query):
         """
-        Reassign rowids to query so that they are 
-        contiguous to the rowids in the dataset. 
+        Reassign rowids to query so that they are
+        contiguous to the rowids in the dataset.
         """
         out_query = {}
 
         last_row = max(self.Zr().keys()) if self.Zr() else -1
         j = 1
         for key in query.keys():
-            if self.hypothetical(key):
+            if self.noncontiguous(key):
                 out_query[last_row + j] = query[key]
                 j += 1
             else:
@@ -735,6 +734,10 @@ class View(CGpm):
     def hypothetical(self, rowid):
         return rowid not in self.Zr()
 
+    def noncontiguous(self, rowid):
+        iscontiguous = 0 <= rowid < len(self.X.values()[0])
+        return not iscontiguous
+
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
         if evidence is None: evidence = {}
@@ -800,7 +803,7 @@ class View(CGpm):
     def render(self, ax=None, row_names=None, col_names=None,
                savefile=None):
         return viz_view(self, ax, row_names, col_names, savefile)
-        
+
     # --------------------------------------------------------------------------
     # Metadata
 
@@ -844,3 +847,17 @@ class View(CGpm):
             hypers=metadata.get('hypers', None),
             Zr=metadata.get('Zr', None),
             rng=rng)
+
+# -----------------------------------
+# Functions
+
+def ensure_dict_of_lists(data):
+    """
+    Transform a dict of arrays into a dict of lists.
+    Use with view.X to correct its format.
+    """
+    out = data.copy()
+    for key, val in data.iteritems():
+        if not isinstance(val, list):
+            out[key] = val.tolist()
+    return out
