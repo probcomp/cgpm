@@ -42,7 +42,7 @@ def serialize_generic(Model, additional=None):
         data,
         cctypes=['bernoulli','normal','normal','normal','normal'],
         rng=gu.gen_rng(0))
-    model.transition(N=1)
+    model.transition(N=1, checkpoint=1)
     # To metadata.
     metadata = model.to_metadata()
     modname = importlib.import_module(metadata['factory'][0])
