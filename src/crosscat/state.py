@@ -568,7 +568,9 @@ class State(CGpm):
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
 
-    def transition_lovecat(self, N=None, S=None, kernels=None, checkpoint=None):
+    def transition_lovecat(
+            self, N=None, S=None, kernels=None, progress=None,
+            checkpoint=None):
         # This function in its entirely is one major hack.
         # XXX TODO: Temporarily convert all cctypes into normal/categorical.
         if any(c not in ['normal','categorical'] for c in self.cctypes()):
@@ -579,7 +581,8 @@ class State(CGpm):
         from cgpm.crosscat import lovecat
         seed = self.rng.randint(1, 2**31-1)
         lovecat.transition(
-            self, N=N, S=S, kernels=kernels, seed=seed, checkpoint=checkpoint)
+            self, N=N, S=S, kernels=kernels, seed=seed, progress=progress,
+            checkpoint=checkpoint)
         # Transition the column hyperparameters.
         num_transitions = int(np.sqrt(len(self.outputs)))
         for _ in xrange(num_transitions):

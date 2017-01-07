@@ -281,7 +281,9 @@ def _progress(n_steps, max_time, step_idx, elapsed_secs, end=None):
         sys.stdout.flush()
 
 
-def transition(state, N=None, S=None, kernels=None, seed=None, checkpoint=None):
+def transition(
+        state, N=None, S=None, kernels=None, seed=None, checkpoint=None,
+        progress=None):
     """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
     # Permittable kernels:
     #   column_partition_hyperparameter
@@ -294,6 +296,8 @@ def transition(state, N=None, S=None, kernels=None, seed=None, checkpoint=None):
         seed = 1
     if kernels is None:
         kernels = ()
+    if (progress is None) or progress:
+        progress = _progress
 
     if N is None and S is None:
         n_steps = 1
@@ -323,14 +327,14 @@ def transition(state, N=None, S=None, kernels=None, seed=None, checkpoint=None):
         X_L_new, X_D_new = LE.analyze(
             M_c, T, X_L, X_D, seed,
             kernel_list=kernels, n_steps=n_steps, max_time=max_time,
-            progress=_progress)
+            progress=progress)
         diagnostics_new = dict()
     else:
         X_L_new, X_D_new, diagnostics_new = LE.analyze(
             M_c, T, X_L, X_D, seed,
             kernel_list=kernels, n_steps=n_steps, max_time=max_time,
             do_diagnostics=True, diagnostics_every_N=checkpoint,
-            progress=_progress)
+            progress=progress)
 
     _update_state(state, M_c, X_L_new, X_D_new)
 

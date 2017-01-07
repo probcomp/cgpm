@@ -180,7 +180,7 @@ def test_cgpm_lovecat_integration():
         assert 7. <= time.time() - start <= 8.
 
         # Now invoke by iterations only.
-        state.transition_lovecat(N=7)
+        state.transition_lovecat(N=7, progress=False)
 
         # Make sure we can now run regular cgpm.state transitions again.
         state.transition(S=5)
