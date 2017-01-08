@@ -837,14 +837,22 @@ class State(CGpm):
 
         self._check_partitions()
 
-    def _migrate_dim(self, v_a, v_b, dim):
+    def _migrate_dim(self, v_a, v_b, dim, reassign=None):
+        # If `reassign` is True, then the row partition in `dim` will be force
+        # reassigned to the; it False, the dim.clusters is expected to already
+        # match that of view. By default, only collapsed columns will be
+        # reassign, and uncollapsed columns (so that the user can specify the
+        # uncollasped cluster parameters without having the migration overwrite
+        # them).
+        if reassign is None:
+            reassign = dim.is_collapsed()
         # XXX Even though dim might not be a member of view v_a, the CRP gpm
         # which stores the counts has not been updated to reflect the removal of
         # dim from v_a. Therefore, we check whether CRP has v_a as a singleton.
         delete = self.Nv(v_a) == 1
         if dim.index in self.views[v_a].dims:
             self.views[v_a].unincorporate_dim(dim)
-        self.views[v_b].incorporate_dim(dim, reassign=dim.is_collapsed())
+        self.views[v_b].incorporate_dim(dim, reassign=reassign)
         # CRP Accounting
         self.crp.unincorporate(dim.index)
         self.crp.incorporate(dim.index, {self.crp_id: v_b}, {-1:0})

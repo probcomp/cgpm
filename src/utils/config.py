@@ -24,7 +24,7 @@ import importlib
 
 cctype_class_lookup = {
     'bernoulli'         : ('cgpm.primitives.bernoulli', 'Bernoulli'),
-    'beta'           : ('cgpm.primitives.beta', 'Beta'),
+    'beta'              : ('cgpm.primitives.beta', 'Beta'),
     'categorical'       : ('cgpm.primitives.categorical', 'Categorical'),
     'crp'               : ('cgpm.primitives.crp', 'Crp'),
     'exponential'       : ('cgpm.primitives.exponential', 'Exponential'),
@@ -38,6 +38,21 @@ cctype_class_lookup = {
     'vonmises'          : ('cgpm.primitives.vonmises', 'Vonmises'),
 }
 
+# https://github.com/posterior/loom/blob/master/doc/using.md#input-format
+cctype_loom_lookup = {
+    'bernoulli'         : 'boolean',
+    'beta'              : 'real',
+    'categorical'       : 'categorical',
+    'crp'               : 'unbounded_categorical',
+    'exponential'       : 'real',
+    'geometric'         : 'real',
+    'lognormal'         : 'real',
+    'normal'            : 'real',
+    'normal_trunc'      : 'real',
+    'poisson'           : 'count',
+    'vonmises'          : 'real',
+}
+
 def timestamp():
     return datetime.now().strftime('%Y%m%d-%H%M%S')
 
@@ -48,10 +63,22 @@ def colors():
 
 def cctype_class(cctype):
     """Return class object for initializing a named GPM (default normal)."""
-    if not cctype: raise ValueError('Specify a cctype!')
+    if not cctype:
+        raise ValueError('Specify a cctype!')
     modulename, classname = cctype_class_lookup[cctype]
     mod = importlib.import_module(modulename)
     return getattr(mod, classname)
+
+def loom_stattype(cctype, distargs):
+    # XXX Loom categorical is only up to 256 values; otherwise we need
+    # unbounded_categorical (aka crp).
+    if cctype == 'categorical' and distargs['k'] > 256:
+        cctype = 'crp'
+    try:
+        return cctype_loom_lookup[cctype]
+    except KeyError:
+        raise ValueError(
+            'Cannot convert cgpm type to loom type: %s' % (cctype,))
 
 def valid_cctype(dist):
     """Returns True if dist is a valid DistributionGpm."""
