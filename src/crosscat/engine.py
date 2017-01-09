@@ -203,9 +203,10 @@ class Engine(object):
     def dependence_probability_pairwise(self):
         """Compute dependence probability between all pairs as matrix."""
         D = np.eye(len(self.states[0].outputs))
+        reindex = {c: k for k, c in enumerate(self.states[0].outputs)}
         for i,j in itertools.combinations(self.states[0].outputs, 2):
             d = np.mean(self.dependence_probability(i, j))
-            D[i,j] = D[j,i] = d
+            D[reindex[i], reindex[j]] = D[reindex[j], reindex[i]] = d
         return D
 
     def row_similarity(self, row0, row1, cols=None, multiprocess=1):
