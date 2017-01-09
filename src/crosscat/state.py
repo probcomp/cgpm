@@ -713,21 +713,30 @@ class State(CGpm):
         layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(
             num=None,
-            figsize=(layout['plot_inches_y'], layout['plot_inches_x']), dpi=75,
-            facecolor='w', edgecolor='k', frameon=False, tight_layout=True)
+            figsize=(layout['plot_inches_y'], layout['plot_inches_x']),
+            dpi=75,
+            facecolor='w',
+            edgecolor='k',
+            frameon=False,
+            tight_layout=True
+        )
         # Do not plot more than 6 by 4.
         if self.n_cols() > 24:
             return
         fig.clear()
-        for dim in self.dims():
+        for i, dim in enumerate(self.dims()):
             index = dim.index
-            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index+1)
+            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], i+1)
             dim.plot_dist(self.X[dim.index], ax=ax)
             ax.text(
                 1,1, "K: %i " % len(dim.clusters),
-                transform=ax.transAxes, fontsize=12, weight='bold',
-                color='blue', horizontalalignment='right',
-                verticalalignment='top')
+                transform=ax.transAxes,
+                fontsize=12,
+                weight='bold',
+                color='blue',
+                horizontalalignment='right',
+                verticalalignment='top'
+            )
             ax.grid()
         # XXX TODO: Write png to disk rather than slow matplotlib animation.
         # plt.draw()
