@@ -196,10 +196,6 @@ def _update_state(state, path, sample):
     assert sorted(output_mapping.values()) == sorted(state.outputs)
 
     Zv_new = {output_mapping[f]: Zv_new_raw[f] for f in Zv_new_raw}
-    print Zv_new_raw
-    print output_mapping
-    print Zv_new
-
 
     # Retrieve the new row partitions from loom. The view ids are contiguous
     # from [0..n_views].
