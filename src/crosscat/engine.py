@@ -83,6 +83,14 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
 
+    def transition_loom(self, N=None, S=None, kernels=None,
+            progress=None, checkpoint=None, multiprocess=1):
+        # Uses Loom multiprocessing rather parallel_map.
+        from cgpm.crosscat import loomcat
+        loomcat.transition_engine(
+            self, N=N, S=S, kernels=kernels, progress=progress,
+            checkpoint=checkpoint)
+
     def transition_foreign(self, N=None, S=None, cols=None, progress=True,
             multiprocess=1):
         mapper = parallel_map if multiprocess else map

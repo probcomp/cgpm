@@ -28,6 +28,7 @@ from loom.cFormat import assignment_stream_load
 
 from cgpm.mixtures.view import View
 from cgpm.utils import config as cu
+from cgpm.utils.parallel_map import parallel_map
 
 
 DEFAULT_LOOM_STORE = os.path.join(os.sep, 'tmp', 'cgpm', 'loomstore')
@@ -182,6 +183,26 @@ def _update_state(state, path, sample):
     assert len(state.views) == len(new_views)
     state._check_partitions()
 
+    return state
+
+
+def _update_state_mp(args):
+    return _update_state(*args)
+
+
+def _validate_transition(
+        N=None, S=None, kernels=None, seed=None,
+        checkpoint=None, progress=None):
+    # These features will be implemented in stages; raise errors for now.
+    if S is not None:
+        raise ValueError('Loom does not support transitions by seconds.')
+    if kernels is not None:
+        raise ValueError('Loom does not support kernels.')
+    if progress is not None:
+        raise ValueError('Loom does not support progress bar.')
+    if checkpoint is not None:
+        raise ValueError('Loom does not support checkpoint.')
+
 
 def _write_dataset(state, path):
     """Write a csv file of `state.X` to the file at `path`."""
@@ -240,21 +261,13 @@ def transition(
         state, N=None, S=None, kernels=None, seed=None, checkpoint=None,
         progress=None):
     """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
+    _validate_transition(
+        N=N, S=S, kernels=kernels, seed=seed, checkpoint=checkpoint,
+        progress=progress)
+
+    # Create Loom project if necessary.
     if state._loom_path is None:
-        raise ValueError(
-            'No Loom project initialized for this state; '
-            'use loomcat.initialize(state).')
-
-    # These features will be implemented in stages; raise errors for now.
-    if kernels is not None:
-        raise ValueError('Loom does not support kernels.')
-    if progress is not None:
-        raise ValueError('Loom does not support progress bar.')
-    if checkpoint is not None:
-        raise ValueError('Loom does not support checkpoint.')
-    if S is not None:
-        raise ValueError('Loom does not support transitions by seconds.')
-
+        state._loom_path = initialize(state)
     if N is None:
         N = 1
 
@@ -265,5 +278,46 @@ def transition(
         seed=seed,
         config={"schedule": {"extra_passes": N}}
     )
-
     _update_state(state, state._loom_path['results'], seed)
+
+
+def transition_engine(
+        engine, N=None, S=None, kernels=None, seed=None, checkpoint=None,
+        progress=None):
+    # Implemented separately to use Loom multiprocessing, and share a single
+
+    # Loom project among several cgpm states (Loom samples).
+    _validate_transition(
+        N=N, S=S, kernels=kernels, seed=seed, checkpoint=checkpoint,
+        progress=progress)
+
+    # All the states must have the same loom project path.
+    for state in engine.states:
+        assert state._loom_path == engine.states[0]._loom_path
+
+    # Create Loom project if necessary.
+    if engine.states[0]._loom_path is None:
+        loom_path = initialize(engine.states[0])
+        for state in engine.states:
+            state._loom_path = loom_path
+
+    # Run transitions using Loom multiprocessing.
+    loom.tasks.infer(
+        engine.states[0]._loom_path['results'],
+        sample_count=engine.num_states(),
+        config={"schedule": {"extra_passes": N}}
+    )
+
+    # Update the engine and save the engine.
+    args = [
+        (engine.states[i], engine.states[i]._loom_path['results'], i)
+        for i in xrange(engine.num_states())
+    ]
+    engine.states = parallel_map(_update_state_mp, args)
+
+    # Transition the non-structural parameters.
+    num_transitions = int(len(engine.states[0].outputs)**.5)
+    engine.transition(
+        N=num_transitions,
+        kernels=['column_hypers', 'column_params', 'alpha', 'view_alphas']
+    )
