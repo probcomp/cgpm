@@ -81,36 +81,6 @@ def _generate_project_paths(name=None):
     return paths
 
 
-def _loom_initialize(state):
-    """Run the preprocessing pipeline.
-    |- write dataset and schema to csv
-    |- cleanse
-    |- transform
-    |- ingest
-    |- ready for: infer
-    """
-    paths = _generate_project_paths()
-
-    # Write dataset and schema csv files.
-    dataset_file = os.path.join(paths['raw'], 'data.csv')
-    schema_file = os.path.join(paths['raw'], 'schema.csv')
-
-    _write_dataset(state, dataset_file)
-    _write_schema(state, schema_file)
-
-    # Cleanse and compress the dataset for Loom.
-    cleansed_file = os.path.join(paths['cleansed'], 'data.csv.gz')
-    loom.cleanse.force_ascii(dataset_file, cleansed_file)
-
-    # Transform the cleansed dataset into Loom.
-    loom.tasks.transform(paths['results'], schema_file, paths['cleansed'])
-
-    # Ingest the transformed data.
-    loom.tasks.ingest(paths['results'])
-
-    return paths
-
-
 def _loom_cross_cat(path, sample):
     """Return the loom CrossCat structure at `path`, whose id is `sample`."""
     model_in = os.path.join(
@@ -187,14 +157,15 @@ def _update_state(state, path, sample):
     Wild errors will occur if the Loom object is incompatible with `state`.
     """
 
-    # Retrieve the new column partition from loom. The keys of Zv are contiguous
+    # Retrieve the new column partition from loom.
+    Zv_new_raw = _retrieve_column_partition(path, sample)
+    assert sorted(Zv_new_raw.keys()) == range(len(state.outputs))
+
+    # The keys of Zv are contiguous
     # from [0..len(outputs)], while state.outputs are arbitrary integers, so we
     # need to map the loom feature ids correctly.
-    Zv_new_raw = _retrieve_column_partition(path, sample)
     output_mapping = _retrieve_featureid_to_cgpm(path)
-    assert sorted(Zv_new_raw.keys()) == range(len(state.outputs))
     assert sorted(output_mapping.values()) == sorted(state.outputs)
-
     Zv_new = {output_mapping[f]: Zv_new_raw[f] for f in Zv_new_raw}
 
     # Retrieve the new row partitions from loom. The view ids are contiguous
@@ -215,9 +186,9 @@ def _update_state(state, path, sample):
         state._append_view(view, index)
 
     # Migrate each dim to its new view.
-    for i, c in enumerate(state.outputs):
+    for c in state.outputs:
         v_current = state.Zv(c)
-        v_new = Zv_new[i] + offset
+        v_new = Zv_new[c] + offset
         state._migrate_dim(v_current, v_new, state.dim_for(c), reassign=True)
 
     assert len(state.views) == len(new_views)
@@ -247,36 +218,64 @@ def _write_schema(state, path):
         writer.writerows(zip(column_names, loom_stattypes))
 
 
-# Run some ad-hoc tests.
+def initialize(state):
+    """Run the preprocessing pipeline.
+    |- write dataset and schema to csv
+    |- cleanse
+    |- transform
+    |- ingest
+    |- ready for: infer
+    """
+    paths = _generate_project_paths()
 
-from cgpm.crosscat.state import State
-from cgpm.utils import general as gu
-from cgpm.utils import test as tu
+    # Write dataset and schema csv files.
+    dataset_file = os.path.join(paths['raw'], 'data.csv')
+    schema_file = os.path.join(paths['raw'], 'schema.csv')
 
-# Set up the data generation
-cctypes, distargs = cu.parse_distargs([
-    'normal',
-    'poisson',
-    'bernoulli',
-    'categorical(k=4)',
-    'lognormal',
-    'exponential',
-    'beta',
-    'geometric',
-    'vonmises'
-])
+    _write_dataset(state, dataset_file)
+    _write_schema(state, schema_file)
 
-T, Zv, Zc = tu.gen_data_table(
-    10, [1], [[.25, .25, .5]], cctypes, distargs,
-    [.95]*len(cctypes), rng=gu.gen_rng(10))
+    # Cleanse and compress the dataset for Loom.
+    cleansed_file = os.path.join(paths['cleansed'], 'data.csv.gz')
+    loom.cleanse.force_ascii(dataset_file, cleansed_file)
 
-state = State(T.T, cctypes=cctypes, distargs=distargs, rng=gu.gen_rng(312))
-state.transition(N=1)
+    # Transform the cleansed dataset into Loom.
+    loom.tasks.transform(paths['results'], schema_file, paths['cleansed'])
 
-paths = _loom_initialize(state)
+    # Ingest the transformed data.
+    loom.tasks.ingest(paths['results'])
 
-loom.tasks.infer(
-    paths['results'], sample_count=1,
-    config={"schedule": {"extra_passes": 100}})
+    return paths
 
-_update_state(state, paths['results'], 0, )
+
+def transition(
+        state, N=None, S=None, kernels=None, seed=None, checkpoint=None,
+        progress=None):
+    """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
+    if state._loom_path is None:
+        raise ValueError(
+            'No Loom project initialized for this state; '
+            'use loomcat.initialize(state).')
+
+    # These features will be implemented in stages; raise errors for now.
+    if kernels is not None:
+        raise ValueError('Loom does not support kernels.')
+    if progress is not None:
+        raise ValueError('Loom does not support progress bar.')
+    if checkpoint is not None:
+        raise ValueError('Loom does not support checkpoint.')
+    if S is not None:
+        raise ValueError('Loom does not support transitions by seconds.')
+
+    if N is None:
+        N = 1
+
+    # The seed is used to determine which directory under results/samples
+    # to use. Let Loom decide the default policy for unspecified seed.
+    loom.tasks.infer_one(
+        state._loom_path['results'],
+        seed=seed,
+        config={"schedule": {"extra_passes": N}}
+    )
+
+    _update_state(state, state._loom_path['results'], seed)
