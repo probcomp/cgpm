@@ -50,18 +50,19 @@ DEFAULT_RESULTS_DIR = 'results'
 
 
 def _retrieve_loom_store():
+    """Retrieves absolute path of the loom store."""
     if os.environ.get('CGPM_LOOM_STORE'):
         return os.environ['CGPM_LOOM_STORE']
     if not os.path.exists(DEFAULT_LOOM_STORE):
         os.makedirs(DEFAULT_LOOM_STORE)
     return DEFAULT_LOOM_STORE
 
-
-def _generate_project_paths():
-    # Create a unique project directory in the store.
+def _generate_project_paths(name=None):
+    """Creates a new project in the loom store."""
+    if name is None:
+        name = cu.timestamp()
     store = _retrieve_loom_store()
-    timestamp = cu.timestamp()
-    project_root = os.path.join(store, timestamp)
+    project_root = os.path.join(store, name)
     # Create necessary subdirectories.
     paths = {
         'root'      : project_root,
@@ -75,18 +76,18 @@ def _generate_project_paths():
             os.makedirs(path)
     return paths
 
-
 def _generate_column_names(state):
+    """Returns list of dummy names for the outputs of `state`."""
     return [unicode('c%05d') % (i,) for i in state.outputs]
 
-
 def _generate_loom_stattypes(state):
+    """Returns list of loom stattypes from the cgpm stattypes of `state`."""
     cctypes = state.cctypes()
     distargs = state.distargs()
     return [cu.loom_stattype(s, d) for s, d in zip(cctypes, distargs)]
 
-
 def _write_dataset(state, path):
+    """Write a csv file of `state.X` to the file at `path`."""
     frame = pd.DataFrame([state.X[i] for i in state.outputs]).T
     assert frame.shape == (state.n_rows(), state.n_cols())
     frame.columns = _generate_column_names(state)
@@ -96,8 +97,8 @@ def _write_dataset(state, path):
             frame[col] = frame[col].astype(int)
     frame.to_csv(path, na_rep='', index=False)
 
-
 def _write_schema(state, path):
+    """Writes a csv file of the loom schema of `state` to the file at `path`."""
     column_names = _generate_column_names(state)
     loom_stattypes = _generate_loom_stattypes(state)
     with open(path, 'wb') as schema_file:
@@ -108,13 +109,13 @@ def _write_schema(state, path):
 
 
 def _loom_initialize(state):
-    '''Run the preprocessing pipeline.
+    """Run the preprocessing pipeline.
     |- write dataset and schema to csv
     |- cleanse
     |- transform
     |- ingest
-    |- next: infer
-    '''
+    |- ready for: infer
+    """
     paths = _generate_project_paths()
 
     # Write dataset and schema csv files.
@@ -136,29 +137,41 @@ def _loom_initialize(state):
 
     return paths
 
-
 def _sample_filename(path, sample, filename):
+    """Retrieve a filename from the `path/samples/samples.%d/` directory."""
     return os.path.join(path, 'samples', 'sample.%d' % (sample,), filename)
 
+def _ingest_filename(path, filename):
+    """Retrieve a filename from the path/ingest directory."""
+    return os.path.join(path, 'ingest', filename)
 
 def _loom_cross_cat(path, sample):
+    """Return the loom CrossCat structure at `path`, whose id is `sample`."""
     model_in = _sample_filename(path, sample, 'model.pb.gz')
     cross_cat = loom.schema_pb2.CrossCat()
     with open_compressed(model_in, 'rb') as f:
         cross_cat.ParseFromString(f.read())
     return cross_cat
 
+def _retrieve_featureid_mapping(path):
+    encoding_in = _ingest_filename(path, 'encoding.')
 
 def _retrieve_column_partition(path, sample):
+    """Return column partition from CrossCat `sample` at `path`.
+
+    The returned structure is of the form `cgpm.crosscat.state.State.Zv`.
+    """
     cross_cat = _loom_cross_cat(path, sample)
-    # Zv structure from cgpm.crosscat.State.
     return dict(itertools.chain.from_iterable([
         [(featureid, k) for featureid in kind.featureids]
         for k, kind in enumerate(cross_cat.kinds)
     ]))
 
-
 def _retrieve_row_partitions(path, sample):
+    """Return row partition from CrossCat `sample` at `path`.
+
+    The returned structure is of the form `cgpm.crosscat.state.State.Zrv`.
+    """
     cross_cat = _loom_cross_cat(path, sample)
     num_kinds = len(cross_cat.kinds)
     assign_in = _sample_filename(path, sample, 'assign.pbs.gz')
@@ -167,15 +180,19 @@ def _retrieve_row_partitions(path, sample):
         for a in assignment_stream_load(assign_in)
     }
     rowids = sorted(assignments)
-    # Zrv structure from cgpm.crosscat.State.
     return {
         k: [assignments[rowid][k] for rowid in rowids]
         for k in xrange(num_kinds)
     }
 
-
 def _update_state(state, path, sample):
-    # Retrieve the new view partition from loom.
+    """Updates `state` to match the CrossCat `sample` at `path`.
+
+    Only the row and column partitions are updated; parameter inference
+    (state alpha, view alphas, hyperparameters, etc) should be transitioned
+    separately.
+    """
+    # Retrieve the new column partition from loom.
     Zv_new = _retrieve_column_partition(path, sample)
     Zvr_new = _retrieve_row_partitions(path, sample)
     assert set(Zv_new.values()) == set(Zvr_new.keys())
