@@ -30,11 +30,11 @@ import csv
 import itertools
 import os
 
-import pandas as pd
-
 import loom.cleanse
 import loom.tasks
+import pandas as pd
 
+from distributions.io.stream import json_load
 from distributions.io.stream import open_compressed
 from loom.cFormat import assignment_stream_load
 
@@ -167,6 +167,22 @@ def _retrieve_column_partition(path, sample):
         for k, kind in enumerate(cross_cat.kinds)
     ]))
 
+
+def _retrieve_featureid_to_cgpm(path):
+    """Returns a dict mapping loom's 0-based featureid to cgpm.outputs."""
+    # Loom orders features alphabetically based on statistical types:
+    # i.e. 'bb' < 'dd' < 'nich'. The ordering is stored in
+    # `ingest/encoding.json.gz`.
+    encoding_in = os.path.join(path, 'ingest', 'encoding.json.gz')
+    features = json_load(encoding_in)
+    def colname_to_output(cname):
+        # Convert dummy column name from 'c00012' to the integer 12.
+        return int(cname.replace('c', ''))
+    return {
+        i: colname_to_output(f['name']) for i, f in enumerate(features)
+    }
+
+
 def _retrieve_row_partitions(path, sample):
     """Return row partition from CrossCat `sample` at `path`.
 
@@ -185,19 +201,37 @@ def _retrieve_row_partitions(path, sample):
         for k in xrange(num_kinds)
     }
 
+
 def _update_state(state, path, sample):
     """Updates `state` to match the CrossCat `sample` at `path`.
 
     Only the row and column partitions are updated; parameter inference
     (state alpha, view alphas, hyperparameters, etc) should be transitioned
     separately.
+
+    Wild errors will occur if the Loom object is incompatible with `state`.
     """
-    # Retrieve the new column partition from loom.
-    Zv_new = _retrieve_column_partition(path, sample)
+
+    # Retrieve the new column partition from loom. The keys of Zv are contiguous
+    # from [0..len(outputs)], while state.outputs are arbitrary integers, so we
+    # need to map the loom feature ids correctly.
+    Zv_new_raw = _retrieve_column_partition(path, sample)
+    output_mapping = _retrieve_featureid_to_cgpm(path)
+    assert sorted(Zv_new_raw.keys()) == range(len(state.outputs))
+    assert sorted(output_mapping.values()) == sorted(state.outputs)
+
+    Zv_new = {output_mapping[f]: Zv_new_raw[f] for f in Zv_new_raw}
+    print Zv_new_raw
+    print output_mapping
+    print Zv_new
+
+
+    # Retrieve the new row partitions from loom. The view ids are contiguous
+    # from [0..n_views].
     Zvr_new = _retrieve_row_partitions(path, sample)
     assert set(Zv_new.values()) == set(Zvr_new.keys())
 
-    # Create new views in cgpm with the Loom row partitions.
+    # Create new views in cgpm, with the corresponding loom row partitions.
     offset = max(state.views) + 1
     new_views = []
     for v in sorted(set(Zvr_new.keys())):
