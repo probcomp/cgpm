@@ -44,7 +44,7 @@ class State(CGpm):
             self, X, outputs=None, inputs=None, cctypes=None,
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, diagnostics=None,
-            rng=None):
+            loom_path=None, rng=None):
         # -- Seed --------------------------------------------------------------
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -144,6 +144,9 @@ class State(CGpm):
             self.diagnostics['iterations'] = dict()
         else:
             self.diagnostics = defaultdict(list, diagnostics)
+
+        # -- Loom project ------------------------------------------------------
+        self._loom_path = loom_path
 
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
@@ -583,15 +586,26 @@ class State(CGpm):
         lovecat.transition(
             self, N=N, S=S, kernels=kernels, seed=seed, progress=progress,
             checkpoint=checkpoint)
-        # Transition the column hyperparameters.
+        # Transition the non-structural parameters.
         num_transitions = int(np.sqrt(len(self.outputs)))
         for _ in xrange(num_transitions):
             self.transition_dim_hypers()
             self.transition_crp_alpha()
             self.transition_view_alphas()
-        # XXX self._increment_iterations should be called, but if N is None
-        # we have no way to obtain from lovecat the number of realized
-        # iterations.
+
+    def transition_loom(
+            self, N=None, S=None, kernels=None, progress=None,
+            checkpoint=None, seed=None):
+        from cgpm.crosscat import loomcat
+        loomcat.transition(
+            self, N=N, S=S, kernels=kernels, progress=progress,
+            checkpoint=checkpoint, seed=seed)
+        # Transition the non-structural parameters.
+        num_transitions = int(np.sqrt(len(self.outputs)))
+        self.transition(
+            N=num_transitions,
+            kernels=['column_hypers', 'column_params', 'alpha', 'view_alphas'
+        ])
 
     def transition_foreign(
             self, N=None, S=None, cols=None, progress=None):
@@ -938,6 +952,9 @@ class State(CGpm):
         for token, cgpm in self.hooked_cgpms.iteritems():
             metadata['hooked_cgpms'][token] = cgpm.to_metadata()
 
+        # Path of a Loom project.
+        metadata['loom_path'] = self._loom_path
+
         # Factory data.
         metadata['factory'] = ('cgpm.crosscat.state', 'State')
 
@@ -964,7 +981,9 @@ class State(CGpm):
             view_alphas=to_dict(metadata.get('view_alphas', None)),
             hypers=metadata.get('hypers', None),
             diagnostics=metadata.get('diagnostics', None),
-            rng=rng)
+            loom_path=metadata.get('loom_path', None),
+            rng=rng,
+        )
         # Hook up the composed CGPMs.
         for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():
             builder = getattr(
