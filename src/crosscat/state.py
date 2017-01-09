@@ -44,7 +44,7 @@ class State(CGpm):
             self, X, outputs=None, inputs=None, cctypes=None,
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, diagnostics=None,
-            rng=None):
+            loom_path=None, rng=None):
         # -- Seed --------------------------------------------------------------
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -144,6 +144,9 @@ class State(CGpm):
             self.diagnostics['iterations'] = dict()
         else:
             self.diagnostics = defaultdict(list, diagnostics)
+
+        # -- Loom project ------------------------------------------------------
+        self._loom_path = loom_path
 
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
@@ -583,15 +586,26 @@ class State(CGpm):
         lovecat.transition(
             self, N=N, S=S, kernels=kernels, seed=seed, progress=progress,
             checkpoint=checkpoint)
-        # Transition the column hyperparameters.
+        # Transition the non-structural parameters.
         num_transitions = int(np.sqrt(len(self.outputs)))
         for _ in xrange(num_transitions):
             self.transition_dim_hypers()
             self.transition_crp_alpha()
             self.transition_view_alphas()
-        # XXX self._increment_iterations should be called, but if N is None
-        # we have no way to obtain from lovecat the number of realized
-        # iterations.
+
+    def transition_loom(
+            self, N=None, S=None, kernels=None, progress=None,
+            checkpoint=None, seed=None):
+        from cgpm.crosscat import loomcat
+        loomcat.transition(
+            self, N=N, S=S, kernels=kernels, progress=progress,
+            checkpoint=checkpoint, seed=seed)
+        # Transition the non-structural parameters.
+        num_transitions = int(np.sqrt(len(self.outputs)))
+        self.transition(
+            N=num_transitions,
+            kernels=['column_hypers', 'column_params', 'alpha', 'view_alphas'
+        ])
 
     def transition_foreign(
             self, N=None, S=None, cols=None, progress=None):
@@ -699,21 +713,30 @@ class State(CGpm):
         layout = pu.get_state_plot_layout(self.n_cols())
         fig = plt.figure(
             num=None,
-            figsize=(layout['plot_inches_y'], layout['plot_inches_x']), dpi=75,
-            facecolor='w', edgecolor='k', frameon=False, tight_layout=True)
+            figsize=(layout['plot_inches_y'], layout['plot_inches_x']),
+            dpi=75,
+            facecolor='w',
+            edgecolor='k',
+            frameon=False,
+            tight_layout=True
+        )
         # Do not plot more than 6 by 4.
         if self.n_cols() > 24:
             return
         fig.clear()
-        for dim in self.dims():
+        for i, dim in enumerate(self.dims()):
             index = dim.index
-            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], index+1)
+            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], i+1)
             dim.plot_dist(self.X[dim.index], ax=ax)
             ax.text(
                 1,1, "K: %i " % len(dim.clusters),
-                transform=ax.transAxes, fontsize=12, weight='bold',
-                color='blue', horizontalalignment='right',
-                verticalalignment='top')
+                transform=ax.transAxes,
+                fontsize=12,
+                weight='bold',
+                color='blue',
+                horizontalalignment='right',
+                verticalalignment='top'
+            )
             ax.grid()
         # XXX TODO: Write png to disk rather than slow matplotlib animation.
         # plt.draw()
@@ -837,14 +860,22 @@ class State(CGpm):
 
         self._check_partitions()
 
-    def _migrate_dim(self, v_a, v_b, dim):
+    def _migrate_dim(self, v_a, v_b, dim, reassign=None):
+        # If `reassign` is True, then the row partition in `dim` will be force
+        # reassigned to the; it False, the dim.clusters is expected to already
+        # match that of view. By default, only collapsed columns will be
+        # reassign, and uncollapsed columns (so that the user can specify the
+        # uncollasped cluster parameters without having the migration overwrite
+        # them).
+        if reassign is None:
+            reassign = dim.is_collapsed()
         # XXX Even though dim might not be a member of view v_a, the CRP gpm
         # which stores the counts has not been updated to reflect the removal of
         # dim from v_a. Therefore, we check whether CRP has v_a as a singleton.
         delete = self.Nv(v_a) == 1
         if dim.index in self.views[v_a].dims:
             self.views[v_a].unincorporate_dim(dim)
-        self.views[v_b].incorporate_dim(dim, reassign=dim.is_collapsed())
+        self.views[v_b].incorporate_dim(dim, reassign=reassign)
         # CRP Accounting
         self.crp.unincorporate(dim.index)
         self.crp.incorporate(dim.index, {self.crp_id: v_b}, {-1:0})
@@ -930,6 +961,9 @@ class State(CGpm):
         for token, cgpm in self.hooked_cgpms.iteritems():
             metadata['hooked_cgpms'][token] = cgpm.to_metadata()
 
+        # Path of a Loom project.
+        metadata['loom_path'] = self._loom_path
+
         # Factory data.
         metadata['factory'] = ('cgpm.crosscat.state', 'State')
 
@@ -956,7 +990,9 @@ class State(CGpm):
             view_alphas=to_dict(metadata.get('view_alphas', None)),
             hypers=metadata.get('hypers', None),
             diagnostics=metadata.get('diagnostics', None),
-            rng=rng)
+            loom_path=metadata.get('loom_path', None),
+            rng=rng,
+        )
         # Hook up the composed CGPMs.
         for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():
             builder = getattr(
