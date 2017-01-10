@@ -31,6 +31,7 @@ Minimal test suite targeting cgpm.crosscat.loomcat.
 """
 
 import importlib
+import itertools
 import json
 
 import numpy
@@ -135,6 +136,13 @@ def test_multiple_stattypes():
     # To JSON.
     json_metadata = json.dumps(engine.to_metadata())
     engine3 = builder.from_metadata(json.loads(json_metadata))
+
+    # Assert all states in engine, engine2, and engine3 have same loom_path.
+    loom_paths = list(itertools.chain.from_iterable(
+        [s._loom_path for s in e.states]
+        for e in [engine, engine2, engine3]
+    ))
+    assert all(p == loom_paths[0] for p in loom_paths)
 
     engine2.transition(S=5)
     dependence_probability = engine2.dependence_probability_pairwise()
