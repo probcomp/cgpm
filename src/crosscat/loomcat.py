@@ -264,22 +264,30 @@ def transition(
         state, N=None, S=None, kernels=None, seed=None, checkpoint=None,
         progress=None):
     """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
+
     # Check compatible transition parameters.
     _validate_transition(
         N=N, S=S, kernels=kernels, seed=seed, checkpoint=checkpoint,
         progress=progress)
+
     # Create Loom project if necessary.
     if state._loom_path is None:
         state._loom_path = initialize(state)
+
     if N is None:
         N = 1
+
     # The seed is used to determine which directory under results/samples
-    # to use. Let Loom decide the default policy for unspecified seed.
+    # to use. Default to 0, since infer_one has no default mode.
+    if seed is None:
+        seed = 0
+
     loom.tasks.infer_one(
         state._loom_path['results'],
         seed=seed,
         config={"schedule": {"extra_passes": N}}
     )
+
     _update_state(state, state._loom_path['results'], seed)
 
 
@@ -291,30 +299,36 @@ def transition_engine(
     Implemented separately to use Loom multiprocessing, and share a single
     Loom project among several cgpm states (Loom samples).
     """
+
     # Check compatible transition parameters.
     _validate_transition(
         N=N, S=S, kernels=kernels, seed=seed, checkpoint=checkpoint,
         progress=progress)
+
     # All the states must have the same loom project path.
     for state in engine.states:
         assert state._loom_path == engine.states[0]._loom_path
+
     # Create Loom project if necessary.
     if engine.states[0]._loom_path is None:
         loom_path = initialize(engine.states[0])
         for state in engine.states:
             state._loom_path = loom_path
+
     # Run transitions using Loom multiprocessing.
     loom.tasks.infer(
         engine.states[0]._loom_path['results'],
         sample_count=engine.num_states(),
         config={"schedule": {"extra_passes": N}}
     )
+
     # Update the engine and save the engine.
     args = [
         (engine.states[i], engine.states[i]._loom_path['results'], i)
         for i in xrange(engine.num_states())
     ]
     engine.states = parallel_map(_update_state_mp, args)
+
     # Transition the non-structural parameters.
     num_transitions = int(len(engine.states[0].outputs)**.5)
     engine.transition(

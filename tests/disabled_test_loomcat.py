@@ -83,6 +83,7 @@ def test_errors():
             cgpm.transition_loom(N=10, progress=True)
         with pytest.raises(ValueError):
             cgpm.transition_loom(N=10, checkpoint=2)
+        cgpm.transition_loom(N=2)
 
     check_errors(state)
     check_errors(engine)
