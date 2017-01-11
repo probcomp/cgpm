@@ -31,7 +31,6 @@ import numpy as np
 import bayeslite
 
 from bayeslite.read_csv import bayesdb_read_csv
-from bdbcontrib.bql_utils import nullify
 
 from crosscat.LocalEngine import LocalEngine
 
@@ -40,6 +39,15 @@ from cgpm.crosscat.state import State
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
+
+def nullify(bdb, table, null):
+    from bayeslite import bql_quote_name
+    qt = bql_quote_name(table)
+    for v in (r[1] for r in bdb.sql_execute('PRAGMA table_info(%s)' % (qt,))):
+        qv = bql_quote_name(v)
+        bdb.sql_execute(
+            'UPDATE %s SET %s = NULL WHERE %s = ?' % (qt, qv, qv),
+            (null,))
 
 # -- Global variables shared by all module functions.
 rng = gu.gen_rng(2)
