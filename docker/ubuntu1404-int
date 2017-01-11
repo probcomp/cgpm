@@ -27,6 +27,6 @@ RUN \
                 ./docker/deps/crosscat/pythenv.sh \
                 env BAYESDB_WIZARD_MODE=1 \
                 env BAYESDB_DISABLE_VERSION_CHECK=1 \
-                ./check.sh -x --integration tests
+                ./check.sh --integration tests
 RUN             python setup.py sdist
 RUN             python setup.py bdist
