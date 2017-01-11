@@ -1,0 +1,32 @@
+# Integration tests.
+
+FROM            ubuntu:14.04
+MAINTAINER      MIT Probabilistic Computing Project
+
+RUN             apt-get update -qq
+RUN             apt-get upgrade -qq
+
+RUN             apt-get install -qq git
+RUN             apt-get install -qq python-matplotlib
+RUN             apt-get install -qq python-numpy
+RUN             apt-get install -qq python-pandas
+RUN             apt-get install -qq python-pytest
+RUN             apt-get install -qq python-scipy
+RUN             apt-get install -qq python-sklearn
+RUN             apt-get install -qq python-statsmodels
+
+RUN             apt-get install -qq python-jsonschema
+RUN             apt-get install -qq python-requests
+RUN             apt-get install -qq python-six
+
+ADD             . /cgpm
+WORKDIR         /cgpm
+RUN \
+                ./docker/deps/bayeslite-apsw/pythenv.sh \
+                ./docker/deps/bayeslite/pythenv.sh \
+                ./docker/deps/crosscat/pythenv.sh \
+                env BAYESDB_WIZARD_MODE=1 \
+                env BAYESDB_DISABLE_VERSION_CHECK=1 \
+                ./check.sh --integration
+RUN             python setup.py sdist
+RUN             python setup.py bdist
