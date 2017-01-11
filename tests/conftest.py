@@ -18,3 +18,9 @@
 # to use matplotlib and get some other back end.
 import matplotlib
 matplotlib.use('pdf')
+
+import pytest
+
+def pytest_addoption(parser):
+    parser.addoption('--integration', action='store_true',
+        help='run integration tests')

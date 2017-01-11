@@ -18,6 +18,10 @@
 This test suite targets cgpm.crosscat.lovecat
 """
 
+import pytest
+if not pytest.config.getoption('--integration'):
+    pytest.skip('specify --integration to run integration tests')
+
 import StringIO
 import contextlib
 import time
