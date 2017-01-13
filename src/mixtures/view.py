@@ -443,13 +443,13 @@ class View(CGpm):
         return out_query
 
     # --------------------------------------------------------------------------
-    # def posterior_relevance_score(self, query, evidence, debug=False):
-        # """
-        # Compute the posterior relevance score defined as 
+    def posterior_relevance_score(self, query, evidence, debug=False):
+        """
+        Compute the posterior relevance score defined as 
 
-        # score = log p(z_q=z_e1 | q, {e_i}, {z_e1 = ... = z_en})
-        #       = log sum_k p(z_q=k | q, {e_i}, {z_ei = k})
-        # """
+        score = log p(z_q=z_e1 | q, {e_i}, {z_e1 = ... = z_en})
+              = log sum_k p(z_q=k | q, {e_i}, {z_ei = k})
+        """
         # query, evidence = self._rectify_relevance_query_evidence(
         #     query, evidence)
         # joint_input = deep_merged(query, evidence) 
@@ -485,7 +485,7 @@ class View(CGpm):
         #     assert stored_metadata == self.to_metadata()
 
         # return l
-        # return 42
+        return 42
 
     # relevance score
     def relevance_score(self, query, evidence, debug=False):
