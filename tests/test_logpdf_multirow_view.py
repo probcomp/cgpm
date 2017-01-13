@@ -89,8 +89,7 @@ def test_joint_two_rows_one_column():
 
 def test_joint_two_rows_two_columns():
     # P(x[0,:] = [1,1], x[1,:] = [1,1]) = 25./288
-    query = {0: {0: 1, 1: 1},
-             1: {0: 1, 1: 1}}
+    query = {0: {0: 1, 1: 1}, 1: {0: 1, 1: 1}}
     answer = np.log(25./288)
     check_logpdf_multirow_answer(answer, query)
 
@@ -108,14 +107,27 @@ def test_joint_two_rows_with_clusters():
     answer = np.log(1./8)
     check_logpdf_multirow_answer(answer, query)
 
+def test_joint_two_clusters():
+    # p({0: {Z: 0}, 1: {Z: 1}}) = 1./2
+    query = {0: {Z: 0}, 1: {Z: 1}}
+    answer = np.log(1./2)
+    check_logpdf_multirow_answer(answer, query)
+
 # TEST CONDITIONAL DENSITY
 
-def test_conditional_two_rows_given_clusters():
+def test_conditional_two_rows_given_two_clusters():
     # p({row 0: {0: 1}, row 1: {0: 1}} | {0: {Z: 0}, 1: {Z: 1}}) = 1./4
     # = 1./8 * 1./(1./2)
     query = {0: {0: 1}, 1: {0: 1}}
     evidence = {0: {Z: 0}, 1: {Z: 1}}
     answer = np.log(1./4)
+    check_logpdf_multirow_answer(answer, query, evidence)
+
+def test_conditional_two_clusters_given_two_rows():
+    # p({0: {Z: 0}, 1: {Z: 1}} | {row 0: {0: 1}, row 1: {0: 1}}) = 1./8 * 24./7
+    query = {0: {Z: 0}, 1: {Z: 1}}
+    evidence = {0: {0: 1}, 1: {0: 1}}
+    answer = np.log(24./56) 
     check_logpdf_multirow_answer(answer, query, evidence)
 
 def test_conditional_one_column_one_row_given_another_row_first_part():
@@ -146,7 +158,7 @@ def test_conditional_two_columns_one_row_given_another_row_second_part():
     query = {0: {0: 1, 1: 1}}
     evidence = {1: {0: 1, 1: 1}}
     answer = np.log(25./72)
-    check_logpdf_multirow_answer(answer, query, evidence)
+    check_logpdf_multirow_answer(answer, query, evidence)    
 
 # TEST PRODUCT RULE
 
