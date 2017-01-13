@@ -443,6 +443,50 @@ class View(CGpm):
         return out_query
 
     # --------------------------------------------------------------------------
+    def posterior_relevance_score(self, query, evidence, debug=False):
+        """
+        Compute the posterior relevance score defined as 
+
+        score = log p(z_q=z_e1 | q, {e_i}, {z_e1 = ... = z_en})
+              = log sum_k p(z_q=k | q, {e_i}, {z_ei = k})
+        """
+        query, evidence = self._rectify_relevance_query_evidence(
+            query, evidence)
+        joint_input = deep_merged(query, evidence) 
+
+        # Check that internal state of CGPM does not change
+        if debug:
+            stored_metadata = copy.deepcopy(self.to_metadata())
+        # Store query and evidence rows already in the dataset
+        T = self._pop_unincorporate(joint_input)
+
+        l = - np.float("inf")
+
+        K = self.retrieve_available_clusters()
+        for k in K:  # for each possible cluster for evidence
+            cluster_evidence = {
+                row: {self.exposed_latent: k} for row in evidence}
+
+            cluster_query = {
+                row: {self.exposed_latent: k} for row in query}
+            
+            # P(query, evidence, cluster_query, cluster_evidence)
+            score_evidence = deep_merged(joint_input, cluster_evidence)
+            logp_joint = self.logpdf_multirow(
+                query=cluster_query, evidence=score_evidence,
+                debug=debug)  # compute joint logpdf
+
+            l = gu.logsumexp((l, logp_joint))
+
+        # Reincorporate rows in T to dataset
+        self._push_incorporate(T)
+
+        if debug:
+            assert stored_metadata == self.to_metadata()
+
+        return l
+
+
     # relevance score
     def relevance_score(self, query, evidence, debug=False):
         """
@@ -457,7 +501,7 @@ class View(CGpm):
 
         query, evidence = self._rectify_relevance_query_evidence(
             query, evidence)
-        joint_input = deep_merged(query, evidence)
+        joint_input = deep_merged(query, evidence) 
 
         # Check that internal state of CGPM does not change
         if debug:
