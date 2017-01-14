@@ -443,48 +443,50 @@ class View(CGpm):
         return out_query
 
     # --------------------------------------------------------------------------
-    def posterior_relevance_score(self, query, evidence, debug=False):
+    def posterior_relevance_score(self, target, query, debug=False):
         """
         Compute the posterior relevance score defined as 
 
-        score = log p(z_q=z_e1 | q, {e_i}, {z_e1 = ... = z_en})
-              = log sum_k p(z_q=k | q, {e_i}, {z_ei = k})
+        score = logpdf(target cluster = query set cluster | 
+                    target, query set, query set clusters are the same)
+              = logpdf(target cluster = query set cluster | target, query set)
+                 - logpdf(query set clusters | target, query set)
         """
-        # query, evidence = self._rectify_relevance_query_evidence(
-        #     query, evidence)
-        # joint_input = deep_merged(query, evidence) 
+        
+        # Debug option: check preservation of internal state
+        if debug:
+            stored_metadata = copy.deepcopy(self.to_metadata())
 
-        # # Check that internal state of CGPM does not change
-        # if debug:
-        #     stored_metadata = copy.deepcopy(self.to_metadata())
-        # # Store query and evidence rows already in the dataset
-        # T = self._pop_unincorporate(joint_input)
+        # Merge target and query into joint input
+        target, query = self._format_target_query(target, query)
+        joint_input = deep_merged(target, query) 
 
-        # l = - np.float("inf")
+        # Remove any row in joint input from dataset
+        T = self._pop_unincorporate(joint_input)
+        Z = self.exposed_latent
 
-        # K = self.retrieve_available_clusters()
-        # for k in K:  # for each possible cluster for evidence
-        #     cluster_evidence = {
-        #         row: {self.exposed_latent: k} for row in evidence}
+        def logsumexp_cluster_conditional(row_set, clusters, debug):
+            l = -np.inf
+            for k in clusters:
+                cluster_query = {row: {Z: k} for row in row_set.keys()}
+                t = self.logpdf_multirow(
+                    query=cluster_query, evidence=row_set, debug=debug)
+                l = gu.logsumexp((l, t))
+            return l
 
-        #     cluster_query = {
-        #         row: {self.exposed_latent: k} for row in query}
-            
-        #     # P(query, evidence, cluster_query, cluster_evidence)
-        #     score_evidence = deep_merged(joint_input, cluster_evidence)
-        #     logp_joint = self.logpdf_multirow(
-        #         query=cluster_query, evidence=score_evidence,
-        #         debug=debug)  # compute joint logpdf
+        K = self.retrieve_available_clusters()
+        l_joint = logsumexp_cluster_conditional(joint_input, K, debug)
+        l_query = logsumexp_cluster_conditional(query, K, debug)
+        logscore = l_joint - l_query
 
-        #     l = gu.logsumexp((l, logp_joint))
+        # Return joint input to dataset
+        self._push_incorporate(T)
 
-        # # Reincorporate rows in T to dataset
-        # self._push_incorporate(T)
+        if debug:
+            assert stored_metadata == self.to_metadata()
 
-        # if debug:
-        #     assert stored_metadata == self.to_metadata()
+        return logscore
 
-        # return l
         return 42
 
     # relevance score
@@ -499,7 +501,7 @@ class View(CGpm):
                 - log p(query, evidence, different cluster)
         """
 
-        query, evidence = self._rectify_relevance_query_evidence(
+        query, evidence = self._format_target_query(
             query, evidence)
         joint_input = deep_merged(query, evidence) 
 
@@ -514,8 +516,6 @@ class View(CGpm):
 
         Ke = self.retrieve_available_clusters()
         for ke in Ke:  # for each possible cluster for evidence
-            # evidence_ke = self._assign_cluster_to_set_of_rows(
-                # evidence, ke)  # assign every row in evidence to cluster ke
             cluster_evidence = {
                 row: {self.exposed_latent: ke} for row in evidence}
 
@@ -655,7 +655,7 @@ class View(CGpm):
                     del out_query[rowid]
         return out_query, out_evidence
 
-    def _rectify_relevance_query_evidence(self, query, evidence):
+    def _format_target_query(self, query, evidence):
         out_query = query.copy()
         out_evidence = {} if evidence is None else evidence.copy()
 
