@@ -56,10 +56,11 @@ def logsumexp_conditional_densities(num_of_clusters, target, query):
     return s
     
 def test_one_hypothetical_one_nonhypothetical_rows():
-    # score({0: {0: 1}}; {1: {0: 1}}) = 24./56
+    # score({0: {0: 1}}; {1: {0: 1}}) = 1 - 24./56
     target = {0: {0: 1}}
     query = {1: {0: 1}}
-    check_posterior_score_answer(24./56, target, query)
+    answer = np.log(32./56)
+    check_posterior_score_answer(answer, target, query)
 
 def test_two_hypothetical_rows():
     # score({1: {0: 1}}; {2: {0: 1}})
@@ -78,5 +79,5 @@ def test_three_hypothetical_rows():
     # compute answer based on logpdf_multirow
     num = logsumexp_conditional_densities(1, target, query)
     den = logsumexp_conditional_densities(1, query, {})
-    answer = num * 1. / den
+    answer = num - den
     check_posterior_score_answer(answer, target, query)
