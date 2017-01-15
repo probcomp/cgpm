@@ -487,7 +487,6 @@ class View(CGpm):
 
         return logscore
 
-        return 42
 
     # relevance score
     def relevance_score(self, query, evidence, debug=False):
@@ -547,19 +546,39 @@ class View(CGpm):
 
         logscore = l1 - l2
         return logscore
+    
+    def generic_search(self, compute_score, evidence, debug=False):
+        """
+        Order dataset by relevance score wrt evidence for each row 
+        of the dataset.
 
-    def relevance_search(self, evidence, debug=False):
+        INPUT:
+        -----
+        score - function (row, set of rows -> real number)
+        evidence - set of rows ({rowid: {col: val}})
+        debug - True or False
         """
-        Computes the relevance_score wrt evidence for each row of the dataset.
-        """
+        # T = self._pop_unincorporate(evidence)
+
         score = {}
-        for row in xrange(len(self.X.values()[0])):  # for each row in the dataset
-            score[row] = self.relevance_score(
-                query={row: {}}, evidence=evidence,
-                debug=debug)
+        R = len(self.X.values()[0])
+        for row in xrange(R):  # for each row in the dataset
+            score[row] = compute_score(
+                query={row: {}}, evidence=evidence, debug=debug)
+        
+        # Reincorporate rows in T to dataset
+        # self._push_incorporate(T)
+        
         sorted_score = sorted(
             score.items(), key=lambda x: x[1], reverse=True)
         return sorted_score
+
+    def relevance_search(self, evidence, debug=False):
+        return self.generic_search(self.relevance_score, evidence, debug)
+
+    def posterior_relevance_search(self, evidence, debug=False):
+        return self.generic_search(
+            self.posterior_relevance_score, evidence, debug)
 
     def _assign_cluster_to_set_of_rows(self, row_dct, k):
         """
