@@ -286,17 +286,15 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     def relevance_search(self, query, context, debug=False):
         """ Order by relevance score with respect to context"""
-        return 42
-        # context_view = self.Zv()[context]
-        # return self.views[context_view].relevance_search(
-            # self, query, debug)
+        context_view_id = self.Zv()[context]
+        context_view = self.views[context_view_id]
+        return context_view.relevance_search(query, debug)
 
     def posterior_relevance_search(self, query, context, debug=False):
         """ Order by posterior relevance score with respect to context """
-        return 42
-        # context_view = self.Zv()[context]
-        # return self.views[context_view].posterior_relevance_search(
-            # self, query, debug)
+        context_view_id = self.Zv()[context]
+        context_view = self.views[context_view_id]
+        return context_view.posterior_relevance_search(query, debug)
 
     # --------------------------------------------------------------------------
     # Simulate

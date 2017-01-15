@@ -58,7 +58,7 @@ def test_relevance_search_wrt_rows_in_first_cluster():
 
     for rowid in xrange(4):
         score = view.posterior_relevance_search(
-            evidence={rowid: {}}, bdebug=True)
+            evidence={rowid: {}}, debug=True)
 
         # Assert highest score with itself
         assert score[0][0] == rowid
@@ -68,7 +68,7 @@ def test_relevance_search_wrt_rows_in_first_cluster():
         first_cluster = range(4)
         assert set(first_four) == set(first_cluster)
 
-        # Assert lowest scoring values come from different cluster than evidence
+        # Lowest scoring values come from different cluster than evidence?
         last_four = [score[i][0] for i in xrange(4, 8)]
         second_cluster = range(4, 8)
         assert set(last_four) == set(second_cluster)

@@ -529,7 +529,7 @@ class View(CGpm):
 
                 # P(target, query, cluster_query, cluster_evidence)
                 logp_joint = self.logpdf_multirow(
-                    target=deep_merged(
+                    query=deep_merged(
                         joint_input, cluster_query, cluster_evidence),
                     debug=debug)  # compute joint logpdf
 
@@ -573,12 +573,12 @@ class View(CGpm):
             score.items(), key=lambda x: x[1], reverse=True)
         return sorted_score
 
-    def relevance_search(self, evidence, debug=False):
-        return self.generic_search(self.relevance_score, evidence, debug)
+    def relevance_search(self, query, debug=False):
+        return self.generic_search(self.relevance_score, query, debug)
 
-    def posterior_relevance_search(self, evidence, debug=False):
+    def posterior_relevance_search(self, query, debug=False):
         return self.generic_search(
-            self.posterior_relevance_score, evidence, debug)
+            self.posterior_relevance_score, query, debug)
 
     def _assign_cluster_to_set_of_rows(self, row_dct, k):
         """
