@@ -489,47 +489,47 @@ class View(CGpm):
 
 
     # relevance score
-    def relevance_score(self, query, evidence, debug=False):
+    def relevance_score(self, target, query, debug=False):
         """
         Compute the relevance score as the likelihood ratio of the joint
-        query and evidence given two hypotheses:
-        1 - query and evidence all belong to the same, unknown, cluster.
-        2 - query and evidence belong to two different clusters.
+        target and query given two hypotheses:
+        1 - target and query all belong to the same, unknown, cluster.
+        2 - target and query belong to two different clusters.
 
-        score = log p(query, evidence, same cluster)
-                - log p(query, evidence, different cluster)
+        score = log p(target, query, same cluster)
+                - log p(target, query, different cluster)
         """
 
-        query, evidence = self._format_target_query(
-            query, evidence)
-        joint_input = deep_merged(query, evidence) 
+        target, query = self._format_target_query(
+            target, query)
+        joint_input = deep_merged(target, query) 
 
         # Check that internal state of CGPM does not change
         if debug:
             stored_metadata = copy.deepcopy(self.to_metadata())
-        # Store query and evidence rows already in the dataset
+        # Store target and query rows already in the dataset
         T = self._pop_unincorporate(joint_input)
 
         l1 = - np.float("inf")
         l2 = - np.float("inf")
 
         Ke = self.retrieve_available_clusters()
-        for ke in Ke:  # for each possible cluster for evidence
+        for ke in Ke:  # for each possible cluster for query
             cluster_evidence = {
-                row: {self.exposed_latent: ke} for row in evidence}
+                row: {self.exposed_latent: ke} for row in query}
 
             Kq = Ke
-            if ke == Ke[-1]:  # if evidence is assigned a new cluster
-                Kq = Ke + [ke+1]  # query may be assigned a different new cluster
-            for kq in Kq:  # for each possible cluster for query
+            if ke == Ke[-1]:  # if query is assigned a new cluster
+                Kq = Ke + [ke+1]  # target may be assigned a different new cluster
+            for kq in Kq:  # for each possible cluster for target
                 # query_kq = self._assign_cluster_to_set_of_rows(
-                    # query, kq)  # assign every row in query to cluster kq
+                    # target, kq)  # assign every row in target to cluster kq
                 cluster_query = {
-                    row: {self.exposed_latent: kq} for row in query}
+                    row: {self.exposed_latent: kq} for row in target}
 
-                # P(query, evidence, cluster_query, cluster_evidence)
+                # P(target, query, cluster_query, cluster_evidence)
                 logp_joint = self.logpdf_multirow(
-                    query=deep_merged(
+                    target=deep_merged(
                         joint_input, cluster_query, cluster_evidence),
                     debug=debug)  # compute joint logpdf
 
@@ -547,24 +547,24 @@ class View(CGpm):
         logscore = l1 - l2
         return logscore
     
-    def generic_search(self, compute_score, evidence, debug=False):
+    def generic_search(self, compute_score, query, debug=False):
         """
-        Order dataset by relevance score wrt evidence for each row 
+        Order dataset by relevance score wrt query for each row 
         of the dataset.
 
         INPUT:
         -----
         score - function (row, set of rows -> real number)
-        evidence - set of rows ({rowid: {col: val}})
+        query - set of rows ({rowid: {col: val}})
         debug - True or False
         """
-        # T = self._pop_unincorporate(evidence)
+        # T = self._pop_unincorporate(query)
 
         score = {}
         R = len(self.X.values()[0])
         for row in xrange(R):  # for each row in the dataset
             score[row] = compute_score(
-                query={row: {}}, evidence=evidence, debug=debug)
+                target={row: {}}, query=query, debug=debug)
         
         # Reincorporate rows in T to dataset
         # self._push_incorporate(T)
