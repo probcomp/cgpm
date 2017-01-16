@@ -331,13 +331,10 @@ class View(CGpm):
             return out
         return wrapper
 
-    # logpdf multirow
-    # TODO: [ ] logpdf_preprocess, logpdf_postprocess
-    # TODO: rename logpdf_set => logpdf_set
     @assert_persistence_metadata
     def logpdf_set(self, query, evidence=None, debug=False):
         """
-        Compute log p(query | evidence)
+        Compute log p(query | evidence).
 
         INPUT:
         ------
@@ -345,31 +342,28 @@ class View(CGpm):
         evidence - set of rows, {rowid: {col: val}}
         debug = True or False
         """
-
         # Format inputs and unincorporate them
         query, evidence = self._format_query_evidence(query, evidence)
         joint_input = deep_merged(query, evidence)
         T = self._pop_unincorporate(joint_input)
 
-        # compute the joint logpdf and the marginal evidence logpdf
+        # Compute the joint logpdf and the marginal evidence logpdf
         log_joint = self._joint_logpdf_set(joint_input, counter=0)
         log_marginal = self._joint_logpdf_set(
             evidence, counter=0) if evidence else 0
 
-        # Reincorporate rows in T to dataset and check debug
+        # Reincorporate rows in T to dataset
         self._push_incorporate(T)
-
         return log_joint - log_marginal
 
     def _joint_logpdf_set(self, query, counter):
         query = self._make_rowid_contiguous(query)
-        log_p = - np.float("inf")  # initialize output as 0 in logspace
+        log_p = - np.float("inf")
 
         # Base Case
         if counter == len(query):
             log_p = 0
 
-        # Recursive Case: log p(this row)*p(other_rows| this row)
         else:
             rowid = sorted(query.keys())[counter]  # retrieve id of current row
             query_row = query[rowid].copy()
@@ -383,7 +377,6 @@ class View(CGpm):
                 query_row[self.exposed_latent] = k
                 p_row = self.logpdf(rowid, query_row)  # log_p(row, cluster=k)
                 self.incorporate(rowid, query_row)  # incorporate into k
-                # Recursion: log_p(this_row) + log_p(other_rows | this_row)
                 p_row += self._joint_logpdf_set(query, counter+1)
                 log_p = gu.logsumexp([log_p, p_row])  # marginalize out k
                 self.unincorporate(rowid=rowid)
@@ -434,8 +427,9 @@ class View(CGpm):
             else:
                 out_query[key] = query[key]
         return out_query
-
+    
     # --------------------------------------------------------------------------
+    @assert_persistence_metadata
     def posterior_relevance_score(self, target, query, debug=False):
         """
         Compute the posterior relevance score defined as 
@@ -445,11 +439,6 @@ class View(CGpm):
               = logpdf(target cluster = query set cluster | target, query set)
                  - logpdf(query set clusters | target, query set)
         """
-        
-        # Debug option: check preservation of internal state
-        if debug:
-            stored_metadata = copy.deepcopy(self.to_metadata())
-
         # Merge target and query into joint input
         target, query = self._format_query_evidence(target, query)
         joint_input = deep_merged(target, query) 
@@ -475,13 +464,11 @@ class View(CGpm):
         # Return joint input to dataset
         self._push_incorporate(T)
 
-        if debug:
-            assert stored_metadata == self.to_metadata()
-
         return logscore
 
 
     # relevance score
+    @assert_persistence_metadata
     def relevance_score(self, target, query, debug=False):
         """
         Compute the relevance score as the likelihood ratio of the joint
@@ -497,9 +484,6 @@ class View(CGpm):
             target, query)
         joint_input = deep_merged(target, query) 
 
-        # Check that internal state of CGPM does not change
-        if debug:
-            stored_metadata = copy.deepcopy(self.to_metadata())
         # Store target and query rows already in the dataset
         T = self._pop_unincorporate(joint_input)
 
@@ -515,8 +499,6 @@ class View(CGpm):
             if ke == Ke[-1]:  # if query is assigned a new cluster
                 Kq = Ke + [ke+1]  # target may be assigned a different new cluster
             for kq in Kq:  # for each possible cluster for target
-                # query_kq = self._assign_cluster_to_set_of_rows(
-                    # target, kq)  # assign every row in target to cluster kq
                 cluster_query = {
                     row: {self.exposed_latent: kq} for row in target}
 
@@ -533,9 +515,6 @@ class View(CGpm):
 
         # Reincorporate rows in T to dataset
         self._push_incorporate(T)
-
-        if debug:
-            assert stored_metadata == self.to_metadata()
 
         logscore = l1 - l2
         return logscore
@@ -556,8 +535,9 @@ class View(CGpm):
         score = {}
         R = len(self.X.values()[0])
         for row in xrange(R):  # for each row in the dataset
-            score[row] = compute_score(
-                target={row: {}}, query=query, debug=debug)
+            if row not in query.keys():  # if not in query
+                score[row] = compute_score(
+                    target={row: {}}, query=query, debug=debug)
         
         # Reincorporate rows in T to dataset
         # self._push_incorporate(T)
