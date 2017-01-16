@@ -320,52 +320,49 @@ class View(CGpm):
         return gu.logsumexp(np.add(lp_evidence, lp_query))
 
     # --------------------------------------------------------------------------
-    # logpdf multirow
+    def assert_persistence_metadata(function):
+        def wrapper(*args, **kwargs):
+            do_debug = kwargs.get('debug', False) or args[3:4]
+            if do_debug:
+                stored_metadata = args[0].to_metadata()
+            out = function(*args, **kwargs)
+            if do_debug:
+                assert stored_metadata == args[0].to_metadata()
+            return out
+        return wrapper
 
+    # logpdf multirow
+    # TODO: [ ] logpdf_preprocess, logpdf_postprocess
+    # TODO: rename logpdf_multirow => logpdf_set
+    @assert_persistence_metadata
     def logpdf_multirow(self, query, evidence=None, debug=False):
         """
-        Evaluate logpdf of query given evidence, where both query
-        and evidence may contain multiple rows.
-        If any of the rows in query or evidence has already been
-        incorporated, unincorporate them before evaluating the
-        logpdf.
+        Compute log p(query | evidence)
 
-        QUESTION:
-        - For nonhypothetical rows in the evidence, should I not
-        marginalize the latents?
+        INPUT:
+        ------
+        query - set of rows, {rowid: {col: val}}
+        evidence - set of rows, {rowid: {col: val}}
+        debug = True or False
         """
-        # Check that internal state of CGPM does not change
-        if debug:
-            stored_metadata = copy.deepcopy(self.to_metadata())
 
-        query, evidence = self._rectify_multirow_query_evidence(query, evidence)
+        # Format inputs and unincorporate them
+        query, evidence = self._format_query_evidence(query, evidence)
         joint_input = deep_merged(query, evidence)
-
-        # Store query and evidence rows already in the dataset
         T = self._pop_unincorporate(joint_input)
 
-        # compute the joint of query and evidence
-        log_joint = self._joint_logpdf_multirow(joint_input)
-
-        # compute the joint of evidence
+        # compute the joint logpdf and the marginal evidence logpdf
+        log_joint = self._joint_logpdf_multirow(joint_input, counter=0)
         log_marginal = self._joint_logpdf_multirow(
-            query=evidence) if evidence else 0
+            evidence, counter=0) if evidence else 0
 
-        # Reincorporate rows in T to dataset
+        # Reincorporate rows in T to dataset and check debug
         self._push_incorporate(T)
-
-        if debug:
-            assert stored_metadata == self.to_metadata()
 
         return log_joint - log_marginal
 
-    def _joint_logpdf_multirow(self, query):
+    def _joint_logpdf_multirow(self, query, counter):
         query = self._make_rowid_contiguous(query)
-
-        counter = 0
-        return self._joint_logpdf_multirow_helper(counter, query)
-
-    def _joint_logpdf_multirow_helper(self, counter, query):
         log_p = - np.float("inf")  # initialize output as 0 in logspace
 
         # Base Case
@@ -377,21 +374,17 @@ class View(CGpm):
             rowid = sorted(query.keys())[counter]  # retrieve id of current row
             query_row = query[rowid].copy()
             assigned_cluster = query_row.get(self.exposed_latent, None)
-
             if assigned_cluster is not None:  # if row has cluster
                 K = [assigned_cluster]  # Do not marginalize
             else:
                 K = self.retrieve_available_clusters()
-
             # Marginalization: log sum_k p(observed_values, cluster=k)
             for k in K:
                 query_row[self.exposed_latent] = k
                 p_row = self.logpdf(rowid, query_row)  # log_p(row, cluster=k)
                 self.incorporate(rowid, query_row)  # incorporate into k
-
                 # Recursion: log_p(this_row) + log_p(other_rows | this_row)
-                p_row += self._joint_logpdf_multirow_helper(counter+1, query)
-
+                p_row += self._joint_logpdf_multirow(query, counter+1)
                 log_p = gu.logsumexp([log_p, p_row])  # marginalize out k
                 self.unincorporate(rowid=rowid)
 
@@ -458,7 +451,7 @@ class View(CGpm):
             stored_metadata = copy.deepcopy(self.to_metadata())
 
         # Merge target and query into joint input
-        target, query = self._format_target_query(target, query)
+        target, query = self._format_query_evidence(target, query)
         joint_input = deep_merged(target, query) 
 
         # Remove any row in joint input from dataset
@@ -500,7 +493,7 @@ class View(CGpm):
                 - log p(target, query, different cluster)
         """
 
-        target, query = self._format_target_query(
+        target, query = self._format_query_evidence(
             target, query)
         joint_input = deep_merged(target, query) 
 
@@ -601,7 +594,7 @@ class View(CGpm):
             new_row_dct[key][self.exposed_latent] = k
         return new_row_dct
 
-    def _rectify_multirow_query_evidence(self, query, evidence):
+    def _format_query_evidence(self, query, evidence):
         out_query = query.copy()
         out_evidence = {} if evidence is None else evidence.copy()
 
@@ -672,23 +665,6 @@ class View(CGpm):
                         UserWarning)
                     out_query[last_rowid+i] = out_query[rowid]
                     del out_query[rowid]
-        return out_query, out_evidence
-
-    def _format_target_query(self, query, evidence):
-        out_query = query.copy()
-        out_evidence = {} if evidence is None else evidence.copy()
-
-        if len(out_query.keys()) > 1:
-            raise ValueError("Query must contain only one variable")
-
-        # If out_query is present in out_evidence, make it hypothetical
-        # for key, val in out_query.iteritems():
-        #     if key in out_evidence:
-        #         out_query[-1] = val
-        #         del out_query[key]
-
-        out_query, out_evidence = self._rectify_multirow_query_evidence(
-            out_query, out_evidence)
         return out_query, out_evidence
 
     # --------------------------------------------------------------------------

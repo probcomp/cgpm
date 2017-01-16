@@ -55,7 +55,7 @@ def test_score_of_first_row_with_itself():
     logp_H2 = np.log(1./8)
     math_out = logp_H1 - logp_H2
 
-    test_out = view.relevance_score(query={0: {}}, evidence={0: {}}, debug=True)
+    test_out = view.relevance_score(target={0: {}}, query={0: {}}, debug=True)
 
     assert np.allclose(math_out, test_out)
 
@@ -69,7 +69,7 @@ def test_score_of_first_row_with_hypothetical_same_row():
     logp_H2 = np.log(1./8)
     math_out = logp_H1 - logp_H2
 
-    test_out = view.relevance_score(query={1: {0: 1}}, evidence={0: {}}, debug=True)
+    test_out = view.relevance_score(target={1: {0: 1}}, query={0: {}}, debug=True)
 
     assert np.allclose(math_out, test_out)
 
@@ -84,7 +84,7 @@ def test_score_of_first_row_with_different_hypothetical_row():
     math_out = logp_H1 - logp_H2
 
     test_out = view.relevance_score(
-        query={1: {0: 0}}, evidence={0: {}}, debug=True)
+        target={1: {0: 0}}, query={0: {}}, debug=True)
     assert np.allclose(math_out, test_out)
 
 def test_score_of_hypothetical_row_with_another_hypothetical_row():
@@ -115,16 +115,16 @@ def test_score_of_hypothetical_row_with_another_hypothetical_row():
     l2 = logsumexp((p_21, p_22, p_23))
 
     math_out = l1 - l2
-    test_out = view.relevance_score(query={2: {0: 1}}, evidence={1: {0: 1}}, debug=True)
+    test_out = view.relevance_score(target={2: {0: 1}}, query={1: {0: 1}}, debug=True)
 
     assert np.allclose(math_out, test_out)
 
 def test_trivial_relevance_search():
     view = initialize_view()
 
-    sorted_score = view.relevance_search(evidence={0: {}})
+    sorted_score = view.relevance_search(query={0: {}})
     
-    score = view.relevance_score(query={0: {}}, evidence={0: {}})
+    score = view.relevance_score(target={0: {}}, query={0: {}})
     expected_out = [(0, score)]
 
     assert sorted_score == expected_out

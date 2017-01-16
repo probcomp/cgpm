@@ -57,17 +57,17 @@ def test_relevance_search_wrt_rows_in_first_cluster():
     view = initialize_view()
 
     for rowid in xrange(4):
-        score = view.relevance_search(evidence={rowid: {}}, debug=True)
+        score = view.relevance_search(query={rowid: {}}, debug=True)
 
         # Assert highest score with itself
         assert score[0][0] == rowid
 
-        # Assert highest scoring values come from same cluster as evidence
+        # Assert highest scoring values come from same cluster as query
         first_four = [score[i][0] for i in xrange(4)]
         first_cluster = range(4)
         assert set(first_four) == set(first_cluster)
 
-        # Assert lowest scoring values come from different cluster than evidence
+        # Assert lowest scoring values come from different cluster than query
         last_four = [score[i][0] for i in xrange(4, 8)]
         second_cluster = range(4, 8)
         assert set(last_four) == set(second_cluster)
@@ -76,17 +76,17 @@ def test_relevance_search_wrt_rows_in_second_cluster():
     view = initialize_view()
 
     for rowid in xrange(4, 8):
-        score = view.relevance_search(evidence={rowid: {}}, debug=True)
+        score = view.relevance_search(query={rowid: {}}, debug=True)
 
         # Assert highest score with itself
         assert score[0][0] == rowid
 
-        # Assert highest scoring values come from same cluster as evidence
+        # Assert highest scoring values come from same cluster as query
         first_four = [score[i][0] for i in xrange(4)]
         second_cluster = range(4, 8)
         assert set(first_four) == set(second_cluster)
 
-        # Assert lowest scoring values come from different cluster than evidence
+        # Assert lowest scoring values come from different cluster than query
         last_four = [score[i][0] for i in xrange(4, 8)]
         first_cluster = range(4)
         assert set(last_four) == set(first_cluster)
@@ -94,7 +94,7 @@ def test_relevance_search_wrt_rows_in_second_cluster():
 def test_relevance_search_mixed():
     view = initialize_view()
 
-    score = view.relevance_search(evidence={0: {}, 7: {}}, debug=True)
+    score = view.relevance_search(query={0: {}, 7: {}}, debug=True)
 
     # Assert highest scores with itself
     first_two = [score[i][0] for i in xrange(2)]
@@ -105,14 +105,14 @@ def test_relevance_search_mixed():
 def test_relevance_search_wrt_majority():
     view = initialize_view()
 
-    score = view.relevance_search(evidence={0: {}, 1: {}, 7: {}}, debug=True)
+    score = view.relevance_search(query={0: {}, 1: {}, 7: {}}, debug=True)
 
-    # Assert highest scoring values come from majority cluster in evidence
+    # Assert highest scoring values come from majority cluster in query
     first_four = [score[i][0] for i in xrange(4)]
     first_cluster = range(4)
     assert set(first_four) == set(first_cluster)
 
-    # Assert lowest scoring values come from minority cluster in evidence
+    # Assert lowest scoring values come from minority cluster in query
     last_four = [score[i][0] for i in xrange(4, 8)]
     second_cluster = range(4, 8)
     assert set(last_four) == set(second_cluster)
