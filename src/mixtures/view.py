@@ -333,9 +333,9 @@ class View(CGpm):
 
     # logpdf multirow
     # TODO: [ ] logpdf_preprocess, logpdf_postprocess
-    # TODO: rename logpdf_multirow => logpdf_set
+    # TODO: rename logpdf_set => logpdf_set
     @assert_persistence_metadata
-    def logpdf_multirow(self, query, evidence=None, debug=False):
+    def logpdf_set(self, query, evidence=None, debug=False):
         """
         Compute log p(query | evidence)
 
@@ -352,8 +352,8 @@ class View(CGpm):
         T = self._pop_unincorporate(joint_input)
 
         # compute the joint logpdf and the marginal evidence logpdf
-        log_joint = self._joint_logpdf_multirow(joint_input, counter=0)
-        log_marginal = self._joint_logpdf_multirow(
+        log_joint = self._joint_logpdf_set(joint_input, counter=0)
+        log_marginal = self._joint_logpdf_set(
             evidence, counter=0) if evidence else 0
 
         # Reincorporate rows in T to dataset and check debug
@@ -361,7 +361,7 @@ class View(CGpm):
 
         return log_joint - log_marginal
 
-    def _joint_logpdf_multirow(self, query, counter):
+    def _joint_logpdf_set(self, query, counter):
         query = self._make_rowid_contiguous(query)
         log_p = - np.float("inf")  # initialize output as 0 in logspace
 
@@ -384,7 +384,7 @@ class View(CGpm):
                 p_row = self.logpdf(rowid, query_row)  # log_p(row, cluster=k)
                 self.incorporate(rowid, query_row)  # incorporate into k
                 # Recursion: log_p(this_row) + log_p(other_rows | this_row)
-                p_row += self._joint_logpdf_multirow(query, counter+1)
+                p_row += self._joint_logpdf_set(query, counter+1)
                 log_p = gu.logsumexp([log_p, p_row])  # marginalize out k
                 self.unincorporate(rowid=rowid)
 
@@ -462,7 +462,7 @@ class View(CGpm):
             l = -np.inf
             for k in clusters:
                 cluster_query = {row: {Z: k} for row in row_set.keys()}
-                t = self.logpdf_multirow(
+                t = self.logpdf_set(
                     query=cluster_query, evidence=row_set, debug=debug)
                 l = gu.logsumexp((l, t))
             return l
@@ -521,7 +521,7 @@ class View(CGpm):
                     row: {self.exposed_latent: kq} for row in target}
 
                 # P(target, query, cluster_query, cluster_evidence)
-                logp_joint = self.logpdf_multirow(
+                logp_joint = self.logpdf_set(
                     query=deep_merged(
                         joint_input, cluster_query, cluster_evidence),
                     debug=debug)  # compute joint logpdf

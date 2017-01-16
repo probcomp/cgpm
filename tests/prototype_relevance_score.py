@@ -87,7 +87,7 @@ def test_relevance_search_wrt_row_3():
 
 # def test_relevance_score_of_fourth_row_wrt_fourth_row():
 #     """
-#     TODO: assert each step below with logpdf_multirow
+#     TODO: assert each step below with logpdf_set
 #     """
 
 #     view = initialize_view()

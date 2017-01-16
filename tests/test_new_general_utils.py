@@ -15,7 +15,7 @@
 # limitations under the License.
 
 """
-Tests for debugging subroutines in logpdf_multirow.
+Tests for debugging subroutines in logpdf_set.
 """
 import numpy as np
 from itertools import product
