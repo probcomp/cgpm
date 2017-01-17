@@ -28,6 +28,6 @@ RUN \
                 ./docker/deps/venture/pythenv.sh \
                 env BAYESDB_WIZARD_MODE=1 \
                 env BAYESDB_DISABLE_VERSION_CHECK=1 \
-                ./check.sh --integration tests
+                ./check.sh -x --integration tests
 RUN             python setup.py sdist
 RUN             python setup.py bdist
