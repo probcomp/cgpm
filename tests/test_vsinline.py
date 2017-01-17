@@ -14,6 +14,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import pytest
+if not pytest.config.getoption('--integration'):
+    pytest.skip('specify --integration to run integration tests')
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
