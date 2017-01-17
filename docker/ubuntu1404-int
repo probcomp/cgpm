@@ -25,6 +25,7 @@ RUN \
                 ./docker/deps/bayeslite-apsw/pythenv.sh \
                 ./docker/deps/bayeslite/pythenv.sh \
                 ./docker/deps/crosscat/pythenv.sh \
+                ./docker/deps/venture/pythenv.sh \
                 env BAYESDB_WIZARD_MODE=1 \
                 env BAYESDB_DISABLE_VERSION_CHECK=1 \
                 ./check.sh --integration tests
