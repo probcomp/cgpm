@@ -18,6 +18,20 @@ RUN             apt-get install -qq python-statsmodels
 RUN             apt-get install -qq python-jsonschema
 RUN             apt-get install -qq python-requests
 RUN             apt-get install -qq python-six
+RUN             apt-get install -qq build-essential
+RUN             apt-get install -qq ccache
+RUN             apt-get install -qq git
+RUN             apt-get install -qq libboost-all-dev
+RUN             apt-get install -qq libgsl0-dev
+RUN             apt-get install -qq python-flask
+RUN             apt-get install -qq python-matplotlib
+RUN             apt-get install -qq python-nose
+RUN             apt-get install -qq python-nose-testconfig
+RUN             apt-get install -qq python-numpy
+RUN             apt-get install -qq python-pandas
+RUN             apt-get install -qq python-pexpect
+RUN             apt-get install -qq python-requests
+RUN             apt-get install -qq python-scipy
 
 ADD             . /cgpm
 WORKDIR         /cgpm
