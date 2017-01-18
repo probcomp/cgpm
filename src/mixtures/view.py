@@ -464,7 +464,7 @@ class View(CGpm):
         # Return joint input to dataset
         self._push_incorporate(T)
 
-        return logscore
+        return np.exp(logscore)
 
 
     # relevance score

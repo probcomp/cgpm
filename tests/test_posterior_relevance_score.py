@@ -59,7 +59,7 @@ def test_one_hypothetical_one_nonhypothetical_rows():
     # score({0: {0: 1}}; {1: {0: 1}}) = 1 - 24./56
     target = {0: {0: 1}}
     query = {1: {0: 1}}
-    answer = np.log(32./56)
+    answer = 32./56
     check_posterior_score_answer(answer, target, query)
 
 def test_two_hypothetical_rows():
@@ -68,8 +68,8 @@ def test_two_hypothetical_rows():
     query = {2: {0: 1}}
     
     # compute answer based on logpdf_set
-    answer = logsumexp_conditional_densities(1, target, query)
-    check_posterior_score_answer(answer, target, query)
+    log_answer = logsumexp_conditional_densities(1, target, query)
+    check_posterior_score_answer(np.exp(log_answer), target, query)
 
 def test_three_hypothetical_rows():
     # score({1: {0: 1}}; {2: {0: 1}, 3: {0: 1}})
@@ -79,5 +79,5 @@ def test_three_hypothetical_rows():
     # compute answer based on logpdf_set
     num = logsumexp_conditional_densities(1, target, query)
     den = logsumexp_conditional_densities(1, query, {})
-    answer = num - den
-    check_posterior_score_answer(answer, target, query)
+    log_answer = num - den
+    check_posterior_score_answer(np.exp(log_answer), target, query)
