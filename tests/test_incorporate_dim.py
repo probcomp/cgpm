@@ -16,6 +16,7 @@
 
 import pytest
 
+from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
@@ -38,7 +39,32 @@ T, Zv, Zc = tu.gen_data_table(
 T = T.T
 
 
-def test_incorporate():
+def test_incorporate_engine():
+    engine = Engine(
+        T[:,:2],
+        cctypes=CCTYPES[:2],
+        distargs=DISTARGS[:2],
+        num_states=4,
+        rng=gu.gen_rng(0),
+    )
+    engine.transition(N=5)
+
+    # Incorporate a new dim into with a non-contiguous output.
+    engine.incorporate_dim(
+        T[:,2],
+        outputs=[10],
+        cctype=CCTYPES[2],
+        distargs=DISTARGS[2]
+    )
+    engine.transition(N=2)
+
+    # Serialize the engine, and run a targeted transtion on variable 10.
+    m = engine.to_metadata()
+    engine2 = Engine.from_metadata(m)
+    engine2.transition(N=2, cols=[10], multiprocess=0)
+    assert all(s.outputs == [0,1,10] for s in engine.states)
+
+def test_incorporate_state():
     state = State(
         T[:,:2], cctypes=CCTYPES[:2], distargs=DISTARGS[:2], rng=gu.gen_rng(0))
     state.transition(N=5)
@@ -51,7 +77,7 @@ def test_incorporate():
     assert state.Zv(2) == target
     state.transition(N=1)
 
-    # Incorporate a new dim into view[0] with a non-continuous output.
+    # Incorporate a new dim into view[0] with a non-contiguous output.
     state.incorporate_dim(
         T[:,2], outputs=[10], cctype=CCTYPES[2], distargs=DISTARGS[2], v=target)
     assert state.Zv(10) == target

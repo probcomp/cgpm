@@ -61,7 +61,9 @@ class State(CGpm):
             assert len(outputs) == X.shape[1]
             assert all(o >= 0 for o in outputs)
         self.outputs = list(outputs)
-        self.X = {c: X[:,i].tolist() for i,c in enumerate(self.outputs)}
+        self.X = OrderedDict()
+        for i, c in enumerate(self.outputs):
+            self.X[c] = X[:,i].tolist()
 
         # -- Column CRP --------------------------------------------------------
         crp_alpha = None if alpha is None else {'alpha': alpha}
@@ -694,6 +696,10 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Helpers
 
+    def data_array(self):
+        """Return dataset as a numpy array."""
+        return np.asarray(self.X.values()).T
+
     def n_rows(self):
         """Number of incorporated rows."""
         return len(self.X[self.outputs[0]])
@@ -936,7 +942,7 @@ class State(CGpm):
         metadata = dict()
 
         # Dataset.
-        metadata['X'] = np.asarray(self.X.values()).T.tolist()
+        metadata['X'] = self.data_array().tolist()
         metadata['outputs'] = self.outputs
 
         # View partition data.
