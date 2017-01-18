@@ -119,12 +119,3 @@ def test_score_of_hypothetical_row_with_another_hypothetical_row():
 
     assert np.allclose(math_out, test_out)
 
-def test_trivial_relevance_search():
-    view = initialize_view()
-
-    sorted_score = view.relevance_search(query={0: {}})
-    
-    score = view.relevance_score(target={0: {}}, query={0: {}})
-    expected_out = [(0, score)]
-
-    assert sorted_score == expected_out
