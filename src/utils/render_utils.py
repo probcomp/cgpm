@@ -124,7 +124,7 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, labelsize=None):
 
     return ax
 
-def viz_view(view, ax=None, row_names=None, col_names=None, 
+def viz_view(view, row_names=None, col_names=None, 
              savefile=None, labelsize=None):
     """ 
     Order rows according to clusters and draw line between clusters.
@@ -134,13 +134,12 @@ def viz_view(view, ax=None, row_names=None, col_names=None,
     data_dict = get_view_data(view)
     data_arr = np.array(data_dict.values()).T
 
-    if ax is None: ax = plt.gca()
     if row_names is None: row_names = range(data_arr.shape[0])
     if col_names is None: col_names = range(data_arr.shape[1])
     if savefile is None: savefile = "view_foo.png"
     if isinstance(row_names, list): row_names = np.array(row_names)
 
-    ax = viz_view_raw(view, ax, row_names, col_names, labelsize=labelsize)
+    ax = viz_view_raw(view, plt.gca(), row_names, col_names, labelsize=labelsize)
     
     height, width, _, _ = predict_plot_size_viz_data(data_arr, row_names, col_names)
     
