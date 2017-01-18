@@ -24,7 +24,7 @@ def load_docstrings(module):
             Data matrix, each row is an observation and each column a variable.
         outputs : list<int>, optional
             Unique non-negative ID for each column in X, and used to refer to
-            the column for all future queries. Defaults to range(1, X.shape[1])
+            the column for all future queries. Defaults to range(0, X.shape[1])
         inputs : list<int>, optional
             Currently unsupported.
         cctypes : list<str>, optional

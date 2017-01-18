@@ -59,7 +59,7 @@ class Engine(object):
     def __init__(self, X, num_states=1, rng=None, multiprocess=1, **kwargs):
         mapper = parallel_map if multiprocess else map
         self.rng = gu.gen_rng(1) if rng is None else rng
-        self.X = np.asarray(X)
+        X = np.asarray(X)
         args = [(X, rng, kwargs) for rng in self._get_rngs(num_states)]
         self.states = mapper(_intialize, args)
 
@@ -265,7 +265,7 @@ class Engine(object):
 
     def to_metadata(self):
         metadata = dict()
-        metadata['X'] = self.X.tolist()
+        metadata['X'] = self.states[0].data_array().tolist()
         metadata['states'] = [s.to_metadata() for s in self.states]
         for m in metadata['states']:
             del m['X']

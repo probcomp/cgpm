@@ -61,7 +61,9 @@ class State(CGpm):
             assert len(outputs) == X.shape[1]
             assert all(o >= 0 for o in outputs)
         self.outputs = list(outputs)
-        self.X = {c: X[:,i].tolist() for i,c in enumerate(self.outputs)}
+        self.X = OrderedDict()
+        for i, c in enumerate(self.outputs):
+            self.X[c] = X[:,i].tolist()
 
         # -- Column CRP --------------------------------------------------------
         crp_alpha = None if alpha is None else {'alpha': alpha}
@@ -155,17 +157,24 @@ class State(CGpm):
     # Observe
 
     def incorporate_dim(
-            self, T, outputs,
-            inputs=None, cctype=None, distargs=None, v=None):
+            self, T, outputs, inputs=None, cctype=None, distargs=None, v=None):
         """Incorporate a new Dim into this State with data T."""
         if len(T) != self.n_rows():
-            raise ValueError('%d rows required: %d.' % (self.n_rows(), len(T)))
+            raise ValueError(
+                '%d rows are required, received: %d.'
+                % (self.n_rows(), len(T)))
         if len(outputs) != 1:
-            raise ValueError('Univariate outputs only: %s.' % outputs)
+            raise ValueError(
+                'Cannot incorporate multivariate outputs: %s.'
+                % outputs)
         if outputs[0] in self.outputs:
-            raise ValueError('outputs exist: %s, %s.' % (outputs, self.outputs))
+            raise ValueError(
+                'Specified outputs already exist: %s, %s.'
+                % (outputs, self.outputs))
         if inputs:
-            raise ValueError('inputs unsupported: %s.' % inputs)
+            raise ValueError(
+                'Cannot incorporate dim with inputs: %s.'
+                % inputs)
         # Append new output to outputs.
         col = outputs[0]
         self.X[col] = T
@@ -687,6 +696,10 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Helpers
 
+    def data_array(self):
+        """Return dataset as a numpy array."""
+        return np.asarray(self.X.values()).T
+
     def n_rows(self):
         """Number of incorporated rows."""
         return len(self.X[self.outputs[0]])
@@ -929,7 +942,7 @@ class State(CGpm):
         metadata = dict()
 
         # Dataset.
-        metadata['X'] = np.asarray(self.X.values()).T.tolist()
+        metadata['X'] = self.data_array().tolist()
         metadata['outputs'] = self.outputs
 
         # View partition data.
