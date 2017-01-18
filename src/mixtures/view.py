@@ -320,6 +320,7 @@ class View(CGpm):
         return gu.logsumexp(np.add(lp_evidence, lp_query))
 
     # --------------------------------------------------------------------------
+    # logpdf set
     def assert_persistence_metadata(function):
         def wrapper(*args, **kwargs):
             do_debug = kwargs.get('debug', False) or args[3:4]
