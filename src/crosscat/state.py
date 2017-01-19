@@ -284,6 +284,24 @@ class State(CGpm):
         return network.logpdf(rowid, query, evidence)
 
     # --------------------------------------------------------------------------
+    def relevance_score(self, target, query, context, debug=False):
+        """ 
+        Compute relevance score of target and query with respect
+        to context.
+        """
+        context_view_id = self.Zv()[context]
+        context_view = self.views[context_view_id]
+        return context_view.relevance_score(target, query, debug)
+    
+    def posterior_relevance_score(self, target, query, context, debug=False):
+        """ 
+        Compute posterior relevance score of target and query with respect
+        to context.
+        """
+        context_view_id = self.Zv()[context]
+        context_view = self.views[context_view_id]
+        return context_view.posterior_relevance_score(target, query, debug)
+        
     def relevance_search(self, query, context, debug=False):
         """ Order by relevance score with respect to context"""
         context_view_id = self.Zv()[context]
