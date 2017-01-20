@@ -114,14 +114,14 @@ def test_value_three_hypothetical_rows(cgpm):
 def check_commutativity(cgpm, target, query):
     debug = True
     if isinstance(cgpm, View):
-        np.allclose(
-            np.log(cgpm.posterior_relevance_score(target, query, debug)),
-            np.log(cgpm.posterior_relevance_score(query, target, debug)))
+        assert np.allclose(
+            cgpm.posterior_relevance_score(target, query, debug),
+            cgpm.posterior_relevance_score(query, target, debug))
     
     elif isinstance(cgpm, (State, Engine)):
-        np.allclose(
-            np.log(cgpm.posterior_relevance_score(target, query, debug)),
-            np.log(cgpm.posterior_relevance_score(query, target, debug)))
+        assert np.allclose(
+            cgpm.posterior_relevance_score(target, query, 0, debug),
+            cgpm.posterior_relevance_score(query, target, 0, debug))
     
     else:
         assert False

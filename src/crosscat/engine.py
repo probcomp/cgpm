@@ -212,6 +212,13 @@ class Engine(object):
             S[i,j] = S[j,i] = s
         return S
 
+    def posterior_relevance_score(self, target, query, context, debug=False):
+        """Compute the posterior relevance score for each state
+        between target and query in the given context"""
+        return target.keys()[0]
+        # return [s.posterior_relevance_score(target, query, context, debug)
+                # for s in self.states
+
     def get_state(self, index):
         return self.states[index]
 
