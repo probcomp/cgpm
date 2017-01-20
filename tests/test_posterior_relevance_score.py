@@ -17,32 +17,20 @@
 import numpy as np
 import pytest
 
+from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 from cgpm.mixtures.view import View
 from cgpm.utils.general import logsumexp, deep_merged
 
-# # Helper Functions
-def initialize_trivial_view():
-    data = np.array([[1, 1]])
-    D = len(data[0])
-    outputs = range(D)
-    X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
-    view = View(
-        X,
-        outputs=[1000] + outputs,
-        alpha=1.,
-        cctypes=['bernoulli']*D,
-        hypers={i: {'alpha': 1., 'beta': 1.} for i in outputs},
-        Zr=[0])
-    return view
-
-def initialize_trivial_state():
+# ----- HELPER FUNCTIONS ----- #
+def initialize_trivial_engine():        
     data = np.array([[1, 1, 1]])
     R = len(data)
     D = len(data[0])
     outputs = range(D)
-    state = State(
-        data,
+    engine = Engine(
+        X=data,
+        num_states=20,
         outputs=outputs,
         alpha=1.,
         cctypes=['bernoulli']*D,
@@ -50,25 +38,27 @@ def initialize_trivial_state():
         Zv={0: 0, 1: 0, 2: 1},
         view_alphas=[1.]*D,
         Zrv={0: [0]*R, 1: [0]*R})
-    return state
-        
-def load_animals_state():
-    with open('tests/resources/animals_state.pkl', 'rb') as f:
-        animals_state = State.from_pickle(f)
-    return animals_state
-
-def load_animals_view():
-    animals_state = load_animals_state()
-    view = animals_state.views[65]
-    return view
-
+    return engine
+    
+def load_animals_engine():
+    with open('tests/resources/animals_engine.pkl', 'rb') as f:
+        animals_engine = Engine.from_pickle(f)
+    return animals_engine
+                         
+                         
 # ----- GLOBAL VARIABLES ----- #
-trivial_state = initialize_trivial_state()
-trivial_view = initialize_trivial_view()
-animals_state = load_animals_state()
-animals_view = load_animals_view()
+trivial_engine = initialize_trivial_engine()
+trivial_state = trivial_engine.get_state(0)
+trivial_view = trivial_state.views[0]
+
+animals_engine = load_animals_engine()
+animals_state = animals_engine.get_state(4)
+animals_view = animals_state.views[65]
+
 Z = trivial_view.exposed_latent
 
+
+# ----- TEST POSTERIOR SCORE ----- #
 def check_posterior_score_answer(cgpm, answer, target, query):
     kwargs = dict(target=target, query=query, debug=True)
     if isinstance(cgpm, State):
@@ -79,7 +69,7 @@ def check_posterior_score_answer(cgpm, answer, target, query):
 
 def logsumexp_conditional_densities_view(num_of_clusters, target, query):
     # logsumexp_k logpdf(clusters = k | target, query)
-    view = initialize_trivial_view()
+    view = trivial_view
     evidence = deep_merged(target, query)
     rowids = evidence.keys()
     
