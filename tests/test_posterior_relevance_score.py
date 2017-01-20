@@ -56,13 +56,14 @@ animals_state = animals_engine.get_state(4)
 animals_view = animals_state.views[65]
 
 Z = trivial_view.exposed_latent
-
+context_trivial = 0
+context_animals = 1
 
 # ----- TEST POSTERIOR SCORE ----- #
-def check_posterior_score_answer(cgpm, answer, target, query):
+def check_posterior_score_answer(cgpm, answer, target, query, context):
     kwargs = dict(target=target, query=query, debug=True)
     if isinstance(cgpm, (State, Engine)):
-        kwargs['context'] = 0
+        kwargs['context'] = context
     
     s = cgpm.posterior_relevance_score(**kwargs)
     assert np.allclose(answer, s)
@@ -86,7 +87,7 @@ def test_value_one_hypothetical_one_nonhypothetical_rows(cgpm):
     target = {0: {0: 1}}
     query = {1: {0: 1}}
     answer = 32./56
-    check_posterior_score_answer(cgpm, answer, target, query)
+    check_posterior_score_answer(cgpm, answer, target, query, context_trivial)
 
 @pytest.mark.parametrize('cgpm', [trivial_state, trivial_view, trivial_engine])
 def test_value_two_hypothetical_rows(cgpm):
@@ -96,7 +97,8 @@ def test_value_two_hypothetical_rows(cgpm):
     
     # compute answer based on logpdf_set
     log_answer = logsumexp_conditional_densities_view(1, target, query)
-    check_posterior_score_answer(cgpm, np.exp(log_answer), target, query)
+    check_posterior_score_answer(
+        cgpm, np.exp(log_answer), target, query, context_trivial)
 
 @pytest.mark.parametrize('cgpm', [trivial_state, trivial_view, trivial_engine])
 def test_value_three_hypothetical_rows(cgpm):
@@ -108,44 +110,80 @@ def test_value_three_hypothetical_rows(cgpm):
     num = logsumexp_conditional_densities_view(1, target, query)
     den = logsumexp_conditional_densities_view(1, query, {})
     log_answer = num - den
-    check_posterior_score_answer(cgpm, np.exp(log_answer), target, query)
+    check_posterior_score_answer(
+        cgpm, np.exp(log_answer), target, query, context_trivial)
 
 # ----- TEST COMMUTATIVITY ----- #
-def check_commutativity(cgpm, target, query):
+def check_commutativity(cgpm, target, query, context):
     debug = True
     if isinstance(cgpm, View):
         assert np.allclose(
             cgpm.posterior_relevance_score(target, query, debug),
-            cgpm.posterior_relevance_score(query, target, debug))
+            cgpm.posterior_relevance_score(query, target, debug),
+            atol=1e-4)
     
     elif isinstance(cgpm, (State, Engine)):
         assert np.allclose(
-            cgpm.posterior_relevance_score(target, query, 0, debug),
-            cgpm.posterior_relevance_score(query, target, 0, debug))
+            cgpm.posterior_relevance_score(target, query, context, debug),
+            cgpm.posterior_relevance_score(query, target, context, debug),
+            atol=1e-4)
     
     else:
         assert False
     
 @pytest.mark.parametrize('cgpm', [trivial_state, trivial_view, trivial_engine])
 def test_commutativity_trivial_one_hypothetical_one_nonhypothetical_rows(cgpm):
-    check_commutativity(cgpm, {0: {0: 1}}, {1: {0: 0}})
+    check_commutativity(cgpm, {0: {0: 1}}, {1: {0: 0}}, context_trivial)
 
 @pytest.mark.parametrize('cgpm', [trivial_state, trivial_view, trivial_engine])
 def test_commutativity_trivial_two_hypothetical_rows(cgpm):
-    check_commutativity(cgpm, {1: {0: 1}}, {2: {0: 0}})
+    check_commutativity(cgpm, {1: {0: 1}}, {2: {0: 0}}, context_trivial)
                                                        
 @pytest.mark.parametrize('cgpm', [trivial_state, trivial_view, trivial_engine])
 def test_commutativity_trivial_three_hypothetical_rows(cgpm):
-    check_commutativity(cgpm, {1: {0: 1}}, {2: {0: 0}, 3: {0: 1}})
+    check_commutativity(
+        cgpm, {1: {0: 1}}, {2: {0: 0}, 3: {0: 1}}, context_trivial)
 
 @pytest.mark.parametrize('cgpm', [animals_state, animals_view, animals_engine])
 def test_commutativity_animals_0_4(cgpm):
-    check_commutativity(cgpm, {0: {}}, {4: {}})
+    check_commutativity(cgpm, {0: {}}, {4: {}}, context_animals)
                                                
 @pytest.mark.parametrize('cgpm', [animals_state, animals_view, animals_engine])
 def test_commutativity_animals_0_26(cgpm):
-    check_commutativity(cgpm, {0: {}}, {26: {}})
+    check_commutativity(cgpm, {0: {}}, {26: {}}, context_animals)
 
 @pytest.mark.parametrize('cgpm', [animals_state, animals_view, animals_engine])
 def test_commutativity_animals_0_4_26(cgpm):
-    check_commutativity(cgpm, {0: {}}, {4: {}, 26: {}})
+    check_commutativity(cgpm, {0: {}}, {4: {}, 26: {}}, context_animals)
+
+
+# ----- TEST AGREEMENT BETWEEN VIEW AND STATE ----- #
+def check_agreement_view_state(view, state, target, query, context):
+    debug = True
+    assert (view.posterior_relevance_score(target, query, debug) ==
+            state.posterior_relevance_score(target, query, context, debug))
+
+def test_agreement_view_trivial_one_hypothetical_one_nonhypothetical_rows():
+    check_agreement_view_state(
+        trivial_view, trivial_state, {0: {0: 1}}, {1: {0: 0}}, context_trivial)
+
+def test_agreement_view_trivial_two_hypothetical_rows():
+    check_agreement_view_state(
+        trivial_view, trivial_state, {1: {0: 1}}, {2: {0: 0}}, context_trivial)
+
+def test_agreement_view_trivial_three_hypothetical_rows():
+    check_agreement_view_state(
+        trivial_view, trivial_state, {1: {0: 1}}, {2: {0: 0}, 3: {0: 1}},
+        context_trivial)
+
+def test_agreement_view_animals_0_4():
+    check_agreement_view_state(
+        animals_view, animals_state, {0: {}}, {4: {}}, context_animals)
+                                               
+def test_agreement_view_animals_0_26():
+    check_agreement_view_state(
+        animals_view, animals_state, {0: {}}, {26: {}}, context_animals)
+
+def test_agreement_view_animals_0_4_26():
+    check_agreement_view_state(
+        animals_view, animals_state, {0: {}}, {4: {}, 26: {}}, context_animals)
