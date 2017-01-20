@@ -300,7 +300,7 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
-def create_simple_engine():
+def create_simple_engine(multiprocess=1):
     data = np.array([[1, 1, 1]])
     R = len(data)
     D = len(data[0])
@@ -308,6 +308,8 @@ def create_simple_engine():
     engine = Engine(
         X=data,
         num_states=20,
+        rng=gu.gen_rng(1),
+        multiprocess=multiprocess,
         outputs=outputs,
         alpha=1.,
         cctypes=['bernoulli']*D,
