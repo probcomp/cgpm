@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import numpy as np
+import pytest
 
 from cgpm.crosscat.state import State
 from cgpm.mixtures.view import View
@@ -35,20 +36,48 @@ def initialize_trivial_view():
         Zr=[0])
     return view
 
-def load_animals_view():
+def initialize_trivial_state():
+    data = np.array([[1, 1, 1]])
+    R = len(data)
+    D = len(data[0])
+    outputs = range(D)
+    state = State(
+        data,
+        outputs=outputs,
+        alpha=1.,
+        cctypes=['bernoulli']*D,
+        distargs={i: {'alpha': 1., 'beta': 1.} for i in outputs},
+        Zv={0: 0, 1: 0, 2: 1},
+        view_alphas=[1.]*D,
+        Zrv={0: [0]*R, 1: [0]*R})
+    return state
+        
+def load_animals_state():
     with open('tests/resources/animals_state.pkl', 'rb') as f:
         animals_state = State.from_pickle(f)
+    return animals_state
+
+def load_animals_view():
+    animals_state = load_animals_state()
     view = animals_state.views[65]
     return view
 
-Z = initialize_trivial_view().exposed_latent
+# ----- GLOBAL VARIABLES ----- #
+trivial_state = initialize_trivial_state()
+trivial_view = initialize_trivial_view()
+animals_state = load_animals_state()
+animals_view = load_animals_view()
+Z = trivial_view.exposed_latent
 
-def check_posterior_score_answer(answer, target_row, query_row_set):
-    view = initialize_trivial_view()
-    s = view.posterior_relevance_score(target_row, query_row_set)
+def check_posterior_score_answer(cgpm, answer, target, query):
+    kwargs = dict(target=target, query=query, debug=True)
+    if isinstance(cgpm, State):
+        kwargs['context'] = 0
+    
+    s = cgpm.posterior_relevance_score(**kwargs)
     assert np.allclose(answer, s)
 
-def logsumexp_conditional_densities(num_of_clusters, target, query):
+def logsumexp_conditional_densities_view(num_of_clusters, target, query):
     # logsumexp_k logpdf(clusters = k | target, query)
     view = initialize_trivial_view()
     evidence = deep_merged(target, query)
@@ -61,59 +90,71 @@ def logsumexp_conditional_densities(num_of_clusters, target, query):
         s = logsumexp((s, l))
     return s
     
-def test_value_one_hypothetical_one_nonhypothetical_rows():
+@pytest.mark.parametrize('cgpm', [trivial_state, trivial_view])
+def test_value_one_hypothetical_one_nonhypothetical_rows(cgpm):
     # score({0: {0: 1}}; {1: {0: 1}}) = 1 - 24./56
     target = {0: {0: 1}}
     query = {1: {0: 1}}
     answer = 32./56
-    check_posterior_score_answer(answer, target, query)
+    check_posterior_score_answer(cgpm, answer, target, query)
 
-def test_value_two_hypothetical_rows():
+@pytest.mark.parametrize('cgpm', [trivial_state, trivial_view])
+def test_value_two_hypothetical_rows(cgpm):
     # score({1: {0: 1}}; {2: {0: 1}})
     target = {1: {0: 1}}
     query = {2: {0: 1}}
     
     # compute answer based on logpdf_set
-    log_answer = logsumexp_conditional_densities(1, target, query)
-    check_posterior_score_answer(np.exp(log_answer), target, query)
+    log_answer = logsumexp_conditional_densities_view(1, target, query)
+    check_posterior_score_answer(cgpm, np.exp(log_answer), target, query)
 
-def test_value_three_hypothetical_rows():
+@pytest.mark.parametrize('cgpm', [trivial_state, trivial_view])
+def test_value_three_hypothetical_rows(cgpm):
     # score({1: {0: 1}}; {2: {0: 1}, 3: {0: 1}})
     target = {1: {0: 1}}
     query = {2: {0: 1}, 3: {0: 1}}
 
     # compute answer based on logpdf_set
-    num = logsumexp_conditional_densities(1, target, query)
-    den = logsumexp_conditional_densities(1, query, {})
+    num = logsumexp_conditional_densities_view(1, target, query)
+    den = logsumexp_conditional_densities_view(1, query, {})
     log_answer = num - den
-    check_posterior_score_answer(np.exp(log_answer), target, query)
+    check_posterior_score_answer(cgpm, np.exp(log_answer), target, query)
 
 # ----- TEST COMMUTATIVITY ----- #
-def check_commutativity(view, target, query):
-    np.allclose(np.log(view.posterior_relevance_score(target, query)),
-                np.log(view.posterior_relevance_score(query, target)))
-
-def test_commutativity_trivial_one_hypothetical_one_nonhypothetical_rows():
-    view = initialize_trivial_view()
-    check_commutativity(view, {0: {0: 1}}, {1: {0: 0}})
-
-def test_commutativity_trivial_two_hypothetical_rows():
-    view = initialize_trivial_view()
-    check_commutativity(view, {1: {0: 1}}, {2: {0: 0}})
-
-def test_commutativity_trivial_three_hypothetical_rows():
-    view = initialize_trivial_view()
-    check_commutativity(view, {1: {0: 1}}, {2: {0: 0}, 3: {0: 1}})
-
-def test_commutativity_animals_0_4():
-    view = load_animals_view()
-    check_commutativity(view, {0: {}}, {4: {}})
-
-def test_commutativity_animals_0_26():
-    view = load_animals_view()
-    check_commutativity(view, {0: {}}, {26: {}})
-
-def test_commutativity_animals_0_4_26():
-    view = load_animals_view()
-    check_commutativity(view, {0: {}}, {4: {}, 26: {}})
+def check_commutativity(cgpm, target, query):
+    debug = True
+    if isinstance(cgpm, View):
+        np.allclose(
+            np.log(cgpm.posterior_relevance_score(target, query, debug)),
+            np.log(cgpm.posterior_relevance_score(query, target, debug)))
     
+    elif isinstance(cgpm, State):
+        np.allclose(
+            np.log(cgpm.posterior_relevance_score(target, query, debug)),
+            np.log(cgpm.posterior_relevance_score(query, target, debug)))
+    
+    
+@pytest.mark.parametrize('cgpm', [trivial_state, trivial_view])
+def test_commutativity_trivial_one_hypothetical_one_nonhypothetical_rows(cgpm):
+    check_commutativity(cgpm, {0: {0: 1}}, {1: {0: 0}})
+
+@pytest.mark.parametrize('cgpm', [trivial_state, trivial_view])
+def test_commutativity_trivial_two_hypothetical_rows(cgpm):
+    check_commutativity(cgpm, {1: {0: 1}}, {2: {0: 0}})
+                                                       
+@pytest.mark.parametrize('cgpm', [trivial_state, trivial_view])
+def test_commutativity_trivial_three_hypothetical_rows(cgpm):
+    check_commutativity(cgpm, {1: {0: 1}}, {2: {0: 0}, 3: {0: 1}})
+
+@pytest.mark.parametrize('cgpm', [animals_state, animals_view])
+def test_commutativity_animals_0_4(cgpm):
+    check_commutativity(cgpm, {0: {}}, {4: {}})
+                                               
+@pytest.mark.parametrize('cgpm', [animals_state, animals_view])
+def test_commutativity_animals_0_26(cgpm):
+    check_commutativity(cgpm, {0: {}}, {26: {}})
+
+@pytest.mark.parametrize('cgpm', [animals_state, animals_view])
+def test_commutativity_animals_0_4_26(cgpm):
+    check_commutativity(cgpm, {0: {}}, {4: {}, 26: {}})
+
