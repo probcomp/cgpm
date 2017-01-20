@@ -168,7 +168,7 @@ class Engine(object):
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
             multiprocess=1):
-        """Returns list of simualate_bulk, one for each state."""
+        """Returns list of simulate_bulk, one for each state."""
         mapper = parallel_map if multiprocess else map
         args = [('simulate_bulk', self.states[i],
                 (rowids, queries, evidences, Ns))
@@ -212,12 +212,16 @@ class Engine(object):
             S[i,j] = S[j,i] = s
         return S
 
-    def posterior_relevance_score(self, target, query, context, debug=False):
+    def posterior_relevance_score(
+            self, target, query, context, debug=False, multiprocess=1):
         """Compute the posterior relevance score for each state
         between target and query in the given context"""
-        return target.keys()[0]
-        # return [s.posterior_relevance_score(target, query, context, debug)
-                # for s in self.states
+        mapper = parallel_map if multiprocess else map
+        args = [('posterior_relevance_score', self.states[i],
+                 (target, query, context, debug))
+                for i in xrange(self.num_states())]
+        scores = mapper(_evaluate, args)
+        return scores
 
     def get_state(self, index):
         return self.states[index]

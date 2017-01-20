@@ -52,11 +52,11 @@ def check_posterior_score_answer(cgpm, answer, target, query, context):
     if isinstance(cgpm, (State, Engine)):
         kwargs['context'] = context
     
-    s = cgpm.posterior_relevance_score(**kwargs)
+    s = np.mean(cgpm.posterior_relevance_score(**kwargs))
     assert np.allclose(answer, s)
 
 def logsumexp_conditional_densities_view(num_of_clusters, target, query):
-    # logsumexp_k logpdf(clusters = k | target, query)
+    ''' Returns logsumexp_k logpdf(clusters = k | target, query)'''
     view = simple_view
     evidence = deep_merged(target, query)
     rowids = evidence.keys()
