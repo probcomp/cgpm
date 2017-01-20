@@ -20,7 +20,10 @@ import numpy as np
 
 from scipy.stats import norm
 
+from cgpm.crosscat.engine import Engine
+from cgpm.crosscat.state import State
 from cgpm.mixtures.dim import Dim
+from cgpm.mixtures.view import View
 from cgpm.utils import general as gu
 
 
@@ -297,9 +300,58 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
+def create_simple_engine():
+    data = np.array([[1, 1, 1]])
+    R = len(data)
+    D = len(data[0])
+    outputs = range(D)
+    engine = Engine(
+        X=data,
+        num_states=20,
+        outputs=outputs,
+        alpha=1.,
+        cctypes=['bernoulli']*D,
+        distargs={i: {'alpha': 1., 'beta': 1.} for i in outputs},
+        Zv={0: 0, 1: 0, 2: 1},
+        view_alphas=[1.]*D,
+        Zrv={0: [0]*R, 1: [0]*R})
+    return engine
+
+def create_simple_state():
+    data = np.array([[1, 1, 1]])
+    R = len(data)
+    D = len(data[0])
+    outputs = range(D)
+    state = State(
+        X=data,
+        outputs=outputs,
+        alpha=1.,
+        cctypes=['bernoulli']*D,
+        distargs={i: {'alpha': 1., 'beta': 1.} for i in outputs},
+        Zv={0: 0, 1: 0, 2: 1},
+        view_alphas=[1.]*D,
+        Zrv={0: [0]*R, 1: [0]*R})
+    return state
+
+def create_simple_view():
+    data = np.array([[1, 1]])
+    R = len(data)
+    D = len(data[0])
+    outputs = range(D)
+    X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
+    Zr = [0 for i in range(R)]
+    view = View(
+        X,
+        outputs=[1000] + outputs,
+        alpha=1.,
+        cctypes=['bernoulli']*D,
+        hypers={i: {'alpha': 1., 'beta': 1.} for i in outputs},
+        Zr=Zr)
+    return view
+
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,
-    'beta'           : _gen_beta_data,
+    'beta'              : _gen_beta_data,
     'categorical'       : _gen_categorical_data,
     'exponential'       : _gen_exponential_data,
     'geometric'         : _gen_geometric_data,
