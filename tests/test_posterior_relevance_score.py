@@ -126,7 +126,7 @@ def check_commutativity(cgpm, target, query, context):
         assert np.allclose(
             cgpm.posterior_relevance_score(target, query, context, debug),
             cgpm.posterior_relevance_score(query, target, context, debug),
-            atol=1e-4)
+            atol=1e-3)
     
     else:
         assert False
@@ -139,10 +139,11 @@ def test_commutativity_trivial_one_hypothetical_one_nonhypothetical_rows(cgpm):
 def test_commutativity_trivial_two_hypothetical_rows(cgpm):
     check_commutativity(cgpm, {1: {0: 1}}, {2: {0: 0}}, context_trivial)
                                                        
-@pytest.mark.parametrize('cgpm', [trivial_state, trivial_view, trivial_engine])
-def test_commutativity_trivial_three_hypothetical_rows(cgpm):
-    check_commutativity(
-        cgpm, {1: {0: 1}}, {2: {0: 0}, 3: {0: 1}}, context_trivial)
+# DEACTIVATED - Score is only commutative for single row queries
+# @pytest.mark.parametrize('cgpm', [trivial_state, trivial_view, trivial_engine])
+# def test_commutativity_trivial_three_hypothetical_rows(cgpm):
+#     check_commutativity(
+#         cgpm, {1: {0: 1}}, {2: {0: 0}, 3: {0: 1}}, context_trivial)
 
 @pytest.mark.parametrize('cgpm', [animals_state, animals_view, animals_engine])
 def test_commutativity_animals_0_4(cgpm):
@@ -152,9 +153,10 @@ def test_commutativity_animals_0_4(cgpm):
 def test_commutativity_animals_0_26(cgpm):
     check_commutativity(cgpm, {0: {}}, {26: {}}, context_animals)
 
-@pytest.mark.parametrize('cgpm', [animals_state, animals_view, animals_engine])
-def test_commutativity_animals_0_4_26(cgpm):
-    check_commutativity(cgpm, {0: {}}, {4: {}, 26: {}}, context_animals)
+# DEACTIVATED - Score is only commutative for single row queries
+# @pytest.mark.parametrize('cgpm', [animals_state, animals_view, animals_engine])
+# def test_commutativity_animals_0_4_26(cgpm):
+#     check_commutativity(cgpm, {0: {}}, {4: {}, 26: {}}, context_animals)
 
 
 # ----- TEST AGREEMENT BETWEEN VIEW AND STATE ----- #
