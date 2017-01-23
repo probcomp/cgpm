@@ -52,6 +52,11 @@ class VsCGpm(CGpm):
         if self.source is not None:
             self.ripl.set_mode(self.mode)
             self.ripl.execute_program(self.source)
+        # Load any plugins.
+        self.plugins = kwargs.get('plugins', None)
+        if self.plugins:
+            for plugin in self.plugins.split(','):
+                self.ripl.load_plugin(plugin.strip())
         # Force the mode to church_prime.
         self.ripl.set_mode('church_prime')
         # Create the CGpm.
@@ -126,6 +131,7 @@ class VsCGpm(CGpm):
         metadata['outputs'] = self.outputs
         metadata['inputs'] = self.inputs
         metadata['mode'] = self.mode
+        metadata['plugins'] = self.plugins
         # Save the observations. We need to convert integer keys to strings.
         metadata['obs'] = VsCGpm._obs_to_json(copy.deepcopy(self.obs))
         metadata['binary'] =  base64.b64encode(self.ripl.saves())
@@ -143,6 +149,7 @@ class VsCGpm(CGpm):
             source=metadata['source'],
             mode=metadata['mode'],
             supress=True,
+            plugins=metadata['plugins'],
             rng=rng,)
         # Restore the observations. We need to convert string keys to integers.
         # XXX Eliminate this terrible defaultdict hack. See Github #187.
