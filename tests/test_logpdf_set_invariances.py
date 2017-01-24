@@ -41,6 +41,11 @@ null_row_examples = [
     {-1: {}, 0: {}}  # joint rows
 ]
 
+# TODO: 
+#  - Change the logpdf-set API such that the sentinel value
+#  for an observed row is not {}.
+#  Suggestions: empty class AsIs() or object observed; True, Nan, etc.
+
 # ----- TEST NULL QUERY ----- #
 @pytest.mark.parametrize('cgpm', [simple_view])
 @pytest.mark.parametrize('null_query', null_row_examples)
