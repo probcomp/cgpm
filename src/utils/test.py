@@ -351,6 +351,30 @@ def create_simple_view():
         Zr=Zr)
     return view
 
+def create_multitype_view():
+    data = np.array([[0, 2, 3.14],
+                     [1, 1, 1]])
+    D = len(data[0])
+    dpm_outputs = range(D)
+    X = {c: data[:, i].tolist() for i, c in enumerate(dpm_outputs)}
+    crp_alpha = 1.,
+    cctypes = ['bernoulli', 'categorical', 'normal']
+    hypers = {
+        0: {'alpha': 1., 'beta': 1.},
+        1: {'alpha': 1.},
+        2: {'m': 0, 'r': 1., 's': 1., 'nu': 1.}}
+    distargs = {0: {}, 1: {'k': 3}, 2: {}}
+    Zr = [0, 1]
+    view = View(
+        X,
+        outputs=[1000] + dpm_outputs,
+        alpha=crp_alpha,
+        cctypes=cctypes,
+        hypers=hypers,
+        distargs=distargs,
+        Zr=Zr)
+    return view
+
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,
     'beta'              : _gen_beta_data,
