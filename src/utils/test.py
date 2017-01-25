@@ -335,7 +335,7 @@ def create_simple_state():
         Zrv={0: [0]*R, 1: [0]*R})
     return state
 
-def create_simple_view():
+def gen_simple_view():
     data = np.array([[1, 1]])
     R = len(data)
     D = len(data[0])

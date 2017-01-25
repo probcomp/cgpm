@@ -33,9 +33,9 @@ def load_animals_engine():
                          
                          
 # ----- GLOBAL VARIABLES ----- #
-simple_engine = tu.create_simple_engine()
+simple_engine = tu.gen_simple_engine()
 simple_state = tu.create_simple_state()
-simple_view = tu.create_simple_view()
+simple_view = tu.gen_simple_view()
 
 animals_engine = load_animals_engine()
 animals_state = animals_engine.get_state(4)

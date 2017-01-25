@@ -28,9 +28,9 @@ from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 
 # ----- GLOBAL VARIABLES ----- #
-# simple_engine = tu.create_simple_engine()
-# simple_state = tu.create_simple_state()
-simple_view = tu.create_simple_view()
+simple_engine = tu.create_simple_engine()
+simple_state = tu.create_simple_state()
+simple_view = tu.gen_simple_view()
 simple_cgpms = [simple_view]
 
 # -If I decide to implement logpdf_set on state and engine later,
