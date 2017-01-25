@@ -29,35 +29,47 @@ import cgpm.utils.test as tu
 from cgpm.mixtures.view import View
 from cgpm.utils.general import logsumexp, deep_merged
 
-
-# ----- GLOBAL VARIABLES ----- #
-simple_view = tu.create_simple_view()
-multitype_view = tu.create_multitype_view()
-test_cgpms = [simple_view, multitype_view]
-null_row_examples = [
-    {},  # no rowid 
-    {0: {}},  # non-hypothetical row
-    {-1: {}},  # hypothetical row
-    {-1: {}, 0: {}}  # joint rows
-]
-
 # TODO: 
 #  - Change the logpdf-set API such that the sentinel value
 #  for an observed row is not {}.
 #  Suggestions: empty class AsIs() or object observed; True, Nan, etc.
 
+# ----- HELPER FUNCTIONS ----- #
+def assert_distinct_logpdfs(cgpm, query_list, evidence_list):
+    for query, evidence in zip(query_list, evidence_list):
+        l_marg = cgpm.logpdf_set(query, evidence)
+        l_cond = cgpm.logpdf_set(query, evidence)
+        assert not np.allclose(l_marg, l_cond)
+
+def restrict_evidence_to_query(query, evidence):
+    return {i: j for i, j in evidence.iteritems() if i in query.keys()}
+
+# ----- GLOBAL VARIABLES ----- #
+simple_view = tu.gen_simple_view()
+multitype_view = tu.gen_multitype_view()
+
+test_cgpms = [simple_view, multitype_view]
+query_values = [{1: {0: 1}}, {0: {0: 1}}, {0: {0: 1}, 1: {0: 1}}]
+nonobserved_null_rows = [{}, {-1: {}}, {-1: {}, -2: {}}]
+null_rows = nonobserved_null_rows + [{0: {}}, {-1: {}, 0: {}}]
+
 # ----- TEST NULL QUERY ----- #
-@pytest.mark.parametrize('cgpm', [simple_view])
-@pytest.mark.parametrize('null_query', null_row_examples)
+null_query_values = [
+    {}, {-1: {}}, {-1: {}, -2: {}},
+    {0: {}}, {-1: {}, 0: {}}]
+@pytest.mark.parametrize('cgpm', test_cgpms)
+@pytest.mark.parametrize('null_query', null_query_values)
 def test_null_query(cgpm, null_query):
     '''Test for P(null) = 1 or log P(null) = 0''' 
     l = cgpm.logpdf_set(null_query)
     assert np.allclose(0., l)
 
 # ----- TEST NULL EVIDENCE ----- #
-@pytest.mark.parametrize('cgpm', [simple_view])
-@pytest.mark.parametrize('query', [{1: {0: 1}}])
-@pytest.mark.parametrize('null_evidence', null_row_examples)
+query_values = [{1: {0: 1}}, {0: {0: 1}}, {0: {0: 1}, 1: {0: 1}}]
+null_evidence_values = [{}, {-1: {}}, {-1: {}, -2: {}}]
+@pytest.mark.parametrize('cgpm', test_cgpms)
+@pytest.mark.parametrize('query', query_values)
+@pytest.mark.parametrize('null_evidence', null_evidence_values)
 def test_null_evidence(cgpm, query, null_evidence):
     '''Test for P({x} | null) = P({x})'''
     l_marg = cgpm.logpdf_set(query)
@@ -65,14 +77,8 @@ def test_null_evidence(cgpm, query, null_evidence):
     assert np.allclose(l_marg, l_cond)
 
 # ----- TEST EXTREME DISTARGS ----- #
-def assert_distinct_logpdfs(cgpm, query_list, evidence_list):
-    for query, evidence in zip(query_list, evidence_list):
-        l_marg = cgpm.logpdf_set(query, evidence)
-        l_cond = cgpm.logpdf_set(query, evidence)
-        assert not np.allclose(l_marg, l_cond)
-
 @pytest.mark.parametrize('cgpm', [simple_view])
-@pytest.mark.parametrize('query', [{1: {0: 1}}])
+@pytest.mark.parametrize('query', query_values)
 @pytest.mark.parametrize('evidence', [{-1: {0: 1}}])        
 def test_extreme_distargs(cgpm, query, evidence):
     ''' Test for P({x} | {y}, distargs=extreme) = P(x | distargs=extreme) '''
@@ -84,20 +90,17 @@ def test_extreme_distargs(cgpm, query, evidence):
     assert np.allclose(l_marg, l_cond)
     
 # ----- TEST EXTREME CRP HYPERS ----- #
-def restrict_evidence_to_query(query, evidence):
-    return {i: j for i, j in evidence.iteritems() if i in query.keys()}
-
 @pytest.mark.parametrize('cgpm', [simple_view])
 @pytest.mark.parametrize('query', [{1: {0: 1}}])
 @pytest.mark.parametrize('evidence', [{-1: {0: 1}}])
 def test_extreme_crp_hypers(cgpm, query, evidence):
     # P({x} | {y}, crp_alpha=extreme) = P({x} | {y inter x}, crp_alpha=extreme)
-    evidence_q = restrict_evidence_to_query(query, evidence)
-    assert_distinct_logpdfs(cgpm, [query]*2, [evidence, evidence_q])
+    evidence_restricted = restrict_evidence_to_query(query, evidence)
+    assert_distinct_logpdfs(cgpm, [query]*2, [evidence, evidence_restricted])
     
     test_cgpm = tu.gen_cgpm_extreme_crp_alpha(cgpm)
     l_cond = test_cgpm.logpdf_set(query, evidence)
-    l_q = test_cgpm.logpdf_set(query, evidence_q)
+    l_q = test_cgpm.logpdf_set(query, evidence_restricted)
     assert np.allclose(l_cond, l_q)
 
 # TEMPORARILY DEACTIVATED

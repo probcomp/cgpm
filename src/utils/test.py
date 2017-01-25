@@ -351,13 +351,13 @@ def gen_simple_view():
         Zr=Zr)
     return view
 
-def create_multitype_view():
+def gen_multitype_view():
     data = np.array([[0, 2, 3.14],
                      [1, 1, 1]])
     D = len(data[0])
     dpm_outputs = range(D)
     X = {c: data[:, i].tolist() for i, c in enumerate(dpm_outputs)}
-    crp_alpha = 1.,
+    crp_alpha = 1.
     cctypes = ['bernoulli', 'categorical', 'normal']
     hypers = {
         0: {'alpha': 1., 'beta': 1.},
