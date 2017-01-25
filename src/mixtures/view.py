@@ -18,7 +18,6 @@ import itertools
 
 from math import isnan
 
-import copy
 import numpy as np
 import warnings
 
@@ -613,7 +612,8 @@ class View(CGpm):
 
         # Make negative rowids positive
         i = 1
-        last_rowid = max(self.Zr()) if self.Zr() else -1 #  if table is empty, rowid starts at -1 + 1
+        last_rowid = max(self.Zr()) if self.Zr() else -1 
+        #  if table is empty, rowid starts at -1 (+ 1)
         for rowid in out_query.keys():
             if rowid < 0:
                 while last_rowid+i in deep_merged(out_query, out_evidence):
