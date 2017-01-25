@@ -256,3 +256,6 @@ def build_rowid_blocks(Zvr):
     A = np.asarray(Zvr).T
     U = map(tuple, A)
     return {u:np.where(np.all(A==u, axis=1))[0] for u in U}
+
+class AsIs():
+    pass

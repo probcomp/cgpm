@@ -28,7 +28,7 @@ from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils.config import cctype_class
-from cgpm.utils.general import merged, deep_merged
+from cgpm.utils.general import merged, deep_merged, AsIs
 # from cgpm.utils.render_utils import viz_view
 from cgpm.utils.render import viz_view
 
@@ -579,9 +579,9 @@ class View(CGpm):
         out_query = query.copy()
         out_evidence = {} if evidence is None else evidence.copy()
 
-        # If row  = {ID: {}} return full row
-        out_query = self._complete_implicit_rows(out_query)
-        out_evidence = self._complete_implicit_rows(out_evidence)
+        # If row  = {ID: AsIs()} return full row
+        out_query = self._complete_values_of_observed_rows(out_query)
+        out_evidence = self._complete_values_of_observed_rows(out_evidence)
 
         # If rowid is less than zero (hypothetical row),
         #  assign a positive rowid.
@@ -593,13 +593,16 @@ class View(CGpm):
             out_query, out_evidence, i)
         return out_query, out_evidence
 
-    def _complete_implicit_rows(self, query):
+    def _complete_values_of_observed_rows(self, query):
+        ''' Complete values for rows in query currently in the dataset, 
+        i.e., rows that have the sentinel value AsIs() '''
+
         out_query = query.copy()
         for key, val in out_query.iteritems():
-            if val == {}:
+            if isinstance(val, AsIs):
                 if self.hypothetical(key):
                     raise ValueError(
-                        "Cannot guess values for hypothetical row.")
+                        "Cannot complete values for hypothetical row.")
                 out_query[key] = {  # add all columns to out_query
                     c: self.X[c][key] for c in self.outputs[1::]}
         return out_query
