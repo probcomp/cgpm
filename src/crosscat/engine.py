@@ -168,6 +168,7 @@ class Engine(object):
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None,
             multiprocess=1):
+        self._seed_states()
         mapper = parallel_map if multiprocess else map
         args = [('simulate', self.states[i],
                 (rowid, query, evidence, N, accuracy))
@@ -178,6 +179,7 @@ class Engine(object):
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
             multiprocess=1):
         """Returns list of simualate_bulk, one for each state."""
+        self._seed_states()
         mapper = parallel_map if multiprocess else map
         args = [('simulate_bulk', self.states[i],
                 (rowids, queries, evidences, Ns))
@@ -188,6 +190,7 @@ class Engine(object):
     def mutual_information(self, col0, col1, evidence=None, T=None, N=None,
             progress=None, multiprocess=1):
         """Returns list of mutual information estimates, one for each state."""
+        self._seed_states()
         mapper = parallel_map if multiprocess else map
         args = [('mutual_information', self.states[i],
                 (col0, col1, evidence, T, N, progress))
@@ -233,6 +236,11 @@ class Engine(object):
 
     # --------------------------------------------------------------------------
     # Internal
+
+    def _seed_states(self):
+        rngs = self._get_rngs()
+        for rng, state in zip(rngs, self.states):
+            state.rng = rng
 
     def _get_rngs(self, N=None):
         num_states = N if N is not None else self.num_states()
