@@ -1,0 +1,304 @@
+\documentclass{article}
+
+\usepackage{geometry}
+  \geometry{
+    a4paper,
+    total={170mm,257mm},
+    left=30mm,
+    right=30mm,
+    top=20mm,
+}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+
+\usepackage[labelfont=bf]{caption}
+\usepackage[subrefformat=parens]{subcaption}
+\usepackage[usenames,dvipsnames,svgnames]{xcolor}
+\usepackage{algorithmicx}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage{bbm}
+\usepackage{chngcntr}
+\usepackage{mdframed}
+\usepackage{graphicx}
+\usepackage{parskip}
+\usepackage{placeins}
+\usepackage{soul}
+\usepackage{enumerate}
+\usepackage{cancel}
+
+% fonts
+\renewcommand{\rmdefault}{ptm}
+\renewcommand{\sfdefault}{phv}
+
+\newcommand*\Let[2]{\State {#1} $\gets$ {#2}}
+\newcommand*\Sample[2]{\State {#1} $\sim$ {#2}}
+\algnewcommand{\LineComment}[1]{\State \(\triangleright\) #1}
+
+\DeclareMathOperator{\argmin}{arg\,min}
+\DeclareMathOperator{\argmax}{arg\,max}
+\DeclareMathOperator{\logsumexp}{logsumexp}
+
+\def\indep{\perp\!\!\!\perp}
+
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+\newcommand{\blue}[1]{\textcolor{blue}{#1}}
+\newcommand{\set}[1]{\{{#1}\}}
+
+\frenchspacing
+\setlength{\floatsep}{5pt plus 1.0pt minus 2.0pt}
+\setlength{\textfloatsep}{10pt plus 1.0pt minus 2.0pt}
+\setlength{\abovecaptionskip}{2pt plus 0.0pt minus 1.0pt}
+% \belowcaptionskip.
+\setlength{\abovedisplayskip}{5pt plus 1.0pt minus 2.0pt}
+\setlength{\belowdisplayskip}{5pt plus 1.0pt minus 2.0pt}
+
+\newcommand{\algorithmbreak}{%
+\vspace{5 pt}%
+\noindent\rule{\linewidth}{0.4pt}%
+\setcounter{ALG@line}{0}%
+}
+
+\newtheoremstyle{break}% name
+  {10pt}%Space above
+  {10pt}%Space below
+  {\itshape}%Body font
+  {}%Indent amount
+  {\bfseries}% Theorem head font
+  {:}%Punctuation after theorem head
+  {\newline}%Space after theorem head 2
+  {}%Theorem head spec (can be left empty, meaning ‘normal’)
+\theoremstyle{break}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{definition}{Definition}[section]
+
+\begin{document}
+\title{On the relation between data search scores: \\
+  Bayes Sets Score, Relevance Score and Posterior Relevance Score}
+\author{Leo Casarsa}
+\maketitle
+
+\section{Data search scores}
+
+  \newcommand{\mS}{\mathcal{S}}
+  \newcommand{\target}{\vec x_t}
+  \newcommand{\queryset}{\set{\vec x_{q_i}}}
+  \newcommand{\Rd}{\mathbb{R}^D}
+  \newcommand{\Rdn}{\mathbb{R}^{d \times n}}
+  \newcommand{\Rp}{\mathbb{R}_{\geq 0}}
+  \newcommand{\Rdr}{\mathbb{R}^{d \times m}}
+  \newcommand{\mD}{\mathcal{D}}
+  \newcommand{\mG}{\mathcal{G}}
+  \newcommand{\hypers}{\vec \lambda}
+  \newcommand{\params}{\vec \theta}
+  \newcommand{\yt}{y_t}
+  \newcommand{\yi}{y_i}
+  \newcommand{\sameyq}{y_{q_1}=\ldots=y_{q_n}}
+  \newcommand{\yqset}{\set{y_{q_i}}}
+  \newcommand{\rscore}{\mS_{\mG, R}}
+  \newcommand{\sstats}{\text{T}}
+  \newcommand{\crp}{\textsc{CRP}}
+
+    A data search score $\mS: \Rd \times \Rdn \rightarrow \Rp$ is a
+    probabilistic mapping that evaluates how well a target row
+    $\target \in \Rd$ ``fits into'' a set that contains a
+    query set of rows $\queryset \in \Rdn$. Given a dataset $\mD \in \Rdr$, the
+    score allows us to search for the elements of $\mD$ which are most relevant
+    to a query set of rows of interest.
+
+    Multiple data search scores are available, including the
+    \emph{Bayesian Sets} score $\mS_B$, the \emph{relevance} score $\rscore$ and
+    the \emph{posterior} score $\mS_{\mG,P}$. We will define each of the three scores
+    in the following and then show how they relate to each other.
+
+    The Bayesian Sets score was introduced as a simple model-based probabilistic
+    criterion that ``evaluates the marginal probability that a [target] item
+    belongs to a cluster containing the query items''. 
+   
+    \begin{definition}[Bayesian Sets Score]
+      Let $\params, \hypers$ denote the parameters and hyperparameters of a
+      given probabilistic model. The bayesian sets score between a
+      target row $\target$ and a query set of rows $\queryset$ is defined as
+      
+      \begin{equation}
+        \mS_B(\target, \queryset) :=
+            \frac {P(\target, \queryset \mid \hypers)}
+                {P(\target \mid \hypers) {P(\queryset \mid \hypers)}}
+      \end{equation}
+
+      where the parameters $\params$ are marginalized out,
+      
+      \begin{align*}
+        P(\vec x \mid \hypers) &= \int P(\vec x \mid \params)
+            P(\params \mid \hypers) \, d\params \\
+        P(\set{\vec x_i}_{i=1}^n) &= \int \prod_{i=1, \ldots, n} 
+            P(\vec x_i \mid \params) P(\params \mid \hypers) \, d\params
+      \end{align*}
+
+      and the $P(\vec x \mid \params)$ and $P(\params \mid \hypers)$ are
+      given.
+    \end{definition}
+
+     The relevance score is a non-parametric score for Dirichlet Process mixture
+     models (DPMM) that evaluates the odds on the target $\target$ and query
+     $\queryset$ being clustered together, conditioned on $\queryset$ belonging
+     to a same cluster.
+ 
+    \begin{definition}[Relevance Score]
+      Let $\mG$ denote a DPMM and $\yi$ denote the
+      cluster label for each row in $\mG$. The relevance score is defined as
+      
+      \begin{equation}
+        \rscore (\target, \queryset) := \frac 
+            {P(\yt = \yqset \mid \target, \queryset, \sameyq)}
+            {P(\yt \neq \yqset \mid \target, \queryset, \sameyq)}
+      \end{equation}
+    \end{definition}
+
+    The posterior score is also a non-parametric score for DPMM, but it measures
+    the posterior probability that the target $\target$ and query $\queryset$
+    are clustered together, conditioned on $\queryset$ belonging to the same
+    cluster.
+
+    \begin{definition}[Posterior Score]
+      Let $\mG$ denote a DPMM and $\yi$ denote the
+      cluster label for each row in $\mG$. The posterior score is defined as
+      
+      \begin{equation}
+        \mS_{\mG,P} (\target, \queryset) :=
+            P(\yt = \yqset \mid \target, \queryset, \sameyq)
+      \end{equation}
+    \end{definition}
+    
+    This paper has two goals:
+    \begin{enumerate}
+    \item To show conditions under which the Bayes Sets and the relevance scores
+      are equivalent.
+    \item To show conditions under which the relevance and posterior scores are
+      equivalent.
+    \end{enumerate}
+
+    \begin{theorem}
+      Let $\alpha$ be the DPMM concentration hyperparameter, $\target$ be a
+      target row and $\queryset_{i=1}^n$ be the query set, with $n$ rows.
+      If $\mG$ is a prior DP Mixture $\mG$ with no observed data and
+      no assigned cluster, the relevance score is proportional to
+      the bayesian sets score,
+
+      \begin{equation}
+        \rscore(\target, \queryset) = \frac{n}{\alpha} \mS_B(\target, \queryset)
+      \end{equation}
+    \end{theorem}
+
+    \begin{proof}
+      First, we factorize the relevance score using the product rule,
+     
+      \begin{align}
+        \label{eq:rscore}
+        \rscore (\target, \queryset) &:= \frac 
+            {P(\yt = \yqset \mid \target, \queryset, \sameyq)}
+            {P(\yt \neq \yqset \mid \target, \queryset, \sameyq)} \\
+        &= \frac {P(\yt = \yqset, \target, \queryset, \sameyq)}
+            {P(\target, \queryset, \sameyq)} \mathbin{/}
+            \frac {P(\yt \neq \yqset \mid \target, \queryset, \sameyq)}
+            {P(\target, \queryset, \sameyq)} \\
+        &= \frac {P(\yt = \yqset, \target, \queryset, \sameyq)}
+            {P(\yt \neq \yqset \mid \target, \queryset, \sameyq)}\\
+      \end{align}
+      
+      Since $\mG$ is empty, there are only two possible cluster assignments for
+      $\target$ and $query$
+
+      \begin{enumerate}
+      \item $\yt=0, \yqset = 0$ - target and query in the same cluster
+      \item $\yt=0, \yqset = 1$ - target and query in distinct clusters
+      \end{enumerate}
+
+      Substituting the above on \eqref{eq:rscore} and applying the product rule
+      once again,
+      \begin{align}
+        \rscore (\target, \queryset) &:= \frac 
+            {P(\yt = \sameyq = 0, \target, \queryset)}
+            {P(\yt = 0, \sameyq = 1, \target, \queryset)}\\
+        &= \frac{P(\target, \queryset \mid \yt = \sameyq = 0) 
+            P(\yt = \sameyq = 0)}
+            {P(\target, \queryset \mid \yt = 0, \sameyq = 1)
+            P(\yt = 0, \sameyq = 1)}
+      \end{align}
+
+      We will now go through each of the four factors in the equation above. 
+
+      TEXT
+
+      \begin{align}
+        P(\target, \queryset &\mid \yt = \sameyq = 0) \\
+        & = P(\target, \queryset \mid 
+            \sstats(\cancelto{\emptyset}{\set{\vec x_i: y_i=0}}), \hypers) \\
+        & = P(\target, \queryset \mid \hypers)
+      \end{align}
+
+      \begin{align}
+        P(\target, \queryset &\mid \yt = 0, \sameyq = 1) \\
+        & = P(\target \mid \yt=0) \, P(\queryset \mid \sameyq=1) \\
+        & = P(\target \mid 
+            \sstats(\cancelto{\emptyset}{\set{\vec x_i: y_i=0}}), \hypers)
+            \, P(\queryset \mid 
+            \sstats(\cancelto{\emptyset}{\set{\vec x_i: y_i=1}}), \hypers) \\
+        & = P(\target \mid \hypers) \, P(\queryset \mid \hypers) \\
+      \end{align}
+
+      \begin{align}
+        P(\yt = \sameyq = 0) &= \crp(yt = \sameyq = 0 | \alpha) \\
+        &=1 \times \frac{1}{\alpha + 1}\times \ldots \times 
+            \frac{n}{\alpha+n}\\
+        &= n! \, \frac{\Gamma(\alpha+1)}{\Gamma(\alpha+n+1)}
+      \end{align}
+
+      \begin{align}
+        P(\yt = 0, \sameyq = 1) &= \crp(yt = 0, \sameyq = 1 | \alpha) \\
+        &=1 \times \frac{\alpha}{\alpha + 1}\times \ldots
+            \times \frac{n-1}{\alpha+n}\\
+        &= \alpha \, (n-1)! \, \frac{\Gamma(\alpha+1)}{\Gamma(\alpha+n+1)}
+      \end{align}
+
+    Wrapping it all up,
+    \begin{align}
+      \rscore(\target, \queryset) &= 
+          \dfrac{n! \, \frac{\Gamma(\alpha+1)}{\Gamma(\alpha+n+1)}\,
+          P(\target, \queryset \mid \hypers)}
+          {\alpha \, (n-1)! \, \frac{\Gamma(\alpha+1)}{\Gamma(\alpha+n+1)}\,
+          P(\target \mid \hypers) \, P(\queryset \mid \hypers)} \\
+      & = \frac{n}{\alpha} \, \frac{P(\target, \queryset \mid \hypers)}
+          {P(\target \mid \hypers) \, P(\queryset \mid \hypers)} \\
+      & =  \frac{n}{\alpha} \, \mS_B(\target, \queryset)
+    \end{align}
+
+
+    \end{proof}
+
+\section{Bayes Sets Score is equivalent to the relevance
+  score using a prior DP Mixture}
+
+
+\end{document}
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
