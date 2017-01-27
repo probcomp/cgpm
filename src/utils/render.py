@@ -245,7 +245,13 @@ def viz_view(view, ax=None, row_names=None, col_names=None, savefile=None):
     return ax
 
 
-def viz_state(state, row_names=None, col_names=None, savefile=None):
+def viz_state(
+        state,
+        row_names=None,
+        col_names=None,
+        savefile=None,
+        figsize=None
+    ):
     """Calls viz_view on each view in the state.
 
     Plot views next to one another.
@@ -256,6 +262,8 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
         row_names = range(data_arr.shape[0])
     if col_names is None:
         col_names = range(data_arr.shape[1])
+    if figsize is None:
+        figsize = (32, 18)
 
     views = state.views.keys()
     views = sorted(views, key=lambda v: len(state.views[v].outputs))[::-1]
@@ -275,7 +283,7 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
         view_widths.append(width)
         view_heights.append(1)
 
-    fig = plt.figure(figsize=(32, 18))
+    fig = plt.figure(figsize=figsize)
 
     # Create grid for subplots.
     gs = gridspec.GridSpec(1, len(views), width_ratios=view_widths, wspace=1)
