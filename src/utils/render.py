@@ -33,7 +33,13 @@ def compute_axis_size_viz_data(data, row_names, col_names):
 
 
 def viz_data_raw(
-        data, ax=None, row_names=None, col_names=None, cmap=None, title=None):
+        data,
+        ax=None,
+        row_names=None,
+        col_names=None,
+        cmap=None,
+        title=None
+    ):
     if isinstance(data, list):
         data = np.array(data)
     if ax is None:
@@ -50,8 +56,13 @@ def viz_data_raw(
     data_normed = nannormalize(data)
 
     ax.matshow(
-        data_normed, interpolation='None', cmap=cmap,
-        vmin=-0.1, vmax=1.1, aspect='auto')
+        data_normed,
+        interpolation='None',
+        cmap=cmap,
+        vmin=-0.1,
+        vmax=1.1,
+        aspect='auto'
+    )
 
     ax.set_xlim([-0.5, data_normed.shape[1]-0.5])
     ax.set_ylim([-0.5, data_normed.shape[0]-0.5])
@@ -60,14 +71,24 @@ def viz_data_raw(
     yticklabelsize = size - height
     if row_names is not None:
         ax.set_yticks(range(data_normed.shape[0]))
-        ax.set_yticklabels(row_names, ha='right', size='x-large')
+        ax.set_yticklabels(
+            row_names,
+            ha='right',
+            size=yticklabelsize,
+            rotation_mode='anchor'
+        )
 
     xticklabelsize = size - width/3.
     if col_names is not None:
         ax.set_xticks(range(data_normed.shape[1]))
         ax.set_xticklabels(
-            col_names, rotation=45, rotation_mode='anchor', ha='left',
-            size='x-large')
+            col_names,
+            rotation=45,
+            rotation_mode='anchor',
+            ha='left',
+            size='x-large',
+            fontweight='bold'
+        )
 
     # Hack to set grids off-center.
     ax.set_xticks([x - 0.5 for x in ax.get_xticks()][1:], minor='true')
@@ -78,8 +99,14 @@ def viz_data_raw(
 
 
 def viz_data(
-        data, ax=None, row_names=None, col_names=None, cmap=None, title=None,
-        savefile=None):
+        data,
+        ax=None,
+        row_names=None,
+        col_names=None,
+        cmap=None,
+        title=None,
+        savefile=None
+    ):
     """Vizualize heterogeneous data.
 
     Standardizes data across columns. Ignores nan values (plotted white).
@@ -238,9 +265,13 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
     view_heights = []
     for view in views:
         data_view = np.array(
-            get_view_data(state.views[view]).values()).T
+            get_view_data(state.views[view]).values()
+        ).T
         height, width = compute_axis_size_viz_data(
-            data_view, row_names, col_names)
+            data_view,
+            row_names,
+            col_names
+        )
         view_widths.append(width)
         view_heights.append(1)
 
@@ -260,7 +291,11 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
             for o in state.views[v].outputs[1:]
         ]
         ax_list[-1] = viz_view_raw(
-            state.views[v], ax_list[-1], row_names, col_names)
+            state.views[v],
+            ax_list[-1],
+            row_names,
+            col_names_v
+        )
 
     plt.subplots_adjust(top=0.84)
     if savefile:
