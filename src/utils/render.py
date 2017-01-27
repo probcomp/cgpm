@@ -170,9 +170,8 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None):
         row_names = row_names[row_indexes]
 
     if col_names is None:
-        col_names = dim_ordering
-    elif len(col_names) == len(view.X.values()):
-        col_names = col_names[dim_ordering]
+        col_names = view.outputs[1:]
+    col_names = col_names[dim_ordering]
 
     # Plot clustered data.
     ax = viz_data_raw(clustered_data, ax, row_names, col_names)
@@ -255,6 +254,11 @@ def viz_state(state, row_names=None, col_names=None, savefile=None):
     for (i, v) in enumerate(views):
         ax_list.append(fig.add_subplot(gs[i]))
 
+        # Find the columns applicable to this view.
+        col_names_v = [
+            col_names[state.outputs.index(o)]
+            for o in state.views[v].outputs[1:]
+        ]
         ax_list[-1] = viz_view_raw(
             state.views[v], ax_list[-1], row_names, col_names)
 
