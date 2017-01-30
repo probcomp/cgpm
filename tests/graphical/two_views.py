@@ -78,7 +78,8 @@ def test_two_views_column_partition_normal__ci_(lovecat):
     D = retrieve_normal_dataset()
 
     engine = Engine(
-        D.T, cctypes=['normal']*len(D), rng=gu.gen_rng(12), num_states=64)
+        D.T, outputs=[5,0,1,2,3,4],
+        cctypes=['normal']*len(D), rng=gu.gen_rng(12), num_states=64)
 
     if lovecat:
         engine.transition_lovecat(N=200)
@@ -86,8 +87,8 @@ def test_two_views_column_partition_normal__ci_(lovecat):
         engine.transition(N=200)
 
     P = engine.dependence_probability_pairwise()
-    R1 = engine.row_similarity_pairwise(cols=[0,1,2])
-    R2 = engine.row_similarity_pairwise(cols=[3,4,5])
+    R1 = engine.row_similarity_pairwise(cols=[5,0,1])
+    R2 = engine.row_similarity_pairwise(cols=[2,3,4])
 
     pu.plot_clustermap(P)
     pu.plot_clustermap(R1)

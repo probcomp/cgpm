@@ -84,7 +84,7 @@ def _crosscat_T(state, M_c):
             return float(lookup[unicode(int(val))])
         else:
             return val
-    ordering = sorted(T.keys())
+    ordering = state.outputs
     rows = range(len(T[ordering[0]]))
     return [[crosscat_value_to_code(T[col][row], i) for (i, col) in
         enumerate(ordering)] for row in rows]
