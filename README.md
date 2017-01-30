@@ -5,25 +5,33 @@ framework to express different models and techniques from statistics, machine
 learning and non-parametric Bayes. It serves as the primary modeling and
 inference runtime system for [BayesDB](https://github.com/probcomp/bayeslite).
 
-Composable generative population models (CGPM) provide a computational
-abstraction for probabilistic objects. They provide an interface that explicitly
+Composable generative population models (CGPM) are a computational abstraction
+for probabilistic objects. They provide an interface that explicitly
 differentiates between the _sampler_ of a random variable from its conditional
 distribution and the _assessor_ of its conditional density. By encapsulating
 models as probabilistic programs that implement CGPMs, complex models can be
-built as compositions of sub-CGPMs.
+built as compositions of sub-CGPMs, and queried in a model-independent way
+using the Bayesian Query Language.
 
 ## Reference
 
 CGPMs, and their integration as a runtime system for
-[BayesDB](probcomp.csail.mit.edu/bayesdb/), are described in:
+[BayesDB](probcomp.csail.mit.edu/bayesdb/), are described in the following
+technical report:
 
-Probabilistic Data Analysis with Probabilistic Programming. Saad, F. and Mansinghka, V.
-[arXiv, number 1608.05347](https://arxiv.org/abs/1608.05347).
+> Probabilistic Data Analysis with Probabilistic Programming. Saad, F. and Mansinghka, V.
+> [arXiv:1608.05347](https://arxiv.org/abs/1608.05347).
+
+A shorter version of the technical report can be found in:
+
+> A Probabilistic Programming Approach To Probabilistic Data Analysis.
+> Saad, F. and Mansinghka, V. Neural Information Processing Systems, 2016.
+> [PDF](https://papers.nips.cc/paper/6060-a-probabilistic-programming-approach-to-probabilistic-data-analysis).
 
 ## Installing
-```
-pip install .
-```
+
+For developers: instructions for installing `cgpm` and related probcomp software
+can be found in the [iventure project](https://github.com/probcomp/iventure/blob/master/docs/virtualenvs.md).
 
 ## Tests
 
@@ -34,6 +42,8 @@ directory, but those that do not start with `test_` or do start with `disabled_`
 are not considered ready. The tip of every branch merged into master __must__
 pass `./check.sh`, and be consistent with the code conventions outlined in
 [HACKING](HACKING).
+
+To run the full test suite, use `./check.sh --integration tests/`.
 
 ## License
 
