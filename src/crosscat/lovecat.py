@@ -86,8 +86,11 @@ def _crosscat_T(state, M_c):
             return val
     ordering = state.outputs
     rows = range(len(T[ordering[0]]))
-    return [[crosscat_value_to_code(T[col][row], i) for (i, col) in
-        enumerate(ordering)] for row in rows]
+    return [
+        [crosscat_value_to_code(T[col][row], i)
+            for (i, col) in enumerate(ordering)]
+        for row in rows
+    ]
 
 
 def _crosscat_X_D(state, M_c):
@@ -95,15 +98,24 @@ def _crosscat_X_D(state, M_c):
     view_assignments = state.Zv().values()
     views_unique = sorted(set(view_assignments))
 
-    cluster_assignments = [state.views[v].Zr().values() for v in views_unique]
-    cluster_assignments_unique = [sorted(set(assgn))
-        for assgn in cluster_assignments]
-    cluster_assignments_to_code = [{k:i for (i,k) in enumerate(assgn)}
-        for assgn in cluster_assignments_unique]
+    cluster_assignments = [
+        state.views[v].Zr().values()
+        for v in views_unique
+    ]
+    cluster_assignments_unique = [
+        sorted(set(assgn))
+        for assgn in cluster_assignments
+    ]
+    cluster_assignments_to_code = [
+        {k:i for (i,k) in enumerate(assgn)}
+        for assgn in cluster_assignments_unique
+    ]
     cluster_assignments_remapped = [
         [coder[v] for v in assgn] for (coder, assgn)
-        in zip(cluster_assignments_to_code, cluster_assignments)]
-
+        in zip(cluster_assignments_to_code, cluster_assignments)
+    ]
+    # cluster_assignments_remapped[i] contains the row partition for the
+    # views_unique[i].
     return cluster_assignments_remapped
 
 
@@ -143,7 +155,9 @@ def _crosscat_X_L(state, M_c, X_D):
     view_assignments = state.Zv().values()
     views_unique = sorted(set(view_assignments))
     views_to_code = {v:i for (i,v) in enumerate(views_unique)}
-    views_remapped = [views_to_code[v] for v in view_assignments]
+    # views_remapped[i] contains the zero-based view index for
+    # state.outputs[i].
+    views_remapped = [views_to_code[state.Zv(o)] for o in state.outputs]
     counts = list(np.bincount(views_remapped))
     assert 0 not in counts
     column_partition = {
@@ -181,10 +195,9 @@ def _crosscat_X_L(state, M_c, X_D):
             }
         }
 
-    # view_states[i] is the view with code views_to_code[i], so we need to
+    # view_states[i] is the view for code views_to_code[i], so we need to
     # iterate in the same order of views_unique to agree with both X_D (the row
-    # X_L['c'] partition in each view), as well as
-    # X_L['column_partition']['assignments']
+    # partition in each view), as well as X_L['column_partition']['assignments']
     view_states = [view_state(v) for v in views_unique]
 
     return {
@@ -211,7 +224,8 @@ def _update_state(state, M_c, X_L, X_D):
 
     # Update the global state alpha.
     state.crp.set_hypers(
-        {'alpha': X_L['column_partition']['hypers']['alpha']})
+        {'alpha': X_L['column_partition']['hypers']['alpha']}
+    )
 
     assert state.alpha() == X_L['column_partition']['hypers']['alpha']
     assert state.crp.clusters[0].alpha ==\
