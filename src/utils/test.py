@@ -329,7 +329,7 @@ def gen_simple_state():
         outputs=outputs,
         alpha=1.,
         cctypes=['bernoulli']*D,
-        distargs={i: {'alpha': 1., 'beta': 1.} for i in outputs},
+        hypers=[{'alpha': 1., 'beta': 1.} for i in outputs],
         Zv={0: 0, 1: 0, 2: 1},
         view_alphas=[1.]*D,
         Zrv={0: [0]*R, 1: [0]*R})
@@ -374,6 +374,63 @@ def gen_multitype_view():
         distargs=distargs,
         Zr=Zr)
     return view
+
+def gen_cgpm_extreme_hypers(cgpm):
+    ''' 
+    Generate new cgpm from input cgpm, and alter its distribution 
+    hyperparameters to extreme values.
+    '''
+    # Retrieve metadata from cgpm
+    metadata = cgpm.to_metadata()
+
+    # Alter metadata.hypers to extreme values according to data type
+    columns = metadata['X'].keys()
+    cctypes = metadata['cctypes']
+
+    new_hypers = [{} for c in columns]
+    for c in columns:
+        if cctypes[c] == 'bernoulli':
+            new_hypers[c] = {'alpha': 1e5, 'beta': 1e5}
+        
+        elif cctypes[c] == 'categorical':
+            new_hypers[c] = {'alpha': 1e5}
+        
+        elif cctypes[c] == 'normal':
+            new_hypers[c] = {'m': 1e5, 'nu': 1e5, 'r': 1e5, 's': 1e5}
+
+        else:
+            ValueError('''
+               cctype not recognized (not bernoulli, categorical or normal);
+            ''')
+
+    # Create a new cgpm from the altered metadata
+    new_metadata = metadata
+    metadata['hypers'] = new_hypers
+    return cgpm.from_metadata(new_metadata)
+    
+def gen_cgpm_extreme_crp_alpha(cgpm):
+    ''' 
+    Generate new cgpm from input cgpm, and alter its crp 
+    concentration hyperparameter to extreme values.
+    '''
+    # Retrieve metadata from cgpm
+    metadata = cgpm.to_metadata()
+
+    # Alter metadata.alpha to extreme values according to data type
+    new_metadata = metadata
+    metadata['alpha'] = 1e5
+    return cgpm.from_metadata(new_metadata)
+
+def restrict_evidence_to_query(query, evidence):
+    '''
+    Return subset of evidence whose rows are also present in query
+    '''
+    evidence_restricted = {}
+    for row in evidence.keys():
+        if row in query.keys():
+            evidence_restricted[row] = evidence[row]
+    
+    return evidence_restricted
 
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,
