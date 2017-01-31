@@ -143,7 +143,9 @@ def _crosscat_X_L(state, M_c, X_D):
     view_assignments = state.Zv().values()
     views_unique = sorted(set(view_assignments))
     views_to_code = {v:i for (i,v) in enumerate(views_unique)}
-    views_remapped = [views_to_code[v] for v in view_assignments]
+    # views_remapped[i] contains the zero-based view index for
+    # state.outputs[i].
+    views_remapped = [views_to_code[state.Zv(o)] for o in state.outputs]
     counts = list(np.bincount(views_remapped))
     assert 0 not in counts
     column_partition = {
