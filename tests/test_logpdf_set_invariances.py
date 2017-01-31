@@ -72,7 +72,7 @@ def test_null_evidence(cgpm, query, null_evidence):
     assert np.allclose(l_marg, l_cond)
 
 # ----- TEST EXTREME DISTARGS ----- #
-@pytest.mark.parametrize('cgpm', [simple_view])
+@pytest.mark.parametrize('cgpm', test_cgpms)
 @pytest.mark.parametrize('query', query_values)
 @pytest.mark.parametrize('evidence', [{-1: {0: 1}}])        
 def test_extreme_hypers(cgpm, query, evidence):
@@ -88,13 +88,16 @@ def test_extreme_hypers(cgpm, query, evidence):
         new_cgpm.logpdf_set(query, evidence))
     
 # ----- TEST EXTREME CRP HYPERS ----- #
-@pytest.mark.parametrize('cgpm', [simple_view])
+@pytest.mark.parametrize('cgpm', test_cgpms)
 @pytest.mark.parametrize('query', [{1: {0: 1}}])
 @pytest.mark.parametrize('evidence', [{-1: {0: 1}}])
 def test_extreme_crp_alpha(cgpm, query, evidence):
-    # P({x} | {y}, crp_alpha=extreme) = P({x} | {y inter x}, crp_alpha=extreme)
+    ''' 
+    Test for
+    P({x} | {y}, crp_alpha=extreme) = P({x} | {y inter x}, crp_alpha=extreme)
+    '''
     new_cgpm = tu.gen_cgpm_extreme_crp_alpha(cgpm)
-    evidence_restricted = restrict_evidence_to_query(query, evidence)
+    evidence_restricted = tu.restrict_evidence_to_query(query, evidence)
     
     assert not np.allclose(
         cgpm.logpdf_set(query, evidence),
@@ -104,25 +107,21 @@ def test_extreme_crp_alpha(cgpm, query, evidence):
         new_cgpm.logpdf_set(query, evidence),
         new_cgpm.logpdf_set(query, evidence_restricted))
 
-# TEMPORARILY DEACTIVATED
+
 # ----- TEST PRODUCT RULE ----- #
-# logpdf-set(query, evidence) = 
-#     logpdf-set(query-UNION-evidence) - logpdf-set(query)
-# def test_factorization_of_joint_logpdf_set_in_two_columns():
-#     """
-#     p(row 1, row 0) = p(row 1| row 0) p(row 0)
-#     log_p(row 1, row 0) = log_p(row 1| row 0) + log_p(row 0)
-#     log_joint = log_conditional + log_marginal
-#     """
-#     view = simple_view
-#     row1 = {1: {0: 0, 1: 0}}
-#     row0 = {0: {0: 1, 1: 1}}
+@pytest.mark.parametrize('cgpm', [simple_view])
+@pytest.mark.parametrize('query', [{1: {0: 1}}, {1: {0: 0, 1: 0}}])
+@pytest.mark.parametrize('evidence', [{-1: {0: 1}}, {0: {0: 1, 1: 1}}])
+def test_product_rule(cgpm, query, evidence):
+    """
+    Test for
+    P({x}, {y}) = P({x} | {y}) P({y})
+    """
+    query_evidence = deep_merged(query, evidence)
 
-#     log_joint = view.logpdf_set(query=deep_merged(row0, row1))
-#     log_conditional = view.logpdf_set(query=row1, evidence=row0)
-#     log_marginal = view.logpdf_set(query=row0)
-
-#     assert np.allclose(log_joint, log_conditional + log_marginal)
+    assert np.allclose(
+        cgpm.logpdf_set(query_evidence),
+        cgpm.logpdf_set(query, evidence) + cgpm.logpdf_set(evidence))
 
 # ----- TEST MARGINALIZATION ----- #
 # P(x) ~~ 1/N * sum_y P(x|y), with y ~ P(Y) 
