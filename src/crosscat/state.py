@@ -587,7 +587,8 @@ class State(CGpm):
         # XXX TODO: Temporarily convert all cctypes into normal/categorical.
         if any(c not in ['normal','categorical'] for c in self.cctypes()):
             raise ValueError(
-                'Only normal and categorical cgpms supported by lovecat.')
+                'Only normal and categorical cgpms supported by lovecat: %s'
+                % (self.cctypes()))
         if any(d.is_conditional() for d in self.dims()):
             raise ValueError('Cannot transition lovecat with conditional dims.')
         from cgpm.crosscat import lovecat
