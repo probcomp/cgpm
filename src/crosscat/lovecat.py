@@ -296,15 +296,17 @@ def _progress(n_steps, max_time, step_idx, elapsed_secs, end=None):
 
 
 def transition(
-        state, N=None, S=None, kernels=None, seed=None, checkpoint=None,
-        progress=None):
-    """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object."""
-    # Permittable kernels:
-    #   column_partition_hyperparameter
-    #   column_partition_assignments
-    #   column_hyperparameters
-    #   row_partition_hyperparameters
-    #   row_partition_assignments
+        state, N=None, S=None, kernels=None, rowids=None, cols=None,
+        seed=None, checkpoint=None, progress=None):
+    """Runs full Gibbs sweeps of all kernels on the cgpm.state.State object.
+
+    Permittable kernels:
+       'column_partition_hyperparameter'
+       'column_partition_assignments'
+       'column_hyperparameters'
+       'row_partition_hyperparameters'
+       'row_partition_assignments'
+    """
 
     if seed is None:
         seed = 1
@@ -329,6 +331,13 @@ def transition(
     else:
         assert False
 
+    if cols is None:
+        cols = ()
+    else:
+        cols = [state.outputs.index(i) for i in cols]
+    if rowids is None:
+        rowids = ()
+
     M_c = _crosscat_M_c(state)
     T = _crosscat_T(state, M_c)
     X_D = _crosscat_X_D(state, M_c)
@@ -341,14 +350,14 @@ def transition(
         X_L_new, X_D_new = LE.analyze(
             M_c, T, X_L, X_D, seed,
             kernel_list=kernels, n_steps=n_steps, max_time=max_time,
-            progress=progress)
+            c=cols, r=rowids, progress=progress)
         diagnostics_new = dict()
     else:
         X_L_new, X_D_new, diagnostics_new = LE.analyze(
             M_c, T, X_L, X_D, seed,
             kernel_list=kernels, n_steps=n_steps, max_time=max_time,
-            do_diagnostics=True, diagnostics_every_N=checkpoint,
-            progress=progress)
+            c=cols, r=rowids, do_diagnostics=True,
+            diagnostics_every_N=checkpoint, progress=progress)
 
     _update_state(state, M_c, X_L_new, X_D_new)
 
