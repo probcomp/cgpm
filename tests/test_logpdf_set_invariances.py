@@ -29,15 +29,10 @@ import cgpm.utils.test as tu
 from cgpm.mixtures.view import View
 from cgpm.utils.general import logsumexp, deep_merged
 
-# TODO: 
-#  - Change the logpdf-set API such that the sentinel value
-#  for an observed row is not {}.
-#  Suggestions: empty class AsIs() or object observed; True, Nan, etc.
-
 # ----- HELPER FUNCTIONS ----- #
-def assert_distinct_logpdfs(cgpm, query_list, evidence_list):
+def assert_distinct_marginal_and_conditional(cgpm, query_list, evidence_list):
     for query, evidence in zip(query_list, evidence_list):
-        l_marg = cgpm.logpdf_set(query, evidence)
+        l_marg = cgpm.logpdf_set(query)
         l_cond = cgpm.logpdf_set(query, evidence)
         assert not np.allclose(l_marg, l_cond)
 
@@ -80,28 +75,34 @@ def test_null_evidence(cgpm, query, null_evidence):
 @pytest.mark.parametrize('cgpm', [simple_view])
 @pytest.mark.parametrize('query', query_values)
 @pytest.mark.parametrize('evidence', [{-1: {0: 1}}])        
-def test_extreme_distargs(cgpm, query, evidence):
-    ''' Test for P({x} | {y}, distargs=extreme) = P(x | distargs=extreme) '''
-    assert_distinct_logpdfs(cgpm, [query]*2, [evidence, {}])
+def test_extreme_hypers(cgpm, query, evidence):
+    ''' Test for P({x} | {y}, hypers=extreme) = P(x | hypers=extreme) '''
+    new_cgpm = tu.gen_cgpm_extreme_hypers(cgpm)
+
+    assert not np.allclose(
+        cgpm.logpdf_set(query),
+        cgpm.logpdf_set(query, evidence))
     
-    test_cgpm = tu.gen_cgpm_extreme_distargs(cgpm)
-    l_marg = test_cgpm.logpdf_set(query)
-    l_cond = test_cgpm.logpdf_set(query, evidence)
-    assert np.allclose(l_marg, l_cond)
+    assert np.allclose(
+        new_cgpm.logpdf_set(query),
+        new_cgpm.logpdf_set(query, evidence))
     
 # ----- TEST EXTREME CRP HYPERS ----- #
 @pytest.mark.parametrize('cgpm', [simple_view])
 @pytest.mark.parametrize('query', [{1: {0: 1}}])
 @pytest.mark.parametrize('evidence', [{-1: {0: 1}}])
-def test_extreme_crp_hypers(cgpm, query, evidence):
+def test_extreme_crp_alpha(cgpm, query, evidence):
     # P({x} | {y}, crp_alpha=extreme) = P({x} | {y inter x}, crp_alpha=extreme)
+    new_cgpm = tu.gen_cgpm_extreme_crp_alpha(cgpm)
     evidence_restricted = restrict_evidence_to_query(query, evidence)
-    assert_distinct_logpdfs(cgpm, [query]*2, [evidence, evidence_restricted])
     
-    test_cgpm = tu.gen_cgpm_extreme_crp_alpha(cgpm)
-    l_cond = test_cgpm.logpdf_set(query, evidence)
-    l_q = test_cgpm.logpdf_set(query, evidence_restricted)
-    assert np.allclose(l_cond, l_q)
+    assert not np.allclose(
+        cgpm.logpdf_set(query, evidence),
+        cgpm.logpdf_set(query, evidence_restricted))
+
+    assert np.allclose(
+        new_cgpm.logpdf_set(query, evidence),
+        new_cgpm.logpdf_set(query, evidence_restricted))
 
 # TEMPORARILY DEACTIVATED
 # ----- TEST PRODUCT RULE ----- #
