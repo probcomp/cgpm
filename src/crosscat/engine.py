@@ -75,11 +75,12 @@ class Engine(object):
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
 
-    def transition_lovecat(self, N=None, S=None, kernels=None,
-            progress=None, checkpoint=None, multiprocess=1):
+    def transition_lovecat(
+            self, N=None, S=None, kernels=None, rowids=None,
+            cols=None, progress=None, checkpoint=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         args = [('transition_lovecat', self.states[i],
-                (N, S, kernels, progress, checkpoint))
+                (N, S, kernels, rowids, cols, progress, checkpoint))
                 for i in xrange(self.num_states())]
         self.states = mapper(_modify, args)
 
