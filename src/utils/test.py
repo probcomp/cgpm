@@ -300,7 +300,7 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
-def create_simple_engine(multiprocess=1):
+def gen_simple_engine(multiprocess=1):
     data = np.array([[1, 1, 1]])
     R = len(data)
     D = len(data[0])
@@ -319,7 +319,7 @@ def create_simple_engine(multiprocess=1):
         Zrv={0: [0]*R, 1: [0]*R})
     return engine
 
-def create_simple_state():
+def gen_simple_state():
     data = np.array([[1, 1, 1]])
     R = len(data)
     D = len(data[0])
