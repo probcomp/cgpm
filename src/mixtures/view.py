@@ -430,7 +430,7 @@ class View(CGpm):
     
     # --------------------------------------------------------------------------
     @assert_persistence_metadata
-    def posterior_relevance_score(self, target, query, debug=False):
+    def relevance_probability(self, target, query, debug=False):
         """
         Compute the posterior relevance score defined as 
 
@@ -469,7 +469,7 @@ class View(CGpm):
 
     # relevance score
     @assert_persistence_metadata
-    def relevance_score(self, target, query, debug=False):
+    def relevance_odds(self, target, query, debug=False):
         """
         Compute the relevance score as the likelihood ratio of the joint
         target and query given two hypotheses:
@@ -546,12 +546,12 @@ class View(CGpm):
             score.items(), key=lambda x: x[1], reverse=True)
         return sorted_score
 
-    def relevance_search(self, query, debug=False):
-        return self.generic_search(self.relevance_score, query, debug)
+    def relevance_odds_search(self, query, debug=False):
+        return self.generic_search(self.relevance_odds, query, debug)
 
-    def posterior_relevance_search(self, query, debug=False):
+    def relevance_probability_search(self, query, debug=False):
         return self.generic_search(
-            self.posterior_relevance_score, query, debug)
+            self.relevance_probability, query, debug)
 
     def _assign_cluster_to_set_of_rows(self, row_dct, k):
         """

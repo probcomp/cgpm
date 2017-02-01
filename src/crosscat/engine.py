@@ -212,12 +212,12 @@ class Engine(object):
             S[i,j] = S[j,i] = s
         return S
 
-    def posterior_relevance_score(
+    def relevance_probability(
             self, target, query, context, debug=False, multiprocess=1):
         """Compute the posterior relevance score for each state
         between target and query in the given context"""
         mapper = parallel_map if multiprocess else map
-        args = [('posterior_relevance_score', self.states[i],
+        args = [('relevance_probability', self.states[i],
                  (target, query, context, debug))
                 for i in xrange(self.num_states())]
         scores = mapper(_evaluate, args)

@@ -22,7 +22,7 @@ def test_search_row_146():
 
     query = {146: {}}
     # import pudb; pudb.set_trace()
-    view.relevance_search(query)
+    view.relevance_odds_search(query)
     pass
 
 def test_make_rowid_contiguous():
