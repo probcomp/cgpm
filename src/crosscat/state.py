@@ -31,6 +31,8 @@ from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
 from cgpm.network.helpers import retrieve_ancestors
+from cgpm.network.helpers import retrieve_variable_to_cgpm
+from cgpm.network.helpers import retrieve_weakly_connected_components
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
@@ -371,6 +373,14 @@ class State(CGpm):
         if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
             raise ValueError('Cannot constrain observed cell in query.')
 
+    def _validate_mutual_information(self, col0, col1, evidence):
+        # Disallow duplicated variables in evidence and targets.
+        if any(i in evidence for i in col0) or any(j in evidence for j in col1):
+            raise ValueError('Target and evidence columns must be disjoint.')
+        # Disallow duplicates in targets, except exact match (entropy).
+        if any(c in col1 for c in col0) and set(col0) != set(col1):
+            raise ValueError('Targets must match exactly or be disjoint.')
+
     # --------------------------------------------------------------------------
     # Bulk operations
 
@@ -440,15 +450,48 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Mutual information
 
-    def _mutual_information_estimator(self, col0, col1, evidence=None, N=None):
+    def mutual_information(
+            self, col0, col1, evidence=None, T=None, N=None, progress=None):
         if N is None:
-            N = 1000
+            N = 100
+        if T is None:
+            T = 100
         if evidence is None:
             evidence = {}
+        # Validate the query.
+        self._validate_mutual_information(col0, col1, evidence)
+        # Partition evidence into equality `e` and marginalization `m` types.
+        e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
+        m_evidence = [e for e, x in evidence.iteritems() if x is None]
+        # XXX Determine the MI estimator to use.
+        mi_estimator = self._mutual_information_multivariate
+        if len(col0) == len(col1) == 1:
+            mi_estimator = self._mutual_information_univariate
+        # Short circuit marginalization if no marginalization constraints.
+        if not m_evidence:
+            return mi_estimator(col0, col1, evidence, N)
+        # Compute CMI by Monte Carlo marginalization.
+        def compute_mi(i, s):
+            ev = gu.merged(e_evidence, s)
+            m = mi_estimator(col0, col1, ev, N)
+            if progress:
+                self._progress(float(i)/T)
+            return m
+        if progress:
+            self._progress(0./T)
+        samples = self.simulate(-1, m_evidence, N=T)
+        mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
+        return mi / float(T)
+
+    def _mutual_information_univariate(self, col0, col1, evidence, N):
+        # For univariate targets. Implemented separately since univariate MI is
+        # the common case, so we can bypass unecessary graph algorithms by
+        # _mutual_information_multivariate.
+        (col0, col1) = (col0[0], col1[0])
         if not self.dependence_probability(col0, col1):
             return 0
-        evidence = {e:v
-            for e,v in evidence.iteritems()
+        evidence = {
+            e:v for e,v in evidence.iteritems()
             if self.dependence_probability(col0, e)
         }
         def samples_logpdf(samples, evidence):
@@ -465,32 +508,26 @@ class State(CGpm):
             samples = self.simulate(-1, [col0], evidence=evidence, N=N)
             PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
             return - np.sum(PX) / N
+        pass
 
-    def mutual_information(
-            self, col0, col1, evidence=None, T=None, N=None, progress=None):
-        if evidence:
-            e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
-            m_evidence = [e for e, x in evidence.iteritems() if x is None]
-        else:
-            e_evidence = None
-            m_evidence = None
-        # Short circuit marginalization if no marginalization constraints.
-        if not m_evidence:
-            return self._mutual_information_estimator(col0, col1, evidence, N)
-        # Compute by Monte Carlo marginalization.
-        if T is None:
-            T = 100
-        def compute_mi(i, s):
-            ev = gu.merged(e_evidence, s)
-            m = self._mutual_information_estimator(col0, col1, ev, N=N)
-            if progress:
-                self._progress(float(i)/T)
-            return m
-        if progress:
-            self._progress(0./T)
-        samples = self.simulate(-1, m_evidence, N=T)
-        mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
-        return mi / float(T)
+    def _mutual_information_multivariate(self, col0, col1, evidence, N):
+        pass
+
+    def _partition_mutual_information_query(self, col0, col1, evidence):
+        cgpms = self.build_cgpms()
+        var_to_cgpm = retrieve_variable_to_cgpm(cgpms)
+        connected_components = retrieve_weakly_connected_components(cgpms)
+        blocks = defaultdict(lambda: ([], [], {}))
+        for variable in col0:
+            component = connected_components[var_to_cgpm[variable]]
+            blocks[component][0].append(variable)
+        for variable in col1:
+            component = connected_components[var_to_cgpm[variable]]
+            blocks[component][1].append(variable)
+        for variable in evidence:
+            component = connected_components[var_to_cgpm[variable]]
+            blocks[component][2][variable] = evidence[variable]
+        return blocks
 
     # --------------------------------------------------------------------------
     # Inference
