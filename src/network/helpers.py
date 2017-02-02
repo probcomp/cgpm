@@ -46,7 +46,7 @@ def retrieve_extraneous_inputs(cgpms, v_to_c):
 
 
 def retrieve_ancestors(cgpms, q):
-    """Return list of all variables that are ancestors of q."""
+    """Return list of all variables that are ancestors of q (duplicates)."""
     v_to_c = retrieve_variable_to_cgpm(cgpms)
     if q not in v_to_c:
         raise ValueError('Invalid node: %s, %s' % (q, v_to_c))

@@ -31,21 +31,24 @@ def build_cgpm_no_connection():
     return [
         CGpm(outputs=[2], inputs=[]),
         CGpm(outputs=[1], inputs=[]),
-        CGpm(outputs=[8], inputs=[])]
+        CGpm(outputs=[8], inputs=[]),
+    ]
 
 
 def build_cgpms_v_structure():
     return [
         CGpm(outputs=[2], inputs=[]),
         CGpm(outputs=[1], inputs=[]),
-        CGpm(outputs=[8], inputs=[2, 1])]
+        CGpm(outputs=[8], inputs=[2, 1]),
+    ]
 
 
 def build_cgpms_markov_chain():
     return [
         CGpm(outputs=[2], inputs=[]),
         CGpm(outputs=[1], inputs=[8]),
-        CGpm(outputs=[8], inputs=[2, 5]),]
+        CGpm(outputs=[8], inputs=[2, 5]),
+    ]
 
 
 def build_cgpms_complex():
@@ -53,21 +56,24 @@ def build_cgpms_complex():
         CGpm(outputs=[2, 14], inputs=[4, 5, -8]),
         CGpm(outputs=[3, 15], inputs=[4, -9]),
         CGpm(outputs=[5], inputs=[0, -10, -11]),
-        CGpm(outputs=[4, 16], inputs=[5, -12]),]
+        CGpm(outputs=[4, 16], inputs=[5, -12]),
+    ]
 
 
 def build_cgpms_fork():
     return [
         CGpm(outputs=[0], inputs=[1,2]),
         CGpm(outputs=[1], inputs=[3]),
-        CGpm(outputs=[2], inputs=[4]),]
+        CGpm(outputs=[2], inputs=[4]),
+    ]
 
 
 def test_retrieve_variable_to_cgpm():
     cgpms = [
         CGpm(outputs=[0, 1, 5], inputs=[2]),
         CGpm(outputs=[2], inputs=[]),
-        CGpm(outputs=[-1], inputs=[7]),]
+        CGpm(outputs=[-1], inputs=[7]),
+    ]
     for order in itertools.permutations(cgpms):
         variable_to_cgpm = helpers.retrieve_variable_to_cgpm(order)
         for v, c in variable_to_cgpm.iteritems():
@@ -237,7 +243,7 @@ def test_retrieve_ancestors():
     cgpms = build_cgpm_no_connection()
     assert set(retanc(cgpms, 2)) == set([])
     assert set(retanc(cgpms, 1)) == set([])
-    assert set(retanc(cgpms, 2)) == set([])
+    assert set(retanc(cgpms, 8)) == set([])
 
     # V structure.
     cgpms = build_cgpms_v_structure()
