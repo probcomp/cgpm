@@ -34,7 +34,7 @@ def retrieve_variable_to_cgpm(cgpms):
     return {v:i for i, c in enumerate(cgpms) for v in c.outputs}
 
 
-def retrieve_adjacency(cgpms, v_to_c):
+def retrieve_adjacency_list(cgpms, v_to_c):
     """Return map of cgpm index to list of indexes of its parent cgpms."""
     return {
         i: list(set(v_to_c[p] for p in c.inputs if p in v_to_c))
@@ -43,7 +43,7 @@ def retrieve_adjacency(cgpms, v_to_c):
 
 def retrieve_adjacency_matrix(cgpms, v_to_c):
     """Return a directed adjacency matrix of cgpms."""
-    adjacency_list = retrieve_adjacency(cgpms, v_to_c)
+    adjacency_list = retrieve_adjacency_list(cgpms, v_to_c)
     adjacency_matrix = np.zeros((len(adjacency_list), len(adjacency_list)))
     for i in adjacency_list:
         adjacency_matrix[i, adjacency_list[i]] = 1

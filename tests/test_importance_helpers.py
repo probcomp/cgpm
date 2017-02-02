@@ -102,29 +102,29 @@ def test_retrieve_variable_to_cgpm():
         for v, c in variable_to_cgpm.iteritems():
             assert v in order[c].outputs
 
-def test_retrieve_adjacency():
+def test_retrieve_adjacency_list():
     # No connections.
     cgpms = build_cgpm_no_connection()
     vtc = helpers.retrieve_variable_to_cgpm(cgpms)
-    adj = helpers.retrieve_adjacency(cgpms, vtc)
+    adj = helpers.retrieve_adjacency_list(cgpms, vtc)
     assert {0: [], 1:[], 2:[]} == adj
 
     # V structure.
     cgpms = build_cgpms_v_structure()
     vtc = helpers.retrieve_variable_to_cgpm(cgpms)
-    adj = helpers.retrieve_adjacency(cgpms, vtc)
+    adj = helpers.retrieve_adjacency_list(cgpms, vtc)
     assert {0: [], 1:[], 2:[0, 1]} == adj
 
     # Markov chain.
     cgpms = build_cgpms_markov_chain()
     vtc = helpers.retrieve_variable_to_cgpm(cgpms)
-    adj = helpers.retrieve_adjacency(cgpms, vtc)
+    adj = helpers.retrieve_adjacency_list(cgpms, vtc)
     assert {0: [], 1:[2], 2:[0]} == adj
 
     # Complex.
     cgpms = build_cgpms_complex()
     vtc = helpers.retrieve_variable_to_cgpm(cgpms)
-    adj = helpers.retrieve_adjacency(cgpms, vtc)
+    adj = helpers.retrieve_adjacency_list(cgpms, vtc)
     assert {0: [2,3], 1:[3], 2:[], 3:[2]} == adj
 
 def test_retrieve_adjacency_matrix():

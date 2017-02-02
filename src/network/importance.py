@@ -30,7 +30,7 @@ class ImportanceNetwork(object):
         self.cgpms = hu.validate_cgpms(cgpms)
         self.accuracy = accuracy
         self.v_to_c = hu.retrieve_variable_to_cgpm(self.cgpms)
-        self.adjacency = hu.retrieve_adjacency(self.cgpms, self.v_to_c)
+        self.adjacency = hu.retrieve_adjacency_list(self.cgpms, self.v_to_c)
         self.extraneous = hu.retrieve_extraneous_inputs(self.cgpms, self.v_to_c)
         self.topo = hu.topological_sort(self.adjacency)
 
