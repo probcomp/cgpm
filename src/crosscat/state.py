@@ -31,6 +31,8 @@ from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
 from cgpm.network.helpers import retrieve_ancestors
+from cgpm.network.helpers import retrieve_variable_to_cgpm
+from cgpm.network.helpers import retrieve_weakly_connected_components
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
@@ -440,57 +442,94 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Mutual information
 
-    def _mutual_information_estimator(self, col0, col1, evidence=None, N=None):
-        if N is None:
-            N = 1000
-        if evidence is None:
-            evidence = {}
-        if not self.dependence_probability(col0, col1):
-            return 0
-        evidence = {e:v
-            for e,v in evidence.iteritems()
-            if self.dependence_probability(col0, e)
-        }
-        def samples_logpdf(samples, evidence):
-            assert len(samples) == N
-            return self.logpdf_bulk([-1]*N, samples, [evidence]*N)
-        # MI or entropy?
-        if col0 != col1:
-            samples = self.simulate(-1, [col0, col1], evidence=evidence, N=N)
-            PXY = samples_logpdf(samples, evidence)
-            PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
-            PY = samples_logpdf([{col1: s[col1]} for s in samples], evidence)
-            return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
-        else:
-            samples = self.simulate(-1, [col0], evidence=evidence, N=N)
-            PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
-            return - np.sum(PX) / N
-
     def mutual_information(
             self, col0, col1, evidence=None, T=None, N=None, progress=None):
-        if evidence:
-            e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
-            m_evidence = [e for e, x in evidence.iteritems() if x is None]
-        else:
-            e_evidence = None
-            m_evidence = None
-        # Short circuit marginalization if no marginalization constraints.
+        if evidence is None:
+            evidence = dict()
+        # Disallow duplicated variables in evidence and targets.
+        if any(i in evidence for i in col0) or any(j in evidence for j in col1):
+            raise ValueError('Target and evidence columns must be disjoint.')
+        # Disallow duplicates in targets, except exact match (entropy).
+        if any(c in col1 for c in col0) and set(col0) != set(col1):
+            raise ValueError('Targets must match exactly or be disjoint.')
+        # Partition the query into independent blocks.
+        blocks = self._partition_mutual_information_query(col0, col1, evidence)
+        return sum(
+            self._compute_mutual_information(c0, c1, ev, T, N, progress)
+            for c0, c1, ev in blocks
+            if c0 and c1
+        )
+
+    def _compute_mutual_information(
+            self, col0, col1, evidence, T=None, N=None, progress=None):
+        N = N or 100
+        T = T or 100
+        # Partition evidence into equality `e` and marginalization `m` types.
+        e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
+        m_evidence = [e for e, x in evidence.iteritems() if x is None]
+        # Determine the estimator to use.
+        estimator = self._compute_mi if set(col0) != set(col1) else\
+            self._compute_entropy
+        # No marginalization constraints.
         if not m_evidence:
-            return self._mutual_information_estimator(col0, col1, evidence, N)
-        # Compute by Monte Carlo marginalization.
-        if T is None:
-            T = 100
-        def compute_mi(i, s):
+            return estimator(col0, col1, evidence, N)
+        # Compute CMI by Monte Carlo marginalization.
+        def compute_one(i, s):
             ev = gu.merged(e_evidence, s)
-            m = self._mutual_information_estimator(col0, col1, ev, N=N)
+            m = estimator(col0, col1, ev, N)
             if progress:
                 self._progress(float(i)/T)
             return m
         if progress:
             self._progress(0./T)
         samples = self.simulate(-1, m_evidence, N=T)
-        mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
+        mi = sum(compute_one(i,s) for (i,s) in enumerate(samples))
         return mi / float(T)
+
+    def _compute_mi(self, col0, col1, evidence, N):
+        samples = self.simulate(-1, col0 + col1, evidence=evidence, N=N)
+        PXY = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=samples,
+            evidences=[evidence]*N
+        )
+        PX = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=[{c0: s[c0] for c0 in col0} for s in samples],
+            evidences=[evidence]*N,
+        )
+        PY = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=[{c1: s[c1] for c1 in col1} for s in samples],
+            evidences=[evidence]*N,
+        )
+        return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
+
+    def _compute_entropy(self, col0, col1, evidence, N):
+        assert set(col0) == set(col1)
+        samples = self.simulate(-1, col0, evidence=evidence, N=N)
+        PX = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=[{c0: s[c0] for c0 in col0} for s in samples],
+            evidences=[evidence]*N,
+        )
+        return - np.sum(PX) / N
+
+    def _partition_mutual_information_query(self, col0, col1, evidence):
+        cgpms = self.build_cgpms()
+        var_to_cgpm = retrieve_variable_to_cgpm(cgpms)
+        connected_components = retrieve_weakly_connected_components(cgpms)
+        blocks = defaultdict(lambda: ([], [], {}))
+        for variable in col0:
+            component = connected_components[var_to_cgpm[variable]]
+            blocks[component][0].append(variable)
+        for variable in col1:
+            component = connected_components[var_to_cgpm[variable]]
+            blocks[component][1].append(variable)
+        for variable in evidence:
+            component = connected_components[var_to_cgpm[variable]]
+            blocks[component][2][variable] = evidence[variable]
+        return blocks.values()
 
     # --------------------------------------------------------------------------
     # Inference

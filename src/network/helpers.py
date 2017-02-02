@@ -16,6 +16,9 @@
 
 import itertools as it
 
+import numpy as np
+from scipy.sparse.csgraph import connected_components
+
 
 def validate_cgpms(cgpms):
     ot = [set(c.outputs) for c in cgpms]
@@ -31,13 +34,20 @@ def retrieve_variable_to_cgpm(cgpms):
     return {v:i for i, c in enumerate(cgpms) for v in c.outputs}
 
 
-def retrieve_adjacency(cgpms, v_to_c):
+def retrieve_adjacency_list(cgpms, v_to_c):
     """Return map of cgpm index to list of indexes of its parent cgpms."""
     return {
         i: list(set(v_to_c[p] for p in c.inputs if p in v_to_c))
         for i, c in enumerate(cgpms)
     }
 
+def retrieve_adjacency_matrix(cgpms, v_to_c):
+    """Return a directed adjacency matrix of cgpms."""
+    adjacency_list = retrieve_adjacency_list(cgpms, v_to_c)
+    adjacency_matrix = np.zeros((len(adjacency_list), len(adjacency_list)))
+    for i in adjacency_list:
+        adjacency_matrix[i, adjacency_list[i]] = 1
+    return adjacency_matrix.T
 
 def retrieve_extraneous_inputs(cgpms, v_to_c):
     """Return list of inputs that are not the output of any cgpm."""
@@ -46,7 +56,7 @@ def retrieve_extraneous_inputs(cgpms, v_to_c):
 
 
 def retrieve_ancestors(cgpms, q):
-    """Return list of all variables that are ancestors of q."""
+    """Return list of all variables that are ancestors of q (duplicates)."""
     v_to_c = retrieve_variable_to_cgpm(cgpms)
     if q not in v_to_c:
         raise ValueError('Invalid node: %s, %s' % (q, v_to_c))
@@ -55,6 +65,26 @@ def retrieve_ancestors(cgpms, q):
         parent_ancestors = [ancestors(v) for v in parents]
         return list(it.chain.from_iterable(parent_ancestors)) + parents
     return ancestors(q)
+
+def retrieve_descendents(cgpms, q):
+    """Return list of all variables that are descends of q (duplicates)."""
+    v_to_c = retrieve_variable_to_cgpm(cgpms)
+    if q not in v_to_c:
+        raise ValueError('Invalid node: %s, %s' % (q, v_to_c))
+    def descendents(v):
+        children = list(it.chain.from_iterable(
+            [c.outputs for c in cgpms if v in c.inputs]))
+        children_descendents = [descendents(c) for c in children]
+        return list(it.chain.from_iterable(children_descendents)) + children
+    return descendents(q)
+
+
+def retrieve_weakly_connected_components(cgpms):
+    v_to_c = retrieve_variable_to_cgpm(cgpms)
+    adjacency = retrieve_adjacency_matrix(cgpms, v_to_c)
+    n_components, labels = connected_components(
+        adjacency, directed=True, connection='weak', return_labels=True)
+    return labels
 
 
 def topological_sort(graph):

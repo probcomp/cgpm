@@ -31,7 +31,7 @@ def test_entropy_bernoulli__ci_():
     logp = state.logpdf_bulk([-1,-1], [{0:0}, {0:1}])
     entropy_exact = -np.sum(np.exp(logp)*logp)
     # Monte Carlo computation.
-    entropy_mc = state.mutual_information(0, 0, N=1000)
+    entropy_mc = state.mutual_information([0], [0], N=1000)
     # Punt CLT analysis and go for 1 dp.
     assert np.allclose(entropy_exact, entropy_mc, atol=.1)
 
@@ -43,14 +43,18 @@ def test_cmi_different_views__ci_():
     T[:,1] = rng.normal(loc=2, scale=2, size=50)
     T[:,2] = rng.normal(loc=12, scale=3, size=50)
     state = State(
-        T, outputs=[0, 1, 2], cctypes=['normal','normal','normal'],
-        Zv={0:0, 1:1, 2:2}, rng=rng)
-    state.transition(N=30, kernels=['alpha', 'view_alphas',
-        'column_params', 'column_hypers','rows'])
+        T,
+        outputs=[0, 1, 2],
+        cctypes=['normal','normal','normal'],
+        Zv={0:0, 1:1, 2:2},
+        rng=rng
+    )
+    state.transition(N=30,
+        kernels=['alpha','view_alphas','column_params','column_hypers','rows'])
 
-    mi01 = state.mutual_information(0, 1)
-    mi02 = state.mutual_information(0, 2)
-    mi12 = state.mutual_information(1, 2)
+    mi01 = state.mutual_information([0], [1])
+    mi02 = state.mutual_information([0], [2])
+    mi12 = state.mutual_information([1], [2])
 
     # Marginal MI all zero.
     assert np.allclose(mi01, 0)
@@ -59,22 +63,35 @@ def test_cmi_different_views__ci_():
 
     # CMI on variable in other view equal to MI.
     assert np.allclose(
-        state.mutual_information(0, 1, evidence={2:10}), mi01)
+        state.mutual_information([0], [1], evidence={2:10}), mi01)
     assert np.allclose(
-        state.mutual_information(0, 2, evidence={1:0}), mi02)
+        state.mutual_information([0], [2], evidence={1:0}), mi02)
     assert np.allclose(
-        state.mutual_information(1, 2, evidence={0:-2}), mi12)
+        state.mutual_information([1], [2], evidence={0:-2}), mi12)
     assert np.allclose(
-        state.mutual_information(1, 2, evidence={0:None}, T=5), mi12)
+        state.mutual_information([1], [2], evidence={0:None}, T=5), mi12)
 
 def test_cmi_marginal_crash():
     X = np.eye(5)
     cctypes = ['normal'] * 5
-    s = State(X, cctypes=cctypes)
-    s.transition(N=2)
+    s = State(X, Zv={0:0, 1:0, 2:0, 3:1, 4:1}, cctypes=cctypes)
     # One marginalized evidence variable.
-    s.mutual_information(0, 1, {2:None}, T=10, N=10)
+    s.mutual_information([0], [1], {2:None}, T=10, N=10)
     # Two marginalized evidence variables.
-    s.mutual_information(0, 1, {2:None, 3:None}, T=10, N=10)
+    s.mutual_information([0], [1], {2:None, 3:None}, T=10, N=10)
     # Two marginalized evidence variables and one constrained variable.
-    s.mutual_information(0, 1, {2:None, 3:None, 4:0}, T=10, N=10)
+    s.mutual_information([0], [1], {2:None, 3:None, 4:0}, T=10, N=10)
+
+def test_cmi_multivariate_crash():
+    X = np.eye(5)
+    cctypes = ['normal'] * 5
+    s = State(X, Zv={0:0, 1:0, 2:0, 3:1, 4:1}, cctypes=cctypes)
+    s.mutual_information([0,1], [0,1], {2:1}, T=10, N=10)
+    s.mutual_information([0,1], [0,1], {2:None}, T=10, N=10)
+    s.mutual_information([2,4], [0,1,3], {}, T=10, N=10)
+    # Duplicate in 2 query and evidence.
+    with pytest.raises(ValueError):
+        s.mutual_information([2,4], [1,3], {0:1, 2:None}, T=10, N=10)
+    # Duplicate in 3 query.
+    with pytest.raises(ValueError):
+        s.mutual_information([2,3,4], [1,3], {0:None}, T=10, N=10)
