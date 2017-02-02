@@ -84,7 +84,7 @@ def test_retrieve_adjacency():
     cgpms = build_cgpm_no_connection()
     vtc = helpers.retrieve_variable_to_cgpm(cgpms)
     adj = helpers.retrieve_adjacency(cgpms, vtc)
-    assert {0: [], 1:[], 2:[]}, set([]) == adj
+    assert {0: [], 1:[], 2:[]} == adj
 
     # V structure.
     cgpms = build_cgpms_v_structure()
