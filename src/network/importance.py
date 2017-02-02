@@ -44,7 +44,9 @@ class ImportanceNetwork(object):
         ])
         if all(isinf(l) for l in weights):
             raise ValueError('Zero density evidence: %s' % (evidence))
-        index = gu.log_pflip(weights, rng=self.rng)
+        # Skip an expensive random choice if there is only one option.
+        index = 0 if self.accuracy == 1 else \
+            gu.log_pflip(weights, rng=self.rng)
         return {q: samples[index][q] for q in query}
 
     def logpdf(self, rowid, query, evidence=None):
