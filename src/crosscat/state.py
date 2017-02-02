@@ -527,7 +527,7 @@ class State(CGpm):
         for variable in evidence:
             component = connected_components[var_to_cgpm[variable]]
             blocks[component][2][variable] = evidence[variable]
-        return blocks
+        return blocks.values()
 
     # --------------------------------------------------------------------------
     # Inference

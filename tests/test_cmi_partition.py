@@ -41,7 +41,7 @@ def test_partition_mutual_information_query():
     def check_expected_partitions(query, expected):
         blocks = state._partition_mutual_information_query(*query)
         assert len(blocks) == len(expected)
-        for b in blocks.values():
+        for b in blocks:
             assert b in expected
 
     check_expected_partitions(
@@ -80,6 +80,18 @@ def test_partition_mutual_information_query():
             ([15], [14,13], {13:2}),
             ([16], [11], {}),
             ([], [], {12:None}),
+    ])
+    check_expected_partitions(
+        query=([15, 16], [15, 16], {12:None, 13:2}),
+        expected=[
+            ([15], [15], {13:2}),
+            ([16], [16], {}),
+            ([], [], {12:None}),
+    ])
+    check_expected_partitions(
+        query=([13, 14], [14, 13], {}),
+        expected=[
+            ([13, 14], [14,13], {}),
     ])
 
     # Connect variable 12 with variables in view 0.
