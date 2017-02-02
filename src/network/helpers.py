@@ -16,6 +16,9 @@
 
 import itertools as it
 
+import numpy as np
+from scipy.sparse.csgraph import connected_components
+
 
 def validate_cgpms(cgpms):
     ot = [set(c.outputs) for c in cgpms]
@@ -38,6 +41,13 @@ def retrieve_adjacency(cgpms, v_to_c):
         for i, c in enumerate(cgpms)
     }
 
+def retrieve_adjacency_matrix(cgpms, v_to_c):
+    """Return a directed adjacency matrix of cgpms."""
+    adjacency_list = retrieve_adjacency(cgpms, v_to_c)
+    adjacency_matrix = np.zeros((len(adjacency_list), len(adjacency_list)))
+    for i in adjacency_list:
+        adjacency_matrix[i, adjacency_list[i]] = 1
+    return adjacency_matrix.T
 
 def retrieve_extraneous_inputs(cgpms, v_to_c):
     """Return list of inputs that are not the output of any cgpm."""
@@ -67,6 +77,14 @@ def retrieve_descendents(cgpms, q):
         children_descendents = [descendents(c) for c in children]
         return list(it.chain.from_iterable(children_descendents)) + children
     return descendents(q)
+
+
+def retrieve_weakly_connected_components(cgpms):
+    v_to_c = retrieve_variable_to_cgpm(cgpms)
+    adjacency = retrieve_adjacency_matrix(cgpms, v_to_c)
+    n_components, labels = connected_components(
+        adjacency, directed=True, connection='weak', return_labels=True)
+    return labels
 
 
 def topological_sort(graph):

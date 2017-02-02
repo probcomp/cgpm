@@ -18,6 +18,7 @@ import itertools
 
 from collections import namedtuple
 
+import numpy as np
 import pytest
 
 from cgpm.network import helpers
@@ -68,6 +69,28 @@ def build_cgpms_fork():
     ]
 
 
+def build_cgpms_four_forests():
+    return [
+        # First component
+        CGpm(outputs=[2, 14], inputs=[4, 5, -8]),
+        CGpm(outputs=[3, 15], inputs=[4, -9]),
+        CGpm(outputs=[5], inputs=[0, -10, -11]),
+        CGpm(outputs=[4, 16], inputs=[5, -12]),
+        # Second component.
+        CGpm(outputs=[1000], inputs=[1001,1002]),
+        CGpm(outputs=[1001], inputs=[1003]),
+        CGpm(outputs=[1002], inputs=[1004]),
+        # Third component.
+        CGpm(outputs=[2002], inputs=[]),
+        CGpm(outputs=[2001], inputs=[]),
+        CGpm(outputs=[2008], inputs=[2002, 2001]),
+        # Fourth component.
+        CGpm(outputs=[30002], inputs=[]),
+        CGpm(outputs=[30001], inputs=[30008]),
+        CGpm(outputs=[30008], inputs=[30002, 30005]),
+    ]
+
+
 def test_retrieve_variable_to_cgpm():
     cgpms = [
         CGpm(outputs=[0, 1, 5], inputs=[2]),
@@ -103,6 +126,119 @@ def test_retrieve_adjacency():
     vtc = helpers.retrieve_variable_to_cgpm(cgpms)
     adj = helpers.retrieve_adjacency(cgpms, vtc)
     assert {0: [2,3], 1:[3], 2:[], 3:[2]} == adj
+
+def test_retrieve_adjacency_matrix():
+    # No connections.
+    cgpms = build_cgpm_no_connection()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    adj = helpers.retrieve_adjacency_matrix(cgpms, vtc)
+    assert np.allclose(adj, np.asarray([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+    ]))
+
+    # V structure.
+    cgpms = build_cgpms_v_structure()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    adj = helpers.retrieve_adjacency_matrix(cgpms, vtc)
+    assert np.allclose(adj, np.asarray([
+        [0, 0, 1],
+        [0, 0, 1],
+        [0, 0, 0],
+    ]))
+
+    # Markov chain.
+    cgpms = build_cgpms_markov_chain()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    adj = helpers.retrieve_adjacency_matrix(cgpms, vtc)
+    assert np.allclose(adj, np.asarray([
+        [0, 0, 1],
+        [0, 0, 0],
+        [0, 1, 0],
+    ]))
+
+    # Complex.
+    cgpms = build_cgpms_complex()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    adj = helpers.retrieve_adjacency_matrix(cgpms, vtc)
+    assert np.allclose(adj, np.asarray([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 1],
+        [1, 1, 0, 0],
+    ]))
+
+    # Fork.
+    cgpms = build_cgpms_fork()
+    vtc = helpers.retrieve_variable_to_cgpm(cgpms)
+    adj = helpers.retrieve_adjacency_matrix(cgpms, vtc)
+    assert np.allclose(adj, np.asarray([
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 0, 0],
+    ]))
+
+
+def test_weakly_connected_components():
+    # No connections.
+    cgpms = build_cgpm_no_connection()
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 1, 2]
+    )
+
+    # V structure.
+    cgpms = build_cgpms_v_structure()
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 0, 0]
+    )
+
+    # Markov chain.
+    cgpms = build_cgpms_markov_chain()
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 0, 0]
+    )
+
+    # Complex.
+    cgpms = build_cgpms_complex()
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 0, 0, 0]
+    )
+
+    # Fork.
+    cgpms = build_cgpms_fork()
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 0, 0]
+    )
+
+    # Four forests.
+    cgpms = build_cgpms_four_forests()
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3]
+    )
+
+    # Three forests, merging the first and second.
+    cgpms = build_cgpms_four_forests()
+    cgpms[4] = CGpm(outputs=[1000], inputs=[1001,1002,14])
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2]
+    )
+
+    # Two forests, merging the first and fourth, and second and third.
+    cgpms = build_cgpms_four_forests()
+    cgpms[4] = CGpm(outputs=[1000], inputs=[1001,1002,2008])
+    cgpms[0] = CGpm(outputs=[2, 14], inputs=[4, 5, -8, 30008])
+    assert np.allclose(
+        helpers.retrieve_weakly_connected_components(cgpms),
+        [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0]
+    )
 
 
 def test_retrieve_extraneous_inputs():
