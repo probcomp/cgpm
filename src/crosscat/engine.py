@@ -223,6 +223,40 @@ class Engine(object):
         scores = mapper(_evaluate, args)
         return scores
 
+    def _mean_relevance_probability(
+            self, target, query, context, debug=False, multiprocess=1):
+        """ Average the relevance probability for each state
+        between target and query in the given context"""
+        scores = self.relevance_probability(
+            target, query, context, debug, multiprocess)
+        return np.mean(scores)
+
+    def generic_search(self, compute_score, query, context):
+        """
+        Order dataset by relevance score wrt query for each row 
+        of the dataset.
+
+        INPUT:
+        -----
+        score - function (row, set of rows -> real number)
+        query - set of rows ({rowid: {col: val}})
+        """
+        
+        score = {}
+        R = self.X.shape[0]
+        for row in xrange(R):  # for each row in the dataset
+            if row not in query.keys():  # if not in query
+                score[row] = compute_score(
+                    target={row: {}}, query=query, context=context)
+
+        sorted_score = sorted(
+            score.items(), key=lambda x: x[1], reverse=True)
+        return sorted_score
+
+    def relevance_probability_search(self, query, context):
+        return self.generic_search(
+            self._mean_relevance_probability, query, context)
+
     def get_state(self, index):
         return self.states[index]
 
