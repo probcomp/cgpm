@@ -56,6 +56,18 @@ def retrieve_ancestors(cgpms, q):
         return list(it.chain.from_iterable(parent_ancestors)) + parents
     return ancestors(q)
 
+def retrieve_descendents(cgpms, q):
+    """Return list of all variables that are descends of q (duplicates)."""
+    v_to_c = retrieve_variable_to_cgpm(cgpms)
+    if q not in v_to_c:
+        raise ValueError('Invalid node: %s, %s' % (q, v_to_c))
+    def descendents(v):
+        children = list(it.chain.from_iterable(
+            [c.outputs for c in cgpms if v in c.inputs]))
+        children_descendents = [descendents(c) for c in children]
+        return list(it.chain.from_iterable(children_descendents)) + children
+    return descendents(q)
+
 
 def topological_sort(graph):
     """Topologically sort a directed graph represented as an adjacency list.
