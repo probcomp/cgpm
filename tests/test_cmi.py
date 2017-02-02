@@ -74,11 +74,24 @@ def test_cmi_different_views__ci_():
 def test_cmi_marginal_crash():
     X = np.eye(5)
     cctypes = ['normal'] * 5
-    s = State(X, cctypes=cctypes)
-    s.transition(N=2)
+    s = State(X, Zv={0:0, 1:0, 2:0, 3:1, 4:1}, cctypes=cctypes)
     # One marginalized evidence variable.
     s.mutual_information([0], [1], {2:None}, T=10, N=10)
     # Two marginalized evidence variables.
     s.mutual_information([0], [1], {2:None, 3:None}, T=10, N=10)
     # Two marginalized evidence variables and one constrained variable.
     s.mutual_information([0], [1], {2:None, 3:None, 4:0}, T=10, N=10)
+
+def test_cmi_multivariate_crash():
+    X = np.eye(5)
+    cctypes = ['normal'] * 5
+    s = State(X, Zv={0:0, 1:0, 2:0, 3:1, 4:1}, cctypes=cctypes)
+    s.mutual_information([0,1], [0,1], {2:1}, T=10, N=10)
+    s.mutual_information([0,1], [0,1], {2:None}, T=10, N=10)
+    s.mutual_information([2,4], [0,1,3], {}, T=10, N=10)
+    # Duplicate in 2 query and evidence.
+    with pytest.raises(ValueError):
+        s.mutual_information([2,4], [1,3], {0:1, 2:None}, T=10, N=10)
+    # Duplicate in 3 query.
+    with pytest.raises(ValueError):
+        s.mutual_information([2,3,4], [1,3], {0:None}, T=10, N=10)

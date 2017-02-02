@@ -373,14 +373,6 @@ class State(CGpm):
         if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
             raise ValueError('Cannot constrain observed cell in query.')
 
-    def _validate_mutual_information(self, col0, col1, evidence):
-        # Disallow duplicated variables in evidence and targets.
-        if any(i in evidence for i in col0) or any(j in evidence for j in col1):
-            raise ValueError('Target and evidence columns must be disjoint.')
-        # Disallow duplicates in targets, except exact match (entropy).
-        if any(c in col1 for c in col0) and set(col0) != set(col1):
-            raise ValueError('Targets must match exactly or be disjoint.')
-
     # --------------------------------------------------------------------------
     # Bulk operations
 
@@ -452,66 +444,76 @@ class State(CGpm):
 
     def mutual_information(
             self, col0, col1, evidence=None, T=None, N=None, progress=None):
-        if N is None:
-            N = 100
-        if T is None:
-            T = 100
         if evidence is None:
-            evidence = {}
-        # Validate the query.
-        self._validate_mutual_information(col0, col1, evidence)
+            evidence = dict()
+        # Disallow duplicated variables in evidence and targets.
+        if any(i in evidence for i in col0) or any(j in evidence for j in col1):
+            raise ValueError('Target and evidence columns must be disjoint.')
+        # Disallow duplicates in targets, except exact match (entropy).
+        if any(c in col1 for c in col0) and set(col0) != set(col1):
+            raise ValueError('Targets must match exactly or be disjoint.')
+        # Partition the query into independent blocks.
+        blocks = self._partition_mutual_information_query(col0, col1, evidence)
+        return sum(
+            self._compute_mutual_information(c0, c1, ev, T, N, progress)
+            for c0, c1, ev in blocks
+            if c0 and c1
+        )
+
+    def _compute_mutual_information(
+            self, col0, col1, evidence, T=None, N=None, progress=None):
+        N = N or 100
+        T = T or 100
         # Partition evidence into equality `e` and marginalization `m` types.
         e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
         m_evidence = [e for e, x in evidence.iteritems() if x is None]
-        # XXX Determine the MI estimator to use.
-        mi_estimator = self._mutual_information_multivariate
-        if len(col0) == len(col1) == 1:
-            mi_estimator = self._mutual_information_univariate
-        # Short circuit marginalization if no marginalization constraints.
+        # Determine the estimator to use.
+        estimator = self._compute_mi if set(col0) != set(col1) else\
+            self._compute_entropy
+        # No marginalization constraints.
         if not m_evidence:
-            return mi_estimator(col0, col1, evidence, N)
+            return estimator(col0, col1, evidence, N)
         # Compute CMI by Monte Carlo marginalization.
-        def compute_mi(i, s):
+        def compute_one(i, s):
             ev = gu.merged(e_evidence, s)
-            m = mi_estimator(col0, col1, ev, N)
+            m = estimator(col0, col1, ev, N)
             if progress:
                 self._progress(float(i)/T)
             return m
         if progress:
             self._progress(0./T)
         samples = self.simulate(-1, m_evidence, N=T)
-        mi = sum(compute_mi(i,s) for (i,s) in enumerate(samples))
+        mi = sum(compute_one(i,s) for (i,s) in enumerate(samples))
         return mi / float(T)
 
-    def _mutual_information_univariate(self, col0, col1, evidence, N):
-        # For univariate targets. Implemented separately since univariate MI is
-        # the common case, so we can bypass unecessary graph algorithms by
-        # _mutual_information_multivariate.
-        (col0, col1) = (col0[0], col1[0])
-        if not self.dependence_probability(col0, col1):
-            return 0
-        evidence = {
-            e:v for e,v in evidence.iteritems()
-            if self.dependence_probability(col0, e)
-        }
-        def samples_logpdf(samples, evidence):
-            assert len(samples) == N
-            return self.logpdf_bulk([-1]*N, samples, [evidence]*N)
-        # MI or entropy?
-        if col0 != col1:
-            samples = self.simulate(-1, [col0, col1], evidence=evidence, N=N)
-            PXY = samples_logpdf(samples, evidence)
-            PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
-            PY = samples_logpdf([{col1: s[col1]} for s in samples], evidence)
-            return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
-        else:
-            samples = self.simulate(-1, [col0], evidence=evidence, N=N)
-            PX = samples_logpdf([{col0: s[col0]} for s in samples], evidence)
-            return - np.sum(PX) / N
-        pass
+    def _compute_mi(self, col0, col1, evidence, N):
+        samples = self.simulate(-1, col0 + col1, evidence=evidence, N=N)
+        PXY = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=samples,
+            evidences=[evidence]*N
+        )
+        PX = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=[{c0: s[c0] for c0 in col0} for s in samples],
+            evidences=[evidence]*N,
+        )
+        PY = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=[{c1: s[c1] for c1 in col1} for s in samples],
+            evidences=[evidence]*N,
+        )
+        return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
 
-    def _mutual_information_multivariate(self, col0, col1, evidence, N):
-        pass
+    def _compute_entropy(self, col0, col1, evidence, N):
+        assert set(col0) == set(col1)
+        samples = self.simulate(-1, col0, evidence=evidence, N=N)
+        PX = self.logpdf_bulk(
+            rowids=[-1]*N,
+            queries=[{c0: s[c0] for c0 in col0} for s in samples],
+            evidences=[evidence]*N,
+        )
+        return - np.sum(PX) / N
 
     def _partition_mutual_information_query(self, col0, col1, evidence):
         cgpms = self.build_cgpms()
