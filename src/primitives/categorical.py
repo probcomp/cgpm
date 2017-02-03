@@ -39,7 +39,11 @@ class Categorical(DistributionGpm):
         DistributionGpm.__init__(
             self, outputs, inputs, hypers, params, distargs, rng)
         # Distargs.
-        self.k = int(distargs['k'])
+        k = distargs.get('k', None)
+        if k is None:
+            raise ValueError('Categorical requires distarg `k`.')
+        self.k = int(k)
+        # Sufficient statistics.
         self.N = 0
         self.counts = np.zeros(self.k)
         # Hyperparameters.
