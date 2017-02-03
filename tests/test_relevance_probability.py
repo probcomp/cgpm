@@ -204,31 +204,54 @@ def test_null_query_invariant_state(cgpm, target):
         cgpm.relevance_probability(target, null_query, 0), 1.)
 
 # ----- TEST EXTREME DIST HYPERS INVARIANT ----- #
-@pytest.mark.parametrize('cgpm', view_cgpms)
-@pytest.mark.parametrize('target', [{0: AsIs()}])
-@pytest.mark.parametrize('query', [{1: {0: 1}}])
-def test_extreme_hypers_invariant_view(cgpm, target, query):
+@pytest.mark.parametrize('cgpm', [simple_view, simple_state])
+@pytest.mark.parametrize('target', [{0: {0: 0}}, {2: {0: 1}}, {2: {0: 0}}])
+@pytest.mark.parametrize('query', [{1: {0: 1}}, {1: {0: 0}}])
+def test_extreme_hypers_invariant_simple(cgpm, target, query):
     '''
     If hypers are extreme, variables are independent from each other,
     and cluster assignments independent from variables.
+    Thus, the relevance probability will be the same for all 
+    targets and queries from the same cluster.
     '''
     new_cgpm = tu.gen_cgpm_extreme_hypers(cgpm)
-    assert np.allclose(
-        new_cgpm.relevance_probability(target, query), 1.)
+    if isinstance(cgpm, View):
+        assert np.allclose(
+            new_cgpm.relevance_probability({0: {0: 1}}, {1: {0: 1}}),
+            new_cgpm.relevance_probability(target, query))
 
-@pytest.mark.parametrize('cgpm', state_cgpms)
-@pytest.mark.parametrize('target', [{0: AsIs()}])
-@pytest.mark.parametrize('query', [{1: {0: 1}}])
-def test_extreme_hypers_invariant_state(cgpm, target, query):
+    elif isinstance(cgpm, State):
+        context = new_cgpm.Zv()[0]
+        assert np.allclose(
+            new_cgpm.relevance_probability({0: {0: 1}}, {1: {0: 1}}, context),
+            new_cgpm.relevance_probability(target, query, context))
+    
+    else:
+        assert False
+        
+@pytest.mark.parametrize('cgpm', [animals_view, animals_state])
+@pytest.mark.parametrize('target', [{i: AsIs()} for i in range(1, 8)])
+# @pytest.mark.parametrize('query', [{-2: {i: 0}])
+def test_extreme_hypers_invariant_animals(cgpm, target):
     '''
-    If hypers are extreme, variables are independent from each other,
-    and cluster assignments independent from variables.
+    Target and query rows all belong to the same cluster.
     '''
     new_cgpm = tu.gen_cgpm_extreme_hypers(cgpm)
-    context = cgpm.Zv()[0]
-    assert np.allclose(
-        new_cgpm.relevance_probability(target, query, context), 1.)
+    
+    if isinstance(cgpm, View):
+        assert np.allclose(
+            new_cgpm.relevance_probability({0: AsIs()}, {9: AsIs()}),
+            new_cgpm.relevance_probability(target, {9: AsIs()}))
 
+    elif isinstance(cgpm, State):
+        context = new_cgpm.Zv()[0]
+        assert np.allclose(
+            new_cgpm.relevance_probability({0: AsIs()}, {9: AsIs()}, context),
+            new_cgpm.relevance_probability(target, {9: AsIs()}, context))
+    
+    else:
+        assert False
+        
 # ----- TEST EXTREME CRP ALPHA INVARIANT ----- #
 @pytest.mark.parametrize('cgpm', view_cgpms)
 @pytest.mark.parametrize('target', [{0: AsIs()}])
