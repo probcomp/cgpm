@@ -109,12 +109,12 @@ class State(CGpm):
         cctypes = cctypes or [None] * len(self.outputs)
         distargs = distargs or [None] * len(self.outputs)
         hypers = hypers or [None] * len(self.outputs)
-        view_alphas = view_alphas or [None] * len(self.outputs)
+        view_alphas = view_alphas or {}
 
         # If the user specifies Zrv, then the keys of Zrv must match the views
         # which are values in Zv.
         if Zrv is None:
-            Zrv = [None] * len(self.outputs)
+            Zrv = {}
         else:
             assert set(Zrv.keys()) == set(self.Zv().values())
 
@@ -129,8 +129,8 @@ class State(CGpm):
                 self.X,
                 outputs=[10**7+v]+v_outputs,
                 inputs=None,
-                Zr=Zrv[v],
-                alpha=view_alphas[v],
+                Zr=Zrv.get(v, None),
+                alpha=view_alphas.get(v, None),
                 cctypes=v_cctypes,
                 distargs=v_distargs,
                 hypers=v_hypers,
