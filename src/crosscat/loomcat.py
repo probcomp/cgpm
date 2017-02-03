@@ -169,8 +169,11 @@ def _update_state(state, path, sample):
         index = v + offset
         assert index not in state.views
         view = View(
-            state.X, outputs=[state.crp_id_view + index],
-            Zr=Zvr_new[v], rng=state.rng)
+            state.X,
+            outputs=[state.crp_id_view + index],
+            Zr=Zvr_new[v],
+            rng=state.rng
+        )
         new_views.append(view)
         state._append_view(view, index)
 
