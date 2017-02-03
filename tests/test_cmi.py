@@ -53,6 +53,9 @@ def test_entropy_bernoulli_univariate__ci_():
     assert np.allclose(entropy_logpdf, entropy_mi, atol=.05)
 
 def test_entropy_bernoulli_bivariate__ci_():
+    if not pytest.config.getoption('--integration'):
+        pytest.skip('specify --integration to run integration tests')
+
     rng = gen_rng(10)
 
     # Generate a bivariate Bernoulli dataset.
