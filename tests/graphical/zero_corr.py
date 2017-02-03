@@ -289,7 +289,7 @@ def generate_samples(dist, noise, num_samples, timestamp):
 def generate_mi(dist, noise, timestamp):
     print 'Generating mi %s %f' % (dist, noise)
     engine = load_engine(dist, noise, timestamp)
-    mi = engine.mutual_information(0, 1)
+    mi = engine.mutual_information([0], [1])
     np.savetxt(filename_mi(dist, noise, timestamp), [mi], delimiter=',')
 
 def plot_samples_all(dist, noises, modelnos, num_samples, timestamp):
