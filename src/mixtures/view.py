@@ -447,18 +447,19 @@ class View(CGpm):
         T = self._pop_unincorporate(joint_input)
         Z = self.exposed_latent
 
-        def logsumexp_cluster_conditional(row_set, clusters, debug):
+        def logsumexp_cluster_conditional(query, K):
+            ''' Returns logsumexp of P(z_query = k | query) wrt k. '''
             l = -np.inf
-            for k in clusters:
-                cluster_query = {row: {Z: k} for row in row_set.keys()}
+            for k in K:
+                clusters_of_query = {row: {Z: k} for row in query.keys()}
                 t = self.logpdf_set(
-                    query=cluster_query, evidence=row_set, debug=debug)
+                    query=clusters_of_query, evidence=query)
                 l = gu.logsumexp((l, t))
             return l
 
         K = self.retrieve_available_clusters()
-        l_joint = logsumexp_cluster_conditional(joint_input, K, debug)
-        l_query = logsumexp_cluster_conditional(query, K, debug)
+        l_joint = logsumexp_cluster_conditional(joint_input, K)
+        l_query = logsumexp_cluster_conditional(query, K) if query else 0
         logscore = l_joint - l_query
 
         # Return joint input to dataset
@@ -499,18 +500,18 @@ class View(CGpm):
             if ke == Ke[-1]:  # if query is assigned a new cluster
                 Kq = Ke + [ke+1]  # target may be assigned a different new cluster
             for kq in Kq:  # for each possible cluster for target
-                cluster_query = {
+                clusters_of_query = {
                     row: {self.exposed_latent: kq} for row in target}
 
-                # P(target, query, cluster_query, cluster_evidence)
+                # P(target, query, clusters_of_query, cluster_evidence)
                 logp_joint = self.logpdf_set(
                     query=deep_merged(
-                        joint_input, cluster_query, cluster_evidence),
+                        joint_input, clusters_of_query, cluster_evidence),
                     debug=debug)  # compute joint logpdf
 
-                if kq == ke:  # hypothesis one, cluster_query == cluster_evidence
+                if kq == ke:  # hypothesis one, clusters_of_query == cluster_evidence
                     l1 = gu.logsumexp((l1, logp_joint))
-                else:  # hypothesis two, cluster_query != cluster_evidence
+                else:  # hypothesis two, clusters_of_query != cluster_evidence
                     l2 = gu.logsumexp((l2, logp_joint))
 
         # Reincorporate rows in T to dataset
@@ -519,7 +520,7 @@ class View(CGpm):
         logscore = l1 - l2
         return logscore
     
-    def generic_search(self, compute_score, query, debug=False):
+    def generic_search(self, scoring_function, query, debug=False):
         """
         Order dataset by relevance score wrt query for each row 
         of the dataset.
@@ -536,7 +537,7 @@ class View(CGpm):
         R = len(self.X.values()[0])
         for row in xrange(R):  # for each row in the dataset
             if row not in query.keys():  # if not in query
-                score[row] = compute_score(
+                score[row] = scoring_function(
                     target={row: {}}, query=query, debug=debug)
         
         # Reincorporate rows in T to dataset
