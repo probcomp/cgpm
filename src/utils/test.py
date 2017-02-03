@@ -418,19 +418,18 @@ def gen_cgpm_extreme_crp_alpha(cgpm):
 
     # Alter metadata.alpha to extreme values according to data type
     new_metadata = metadata
-    metadata['alpha'] = 1e5
+    if isinstance(cgpm, View):
+        new_metadata['alpha'] = 1e10
+    elif isinstance(cgpm, State):
+        old_view_alphas = metadata['view_alphas']
+        new_metadata['view_alphas'] = [(a[0], 1e10) for a in old_view_alphas]
     return cgpm.from_metadata(new_metadata)
 
 def restrict_evidence_to_query(query, evidence):
     '''
     Return subset of evidence whose rows are also present in query
     '''
-    evidence_restricted = {}
-    for row in evidence.keys():
-        if row in query.keys():
-            evidence_restricted[row] = evidence[row]
-    
-    return evidence_restricted
+    return {i: j for i, j in evidence.iteritems() if i in query.keys()}
 
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,
@@ -444,3 +443,5 @@ _gen_data = {
     'poisson'           : _gen_poisson_data,
     'vonmises'          : _gen_vonmises_data,
 }
+
+
