@@ -277,3 +277,41 @@ def test_extreme_crp_alpha_invariant_state(cgpm, target, query):
     context = new_cgpm.Zv()[0]
     assert np.allclose(
         new_cgpm.relevance_probability(target, query, context), 0.)
+
+# ----- TEST SUFFICIENT STATISTIC SAME CLUSTER INVARIANCE ----- #
+@pytest.mark.parametrize('cgpm', [animals_view, animals_state])
+def test_sufficient_statistics_query_same_cluster_invariant_animals(cgpm):
+    ''' Rows 1 to 9 belong to same cluster '''
+
+    target = {0: AsIs()}
+    query_one = {1: {0: 0, 1: 0, 2: 0},
+                 2: {0: 1, 1: 1, 2: 1},
+                 3: {0: 0, 1: 1, 2: 0}}
+    
+    query_two = {3: {0: 0, 1: 1, 2: 0},
+                 4: {0: 0, 1: 0, 2: 1},
+                 6: {0: 1, 1: 1, 2: 0}}
+
+    if isinstance(cgpm, View):
+        assert np.allclose(
+            cgpm.relevance_probability(target, query_one),
+            cgpm.relevance_probability(target, query_two))
+
+    elif isinstance(cgpm, State):
+        context = cgpm.Zv()[0]
+        assert np.allclose(
+            cgpm.relevance_probability(target, query_one, context),
+            cgpm.relevance_probability(target, query_two, context))
+
+    else:
+        assert False
+
+
+def test_relevance_probability_is_less_than_one():
+    cgpm = animals_view
+    target = {0: AsIs()}
+    query = {1: {1: 0},
+             2: {1: 1},
+             3: {1: 1}}
+    import pudb; pudb.set_trace()
+    assert cgpm.relevance_probability(target, query) <= 1.
