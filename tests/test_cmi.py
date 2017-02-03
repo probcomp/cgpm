@@ -58,7 +58,7 @@ def test_entropy_bernoulli_bivariate__ci_():
     # Generate a bivariate Bernoulli dataset.
     PX = [.3, .7]
     PY = [[.2, .8], [.6, .4]]
-    TX = rng.choice([0,1], p=PX, size=1000)
+    TX = rng.choice([0,1], p=PX, size=250)
     TY = np.zeros(shape=len(TX))
     TY[TX==0] = rng.choice([0,1], p=PY[0], size=len(TX[TX==0]))
     TY[TX==1] = rng.choice([0,1], p=PY[0], size=len(TX[TX==1]))
