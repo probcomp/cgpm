@@ -806,11 +806,11 @@ class State(CGpm):
 
     def Nv(self, v=None):
         Nv = self.crp.clusters[0].counts
-        return Nv[v] if v is not None else Nv
+        return Nv[v] if v is not None else Nv.copy()
 
     def Zv(self, c=None):
         Zv = self.crp.clusters[0].data
-        return Zv[c] if c is not None else Zv
+        return Zv[c] if c is not None else Zv.copy()
 
     # --------------------------------------------------------------------------
     # Accessors
