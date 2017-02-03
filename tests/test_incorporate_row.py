@@ -37,7 +37,7 @@ def test_invalid_evidence_keys():
     with pytest.raises(ValueError):
         state.incorporate(
             rowid=-1,
-            query={0:0, 1:1, 2:2, 3:3, 4:4, 10**7+2:0})
+            query={0:0, 1:1, 2:2, 3:3, 4:4, state.crp_id_view+2:0})
 
 
 def test_invalid_evidence():

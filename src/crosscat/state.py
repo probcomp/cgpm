@@ -120,6 +120,7 @@ class State(CGpm):
 
         # -- Views -------------------------------------------------------------
         self.views = OrderedDict()
+        self.crp_id_view = 10**7
         for v in set(self.Zv().values()):
             v_outputs = [o for o in self.outputs if self.Zv(o) == v]
             v_cctypes = [cctypes[self.outputs.index(c)] for c in v_outputs]
@@ -127,7 +128,7 @@ class State(CGpm):
             v_hypers = [hypers[self.outputs.index(c)] for c in v_outputs]
             view = View(
                 self.X,
-                outputs=[10**7+v]+v_outputs,
+                outputs=[self.crp_id_view+v] + v_outputs,
                 inputs=None,
                 Zr=Zrv.get(v, None),
                 alpha=view_alphas.get(v, None),
@@ -188,7 +189,7 @@ class State(CGpm):
         if v_add in self.views:
             view = self.views[v_add]
         else:
-            view = View(self.X, outputs=[10**7+v_add], rng=self.rng)
+            view = View(self.X, outputs=[self.crp_id_view + v_add], rng=self.rng)
             self._append_view(view, v_add)
         # Create the dimension.
         # XXX Does not handle conditional models; consider moving to view?
@@ -872,7 +873,7 @@ class State(CGpm):
         t_aux = tables[len(self.views):]
         dprop_aux = [get_prop_dim(None, dim) for t in t_aux]
         vprop_aux = [
-            View(self.X, outputs=[10**7+t], rng=self.rng)
+            View(self.X, outputs=[self.crp_id_view + t], rng=self.rng)
             for t in t_aux
         ]
         logp_data_aux = [

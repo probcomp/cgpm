@@ -240,7 +240,7 @@ def _update_state(state, M_c, X_L, X_D):
 
         assert index not in state.views
         view = View(
-            state.X, outputs=[10**7 + index], Zr=X_D[v],
+            state.X, outputs=[state.crp_id_view + index], Zr=X_D[v],
             alpha=alpha, rng=state.rng)
         new_views.append(view)
         state._append_view(view, index)
