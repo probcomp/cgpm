@@ -175,3 +175,38 @@ def test_gibbs_tables_logps():
     P53 = crp.gibbs_logps(5, m=3)
     assert K53 == [0, 2, 6, 7, 8]
     assert np.allclose(np.exp(P53), [2, 3, 1.5/3, 1.5/3, 1.5/3])
+
+
+def test_crp_logpdf_score():
+    """Ensure that logpdf_marginal agrees with sequence of predictives."""
+    crp = Crp(
+        outputs=[0], inputs=None, hypers={'alpha': 1.5}, rng=gu.gen_rng(1))
+
+    assignments = [
+        (0, {0: 0}),
+        (1, {0: 0}),
+        (2, {0: 2}),
+        (3, {0: 2}),
+        (4, {0: 2}),
+        (5, {0: 6}),
+    ]
+
+    logpdf_predictive = []
+    logpdf_marginal = []
+
+    # Incorporate rows record predictive/marginal logpdfs.
+    for (rowid, query) in assignments:
+        logpdf_predictive.append(crp.logpdf(rowid, query))
+        crp.incorporate(rowid, query)
+        logpdf_marginal.append(crp.logpdf_score())
+
+    # Joint probability = sum of predictives = marginal likelihood.
+    assert np.allclose(sum(logpdf_predictive), logpdf_marginal[-1])
+
+    # First differences of logpdf marginal should be predictives.
+    assert np.allclose(np.diff(logpdf_marginal), logpdf_predictive[1:])
+
+    # Ensure that marginal depends on the actual data.
+    crp.unincorporate(rowid=5)
+    crp.incorporate(5, {0:0})
+    assert not np.allclose(crp.logpdf_score(), logpdf_marginal[-1])
