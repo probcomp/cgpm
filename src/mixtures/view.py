@@ -338,6 +338,15 @@ class View(CGpm):
         result = list(itertools.chain.from_iterable(samples))
         return result[0] if unwrap_result else result
 
+
+    # --------------------------------------------------------------------------
+    # Internal simulate/logpdf helpers
+
+    def relevance_probability(self, rowid_target, rowid_query):
+        """Compute probability of rows in same cluster."""
+        from relevance import relevance_probability
+        return relevance_probability(self, rowid_target, rowid_query)
+
     # --------------------------------------------------------------------------
     # Internal simulate/logpdf helpers
 
