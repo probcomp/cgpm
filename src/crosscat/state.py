@@ -245,7 +245,7 @@ class State(CGpm):
             raise ValueError('Cannot incorporate nan: %s.' % query)
         # Append the observation to dataset.
         for c in self.outputs:
-                self.X[c].append(query.get(c, float('nan')))
+            self.X[c].append(query.get(c, float('nan')))
         # Pick a fresh rowid.
         if self.hypothetical(rowid):
             rowid = self.n_rows()-1
@@ -278,8 +278,7 @@ class State(CGpm):
     # Compositions.
 
     def compose_cgpm(self, cgpm):
-        """Returns `token` to be used in the call to decompose_cgpm.
-        N is optional number of times to run cgpm.transition, if any."""
+        """Returns `token` to be used in the call to decompose_cgpm."""
         token = next(self.token_generator)
         self.hooked_cgpms[token] = cgpm
         try:

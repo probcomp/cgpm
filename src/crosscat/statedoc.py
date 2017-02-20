@@ -59,6 +59,8 @@ def load_docstrings(module):
             column (see doc for Ci).
         iterations : dict(str:int), optional
             Metadata holding the number of iters each kernel has been run.
+        loom_path: str, optional
+            Path to a loom project compatible with this State.
         rng : np.random.RandomState, optional.
             Source of entropy.
         """
@@ -72,12 +74,14 @@ def load_docstrings(module):
 
         Parameters
         ----------
-        X : list
+        T : list
             Data with length self.n_rows().
         outputs : list[int]
             Identity of the variable modeled by this dim, must be non-negative
             and cannot collide with State.outputs. Only univariate outputs
-            currently supported.
+            currently supported, so the list be a singleton.
+        cctype, distargs:
+            refer to State.__init__
         v : int, optional
             Index of the view to assign the data. If 0 <= v < len(state.views)
             then insert into an existing View. If v = len(state.views) then
@@ -96,8 +100,9 @@ def load_docstrings(module):
         query : dict{output:val}
             Keys of the query must a subset of the State output, unspecified
             outputs will be nan. At least one non-nan value must be specified.
-            Optionally use {-v:k} for latent cluster assignments of rowid, where
-            1 <= v <= len(State.views) and 0 <= k <= len(State.views[v].Nk).
+            To optionally specify the cluster assignment in a particular view v,
+            include a key in the query with state.views[v].outputs[0] whose
+            value is the desired cluster id.
         """
 
 
@@ -111,6 +116,51 @@ def load_docstrings(module):
         ----------
         col : int
             Index of column to update.
+        cctype, distargs:
+            refer to State.__init__
+        """
+
+
+    # --------------------------------------------------------------------------
+    # Compositions
+
+    module.State.compose_cgpm.__func__.__doc__ = """
+        Compose a CGPM with this object.
+
+        Parameters
+        ----------
+        cgpm : cgpm.cgpm.CGpm object
+            The `CGpm` object to compose.
+
+        Returns
+        -------
+        token : int
+            A unique token representing the composed cgpm, to be used
+            by `State.decompose_cgpm`.
+    """
+
+    module.State.decompose_cgpm.__func__.__doc__ = """
+        Decompose a previously composed CGPM.
+
+        Parameters
+        ----------
+        token : int
+            The unique token representing the composed cgpm, returned from
+            `State.compose_cgpm`.
+    """
+
+
+    # --------------------------------------------------------------------------
+    # logpdf_score
+
+    module.State.logpdf_score.__func__.__doc__ = """
+        Compute joint density of all latents and the incorporated data.
+
+        Returns
+        -------
+        logpdf_score : float
+            The log score is P(X,Z) = P(X|Z)P(Z) where X is the observed data
+            and Z is the entirety of the latent state in the CGPM.
         """
 
 
@@ -128,10 +178,10 @@ def load_docstrings(module):
             rowid will be taken as conditioning variables.
             Otherwise logpdf for a hypothetical member is computed,
             marginalizing over latent variables.
-        query : list(tuple<int>)
-            List of pairs (col, val) at which to query the logpdf.
-        evidence : list(tuple<int>), optional
-            List of pairs (col, val) of conditioning values in the row.
+        query : dict{col:val}
+            Columns and values at which to query the logpdf.
+        evidence : dict{col:val}
+            Columns and values at which serve as conditioning values in the row.
 
         Returns
         -------
@@ -154,17 +204,19 @@ def load_docstrings(module):
             Otherwise a hypothetical member is simulated, marginalizing over
             latent variables.
         query : list<int>
-            A list of col numbers to simulate from.
-        evidence : list(tuple<int>), optional
-            A list of pairs (col, val) of observed values in the row to
-            condition on.
+            A list of columns to simulate from.
+        evidence : dict{col:val}
+            Columns and values at which serve as conditioning values in the row.
         N : int, optional.
             Number of samples to return.
 
         Returns
         -------
-        samples : np.array
-            A N x len(query) array, where samples[i] ~ P(query|rowid, evidence).
+        samples : dict or list<dict>
+            If `N` is `None`, returns a scalar dictionary whose keys are the
+            queried columns, and values are the simulations. If `N` is an
+            integer, returns a list where each item is a dictionary representing
+            a single joint sample.
         """
 
     # --------------------------------------------------------------------------
@@ -173,19 +225,20 @@ def load_docstrings(module):
     module.State.mutual_information.__func__.__doc__ = """
         Computes the mutual information MI(col0:col1|evidence).
 
-        Mutual information with conditioning variables can be interpreted in
-        two forms:
-            - MI(X:Y|Z=z): point-wise CMI, (this function).
-            - MI(X:Y|Z): expected pointwise CMI E_Z[MI(X:Y|Z)] under Z.
-        This function supports both forms.
+        Mutual information with evidence can be of the form:
+            - MI(X:Y|Z=z): CMI at a fixed conditioning value.
+            - MI(X:Y|Z): expected CMI E_Z[MI(X:Y|Z)] under Z.
+            - MI(X:Y|Z, W=w): expected CMI E_Z[MI(X:Y|Z,W=w)] under Z.
 
-        The rowid is hypothetical. For any observed member, the rowid is
-        sufficient and decouples all columns.
+        This function supports all three forms. The CMI is computed under the
+        posterior predictive joint distributions.
 
         Parameters
         ----------
-        col0, col1 : int
-            Columns to comptue MI. If col0 = col1 then entropy is returned.
+        col0, col1 : list<int>
+            Columns to comptue MI. If all columns in `col0` are equivalent
+            to columns in `col` then entropy is returned, otherwise they must
+            be disjoint and the CMI is returned
         evidence : list(tuple), optional
             A list of pairs (col, val) of observed values to condition on. If
             `val` is None, then `col` is marginalized over.

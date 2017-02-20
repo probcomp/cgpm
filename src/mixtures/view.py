@@ -40,9 +40,10 @@ class View(CGpm):
 
         Parameters
         ----------
-        X : np.ndarray
-            Global dataset of dimension N x D, structured in the form
-            X[outputs[i]][rowid] for i>1. All rows are incorporated by default.
+        X : dict{int:list}
+            Dataset, where the cell `X[outputs[i]][rowid]` contains the value
+            for column outputs[i] and rowd index `rowid`. All rows are
+            incorporated by default.
         outputs : list<int>
             List of output variables. The first item is mandatory, corresponding
             to the token of the exposed cluster. outputs[1:] are the observable
@@ -52,7 +53,7 @@ class View(CGpm):
         alpha : float, optional.
             Concentration parameter for row CRP.
         cctypes : list<str>, optional.
-            A `len(outputs[1:]`) list of cctypes, see `utils.config` for names.
+            A `len(outputs[1:])` list of cctypes, see `utils.config` for names.
         distargs : list<str>, optional.
             A `len(outputs[1:])` list of distargs.
         hypers : list<dict>, optional.
@@ -149,8 +150,8 @@ class View(CGpm):
             Fresh, non-negative rowid.
         query : dict{output:val}
             Keys of the query must exactly be the output (Github issue 89).
-            Optionally, use {self.outputs[0]: k} for latent cluster assignment
-            of rowid. The cluster is a query variable since View
+            Optionally, use {self.outputs[0]: k} to specify the latent cluster
+            assignment of rowid. The cluster is a query variable since View
             has a generative model for k, unlike Dim which takes k as evidence.
         """
         k = query.get(self.outputs[0], 0)
