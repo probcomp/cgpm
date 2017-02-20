@@ -440,6 +440,16 @@ class State(CGpm):
         return np.mean([v.Zr(row0)==v.Zr(row1) for v in views])
 
     # --------------------------------------------------------------------------
+    # Relevance probability.
+
+    def relevance_probability(self, rowid_target, rowid_query, col):
+        """Compute relevance probability of query rows for target row."""
+        if col not in self.outputs:
+            raise ValueError('Unknown column: %s' % (col,))
+        view = self.view_for(col)
+        return view.relevance_probability(rowid_target, rowid_query, col)
+
+    # --------------------------------------------------------------------------
     # Mutual information
 
     def mutual_information(
