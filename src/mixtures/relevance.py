@@ -95,8 +95,7 @@ def relevance_probability(view, rowid_target, rowid_query):
     if len(rowid_query) < 1:
         raise ValueError('No query rows:, %s' % (rowid_query))
     if rowid_target in rowid_query:
-        raise ValueError('Target and query rows not disjoint: %s, %s'
-            % (rowid_target, rowid_query))
+        return 1
 
     # Retrieve target crp assignments and data to restore later.
     assignments_target = view.Zr(rowid_target)
@@ -178,7 +177,7 @@ def relevance_probability(view, rowid_target, rowid_query):
             values_target,
             values_query,
             table_query
-        )- logpdf_score_reference
+        ) - logpdf_score_reference
         for table_query in tables_condition
     ]
     logp_condition = logsumexp(logps_condition)
@@ -188,11 +187,6 @@ def relevance_probability(view, rowid_target, rowid_query):
         logsumexp([logp_same_table, logp_diff_table]),
         logp_condition
     )
-
-    # Confirm direct spaces probabilities sum to one.
-    p_same_table = np.exp(logp_same_table-logp_condition)
-    p_diff_table = np.exp(logp_diff_table-logp_condition)
-    assert np.allclose(p_same_table + p_diff_table, 1.0)
 
     # Restore the target row.
     values_target[view.outputs[0]] = assignments_target

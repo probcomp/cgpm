@@ -232,8 +232,8 @@ class State(CGpm):
 
     def incorporate(self, rowid, query, evidence=None):
         # XXX Only allow new rows for now.
-        if not self.hypothetical(rowid):
-            raise ValueError('Cannot incorporate non-hypothetical: %d' % rowid)
+        if rowid != self.n_rows():
+            raise ValueError('Only contiguous rowids supported: %d' % (rowid,))
         if evidence:
             raise ValueError('Cannot incoroprate with evidence: %s' % evidence)
         valid_clusters = set([self.views[v].outputs[0] for v in self.views])
@@ -251,15 +251,29 @@ class State(CGpm):
             rowid = self.n_rows()-1
         # Tell the views.
         for v in self.views:
-            qv = {d: self.X[d][rowid] for d in self.views[v].dims}
-            kid = self.views[v].outputs[0]
-            kv = {kid: query[kid]} if kid in query else {}
-            self.views[v].incorporate(rowid, gu.merged(qv, kv))
+            query_v = {d: self.X[d][rowid] for d in self.views[v].dims}
+            crp_v = self.views[v].outputs[0]
+            cluster_v = {crp_v: query[crp_v]} if crp_v in query else {}
+            self.views[v].incorporate(rowid, gu.merged(cluster_v, query_v))
         # Validate.
         self._check_partitions()
 
     def unincorporate(self, rowid):
-        raise NotImplementedError('Functionality disabled, Github issue #83.')
+        # XXX WHATTA HACK. Only permit unincorporate the last rowid, which means
+        # we can pop the last entry of each list in self.X without affecting any
+        # existing rowids.
+        if rowid != self.n_rows() - 1:
+            raise ValueError('Only last rowid may be unincorporated.')
+        if self.n_rows() == 1:
+            raise ValueError('Cannot unincorporate last rowid.')
+        # Remove the observation from the dataset.
+        for c in self.outputs:
+            self.X[c].pop()
+        # Tell the views.
+        for v in self.views:
+            self.views[v].unincorporate(rowid)
+        # Validate.
+        self._check_partitions()
 
     # --------------------------------------------------------------------------
     # Schema updates.
@@ -442,12 +456,24 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Relevance probability.
 
-    def relevance_probability(self, rowid_target, rowid_query, col):
+    def relevance_probability(
+            self, rowid_target, rowid_query, col, hypotheticals=None):
         """Compute relevance probability of query rows for target row."""
         if col not in self.outputs:
             raise ValueError('Unknown column: %s' % (col,))
-        view = self.view_for(col)
-        return view.relevance_probability(rowid_target, rowid_query, col)
+        # Incorporate hypothetical rows.
+        hypotheticals = hypotheticals or []
+        rowids = range(self.n_rows(), self.n_rows() + len(hypotheticals))
+        rowid_query_all = rowid_query + rowids
+        for rowid, query in zip(rowids, hypotheticals):
+            self.incorporate(rowid, query)
+        # Compute the relevance probability.
+        relevance = self.view_for(col).relevance_probability(
+            rowid_target, rowid_query_all, col)
+        # Unincorporate the hypothetical rowids.
+        for rowid in reversed(rowids):
+            self.unincorporate(rowid)
+        return relevance
 
     # --------------------------------------------------------------------------
     # Mutual information

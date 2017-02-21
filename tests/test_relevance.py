@@ -23,7 +23,7 @@ from cgpm.mixtures.view import View
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
 
-def outputs_data_assignments():
+def get_data_separated():
     outputs = [1, 2, 3]
     data = np.asarray([
         [0, 0.50, -8.90],
@@ -37,11 +37,10 @@ def outputs_data_assignments():
         [3, 8.90, -0.10]
     ])
     assignments = [0, 0, 2, 2, 2, 2, 6, 6, 7]
-
     return outputs, data, assignments
 
 def view_cgpm_separated():
-    outputs, data, assignments = outputs_data_assignments()
+    outputs, data, assignments = get_data_separated()
     view = View(
         outputs=[1000]+outputs,
         X={output: data[:, i] for i, output in enumerate(outputs)},
@@ -57,7 +56,7 @@ def view_cgpm_separated():
     return view
 
 def state_cgpm_separated():
-    outputs, data, assignments = outputs_data_assignments()
+    outputs, data, assignments = get_data_separated()
     state = State(
         outputs=outputs,
         X=data,
@@ -93,6 +92,37 @@ def test_separated():
 
     assert np.allclose(rp_state_0, rp_view_0)
     assert np.allclose(rp_state_1, rp_view_1)
+
+
+def test_hypothetical_no_mutation():
+    """Ensure using hypothetical rows does not modify state."""
+    outputs, data, assignments = get_data_separated()
+    state = state_cgpm_separated()
+
+    for i in xrange(10):
+        state.transition_dim_hypers()
+
+    # Run a query with two hypothetical rows.
+    start_rows = state.n_rows()
+    start_marginal = state.logpdf_score()
+    rp_state_0 = state.relevance_probability(
+        rowid_target=3,
+        rowid_query=[8],
+        col=1,
+        hypotheticals=[{1:1}, {1:2, 3:1}]
+    )
+    assert state.n_rows() == start_rows
+    assert np.allclose(start_marginal, state.logpdf_score())
+    assert 0 < np.exp(rp_state_0) < 1
+
+
+def test_misc_errors():
+    # XXX TODO: Add the following test cases:
+    # - Unknown rowid_target.
+    # - Unknown entry in rowid_query.
+    # - Unknown column in relevance probability invocation.
+    # - Unknown column in a hypothetical row.
+    pass
 
 
 def test_get_tables_different():
