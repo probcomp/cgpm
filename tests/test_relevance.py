@@ -159,9 +159,9 @@ def test_relevance_large_concentration_hypers():
         where "rp" stands for "relevance_probability".
     """
     view = view_cgpm_separated()
-    ext_view = tu.change_concentration_hyperparameters(view, 1e5)
-    rp_view_0 = np.exp(ext_view.relevance_probability(1, [4, 6, 7], 1))
-    rp_view_1 = np.exp(ext_view.relevance_probability(3, [8], 1))
+    lim_view = tu.change_concentration_hyperparameters(view, 1e5)
+    rp_view_0 = np.exp(lim_view.relevance_probability(1, [4, 6, 7], 1))
+    rp_view_1 = np.exp(lim_view.relevance_probability(3, [8], 1))
 
     assert np.allclose(rp_view_0, 0, atol=1e-5)
     assert np.allclose(rp_view_1, 0, atol=1e-5)
@@ -181,12 +181,20 @@ def test_relevance_large_column_hypers():
        query has a fixed number of rows.
     """
     view = view_cgpm_separated()
-    ext_view = tu.change_column_hyperparameters(view, 1e5)
+    lim_view = tu.change_column_hyperparameters(view, 1e5)
 
-    rp_view_0 = np.exp(ext_view.relevance_probability(2, [3], 1))
-    rp_view_1 = np.exp(ext_view.relevance_probability(4, [5], 1))
-    assert np.allclose(rp_view_0, rp_view_1)
+    assert not np.allclose(
+        view.relevance_probability(2, [3], 1),
+        view.relevance_probability(4, [5], 1))
 
-    rp_view_2 = np.exp(ext_view.relevance_probability(2, [3, 4], 1))
-    rp_view_3 = np.exp(ext_view.relevance_probability(4, [5, 3], 1))
-    assert np.allclose(rp_view_2, rp_view_3)
+    assert np.allclose(
+        lim_view.relevance_probability(2, [3], 1),
+        lim_view.relevance_probability(4, [5], 1))
+
+    assert not np.allclose(
+        view.relevance_probability(2, [3, 5], 1),
+        view.relevance_probability(4, [5, 2], 1))
+
+    assert np.allclose(
+        lim_view.relevance_probability(2, [3, 5], 1),
+        lim_view.relevance_probability(4, [5, 2], 1))
