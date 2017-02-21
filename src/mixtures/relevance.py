@@ -188,11 +188,6 @@ def relevance_probability(view, rowid_target, rowid_query):
         logp_condition
     )
 
-    # Confirm direct spaces probabilities sum to one.
-    p_same_table = np.exp(logp_same_table-logp_condition)
-    p_diff_table = np.exp(logp_diff_table-logp_condition)
-    assert np.allclose(p_same_table + p_diff_table, 1.0)
-
     # Restore the target row.
     values_target[view.outputs[0]] = assignments_target
     view.incorporate(rowid_target, values_target)
