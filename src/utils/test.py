@@ -20,7 +20,10 @@ import numpy as np
 
 from scipy.stats import norm
 
+from cgpm.crosscat.engine import Engine
+from cgpm.crosscat.state import State
 from cgpm.mixtures.dim import Dim
+from cgpm.mixtures.view import View
 from cgpm.utils import general as gu
 
 
@@ -297,9 +300,143 @@ def column_average_ari(Zv, Zc, cc_state_object):
 
     return ari/float(n_cols)
 
+def gen_simple_engine(multiprocess=1):
+    data = np.array([[1, 1, 1]])
+    R = len(data)
+    D = len(data[0])
+    outputs = range(D)
+    engine = Engine(
+        X=data,
+        num_states=20,
+        rng=gu.gen_rng(1),
+        multiprocess=multiprocess,
+        outputs=outputs,
+        alpha=1.,
+        cctypes=['bernoulli']*D,
+        distargs={i: {'alpha': 1., 'beta': 1.} for i in outputs},
+        Zv={0: 0, 1: 0, 2: 1},
+        view_alphas=[1.]*D,
+        Zrv={0: [0]*R, 1: [0]*R})
+    return engine
+
+def gen_simple_state():
+    data = np.array([[1, 1, 1]])
+    R = len(data)
+    D = len(data[0])
+    outputs = range(D)
+    state = State(
+        X=data,
+        outputs=outputs,
+        alpha=1.,
+        cctypes=['bernoulli']*D,
+        hypers=[{'alpha': 1., 'beta': 1.} for i in outputs],
+        Zv={0: 0, 1: 0, 2: 1},
+        view_alphas=[1.]*D,
+        Zrv={0: [0]*R, 1: [0]*R})
+    return state
+
+def gen_simple_view():
+    data = np.array([[1, 1]])
+    R = len(data)
+    D = len(data[0])
+    outputs = range(D)
+    X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
+    Zr = [0 for i in range(R)]
+    view = View(
+        X,
+        outputs=[1000] + outputs,
+        alpha=1.,
+        cctypes=['bernoulli']*D,
+        hypers={i: {'alpha': 1., 'beta': 1.} for i in outputs},
+        Zr=Zr)
+    return view
+
+def gen_multitype_view():
+    data = np.array([[0, 2, 3.14],
+                     [1, 1, 1]])
+    D = len(data[0])
+    dpm_outputs = range(D)
+    X = {c: data[:, i].tolist() for i, c in enumerate(dpm_outputs)}
+    crp_alpha = 1.
+    cctypes = ['bernoulli', 'categorical', 'normal']
+    hypers = {
+        0: {'alpha': 1., 'beta': 1.},
+        1: {'alpha': 1.},
+        2: {'m': 0, 'r': 1., 's': 1., 'nu': 1.}}
+    distargs = {0: {}, 1: {'k': 3}, 2: {}}
+    Zr = [0, 1]
+    view = View(
+        X,
+        outputs=[1000] + dpm_outputs,
+        alpha=crp_alpha,
+        cctypes=cctypes,
+        hypers=hypers,
+        distargs=distargs,
+        Zr=Zr)
+    return view
+
+def change_cluster_model_hyperparameters(cgpm, value):
+    ''' 
+    Generate new cgpm from input cgpm, and alter its distribution 
+    hyperparameters to extreme values.
+    '''
+    # Retrieve metadata from cgpm
+    metadata = cgpm.to_metadata()
+
+    # Alter metadata.hypers to extreme values according to data type
+    columns = range(len(metadata['outputs']))
+    if isinstance(cgpm, View):
+        columns.pop(-1)  # first output is exposed latent
+
+    cctypes = metadata['cctypes']
+
+    new_hypers = [{} for c in columns]
+    for c in columns:
+        if cctypes[c] == 'bernoulli':
+            new_hypers[c] = {'alpha': value, 'beta': value}
+        
+        elif cctypes[c] == 'categorical':
+            new_hypers[c] = {'alpha': value}
+        
+        elif cctypes[c] == 'normal':
+            new_hypers[c] = {'m': value, 'nu': value, 'r': value, 's': value}
+
+        else:
+            ValueError('''
+               cctype not recognized (not bernoulli, categorical or normal);
+            ''')
+
+    # Create a new cgpm from the altered metadata
+    new_metadata = metadata
+    metadata['hypers'] = new_hypers
+    return cgpm.from_metadata(new_metadata)
+    
+def change_concentration_hyperparameters(cgpm, value):
+    ''' 
+    Generate new cgpm from input cgpm, and alter its crp 
+    concentration hyperparameter to extreme values.
+    '''
+    # Retrieve metadata from cgpm
+    metadata = cgpm.to_metadata()
+
+    # Alter metadata.alpha to extreme values according to data type
+    new_metadata = metadata
+    if isinstance(cgpm, View):
+        new_metadata['alpha'] = value
+    elif isinstance(cgpm, State):
+        old_view_alphas = metadata['view_alphas']
+        new_metadata['view_alphas'] = [(a[0], value) for a in old_view_alphas]
+    return cgpm.from_metadata(new_metadata)
+
+def restrict_evidence_to_query(query, evidence):
+    '''
+    Return subset of evidence whose rows are also present in query
+    '''
+    return {i: j for i, j in evidence.iteritems() if i in query.keys()}
+
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,
-    'beta'           : _gen_beta_data,
+    'beta'              : _gen_beta_data,
     'categorical'       : _gen_categorical_data,
     'exponential'       : _gen_exponential_data,
     'geometric'         : _gen_geometric_data,
@@ -309,3 +446,5 @@ _gen_data = {
     'poisson'           : _gen_poisson_data,
     'vonmises'          : _gen_vonmises_data,
 }
+
+
