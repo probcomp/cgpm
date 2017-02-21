@@ -106,6 +106,24 @@ def test_incorporate_valid():
         query={0:0, 1:1, 2:2, 3:3, 4:4, view.outputs[0]:100})
 
 
+def test_unincorporate():
+    state = get_state()
+    # Unincorporate all the rows except for the last one.
+    # XXX Must remove the last rowid only at each invocation.
+    rowids = range(0, state.n_rows())
+    for rowid in rowids[:-1]:
+        with pytest.raises(ValueError):
+            state.unincorporate(rowid)
+    # Remove rowids starting from state.n_rows()-1 down to 1.
+    for rowid in reversed(rowids[1:]):
+        state.unincorporate(rowid)
+    assert state.n_rows() == 1
+    # Cannot unincorporate the final rowid.
+    with pytest.raises(ValueError):
+        state.unincorporate(0)
+    state.transition(N=2)
+
+
 def test_incorporate_session():
     rng = gu.gen_rng(4)
     state = State(
@@ -124,4 +142,7 @@ def test_incorporate_session():
     # Incorporate row without specifying clusters, and some missing values
     data = {i: rng.normal() for i in xrange(2)}
     state.incorporate(rowid=state.n_rows(), query=data)
+    state.transition(N=3)
+    # Remove the incorporated rowid.
+    state.unincorporate(rowid=state.n_rows()-1)
     state.transition(N=3)

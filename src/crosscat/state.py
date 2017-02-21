@@ -259,7 +259,21 @@ class State(CGpm):
         self._check_partitions()
 
     def unincorporate(self, rowid):
-        raise NotImplementedError('Functionality disabled, Github issue #83.')
+        # XXX WHATTA HACK. Only permit unincorporate the last rowid, which means
+        # we can pop the last entry of each list in self.X without affecting any
+        # existing rowids.
+        if rowid != self.n_rows() - 1:
+            raise ValueError('Only last rowid may be unincorporated.')
+        if self.n_rows() == 1:
+            raise ValueError('Cannot unincorporate last rowid.')
+        # Remove the observation from the dataset.
+        for c in self.outputs:
+            self.X[c].pop()
+        # Tell the views.
+        for v in self.views:
+            self.views[v].unincorporate(rowid)
+        # Validate.
+        self._check_partitions()
 
     # --------------------------------------------------------------------------
     # Schema updates.
