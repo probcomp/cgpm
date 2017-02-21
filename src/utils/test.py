@@ -375,9 +375,9 @@ def gen_multitype_view():
         Zr=Zr)
     return view
 
-def change_cluster_model_hyperparameters(cgpm, value):
-    ''' 
-    Generate new cgpm from input cgpm, and alter its distribution 
+def change_column_hyperparameters(cgpm, value):
+    '''
+    Generate new cgpm from input cgpm, and alter its distribution
     hyperparameters to extreme values.
     '''
     # Retrieve metadata from cgpm
@@ -394,10 +394,10 @@ def change_cluster_model_hyperparameters(cgpm, value):
     for c in columns:
         if cctypes[c] == 'bernoulli':
             new_hypers[c] = {'alpha': value, 'beta': value}
-        
+
         elif cctypes[c] == 'categorical':
             new_hypers[c] = {'alpha': value}
-        
+
         elif cctypes[c] == 'normal':
             new_hypers[c] = {'m': value, 'nu': value, 'r': value, 's': value}
 
@@ -410,10 +410,10 @@ def change_cluster_model_hyperparameters(cgpm, value):
     new_metadata = metadata
     metadata['hypers'] = new_hypers
     return cgpm.from_metadata(new_metadata)
-    
+
 def change_concentration_hyperparameters(cgpm, value):
-    ''' 
-    Generate new cgpm from input cgpm, and alter its crp 
+    '''
+    Generate new cgpm from input cgpm, and alter its crp
     concentration hyperparameter to extreme values.
     '''
     # Retrieve metadata from cgpm
@@ -446,5 +446,3 @@ _gen_data = {
     'poisson'           : _gen_poisson_data,
     'vonmises'          : _gen_vonmises_data,
 }
-
-

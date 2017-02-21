@@ -108,6 +108,11 @@ def test_get_tables_different():
     )
 
 def test_relevance_commutative_single_query_row():
+    """
+    If the query contains a single row,
+        rp(target, query) == rp(query, target),
+        where "rp" stands for "relevance_probability" .
+    """
     view = view_cgpm_separated()
     rp_view_0 = view.relevance_probability(3, [8], 1)
     rp_view_1 = view.relevance_probability(8, [3], 1)
@@ -118,7 +123,11 @@ def test_relevance_commutative_single_query_row():
     rp_state_1 = state.relevance_probability(8, [3], 1)
     assert np.allclose(rp_state_0, rp_state_1)
 
-def test_relevance_extreme_concentration_hypers():
+def test_relevance_large_concentration_hypers():
+    """
+    If crp_alpha -> infty, rp(target, query) -> 0,
+        where "rp" stands for "relevance_probability".
+    """
     view = view_cgpm_separated()
     ext_view = tu.change_concentration_hyperparameters(view, 1e5)
     rp_view_0 = np.exp(ext_view.relevance_probability(1, [4, 6, 7], 1))
@@ -134,3 +143,20 @@ def test_relevance_extreme_concentration_hypers():
 
     assert np.allclose(rp_state_0, 0, atol=1e-5)
     assert np.allclose(rp_state_1, 0, atol=1e-5)
+
+def test_relevance_large_column_hypers():
+    """
+    If col_hypers -> infty, rp(target, query) = C
+       for all target and query in the same cluster, if
+       query has a fixed number of rows.
+    """
+    view = view_cgpm_separated()
+    ext_view = tu.change_column_hyperparameters(view, 1e5)
+
+    rp_view_0 = np.exp(ext_view.relevance_probability(2, [3], 1))
+    rp_view_1 = np.exp(ext_view.relevance_probability(4, [5], 1))
+    assert np.allclose(rp_view_0, rp_view_1)
+
+    rp_view_2 = np.exp(ext_view.relevance_probability(2, [3, 4], 1))
+    rp_view_3 = np.exp(ext_view.relevance_probability(4, [5, 3], 1))
+    assert np.allclose(rp_view_2, rp_view_3)
