@@ -69,7 +69,7 @@ def relevance_probability(view, rowid_target, rowid_query):
               = \sum_kQ Pr[xT, xQ|zQ] * Pr[zQ[0]=kQ, ..., zQ[-1]=kQ]
               = \sum_kQ (\sum_kT Pr[xT, zT=kT])
                   Pr[xQ|zQ] * Pr[zQ[0]=kQ, ..., zQ[-1]=kQ]
-              = \sum_kQ (\sum_kT Pr[xT|zT=zK] * Pr[zT=zK| zQ=kQ])
+              = \sum_kQ (\sum_kT Pr[xT|zT=kT] * Pr[zT=kT| zQ=kQ])
                   Pr[xQ|zQ] * Pr[zQ[0]=kQ, ..., zQ[-1]=kQ]
 
         where kQ is list of tables in the CRP plus a fresh singleton.
@@ -268,10 +268,10 @@ def get_tables_same(tables):
 def get_tables_different(tables):
     """Return tables to iterate over when query, target in different table."""
     singleton = max(tables) + 1
-    tables_query = tables + [singleton]
+    tables_target = tables + [singleton]
     auxiliary_table = lambda t: [] if t < singleton else [singleton+1]
-    tables_target = [
-        filter(lambda x: x!=t, tables_query) + auxiliary_table(t)
-        for t in tables_query
+    tables_query = [
+        filter(lambda x: x != t, tables_target) + auxiliary_table(t)
+        for t in tables_target
     ]
-    return tables_query, tables_target
+    return tables_target, tables_query
