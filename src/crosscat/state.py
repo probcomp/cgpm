@@ -232,8 +232,8 @@ class State(CGpm):
 
     def incorporate(self, rowid, query, evidence=None):
         # XXX Only allow new rows for now.
-        if not self.hypothetical(rowid):
-            raise ValueError('Cannot incorporate non-hypothetical: %d' % rowid)
+        if rowid != self.n_rows():
+            raise ValueError('Only contiguous rowids supported: %d' % (rowid,))
         if evidence:
             raise ValueError('Cannot incoroprate with evidence: %s' % evidence)
         valid_clusters = set([self.views[v].outputs[0] for v in self.views])
