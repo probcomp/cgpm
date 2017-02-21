@@ -53,18 +53,18 @@ def test_separated():
 
     # XXX TODO Expand the tests; compuate pairwise, cross-cluster, and
     # multi-cluster relevances.
-    rp_view_0 = view.relevance_probability(1, [4,6,7], 1)
-    rp_view_1 = view.relevance_probability(3, [8], 1)
+    rp_view_0 = view.relevance_probability(1, [4, 6, 7], 1)  
+    rp_view_1 = view.relevance_probability(3, [8], 1)  
 
-    assert 0 < np.exp(rp_view_0) < 1
-    assert 0 < np.exp(rp_view_1) < 1
+    assert 0 < np.exp(rp_view_0) < 1  # 0.108687
+    assert 0 < np.exp(rp_view_1) < 1  # 0.000366
 
     # Implement same test with identically initialzied state.
     state = State(
         outputs=outputs,
         X=data,
         cctypes=['categorical', 'normal', 'normal'],
-        distargs=[{'k':4}, None, None],
+        distargs=[{'k': 4}, None, None],
         Zv={output: 0 for output in outputs},
         Zrv={0: assignments},
         view_alphas={0: 1.5},
@@ -78,7 +78,7 @@ def test_separated():
     # initialized with the same entropy and all values of hyperparameters are
     # sampled in the same order, the relevance probabilities will agree exactly.
     # This is really a test about entropy control.
-    rp_state_0 = state.relevance_probability(1, [4,6,7], 1)
+    rp_state_0 = state.relevance_probability(1, [4, 6, 7], 1)
     rp_state_1 = state.relevance_probability(3, [8], 1)
 
     assert np.allclose(rp_state_0, rp_view_0)
