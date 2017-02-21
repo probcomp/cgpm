@@ -106,3 +106,31 @@ def test_get_tables_different():
         [0,4,7,9,10],
         [[4,7,9,10], [0,7,9,10], [0,4,9,10], [0,4,7,10], [0,4,7,9,11]]
     )
+
+def test_relevance_commutative_single_query_row():
+    view = view_cgpm_separated()
+    rp_view_0 = view.relevance_probability(3, [8], 1)
+    rp_view_1 = view.relevance_probability(8, [3], 1)
+    assert np.allclose(rp_view_0, rp_view_1)
+
+    state = state_cgpm_separated()
+    rp_state_0 = state.relevance_probability(3, [8], 1)
+    rp_state_1 = state.relevance_probability(8, [3], 1)
+    assert np.allclose(rp_state_0, rp_state_1)
+
+def test_relevance_extreme_concentration_hypers():
+    view = view_cgpm_separated()
+    ext_view = tu.change_concentration_hyperparameters(view, 1e5)
+    rp_view_0 = np.exp(ext_view.relevance_probability(1, [4, 6, 7], 1))
+    rp_view_1 = np.exp(ext_view.relevance_probability(3, [8], 1))
+
+    assert np.allclose(rp_view_0, 0, atol=1e-5)
+    assert np.allclose(rp_view_1, 0, atol=1e-5)
+
+    state = state_cgpm_separated()
+    ext_state = tu.change_concentration_hyperparameters(state, 1e5)
+    rp_state_0 = np.exp(ext_state.relevance_probability(1, [4, 6, 7], 1))
+    rp_state_1 = np.exp(ext_state.relevance_probability(3, [8], 1))
+
+    assert np.allclose(rp_state_0, 0, atol=1e-5)
+    assert np.allclose(rp_state_1, 0, atol=1e-5)
