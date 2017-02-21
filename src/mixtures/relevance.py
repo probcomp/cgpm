@@ -95,8 +95,7 @@ def relevance_probability(view, rowid_target, rowid_query):
     if len(rowid_query) < 1:
         raise ValueError('No query rows:, %s' % (rowid_query))
     if rowid_target in rowid_query:
-        raise ValueError('Target and query rows not disjoint: %s, %s'
-            % (rowid_target, rowid_query))
+        return 1
 
     # Retrieve target crp assignments and data to restore later.
     assignments_target = view.Zr(rowid_target)
