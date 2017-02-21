@@ -251,10 +251,10 @@ class State(CGpm):
             rowid = self.n_rows()-1
         # Tell the views.
         for v in self.views:
-            qv = {d: self.X[d][rowid] for d in self.views[v].dims}
-            kid = self.views[v].outputs[0]
-            kv = {kid: query[kid]} if kid in query else {}
-            self.views[v].incorporate(rowid, gu.merged(qv, kv))
+            query_v = {d: self.X[d][rowid] for d in self.views[v].dims}
+            crp_v = self.views[v].outputs[0]
+            cluster_v = {crp_v: query[crp_v]} if crp_v in query else {}
+            self.views[v].incorporate(rowid, gu.merged(cluster_v, query_v))
         # Validate.
         self._check_partitions()
 
