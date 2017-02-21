@@ -177,7 +177,7 @@ def relevance_probability(view, rowid_target, rowid_query):
             values_target,
             values_query,
             table_query
-        )- logpdf_score_reference
+        ) - logpdf_score_reference
         for table_query in tables_condition
     ]
     logp_condition = logsumexp(logps_condition)
