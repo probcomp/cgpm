@@ -376,10 +376,9 @@ def gen_multitype_view():
     return view
 
 def change_column_hyperparameters(cgpm, value):
-    '''
-    Generate new cgpm from input cgpm, and alter its distribution
+    """Generate new cgpm from input cgpm, and alter its distribution
     hyperparameters to extreme values.
-    '''
+    """
     # Retrieve metadata from cgpm
     metadata = cgpm.to_metadata()
 
@@ -412,10 +411,9 @@ def change_column_hyperparameters(cgpm, value):
     return cgpm.from_metadata(new_metadata)
 
 def change_concentration_hyperparameters(cgpm, value):
-    '''
-    Generate new cgpm from input cgpm, and alter its crp
+    """Generate new cgpm from input cgpm, and alter its crp
     concentration hyperparameter to extreme values.
-    '''
+    """
     # Retrieve metadata from cgpm
     metadata = cgpm.to_metadata()
 
@@ -429,9 +427,7 @@ def change_concentration_hyperparameters(cgpm, value):
     return cgpm.from_metadata(new_metadata)
 
 def restrict_evidence_to_query(query, evidence):
-    '''
-    Return subset of evidence whose rows are also present in query
-    '''
+    """Return subset of evidence whose rows are also present in query."""
     return {i: j for i, j in evidence.iteritems() if i in query.keys()}
 
 _gen_data = {
