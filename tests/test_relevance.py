@@ -37,16 +37,28 @@ def get_data_separated():
         [3, 8.90, -0.10]
     ])
     assignments = [0, 0, 2, 2, 2, 2, 6, 6, 7]
-    return outputs, data, assignments
+    cctypes = ['categorical', 'normal', 'normal']
+    distargs = [{'k': 4}, None, None]
+    return outputs, data, assignments, cctypes, distargs
 
-def view_cgpm_separated():
-    outputs, data, assignments = get_data_separated()
+def get_data_all_ones():
+    outputs = [1]
+    n_rows = 200
+    n_cols = 1
+    data = np.ones(shape=[n_rows, n_cols])
+    assignments = [0] * n_rows
+    cctypes = ['bernoulli']
+    distargs = [None]
+    return outputs, data, assignments, cctypes, distargs
+
+def gen_view_cgpm(get_data):
+    outputs, data, assignments, cctypes, distargs = get_data()
     view = View(
         outputs=[1000]+outputs,
         X={output: data[:, i] for i, output in enumerate(outputs)},
         alpha=1.5,
-        cctypes=['categorical', 'normal', 'normal'],
-        distargs=[{'k': 4}, None, None],
+        cctypes=cctypes,
+        distargs=distargs,
         Zr=assignments,
         rng=gu.gen_rng(1)
     )
@@ -55,13 +67,13 @@ def view_cgpm_separated():
         view.transition_dim_hypers()
     return view
 
-def state_cgpm_separated():
-    outputs, data, assignments = get_data_separated()
+def gen_state_cgpm(get_data):
+    outputs, data, assignments, cctypes, distargs = get_data()
     state = State(
         outputs=outputs,
         X=data,
-        cctypes=['categorical', 'normal', 'normal'],
-        distargs=[{'k':4}, None, None],
+        cctypes=cctypes,
+        distargs=distargs,
         Zv={output: 0 for output in outputs},
         Zrv={0: assignments},
         view_alphas={0: 1.5},
@@ -74,8 +86,8 @@ def state_cgpm_separated():
 
 def test_separated():
     """Crash test for relevance_probability."""
-    view = view_cgpm_separated()
-    # XXX TODO Expand the tests; compuate pairwise, cross-cluster, and
+    view = gen_view_cgpm(get_data_separated)
+    # XXX TODO Expand the tests; compute pairwise, cross-cluster, and
     # multi-cluster relevances.
     rp_view_0 = view.relevance_probability(1, [4, 6, 7], 1)
     rp_view_1 = view.relevance_probability(3, [8], 1)
@@ -83,7 +95,7 @@ def test_separated():
     assert 0 < np.exp(rp_view_0) < 1  # 0.108687
     assert 0 < np.exp(rp_view_1) < 1  # 0.000366
 
-    state = state_cgpm_separated()
+    state = gen_state_cgpm(get_data_separated)
     # Take an enormous leap of faith that, given both State and View are
     # initialized with the same entropy and all values of hyperparameters are
     # sampled in the same order, the relevance probabilities will agree exactly.
@@ -97,8 +109,7 @@ def test_separated():
 
 def test_hypothetical_no_mutation():
     """Ensure using hypothetical rows does not modify state."""
-    outputs, data, assignments = get_data_separated()
-    state = state_cgpm_separated()
+    state = gen_state_cgpm(get_data_separated)
 
     for i in xrange(10):
         state.transition_dim_hypers()
@@ -140,19 +151,19 @@ def test_get_tables_different():
 
 def test_relevance_commutative_single_query_row():
     """Confirm commutativity of rp for single row queries"""
-    view = view_cgpm_separated()
+    view = gen_view_cgpm(get_data_separated)
     rp_view_0 = view.relevance_probability(3, [8], 1)
     rp_view_1 = view.relevance_probability(8, [3], 1)
     assert np.allclose(rp_view_0, rp_view_1)
 
-    state = state_cgpm_separated()
+    state = gen_state_cgpm(get_data_separated)
     rp_state_0 = state.relevance_probability(3, [8], 1)
     rp_state_1 = state.relevance_probability(8, [3], 1)
     assert np.allclose(rp_state_0, rp_state_1)
 
 def test_relevance_large_concentration_hypers():
     """Confirm crp_alpha -> infty, implies rp(target, query) -> 0."""
-    view = view_cgpm_separated()
+    view = gen_view_cgpm(get_data_separated)
     lim_view = tu.change_concentration_hyperparameters(view, 1e5)
     rp_view_0 = np.exp(lim_view.relevance_probability(1, [4, 6, 7], 1))
     rp_view_1 = np.exp(lim_view.relevance_probability(3, [8], 1))
@@ -160,7 +171,7 @@ def test_relevance_large_concentration_hypers():
     assert np.allclose(rp_view_0, 0, atol=1e-5)
     assert np.allclose(rp_view_1, 0, atol=1e-5)
 
-    state = state_cgpm_separated()
+    state = gen_state_cgpm(get_data_separated)
     ext_state = tu.change_concentration_hyperparameters(state, 1e5)
     rp_state_0 = np.exp(ext_state.relevance_probability(1, [4, 6, 7], 1))
     rp_state_1 = np.exp(ext_state.relevance_probability(3, [8], 1))
@@ -174,7 +185,7 @@ def test_relevance_large_column_hypers():
     if query_1 and query_2 are of the same size and
     if all targets and query belong to the same cluster.
     """
-    view = view_cgpm_separated()
+    view = gen_view_cgpm(get_data_separated)
     lim_view = tu.change_column_hyperparameters(view, 1e5)
 
     assert not np.allclose(
