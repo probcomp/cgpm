@@ -69,7 +69,7 @@ def relevance_probability(view, rowid_target, rowid_query):
               = \sum_kQ Pr[xT, xQ|zQ] * Pr[zQ[0]=kQ, ..., zQ[-1]=kQ]
               = \sum_kQ (\sum_kT Pr[xT, zT=kT])
                   Pr[xQ|zQ] * Pr[zQ[0]=kQ, ..., zQ[-1]=kQ]
-              = \sum_kQ (\sum_kT Pr[xT|zT=zK] * Pr[zT=zK| zQ=kQ])
+              = \sum_kQ (\sum_kT Pr[xT|zT=kT] * Pr[zT=kT| zQ=kQ])
                   Pr[xQ|zQ] * Pr[zQ[0]=kQ, ..., zQ[-1]=kQ]
 
         where kQ is list of tables in the CRP plus a fresh singleton.
