@@ -51,6 +51,16 @@ def get_data_all_ones():
     distargs = [None]
     return outputs, data, assignments, cctypes, distargs
 
+def get_data_missing():
+    outputs = [1]
+    n_rows = 199
+    n_cols = 1
+    data = np.vstack((np.nan, np.ones(shape=[n_rows, n_cols])))
+    assignments = [0] * (n_rows+1)
+    cctypes = ['bernoulli']
+    distargs = [None]
+    return outputs, data, assignments, cctypes, distargs
+
 def gen_view_cgpm(get_data):
     outputs, data, assignments, cctypes, distargs = get_data()
     view = View(
@@ -240,3 +250,11 @@ def test_relevance_analytically():
     rp_analytical = p_same_table / (p_same_table + p_diff_table)
     rp_compute = np.exp(view.relevance_probability(0, [1], 1))
     assert np.allclose(rp_analytical, rp_compute)
+
+def test_crash_missing():
+    view = gen_view_cgpm(get_data_missing)
+    rp_view_0 = np.exp(view.relevance_probability(0, [1], 1))
+    rp_view_1 = np.exp(view.relevance_probability(2, [0], 1))
+
+    assert 0 <= rp_view_0 <= 1.
+    assert 0 <= rp_view_1 <= 1.
