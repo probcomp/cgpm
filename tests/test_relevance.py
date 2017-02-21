@@ -203,3 +203,40 @@ def test_relevance_large_column_hypers():
     assert np.allclose(
         lim_view.relevance_probability(2, [3, 5], 1),
         lim_view.relevance_probability(4, [5, 2], 1))
+
+def test_relevance_with_itself():
+    """Confirm the rp(target, target)==1, for all target."""
+    state = gen_state_cgpm(get_data_separated)
+    assert np.allclose(
+        state.relevance_probability(2, [2], 1),
+        1.0)
+
+def test_relevance_analytically():
+    view = gen_view_cgpm(get_data_all_ones)
+    n = view.n_rows()
+    a = view.alpha()  # crp_alpha
+    b1 = view.dims[1].hypers['alpha']  # bernoulli pseudocounts for one
+    b0 = view.dims[1].hypers['beta']  # bernoulli pseudocounts for zero
+
+    # Compute Pr[zT = zQ, xT, xQ, S] =
+    #   Pr[t,Q|zT=zQ=0] * Pr[zT=zQ=0] + Pr[t,Q|zT=zQ=1] * Pr[zT=zQ=1]
+    #   analytically for t=0, Q=[1]
+    p_same_table = (
+        (n-2+b1)/(b1+b0+n-2) * (n-1+b1)/(b1+b0+n-1) *  # Pr[t,Q|zT=zQ=0]
+        (n-2)/(n-2+a) * (n-1)/(n-1+a) +  # Pr[zT=zQ=0]
+        b1/(b1+b0) * (b1+1)/(b1+b0+1) *  # Pr[t,Q|zT=zQ=1]
+        a/(n-2+a) * 1/(n-1+a))  # Pr[zT=zQ=1]
+
+    # Compute Pr[zT \ne zQ, xT, xQ, S] =
+    #   Pr[t,Q|zT=0, zQ=1] * Pr[zT=0, zQ=1] +
+    #     Pr[t,Q|zT=1, zQ=0] * Pr[zT=1, zQ=0] +
+    #     Pr[t,Q|zT=1, zQ=2] * Pr[zT=1, zQ=2]
+    #   analytically for t=0, Q=[1]
+    p_diff_table = (
+        (n-2+b1)/(b1+b0+n-2) * b1/(b1+b0) * (n-2)/(n-2+a) * a/(n-1+a) +
+        b1/(b1+b0) * (n-2+b1)/(b1+b0+n-2) * a/(n-1+a) * (n-2)/(n-2+a) +
+        b1/(b1+b0) * b1/(b1+b0) * a/(n-1+a) * a/(n-2+a))
+
+    rp_analytical = p_same_table / (p_same_table + p_diff_table)
+    rp_compute = np.exp(view.relevance_probability(0, [1], 1))
+    assert np.allclose(rp_analytical, rp_compute)
