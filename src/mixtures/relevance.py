@@ -20,7 +20,6 @@ import numpy as np
 from cgpm.mixtures.view import View
 from cgpm.utils.general import logsumexp
 
-
 def relevance_probability(view, rowid_target, rowid_query):
     """Compute probability of customers in same table.
 
@@ -166,8 +165,8 @@ def relevance_probability(view, rowid_target, rowid_query):
     logp_diff_table = logsumexp([logsumexp(l) for l in logps_diff_table])
 
     # Compute Pr[xT, xQ, S]
-    #   = \sum_k Pr[zT=k, zQ=k, xT, xQ]
-    #   = \sum_k Pr[xT, xQ | zT=K, zQ=k] * Pr[zT=k, zQ=k]
+    #   = \sum_kT \sum_kQ Pr[zT=kT, zQ=kQ, xT, xQ]
+    #   = \sum_kT \sum_kQ Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
     tables_condition = get_tables_same(tables_crp)
     logps_condition = [
         logpdf_assignments_marginalize_target(
