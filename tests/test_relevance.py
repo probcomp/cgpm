@@ -218,7 +218,7 @@ def test_relevance_with_itself():
     """Confirm that rp(target, target)==1, for any target."""
     state = gen_state_cgpm(get_data_separated)
     assert np.allclose(
-        state.relevance_probability(2, [2], 1),
+        np.exp(state.relevance_probability(2, [2], 1)),
         1.0)
 
 def test_relevance_analytically():
