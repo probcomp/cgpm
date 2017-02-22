@@ -215,7 +215,7 @@ def test_relevance_large_column_hypers():
         lim_view.relevance_probability(4, [5, 2], 1))
 
 def test_relevance_with_itself():
-    """Confirm the rp(target, target)==1, for all target."""
+    """Confirm that rp(target, target)==1, for any target."""
     state = gen_state_cgpm(get_data_separated)
     assert np.allclose(
         state.relevance_probability(2, [2], 1),
@@ -228,33 +228,67 @@ def test_relevance_analytically():
     b1 = view.dims[1].hypers['alpha']  # bernoulli pseudocounts for one
     b0 = view.dims[1].hypers['beta']  # bernoulli pseudocounts for zero
 
+    # Compute rp(t_rowid=0, q_rowid=[1])
+    rp_computational = np.exp(view.relevance_probability(0, [1], 1))
+
     # Compute Pr[zT = zQ, xT, xQ, S] =
     #   Pr[t,Q|zT=zQ=0] * Pr[zT=zQ=0] + Pr[t,Q|zT=zQ=1] * Pr[zT=zQ=1]
-    #   analytically for t=0, Q=[1]
+    #   analytically for t_rowid=0, Q_rowid=[1]
     p_same_table = (
-        (n-2+b1)/(b1+b0+n-2) * (n-1+b1)/(b1+b0+n-1) *  # Pr[t,Q|zT=zQ=0]
-        (n-2)/(n-2+a) * (n-1)/(n-1+a) +  # Pr[zT=zQ=0]
-        b1/(b1+b0) * (b1+1)/(b1+b0+1) *  # Pr[t,Q|zT=zQ=1]
-        a/(n-2+a) * 1/(n-1+a))  # Pr[zT=zQ=1]
+        (n-2+b1)/(b1+b0+n-2) * (n-1+b1)/(b1+b0+n-1) *
+        (n-2)/(n-2+a) * (n-1)/(n-1+a) +
+        b1/(b1+b0) * (b1+1)/(b1+b0+1) *
+        a/(n-2+a) * 1/(n-1+a))
 
     # Compute Pr[zT \ne zQ, xT, xQ, S] =
     #   Pr[t,Q|zT=0, zQ=1] * Pr[zT=0, zQ=1] +
     #     Pr[t,Q|zT=1, zQ=0] * Pr[zT=1, zQ=0] +
     #     Pr[t,Q|zT=1, zQ=2] * Pr[zT=1, zQ=2]
-    #   analytically for t=0, Q=[1]
+    #   analytically for t_rowid=0, Q_rowid=[1]
     p_diff_table = (
         (n-2+b1)/(b1+b0+n-2) * b1/(b1+b0) * (n-2)/(n-2+a) * a/(n-1+a) +
         b1/(b1+b0) * (n-2+b1)/(b1+b0+n-2) * a/(n-1+a) * (n-2)/(n-2+a) +
         b1/(b1+b0) * b1/(b1+b0) * a/(n-1+a) * a/(n-2+a))
 
+    # rp(t, Q) = Pr[zT = zQ, xT, xQ, S] /
+    #    (Pr[zT = zQ, xT, xQ, S] +  Pr[zT \ne zQ, xT, xQ, S])
     rp_analytical = p_same_table / (p_same_table + p_diff_table)
-    rp_compute = np.exp(view.relevance_probability(0, [1], 1))
-    assert np.allclose(rp_analytical, rp_compute)
+
+    assert np.allclose(rp_analytical, rp_computational)
 
 def test_crash_missing():
     view = gen_view_cgpm(get_data_missing)
     rp_view_0 = np.exp(view.relevance_probability(0, [1], 1))
-    rp_view_1 = np.exp(view.relevance_probability(2, [0], 1))
+    rp_view_1 = np.exp(view.relevance_probability(1, [0], 1))
 
     assert 0 <= rp_view_0 <= 1.
     assert 0 <= rp_view_1 <= 1.
+    assert np.allclose(rp_view_0, rp_view_1)
+
+def test_missing_analytical():
+    view = gen_view_cgpm(get_data_missing)
+    n = view.n_rows()
+    a = view.alpha()  # crp_alpha
+    b1 = view.dims[1].hypers['alpha']  # bernoulli pseudocounts for one
+    b0 = view.dims[1].hypers['beta']  # bernoulli pseudocounts for zero
+
+    # Compute rp(t_rowid=0, q_rowid=[1])
+    rp_computational = np.exp(view.relevance_probability(0, [1], 1))
+
+    # Compute Pr[zT = zQ, xQ, S] =
+    #   Pr[Q|zT=zQ=0] * Pr[zT=zQ=0] + Pr[Q|zT=zQ=1] * Pr[zT=zQ=1]
+    #   analytically for t_rowid=0, Q_rowid=[1].
+    p_numerator = (
+        (n-2+b1)/(b1+b0+n-2) * (n-2)/(n-2+a) * (n-1)/(n-1+a) +
+        b1/(b1+b0) * a/(n-2+a) * 1/(n-1+a))
+
+    # Compute Pr[xQ] =
+    #   Pr[Q|zQ=0] * Pr[zQ=0] + Pr[Q|zQ=1] * Pr[zQ=1]
+    #   analytically for Q_rowid=[1].
+    p_denominator = (
+        (n-2+b1)/(b1+b0+n-2) * (n-2)/(n-2+a) +
+        b1/(b1+b0) * a/(n-2+a))
+
+    rp_analytical = p_numerator / p_denominator
+
+    assert np.allclose(rp_computational, rp_analytical)
