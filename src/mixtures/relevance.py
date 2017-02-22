@@ -199,8 +199,8 @@ def relevance_probability(view, rowid_target, rowid_query):
     # Confirm no mutation has occured.
     assert np.allclose(view.logpdf_score(), logpdf_score_full)
 
-    # Return the log relevance probability.
-    return logp_same_table - logp_condition
+    # Return the relevance probability.
+    return np.exp(logp_same_table - logp_condition)
 
 
 def logpdf_assignments_marginalize_target(
