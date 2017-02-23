@@ -102,8 +102,8 @@ def test_separated():
     rp_view_0 = view.relevance_probability(1, [4, 6, 7], 1)
     rp_view_1 = view.relevance_probability(3, [8], 1)
 
-    assert 0 < np.exp(rp_view_0) < 1  # 0.108687
-    assert 0 < np.exp(rp_view_1) < 1  # 0.000366
+    assert 0 < rp_view_0 < 1  # 0.108687
+    assert 0 < rp_view_1 < 1  # 0.000366
 
     state = gen_state_cgpm(get_data_separated)
     # Take an enormous leap of faith that, given both State and View are
@@ -135,7 +135,7 @@ def test_hypothetical_no_mutation():
     )
     assert state.n_rows() == start_rows
     assert np.allclose(start_marginal, state.logpdf_score())
-    assert 0 < np.exp(rp_state_0) < 1
+    assert 0 < rp_state_0 < 1
 
 
 def test_misc_errors():
@@ -175,16 +175,16 @@ def test_relevance_large_concentration_hypers():
     """Confirm crp_alpha -> infty, implies rp(target, query) -> 0."""
     view = gen_view_cgpm(get_data_separated)
     lim_view = tu.change_concentration_hyperparameters(view, 1e5)
-    rp_view_0 = np.exp(lim_view.relevance_probability(1, [4, 6, 7], 1))
-    rp_view_1 = np.exp(lim_view.relevance_probability(3, [8], 1))
+    rp_view_0 = lim_view.relevance_probability(1, [4, 6, 7], 1)
+    rp_view_1 = lim_view.relevance_probability(3, [8], 1)
 
     assert np.allclose(rp_view_0, 0, atol=1e-5)
     assert np.allclose(rp_view_1, 0, atol=1e-5)
 
     state = gen_state_cgpm(get_data_separated)
     ext_state = tu.change_concentration_hyperparameters(state, 1e5)
-    rp_state_0 = np.exp(ext_state.relevance_probability(1, [4, 6, 7], 1))
-    rp_state_1 = np.exp(ext_state.relevance_probability(3, [8], 1))
+    rp_state_0 = ext_state.relevance_probability(1, [4, 6, 7], 1)
+    rp_state_1 = ext_state.relevance_probability(3, [8], 1)
 
     assert np.allclose(rp_state_0, 0, atol=1e-5)
     assert np.allclose(rp_state_1, 0, atol=1e-5)
@@ -217,9 +217,7 @@ def test_relevance_large_column_hypers():
 def test_relevance_with_itself():
     """Confirm that rp(target, target)==1, for any target."""
     state = gen_state_cgpm(get_data_separated)
-    assert np.allclose(
-        np.exp(state.relevance_probability(2, [2], 1)),
-        1.0)
+    assert np.allclose(state.relevance_probability(2, [2], 1), 1.0)
 
 def test_relevance_analytically():
     view = gen_view_cgpm(get_data_all_ones)
@@ -229,7 +227,7 @@ def test_relevance_analytically():
     b0 = view.dims[1].hypers['beta']  # bernoulli pseudocounts for zero
 
     # Compute rp(t_rowid=0, q_rowid=[1])
-    rp_computational = np.exp(view.relevance_probability(0, [1], 1))
+    rp_computational = view.relevance_probability(0, [1], 1)
 
     # Compute Pr[zT = zQ, xT, xQ, S] =
     #   Pr[t,Q|zT=zQ=0] * Pr[zT=zQ=0] + Pr[t,Q|zT=zQ=1] * Pr[zT=zQ=1]
@@ -258,8 +256,8 @@ def test_relevance_analytically():
 
 def test_crash_missing():
     view = gen_view_cgpm(get_data_missing)
-    rp_view_0 = np.exp(view.relevance_probability(0, [1], 1))
-    rp_view_1 = np.exp(view.relevance_probability(1, [0], 1))
+    rp_view_0 = view.relevance_probability(0, [1], 1)
+    rp_view_1 = view.relevance_probability(1, [0], 1)
 
     assert 0 <= rp_view_0 <= 1.
     assert 0 <= rp_view_1 <= 1.
@@ -273,7 +271,7 @@ def test_missing_analytical():
     b0 = view.dims[1].hypers['beta']  # bernoulli pseudocounts for zero
 
     # Compute rp(t_rowid=0, q_rowid=[1])
-    rp_computational = np.exp(view.relevance_probability(0, [1], 1))
+    rp_computational = view.relevance_probability(0, [1], 1)
 
     # Compute Pr[zT = zQ, xQ, S] =
     #   Pr[Q|zT=zQ=0] * Pr[zT=zQ=0] + Pr[Q|zT=zQ=1] * Pr[zT=zQ=1]
