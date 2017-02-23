@@ -20,7 +20,6 @@ import numpy as np
 from cgpm.mixtures.view import View
 from cgpm.utils.general import logsumexp
 
-
 def relevance_probability(view, rowid_target, rowid_query):
     """Compute probability of customers in same table.
 
@@ -95,7 +94,7 @@ def relevance_probability(view, rowid_target, rowid_query):
     if len(rowid_query) < 1:
         raise ValueError('No query rows:, %s' % (rowid_query))
     if rowid_target in rowid_query:
-        return 1
+        return 1.
 
     # Retrieve target crp assignments and data to restore later.
     assignments_target = view.Zr(rowid_target)
@@ -166,8 +165,8 @@ def relevance_probability(view, rowid_target, rowid_query):
     logp_diff_table = logsumexp([logsumexp(l) for l in logps_diff_table])
 
     # Compute Pr[xT, xQ, S]
-    #   = \sum_k Pr[zT=k, zQ=k, xT, xQ]
-    #   = \sum_k Pr[xT, xQ | zT=K, zQ=k] * Pr[zT=k, zQ=k]
+    #   = \sum_kT \sum_kQ Pr[zT=kT, zQ=kQ, xT, xQ]
+    #   = \sum_kT \sum_kQ Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
     tables_condition = get_tables_same(tables_crp)
     logps_condition = [
         logpdf_assignments_marginalize_target(
@@ -200,8 +199,8 @@ def relevance_probability(view, rowid_target, rowid_query):
     # Confirm no mutation has occured.
     assert np.allclose(view.logpdf_score(), logpdf_score_full)
 
-    # Return the log relevance probability.
-    return logp_same_table - logp_condition
+    # Return the relevance probability.
+    return np.exp(logp_same_table - logp_condition)
 
 
 def logpdf_assignments_marginalize_target(
