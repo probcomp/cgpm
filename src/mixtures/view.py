@@ -342,12 +342,14 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # Internal simulate/logpdf helpers
 
-    def relevance_probability(self, rowid_target, rowid_query, col):
+    def relevance_probability(self, rowid_target, rowid_query, col,
+                              aggregate=None):
         """Compute probability of rows in same cluster."""
         if col not in self.outputs:
             raise ValueError('Unknown column: %s' % (col,))
         from relevance import relevance_probability
-        return relevance_probability(self, rowid_target, rowid_query)
+        return relevance_probability(
+            self, rowid_target, rowid_query, aggregate)
 
     # --------------------------------------------------------------------------
     # Internal simulate/logpdf helpers

@@ -457,7 +457,8 @@ class State(CGpm):
     # Relevance probability.
 
     def relevance_probability(
-            self, rowid_target, rowid_query, col, hypotheticals=None):
+            self, rowid_target, rowid_query, col, hypotheticals=None,
+            aggregate=None):
         """Compute relevance probability of query rows for target row."""
         if col not in self.outputs:
             raise ValueError('Unknown column: %s' % (col,))
@@ -469,7 +470,7 @@ class State(CGpm):
             self.incorporate(rowid, query)
         # Compute the relevance probability.
         relevance = self.view_for(col).relevance_probability(
-            rowid_target, rowid_query_all, col)
+            rowid_target, rowid_query_all, col, aggregate)
         # Unincorporate the hypothetical rowids.
         for rowid in reversed(rowids):
             self.unincorporate(rowid)

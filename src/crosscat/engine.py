@@ -219,11 +219,11 @@ class Engine(object):
 
     def relevance_probability(
             self, rowid_target, rowid_query, col, hypotheticals=None,
-            multiprocess=1):
+            aggregate=None, multiprocess=1):
         """Compute relevance probability of query rows for target row."""
         mapper = parallel_map if multiprocess else map
         args = [('relevance_probability', self.states[i],
-                (rowid_target, rowid_query, col, hypotheticals))
+                 (rowid_target, rowid_query, col, hypotheticals, aggregate))
                 for i in xrange(self.num_states())]
         probs = mapper(_evaluate, args)
         return probs

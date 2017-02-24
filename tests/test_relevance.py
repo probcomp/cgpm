@@ -290,3 +290,25 @@ def test_missing_analytical():
     rp_analytical = p_numerator / p_denominator
 
     assert np.allclose(rp_computational, rp_analytical)
+
+def test_crash_dont_aggregate_separated():
+    view = gen_view_cgpm(get_data_separated)
+    rp_view_0 = view.relevance_probability(1, [2], 1, aggregate=False)
+    rp_view_1 = view.relevance_probability(1, [8], 1, aggregate=False)
+
+    assert len(rp_view_0) == len(sorted(view.crp.clusters[0].counts)) + 1
+    assert len(rp_view_1) == len(sorted(view.crp.clusters[0].counts))
+    # Cluster 7 becomes empty if row 8 is in the query set.
+
+    assert 0. <= sum(rp_view_0.values()) <= 1.
+    assert 0. <= sum(rp_view_1.values()) <= 1.
+
+    state = gen_state_cgpm(get_data_separated)
+    rp_state_0 = state.relevance_probability(1, [2], 1, aggregate=False)
+    rp_state_1 = state.relevance_probability(1, [8], 1, aggregate=False)
+
+    assert len(rp_state_0) == len(state.views[0].crp.clusters[0].counts) + 1
+    assert len(rp_state_1) == len(state.views[0].crp.clusters[0].counts)
+
+    assert 0. <= sum(rp_state_0.values()) <= 1.
+    assert 0. <= sum(rp_state_1.values()) <= 1.
