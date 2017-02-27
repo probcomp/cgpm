@@ -460,6 +460,8 @@ class State(CGpm):
             self, rowid_target, rowid_query, col, hypotheticals=None,
             aggregate=None):
         """Compute relevance probability of query rows for target row."""
+        print '\nRel. Prob.(%s, %s) wrt. %s' % (
+            rowid_target, " ".join(str(rowid_query)), col)
         if col not in self.outputs:
             raise ValueError('Unknown column: %s' % (col,))
         # Incorporate hypothetical rows.
