@@ -16,6 +16,7 @@
 
 
 import numpy as np
+import os
 
 from cgpm.crosscat.state import State
 from cgpm.mixtures import relevance
@@ -312,3 +313,8 @@ def test_crash_dont_aggregate_separated():
 
     assert 0. <= sum(rp_state_0.values()) <= 1.
     assert 0. <= sum(rp_state_1.values()) <= 1.
+
+def test_separated_debug():
+    token = 'GPMCCDEBUG'
+    os.environ[token] = '1'
+    test_separated()

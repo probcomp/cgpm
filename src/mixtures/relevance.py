@@ -18,6 +18,7 @@
 import numpy as np
 
 from cgpm.mixtures.view import View
+from cgpm.utils import config as cu
 from cgpm.utils.general import logsumexp
 
 def relevance_probability(view, rowid_target, rowid_query, aggregate):
@@ -139,33 +140,6 @@ def relevance_probability(view, rowid_target, rowid_query, aggregate):
     ]
     logp_same_table = logsumexp(logps_same_table)
 
-    # --------------------------------------------------------------------------
-    # XXX TODO: The following computation is not necessary and introduces O(K^2)
-    # overhead due to the nested sum, but serves as a vital check for correct
-    # implementation (as noted in the docstring.) The implementation should use
-    # cgpm.utils.config.check_env_debug to determine whether to run.
-    # --------------------------------------------------------------------------
-    # Compute Pr[zT \ne zQ, xT, xQ, S]
-    #   = \sum_kT \sum_kQ|kT Pr[zT=kT, zQ=kQ, xT, xQ]
-    #   = \sum_kT \sum_kQ|kT Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
-    tables_target, tables_query = get_tables_different(tables_crp)
-    logps_diff_table = [
-        [
-            logpdf_assignments(
-                view,
-                rowid_target,
-                rowid_query,
-                values_target,
-                values_query,
-                table_target,
-                table_q,
-            ) - logpdf_score_reference
-            for table_q in table_query
-        ]
-        for table_target, table_query in zip(tables_target, tables_query)
-    ]
-    logp_diff_table = logsumexp([logsumexp(l) for l in logps_diff_table])
-
     # Compute Pr[xT, xQ, S]
     #   = \sum_kT \sum_kQ Pr[zT=kT, zQ=kQ, xT, xQ]
     #   = \sum_kT \sum_kQ Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
@@ -183,11 +157,40 @@ def relevance_probability(view, rowid_target, rowid_query, aggregate):
     ]
     logp_condition = logsumexp(logps_condition)
 
-    # Confirm logp_same_table + logp_diff_table equal normalizing constant.
-    assert np.allclose(
-        logsumexp([logp_same_table, logp_diff_table]),
-        logp_condition
-    )
+    # --------------------------------------------------------------------------
+    # The following computation is not necessary and introduces O(K^2)
+    # overhead due to the nested sum, but serves as a vital check for correct
+    # implementation (as noted in the docstring.) The implementation uses
+    # cgpm.utils.config.check_env_debug to determine whether to run.
+    # --------------------------------------------------------------------------
+    if cu.check_env_debug():
+        print 'Checking relevance_probability. Introduces O(K^2) overhead.'
+        # Compute Pr[zT \ne zQ, xT, xQ, S]
+        #   = \sum_kT \sum_kQ|kT Pr[zT=kT, zQ=kQ, xT, xQ]
+        #   = \sum_kT \sum_kQ|kT Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
+        tables_target, tables_query = get_tables_different(tables_crp)
+        logps_diff_table = [
+            [
+                logpdf_assignments(
+                    view,
+                    rowid_target,
+                    rowid_query,
+                    values_target,
+                    values_query,
+                    table_target,
+                    table_q,
+                ) - logpdf_score_reference
+                for table_q in table_query
+            ]
+            for table_target, table_query in zip(tables_target, tables_query)
+        ]
+        logp_diff_table = logsumexp([logsumexp(l) for l in logps_diff_table])
+
+        # Confirm logp_same_table + logp_diff_table equal normalizing constant.
+        assert np.allclose(
+            logsumexp([logp_same_table, logp_diff_table]),
+            logp_condition
+        )
 
     # Restore the target row.
     values_target[view.outputs[0]] = assignments_target
