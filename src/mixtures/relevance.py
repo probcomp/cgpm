@@ -17,9 +17,9 @@
 
 import numpy as np
 
-from cgpm.mixtures.view import View
 from cgpm.utils.general import logsumexp
 from cgpm.utils.config import check_env_debug
+
 
 def relevance_probability(view, rowid_target, rowid_query):
     """Compute probability of customers in same table.
