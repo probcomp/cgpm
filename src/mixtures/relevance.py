@@ -119,6 +119,23 @@ def relevance_probability(view, rowid_target, rowid_query):
     # Retrieve current tables.
     tables_crp = sorted(view.crp.clusters[0].counts)
 
+    # Compute Pr[xT, xQ, S]
+    #   = \sum_kT \sum_kQ Pr[zT=kT, zQ=kQ, xT, xQ]
+    #   = \sum_kT \sum_kQ Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
+    tables_condition = get_tables_same(tables_crp)
+    logps_condition = [
+        logpdf_assignments_marginalize_target(
+            view,
+            rowid_query,
+            rowid_query,
+            values_target,
+            values_query,
+            table_query
+        ) - logpdf_score_reference
+        for table_query in tables_condition
+    ]
+    logp_condition = logsumexp(logps_condition)
+
     # Compute Pr[zT = zQ, xT, xQ, S]
     #   = \sum_k Pr[zT=k, zQ=k, xT, xQ]
     #   = \sum_k Pr[xT, xQ | zT=K, zQ=k] * Pr[zT=k, zQ=k]
@@ -163,23 +180,6 @@ def relevance_probability(view, rowid_target, rowid_query):
         for table_target, table_query in zip(tables_target, tables_query)
     ]
     logp_diff_table = logsumexp([logsumexp(l) for l in logps_diff_table])
-
-    # Compute Pr[xT, xQ, S]
-    #   = \sum_kT \sum_kQ Pr[zT=kT, zQ=kQ, xT, xQ]
-    #   = \sum_kT \sum_kQ Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
-    tables_condition = get_tables_same(tables_crp)
-    logps_condition = [
-        logpdf_assignments_marginalize_target(
-            view,
-            rowid_query,
-            rowid_query,
-            values_target,
-            values_query,
-            table_query
-        ) - logpdf_score_reference
-        for table_query in tables_condition
-    ]
-    logp_condition = logsumexp(logps_condition)
 
     # Confirm logp_same_table + logp_diff_table equal normalizing constant.
     assert np.allclose(
