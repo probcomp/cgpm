@@ -229,9 +229,6 @@ def logpdf_assignments_marginalize_target(
     """Compute the joint probability of crp assignment and data for the
     query rows, marginalizing over the assignment of the target row."""
 
-    # Compute initial logpdf scores.
-    # logpdf_clusters_0 = get_view_logpdf_score(view, table_query, table_query)
-
     # Incorporate the query rows.
     for rowid_q, values_q in zip(rowid_query, values_query):
         values_q[view.outputs[0]] = table_query
@@ -239,10 +236,7 @@ def logpdf_assignments_marginalize_target(
         del values_q[view.outputs[0]]
 
     # Compute new marginal likelihood.
-    logpdf_clusters_1 = get_view_logpdf_score(view, table_query, table_query)
-
-    # Compute delta marginal likelihood.
-    # logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
+    logpdf_clusters = get_view_logpdf_score(view, table_query, table_query)
 
     # Compute predictive probability of target (marginalizes over tables).
     logpdf_predictive = view.logpdf(-1, values_target)
@@ -252,16 +246,13 @@ def logpdf_assignments_marginalize_target(
         view.unincorporate(rowid_q)
 
     # Predictive joint probability (see docstring).
-    return logpdf_predictive + logpdf_clusters_1
+    return logpdf_predictive + logpdf_clusters
 
 
 def logpdf_assignments(
         view, rowid_target, rowid_query, values_target, values_query,
         table_target, table_query):
     """Compute the joint probability of crp assignment and data."""
-
-    # Compute initial logpdf scores.
-    # logpdf_clusters_0 = get_view_logpdf_score(view, table_target, table_query)
 
     # Incorporate target row.
     values_target[view.outputs[0]] = table_target
@@ -275,10 +266,7 @@ def logpdf_assignments(
         del row_values_q[view.outputs[0]]
 
     # Compute new marginal likelihood.
-    logpdf_clusters_1 = get_view_logpdf_score(view, table_target, table_query)
-
-    # Compute delta marginal likelihood.
-    # logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
+    logpdf_clusters = get_view_logpdf_score(view, table_target, table_query)
 
     # Unincorporate the target and query rows.
     view.unincorporate(rowid_target)
@@ -286,7 +274,7 @@ def logpdf_assignments(
         view.unincorporate(rowid_q)
 
     # Predictive joint probability is difference in marginal likelihood.
-    return logpdf_clusters_1
+    return logpdf_clusters
 
 
 def row_values(view, rowid):
