@@ -116,10 +116,13 @@ def relevance_probability(view, rowid_target, rowid_query):
     # Retrieve current tables.
     tables_crp = sorted(view.crp.clusters[0].counts)
 
+    # Retrieve cluster-wise marginal likelhoods.
+    tables_same = get_tables_same(tables_crp)
+    logps_clusters = [get_view_logpdf_score(view, t, t) for t in tables_same]
+
     # Compute Pr[xT, xQ, S]
     #   = \sum_kT \sum_kQ Pr[zT=kT, zQ=kQ, xT, xQ]
     #   = \sum_kT \sum_kQ Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
-    tables_condition = get_tables_same(tables_crp)
     logps_condition = [
         logpdf_assignments_marginalize_target(
             view,
@@ -129,14 +132,13 @@ def relevance_probability(view, rowid_target, rowid_query):
             values_query,
             table_query
         )
-        for table_query in tables_condition
+        for table_query in tables_same
     ]
-    logp_condition = logsumexp(logps_condition)
+    logp_condition = logsumexp(np.subtract(logps_condition, logps_clusters))
 
     # Compute Pr[zT = zQ, xT, xQ, S]
     #   = \sum_k Pr[zT=k, zQ=k, xT, xQ]
     #   = \sum_k Pr[xT, xQ | zT=K, zQ=k] * Pr[zT=k, zQ=k]
-    tables_same = get_tables_same(tables_crp)
     logps_same_table = [
         logpdf_assignments(
             view,
@@ -149,7 +151,7 @@ def relevance_probability(view, rowid_target, rowid_query):
         )
         for table in tables_same
     ]
-    logp_same_table = logsumexp(logps_same_table)
+    logp_same_table = logsumexp(np.subtract(logps_same_table, logps_clusters))
 
     # ----------------------------------------------------------------------
     # The following computation is not necessary and introduces O(K^2)
@@ -163,6 +165,19 @@ def relevance_probability(view, rowid_target, rowid_query):
     # import os; os.environ['GPMCCDEBUG'] = '0'
     if check_env_debug():
         tables_target, tables_query = get_tables_different(tables_crp)
+        # Compute the base logps.
+        logps_clusters_diff = [
+            [
+                get_view_logpdf_score(
+                    view,
+                    table_target,
+                    table_q,
+                )
+                for table_q in table_query
+            ]
+            for table_target, table_query in zip(tables_target, tables_query)
+        ]
+        # Compute the new logps.
         logps_diff_table = [
             [
                 logpdf_assignments(
@@ -178,7 +193,13 @@ def relevance_probability(view, rowid_target, rowid_query):
             ]
             for table_target, table_query in zip(tables_target, tables_query)
         ]
-        logp_diff_table = logsumexp([logsumexp(l) for l in logps_diff_table])
+        # Compute the deltas.
+        logps_delta = [
+            np.subtract(a, b)
+            for (a, b) in zip(logps_diff_table, logps_clusters_diff)
+        ]
+        # Sum the deltas.
+        logp_diff_table = logsumexp([logsumexp(l) for l in logps_delta])
 
         # Confirm logp_same_table + logp_diff_table equal normalizing constant.
         assert np.allclose(
@@ -209,7 +230,7 @@ def logpdf_assignments_marginalize_target(
     query rows, marginalizing over the assignment of the target row."""
 
     # Compute initial logpdf scores.
-    logpdf_clusters_0 = get_view_logpdf_score(view, table_query, table_query)
+    # logpdf_clusters_0 = get_view_logpdf_score(view, table_query, table_query)
 
     # Incorporate the query rows.
     for rowid_q, values_q in zip(rowid_query, values_query):
@@ -221,7 +242,7 @@ def logpdf_assignments_marginalize_target(
     logpdf_clusters_1 = get_view_logpdf_score(view, table_query, table_query)
 
     # Compute delta marginal likelihood.
-    logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
+    # logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
 
     # Compute predictive probability of target (marginalizes over tables).
     logpdf_predictive = view.logpdf(-1, values_target)
@@ -231,7 +252,7 @@ def logpdf_assignments_marginalize_target(
         view.unincorporate(rowid_q)
 
     # Predictive joint probability (see docstring).
-    return logpdf_predictive + logpdf_delta_clusters
+    return logpdf_predictive + logpdf_clusters_1
 
 
 def logpdf_assignments(
@@ -240,7 +261,7 @@ def logpdf_assignments(
     """Compute the joint probability of crp assignment and data."""
 
     # Compute initial logpdf scores.
-    logpdf_clusters_0 = get_view_logpdf_score(view, table_target, table_query)
+    # logpdf_clusters_0 = get_view_logpdf_score(view, table_target, table_query)
 
     # Incorporate target row.
     values_target[view.outputs[0]] = table_target
@@ -257,7 +278,7 @@ def logpdf_assignments(
     logpdf_clusters_1 = get_view_logpdf_score(view, table_target, table_query)
 
     # Compute delta marginal likelihood.
-    logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
+    # logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
 
     # Unincorporate the target and query rows.
     view.unincorporate(rowid_target)
@@ -265,7 +286,7 @@ def logpdf_assignments(
         view.unincorporate(rowid_q)
 
     # Predictive joint probability is difference in marginal likelihood.
-    return logpdf_delta_clusters
+    return logpdf_clusters_1
 
 
 def row_values(view, rowid):
