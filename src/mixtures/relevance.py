@@ -132,7 +132,7 @@ def relevance_probability(view, rowid_target, rowid_query):
             values_target,
             values_query,
             table_query
-        ) - logpdf_score_reference
+        )
         for table_query in tables_condition
     ]
     logp_condition = logsumexp(logps_condition)
@@ -150,7 +150,7 @@ def relevance_probability(view, rowid_target, rowid_query):
             values_query,
             table,
             table,
-        ) - logpdf_score_reference
+        )
         for table in tables_same
     ]
     logp_same_table = logsumexp(logps_same_table)
@@ -163,6 +163,8 @@ def relevance_probability(view, rowid_target, rowid_query):
     # Compute Pr[zT \ne zQ, xT, xQ, S]
     #   = \sum_kT \sum_kQ|kT Pr[zT=kT, zQ=kQ, xT, xQ]
     #   = \sum_kT \sum_kQ|kT Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
+    # XXX WHATTA HACK.
+    # import os; os.environ['GPMCCDEBUG'] = '0'
     if check_env_debug():
         tables_target, tables_query = get_tables_different(tables_crp)
         logps_diff_table = [
@@ -175,7 +177,7 @@ def relevance_probability(view, rowid_target, rowid_query):
                     values_query,
                     table_target,
                     table_q,
-                ) - logpdf_score_reference
+                )
                 for table_q in table_query
             ]
             for table_target, table_query in zip(tables_target, tables_query)
@@ -209,26 +211,60 @@ def logpdf_assignments_marginalize_target(
         table_query):
     """Compute the joint probability of crp assignment and data for the
     query rows, marginalizing over the assignment of the target row."""
+
+    print 'getting view logpdf_score initial'
+    logpdf_view_0 = view.logpdf_score()
+    # Compute the initial logpdf.
+    logpdf_crp_0 = view.crp.logpdf_score()
+    logpdf_query_0 = get_cluster_logpdf_score(view, table_query)
+    logpdf_initial = logpdf_crp_0 + logpdf_query_0
+
     # Incorporate the query rows.
     for rowid_q, values_q in zip(rowid_query, values_query):
         values_q[view.outputs[0]] = table_query
         view.incorporate(rowid_q, values_q)
         del values_q[view.outputs[0]]
+
+    # Compute the new values.
+    logpdf_crp_1 = view.crp.logpdf_score()
+    logpdf_query_1 = get_cluster_logpdf_score(view, table_query)
+    logpdf_final = logpdf_crp_1 + logpdf_query_1
+
     # Compute new marginal likelihood.
     logpdf_score = view.logpdf_score()
+
+    logpdf_delta = logpdf_final - logpdf_initial
+
+    assert np.allclose(logpdf_score - logpdf_view_0, logpdf_delta)
+
     # Compute predictive probability of target (marginalizes over tables).
     logpdf_predictive = view.logpdf(-1, values_target)
     # Unincorporate the query.
     for rowid_q in rowid_query:
         view.unincorporate(rowid_q)
     # Predictive joint probability (see docstring).
-    return logpdf_predictive + logpdf_score
+    return logpdf_predictive + logpdf_delta
 
 
 def logpdf_assignments(
         view, rowid_target, rowid_query, values_target, values_query,
         table_target, table_query):
     """Compute the joint probability of crp assignment and data."""
+    print 'inside inner loop of logpdf_assignments'
+    # Compute initial logpdf scores.
+    print 'getting view logpdf_score initial'
+    logpdf_view_0 = view.logpdf_score()
+    print 'getting cluster logpdf score initial'
+    if table_target == table_query:
+        logpdf_crp_0 = view.crp.logpdf_score()
+        logpdf_target_0 = get_cluster_logpdf_score(view, table_target)
+        # logpdf_query_0 = get_cluster_logpdf_score(view, table_query)
+        logpdf_initial = logpdf_crp_0 + logpdf_target_0
+    else:
+        logpdf_crp_0 = view.crp.logpdf_score()
+        logpdf_target_0 = get_cluster_logpdf_score(view, table_target)
+        logpdf_query_0 = get_cluster_logpdf_score(view, table_query)
+        logpdf_initial = logpdf_crp_0 + logpdf_target_0 + logpdf_query_0
     # Incorporate target row.
     values_target[view.outputs[0]] = table_target
     view.incorporate(rowid_target, values_target)
@@ -240,12 +276,28 @@ def logpdf_assignments(
         del row_values_q[view.outputs[0]]
     # Compute new marginal likelihood.
     logpdf_score = view.logpdf_score()
+    # Compute final logpdf scores.
+    print 'getting view logpdf_score final'
+    logpdf_view_1 = view.logpdf_score()
+    print 'getting view cluster score final'
+    if table_target == table_query:
+        logpdf_crp_1 = view.crp.logpdf_score()
+        logpdf_target_1 = get_cluster_logpdf_score(view, table_target)
+        # logpdf_query_1 = get_cluster_logpdf_score(view, table_query)
+        logpdf_final = logpdf_crp_1 + logpdf_target_1
+    else:
+        logpdf_crp_1 = view.crp.logpdf_score()
+        logpdf_target_1 = get_cluster_logpdf_score(view, table_target)
+        logpdf_query_1 = get_cluster_logpdf_score(view, table_query)
+        logpdf_final = logpdf_crp_1 + logpdf_target_1 + logpdf_query_1
+    logpdf_delta = logpdf_final - logpdf_initial
+    assert np.allclose(logpdf_view_1 - logpdf_view_0, logpdf_delta)
     # Unincorporate the target and query rows.
     view.unincorporate(rowid_target)
     for rowid_q in rowid_query:
         view.unincorporate(rowid_q)
     # Predictive joint probability is difference in marginal likelihood.
-    return logpdf_score
+    return logpdf_delta
 
 
 def row_values(view, rowid):
@@ -269,3 +321,13 @@ def get_tables_different(tables):
         for t in tables_target
     ]
     return tables_target, tables_query
+
+
+def get_cluster_logpdf_score(view, k):
+    """Return marginal likelihood of cluster k in View."""
+    if k in view.crp.clusters[0].counts:
+        dim_logps = [d.clusters[k].logpdf_score() for d in view.dims.itervalues()]
+    else: # We are in the aux model, which cannot have data!
+        dim_logps = [0]
+    print dim_logps
+    return sum(dim_logps)
