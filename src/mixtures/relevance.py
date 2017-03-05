@@ -106,7 +106,8 @@ def relevance_probability(view, rowid_target, rowid_query):
     assignments_query = [view.Zr(r) for r in rowid_query]
 
     # Retrieve view logpdf to verify no mutation afterwards.
-    logpdf_score_full = view.logpdf_score()
+    if check_env_debug():
+        logpdf_score_full = view.logpdf_score()
 
     # Unincorporate target and query rows.
     view.unincorporate(rowid_target)
@@ -161,8 +162,6 @@ def relevance_probability(view, rowid_target, rowid_query):
     # Compute Pr[zT \ne zQ, xT, xQ, S]
     #   = \sum_kT \sum_kQ|kT Pr[zT=kT, zQ=kQ, xT, xQ]
     #   = \sum_kT \sum_kQ|kT Pr[xT, xQ | zT=kT, zQ=kQ] * Pr[zT=kT, zQ=kQ]
-    # XXX WHATTA HACK.
-    # import os; os.environ['GPMCCDEBUG'] = '0'
     if check_env_debug():
         tables_target, tables_query = get_tables_different(tables_crp)
         # Compute the base logps.
@@ -217,7 +216,8 @@ def relevance_probability(view, rowid_target, rowid_query):
         view.incorporate(rowid, values)
 
     # Confirm no mutation has occured.
-    assert np.allclose(view.logpdf_score(), logpdf_score_full)
+    if check_env_debug():
+        assert np.allclose(view.logpdf_score(), logpdf_score_full)
 
     # Return the relevance probability.
     return np.exp(logp_same_table - logp_condition)
