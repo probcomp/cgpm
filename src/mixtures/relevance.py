@@ -209,7 +209,6 @@ def logpdf_assignments_marginalize_target(
     query rows, marginalizing over the assignment of the target row."""
 
     # Compute initial logpdf scores.
-    logpdf_view_0 = view.logpdf_score()
     logpdf_clusters_0 = get_view_logpdf_score(view, table_query, table_query)
 
     # Incorporate the query rows.
@@ -219,19 +218,18 @@ def logpdf_assignments_marginalize_target(
         del values_q[view.outputs[0]]
 
     # Compute new marginal likelihood.
-    logpdf_view_1 = view.logpdf_score()
     logpdf_clusters_1 = get_view_logpdf_score(view, table_query, table_query)
 
     # Compute delta marginal likelihood.
     logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
-    logpdf_delta_view = logpdf_view_1 - logpdf_view_0
-    assert np.allclose(logpdf_delta_view, logpdf_delta_clusters)
 
     # Compute predictive probability of target (marginalizes over tables).
     logpdf_predictive = view.logpdf(-1, values_target)
+
     # Unincorporate the query.
     for rowid_q in rowid_query:
         view.unincorporate(rowid_q)
+
     # Predictive joint probability (see docstring).
     return logpdf_predictive + logpdf_delta_clusters
 
@@ -242,7 +240,6 @@ def logpdf_assignments(
     """Compute the joint probability of crp assignment and data."""
 
     # Compute initial logpdf scores.
-    logpdf_view_0 = view.logpdf_score()
     logpdf_clusters_0 = get_view_logpdf_score(view, table_target, table_query)
 
     # Incorporate target row.
@@ -257,13 +254,10 @@ def logpdf_assignments(
         del row_values_q[view.outputs[0]]
 
     # Compute new marginal likelihood.
-    logpdf_view_1 = view.logpdf_score()
     logpdf_clusters_1 = get_view_logpdf_score(view, table_target, table_query)
 
     # Compute delta marginal likelihood.
     logpdf_delta_clusters = logpdf_clusters_1 - logpdf_clusters_0
-    logpdf_delta_view = logpdf_view_1 - logpdf_view_0
-    assert np.allclose(logpdf_delta_view, logpdf_delta_clusters)
 
     # Unincorporate the target and query rows.
     view.unincorporate(rowid_target)
