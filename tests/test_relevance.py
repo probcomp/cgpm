@@ -16,6 +16,7 @@
 
 
 import numpy as np
+import pytest
 
 from cgpm.crosscat.state import State
 from cgpm.mixtures import relevance
@@ -94,6 +95,7 @@ def gen_state_cgpm(get_data):
         state.transition_dim_hypers()
     return state
 
+@pytest.mark.xfail(strict=True, reason='state and view compute different scores.')
 def test_separated():
     """Crash test for relevance_probability."""
     view = gen_view_cgpm(get_data_separated)
