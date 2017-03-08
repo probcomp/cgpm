@@ -468,8 +468,11 @@ class State(CGpm):
         for rowid, query in zip(rowids, hypotheticals):
             self.incorporate(rowid, query)
         # Compute the relevance probability.
-        relevance = self.view_for(col).relevance_probability(
-            rowid_target, rowid_query_all, col)
+        view = self.view_for(col)
+        relevance = np.mean([
+            view.Zr(rowid_target) == view.Zr(row_q)
+            for row_q in rowid_query_all
+        ])
         # Unincorporate the hypothetical rowids.
         for rowid in reversed(rowids):
             self.unincorporate(rowid)
