@@ -459,23 +459,33 @@ class State(CGpm):
     def relevance_probability(
             self, rowid_target, rowid_query, col, hypotheticals=None):
         """Compute relevance probability of query rows for target row."""
-        if col not in self.outputs:
-            raise ValueError('Unknown column: %s' % (col,))
-        # Incorporate hypothetical rows.
-        hypotheticals = hypotheticals or []
-        rowids = range(self.n_rows(), self.n_rows() + len(hypotheticals))
-        rowid_query_all = rowid_query + rowids
-        for rowid, query in zip(rowids, hypotheticals):
-            self.incorporate(rowid, query)
-        # Compute the relevance probability.
+        assert col in self.outputs
+        # Retrieve the relevant view.
         view = self.view_for(col)
+        # Select the hypothetical rows which are compatible with the view.
+        hypotheticals = filter(
+            lambda r: not all(np.isnan(r.values())),
+            [{d: h.get(d, np.nan) for d in view.dims} for h in hypotheticals]
+        ) if hypotheticals else []
+        # Produce hypothetical rowids.
+        rowid_hypothetical = range(
+            self.n_rows(), self.n_rows() + len(hypotheticals))
+        # Incorporate hypothetical rows.
+        for rowid, query in zip(rowid_hypothetical, hypotheticals):
+            for d in view.dims:
+                self.X[d].append(query[d])
+            view.incorporate(rowid, query)
+        # Compute the relevance probability.
+        rowid_all = rowid_query + rowid_hypothetical
         relevance = np.mean([
-            view.Zr(rowid_target) == view.Zr(row_q)
-            for row_q in rowid_query_all
-        ])
-        # Unincorporate the hypothetical rowids.
-        for rowid in reversed(rowids):
-            self.unincorporate(rowid)
+            view.Zr(rowid_target) == view.Zr(rq)
+            for rq in rowid_all
+        ]) if rowid_all else 0
+        # Unincorporate hypothetical rows.
+        for rowid in reversed(rowid_hypothetical):
+            for d in view.dims:
+                self.X[d].pop()
+            view.unincorporate(rowid)
         return relevance
 
     # --------------------------------------------------------------------------
