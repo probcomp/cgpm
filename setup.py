@@ -153,12 +153,17 @@ setup(
         'cgpm.network',
         'cgpm.primitives',
         'cgpm.regressions',
+        'cgpm.tests',
         'cgpm.uncorrelated',
         'cgpm.utils',
         'cgpm.venturescript',
     ],
     package_dir={
         'cgpm': 'src',
+        'cgpm.tests': 'tests',
+    },
+    package_data={
+        'cgpm.tests': ['graphical/resources/satellites.csv'],
     },
     install_requires=[
         'matplotlib>=1.3.1',
