@@ -83,3 +83,6 @@ src/venturescript/resources
 notes/gpm/vs/vsgpm.pdf
 tests/resources
 /src/version.py
+
+# vim swap files.
+*.swp
