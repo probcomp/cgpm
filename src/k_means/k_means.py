@@ -24,6 +24,7 @@ from cgpm.cgpm import CGpm
 from cgpm.utils import general as gu
 from cgpm.utils import mvnormal as multivariate_normal
 
+from venture.lite.mvnormal import logpdf as mvn_logpdf
 
 class KMeans(CGpm):
     """ K Means
@@ -110,7 +111,31 @@ class KMeans(CGpm):
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
-        raise NotImplementedError
+        # Defensive programming.
+        # Taken from factor.py.
+        if not query:
+            raise ValueError('No query: %s.' % query)
+        if any(q not in self.outputs for q in query):
+            raise ValueError('Unknown variables: (%s,%s).'
+                % (query, self.outputs))
+        if evidence is not None and any(q in evidence for q in query):
+            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
+        X = np.array(query.values())
+        # Case 1: simple mvn normal pdf.
+        if rowid is None and evidence is None and self.K==1:
+            mu = np.array(
+                [self.cluster_centers[0][index] for index in query.keys()]
+            )
+            Sigma = np.diag([self.cluster_sigmas[0]] * len(query))
+            log_p = mvn_logpdf(X, mu, Sigma)
+        # Case 2: mvn condintional pdf.
+
+        # Case 3: unconditional mixture model pdf.
+
+        # Case 4: conditional mixture model pdf.
+        else:
+            raise NotImplementedError
+        return log_p
 
     def simulate(self, rowid, query, evidence=None, N=None):
         raise NotImplementedError
