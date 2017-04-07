@@ -86,3 +86,6 @@ tests/resources
 
 # vim swap files.
 *.swp
+
+# Linux file artifacts.
+.fuse_hidden*
