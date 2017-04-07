@@ -90,7 +90,7 @@ def test_logpdf_compare_k_equals_1_normal():
     rowid = None
     query = {0:2.4, 1:1.2}
     scipy_mvn = multivariate_normal(mean=[0,0], cov=[[1,0],[0,1]])
-    assert scipy_mvn.pdf([2.4, 12]) == np.exp(km.logpdf(rowid, query))
+    assert scipy_mvn.pdf([2.4, 1.2]) == np.exp(km.logpdf(rowid, query))
 
 def test_logpdf_compare_k_equals_2_mixture():
     """Compare the output of logpdf for a k-means CGPM with K=2 with the logdpf
@@ -111,7 +111,7 @@ def test_logpdf_compare_k_equals_2_mixture():
     actual = km.logpdf(rowid, query)
     assert expected == actual
 
-def test_logpdf_compare_k_equals_1_normal():
+def test_logpdf_compare_k_equals_1_normal_with_evidence():
     """Compare the output of conditioned logpdf for a k-means CGPM with K=1 with
     the logdpf for a normal disribution.
 
