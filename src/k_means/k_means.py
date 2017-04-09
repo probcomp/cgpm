@@ -126,6 +126,7 @@ class KMeans(CGpm):
             np.log(mixing_coefficient) + mvn_logpdf(X, mu, Sigma)
 
     def logpdf(self, rowid, query, evidence=None):
+        """LogPDF for a k-means modelled as a constrainted GMM."""
         # If the rowid is not None, populate the evidence with non-missing
         # values in of said row.
         evidence = self.populate_evidence(rowid, query, evidence)
@@ -152,6 +153,7 @@ class KMeans(CGpm):
         return gu.logsumexp([self.get_logp_cluster(query,k, W[k]) for k in range(self.K)])
 
     def simulate(self, rowid, query, evidence=None, N=None):
+        """Simulate from a GMM as implied by the K-means model."""
         evidence = self.populate_evidence(rowid, query, evidence)
         # following eq. 4 and 5 from here:
         # http://bengio.abracadoudou.com/cv/publications/pdf/rr02-12.pdf
@@ -172,7 +174,6 @@ class KMeans(CGpm):
             return {column:sample_vector[0][column] for column in query}
 
         return [get_single_sample(gu.pflip(W)) for _ in range(N)]
-
 
     def transition(self, N=None):
         raise NotImplementedError
