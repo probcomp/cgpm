@@ -94,15 +94,109 @@ def test_simulate_dim_marginals(seed):
     assert ks_test_result_dim1.pvalue > 0.05
     assert ks_test_result_dim2.pvalue > 0.05
 
-# Test transition.
+# helper, for bulk incorporate
+def bulk_incorporate(data_table, cgpm_object):
+    for i,row in enumerate(data_table):
+        cgpm_object.incorporate(
+            i,
+            {j:value for j,value in enumerate(row)}
+        )
+
 def test_transition_crash():
-    raise NotImplementedError
+    km = k_means.KMeans([0,1], [], K=2)
+    km.incorporate(0, {0:2, 1:3})
+    km.incorporate(1, {0:1, 1:4})
+    query = [0]
+    rowid = None
+    km.transition()
 
-def test_transition_K_inferred_means_compared_with_K_known_means():
-    raise NotImplementedError
+def test_transition_K_inferred_distribution():
+    """Similar to test dim_marginals, but actually infererring the distribution.
+    """
+    km = k_means.KMeans(
+        [0,1],
+        [],
+        K=2,
+    )
+    training_samples_k1 = np.random.multivariate_normal(
+        [-1,-1], [[1,0],[0,1]], 100
+    )
+    training_samples_k2 = np.random.multivariate_normal(
+        [2,2], [[1,0],[0,1]], 100
+    )
+    bulk_incorporate(
+        np.concatenate((training_samples_k1, training_samples_k2)),
+        km
+    )
+    km.transition()
+    query = [0,1]
+    rowid = None
+    samples = km.simulate(rowid, query, N=200)
 
-def test_transition_K_inferred_variances_compared_with_K_known_variances():
-    raise NotImplementedError
+    # compare by just sampling from two known clusters.
+    samples_k1 = np.random.multivariate_normal([-1,-1], [[1,0],[0,1]], 100)
+    samples_k2 = np.random.multivariate_normal([2,2], [[1,0],[0,1]], 100)
+    marginal_expected_dim1 = np.concatenate((samples_k1[:,0], samples_k2[:,0]))
+    marginal_expected_dim2 = np.concatenate((samples_k1[:,1], samples_k2[:,1]))
+    marginal_actual_dim1 = [sample[0] for sample in samples]
+    marginal_actual_dim2 = [sample[1] for sample in samples]
+
+    ks_test_result_dim1 = ks_2samp(marginal_expected_dim1, marginal_actual_dim1)
+    ks_test_result_dim2 = ks_2samp(marginal_expected_dim2, marginal_actual_dim2)
+
+    assert ks_test_result_dim1.pvalue > 0.05
+    assert ks_test_result_dim2.pvalue > 0.05
+
+@stochastic(max_runs=3, min_passes=1)
+def test_transition_K_inferred_means_compared_with_K_known_means(seed):
+    """Testing whether the inferred means are roughly correct.
+    """
+    km = k_means.KMeans(
+        [0,1],
+        [],
+        K=2,
+    )
+    cov =  [[1,0],[0,1]]
+    mean_1 = [-1,-1]
+    mean_2 = [2, 2]
+    training_samples_k1 = np.random.multivariate_normal(mean_1, cov, 200)
+    training_samples_k2 = np.random.multivariate_normal(mean_2, cov, 200)
+    bulk_incorporate(
+        np.concatenate((training_samples_k1, training_samples_k2)),
+        km
+    )
+    km.transition()
+    # Accounting for the fact that cluster centers are interchangebable.
+    centers = sorted(km.cluster_centers)
+    np.testing.assert_almost_equal(centers[0], mean_1, decimal=1)
+    np.testing.assert_almost_equal(centers[1], mean_2, decimal=1)
+
+@stochastic(max_runs=5, min_passes=1)
+def test_transition_K_inferred_variances_compared_with_K_known_variances(seed):
+    """Testing whether the inferred sigmas are roughly correct.
+    """
+    km = k_means.KMeans(
+        [0,1],
+        [],
+        K=2,
+    )
+    mean_1 = [-5,-5]
+    mean_2 = [2, 2]
+    sigma_1 = 3
+    sigma_2 = 0.1
+    cov_1 =  [[sigma_1, 0],[0, sigma_1]]
+    cov_2 =  [[sigma_2, 0],[0, sigma_2]]
+    training_samples_k1 = np.random.multivariate_normal(mean_1, cov_1, 500)
+    training_samples_k2 = np.random.multivariate_normal(mean_2, cov_2, 500)
+    bulk_incorporate(
+        np.concatenate((training_samples_k1, training_samples_k2)),
+        km
+    )
+    km.transition()
+    # Accounting for the fact that cluster centers are interchangebable.
+    sigmas = sorted(km.cluster_sigmas, reverse=True)
+    np.testing.assert_almost_equal(sigmas[0], sigma_1, decimal=1)
+    np.testing.assert_almost_equal(sigmas[1], sigma_2, decimal=1)
 
 # Test whether logpdf given generated data does the right thing.
 def test_logpdf_crash():
