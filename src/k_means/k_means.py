@@ -111,6 +111,9 @@ class KMeans(CGpm):
         self.N -= 1
 
     def logpdf(self, rowid, query, evidence=None):
+        # If the rowid is not None, populate the evidence with non-missing
+        # values in of said row.
+        evidence = self.populate_evidence(rowid, query, evidence)
         # Defensive programming.
         # Taken from factor.py.
         if not query:
@@ -122,7 +125,7 @@ class KMeans(CGpm):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         X = np.array(query.values())
         # Case 1: simple mvn normal pdf.
-        if rowid is None and evidence is None and self.K==1:
+        if rowid is None and not evidence and self.K==1:
             mu = np.array(
                 [self.cluster_centers[0][index] for index in query.keys()]
             )
