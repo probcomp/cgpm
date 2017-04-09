@@ -128,9 +128,10 @@ def test_logpdf_compare_k_equals_1_normal_with_evidence():
     assert scipy_mvn.pdf([2.4]) ==\
         np.exp(km.logpdf(rowid, query, evidence=evidence))
 
-def test_logpdf_compare_k_equals_2_mixture():
+def test_logpdf_compare_k_equals_2_mixture_conditional():
     """Compare the output of logpdf for a k-means CGPM with K=2 with the logdpf
-    for a normal disribution."""
+    for a normal disribution. Same as above. This time however, we supply
+    evidence."""
     km = k_means.KMeans(
         [0,1],
         [],
