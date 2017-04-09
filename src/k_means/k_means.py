@@ -67,6 +67,10 @@ class KMeans(CGpm):
         cluster_sigmas = params.get(
             'cluster_sigmas', [1 for _ in range(K)]
         )
+        # Mixing coefficients for the cluster
+        mixing_coefficients = params.get(
+            'mixing_coefficients', [1./K for _ in range(K)]
+        )
 
         # Build the object.
         self.rng = rng
@@ -79,9 +83,10 @@ class KMeans(CGpm):
         # Dataset.
         self.data = OrderedDict()
         self.N = 0
-        # Parameters of Factor Analysis.
+        # Parameters of K-means
         self.cluster_centers = cluster_centers
         self.cluster_sigmas = cluster_sigmas
+        self.mixing_coefficients = mixing_coefficients
 
     def incorporate(self, rowid, query, evidence=None):
         # Copypasta from factor.py.
