@@ -51,13 +51,13 @@ def test_unincorporate():
     km.unincorporate(0)
 
 # Test whether simulate does the right thing.
-def test_compare_to_simulated_samples_to_single_Gaussian():
+def test_simulate_compare_to_single_Gaussian():
     """ Test whether the distubiton of K-means with K=1 is significantly
     different from a single Gaussian.
     """
     raise NotImplementedError
 
-def test_compare_to_single_Gaussian():
+def test_simulate_number_of_Clusters():
     """ Test with a heuristic method that the data generated really implies that
     the number of clusters indeed equals K.
 
@@ -69,10 +69,10 @@ def test_compare_to_single_Gaussian():
     raise NotImplementedError
 
 # Test transition.
-def test_K_inferred_means_compared_with_K_known_means():
+def test_transition_K_inferred_means_compared_with_K_known_means():
     raise NotImplementedError
 
-def test_K_inferred_variances_compared_with_K_known_variances():
+def test_transition_K_inferred_variances_compared_with_K_known_variances():
     raise NotImplementedError
 
 # Test whether logpdf given generated data does the right thing.
