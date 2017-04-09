@@ -139,7 +139,6 @@ class KMeans(CGpm):
         if evidence is not None and any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         X = np.array(query.values())
-
         # following eq. 4 and 5 from here:
         # http://bengio.abracadoudou.com/cv/publications/pdf/rr02-12.pdf
         if evidence:
@@ -153,7 +152,27 @@ class KMeans(CGpm):
         return gu.logsumexp([self.get_logp_cluster(query,k, W[k]) for k in range(self.K)])
 
     def simulate(self, rowid, query, evidence=None, N=None):
-        raise NotImplementedError
+        evidence = self.populate_evidence(rowid, query, evidence)
+        # following eq. 4 and 5 from here:
+        # http://bengio.abracadoudou.com/cv/publications/pdf/rr02-12.pdf
+        if evidence:
+            # if there is evidence, we need to re-wait the mixing coefficients.
+            W = [self.get_logp_cluster(evidence, k, self.mixing_coefficients[k]) for k in range(self.K)]
+            W_denominator = gu.logsumexp(W)
+            W = [np.exp(w - W_denominator) for w in W]
+        else:
+            W = self.mixing_coefficients
+        # First, sample a cluster according to the weight vector W:
+        def get_single_sample(k):
+            mu = np.array(
+                [self.cluster_centers[k][index] for index in query]
+            )
+            Sigma = np.diag([self.cluster_sigmas[k]] * len(query))
+            sample_vector = self.rng.multivariate_normal(mean=mu, cov=Sigma, size=1)
+            return {column:sample_vector[0][column] for column in query}
+
+        return [get_single_sample(gu.pflip(W)) for _ in range(N)]
+
 
     def transition(self, N=None):
         raise NotImplementedError
