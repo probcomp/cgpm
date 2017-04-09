@@ -22,15 +22,12 @@ sys.path.insert(0, 'src/k_means')
 
 import numpy as np
 from scipy.stats import multivariate_normal
+from scipy.stats import kstest
 
 import k_means
+from stochastic import stochastic
 
-def test_crash_simulate():
-    km = k_means.KMeans([0,1], [], K=2)
-    km.simulate(None, [0,1], N=2)
-
-
-def test_crash_transition():
+def test_transition_crash():
     raise NotImplementedError
 
 # Test whether incorp. and unincorp do the right thing.
@@ -51,11 +48,24 @@ def test_unincorporate():
     km.unincorporate(0)
 
 # Test whether simulate does the right thing.
-def test_simulate_compare_to_single_Gaussian():
+def test_simulate_crash():
+    km = k_means.KMeans([0,1], [], K=2)
+    query = [0]
+    rowid = None
+    samples = km.simulate(rowid, query, N=100)
+
+@stochastic(max_runs=3, min_passes=1)
+def test_simulate_compare_to_single_Gaussian(seed):
     """ Test whether the distubiton of K-means with K=1 is significantly
     different from a single Gaussian.
     """
-    raise NotImplementedError
+    km = k_means.KMeans([0,1], [], K=2)
+    column = 0
+    query = [column]
+    rowid = None
+    samples = km.simulate(rowid, query, N=100)
+    ks_test_result = kstest([sample[column] for sample in samples], 'norm')
+    assert ks_test_result.pvalue > 0.05
 
 def test_simulate_number_of_Clusters():
     """ Test with a heuristic method that the data generated really implies that
