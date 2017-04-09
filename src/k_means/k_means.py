@@ -115,6 +115,16 @@ class KMeans(CGpm):
             raise ValueError('No such observation: %d.' % rowid)
         self.N -= 1
 
+    def get_logp_cluster(self, query, k, mixing_coefficient):
+        """Get what each cluster contributes the the logpdf."""
+        X = np.array(query.values())
+        mu = np.array(
+            [self.cluster_centers[k][index] for index in query.keys()]
+        )
+        Sigma = np.diag([self.cluster_sigmas[k]] * len(query))
+        return\
+            np.log(mixing_coefficient) + mvn_logpdf(X, mu, Sigma)
+
     def logpdf(self, rowid, query, evidence=None):
         # If the rowid is not None, populate the evidence with non-missing
         # values in of said row.
@@ -129,23 +139,18 @@ class KMeans(CGpm):
         if evidence is not None and any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         X = np.array(query.values())
-        # Case 1: k = 1, simple unconditional mvn normal pdf
-        # which, since the diagonal cov matrix implies column independency, is
-        # identical to:
-        # Case 2: k = 1, conditional mvn normal pdf
-        if self.K==1:
-            mu = np.array(
-                [self.cluster_centers[0][index] for index in query.keys()]
-            )
-            Sigma = np.diag([self.cluster_sigmas[0]] * len(query))
-            log_p = mvn_logpdf(X, mu, Sigma)
 
-        # Case 3: unconditional mixture model pdf.
-
-        # Case 4: conditional mixture model pdf.
+        # following eq. 4 and 5 from here:
+        # http://bengio.abracadoudou.com/cv/publications/pdf/rr02-12.pdf
+        if evidence:
+            # if there is evidence, we need to re-wait the mixing coefficients.
+            W = [self.get_logp_cluster(evidence, k, self.mixing_coefficients[k]) for k in range(self.K)]
+            W_denominator = gu.logsumexp(W)
+            W = [np.exp(w - W_denominator) for w in W]
         else:
-            raise NotImplementedError
-        return log_p
+            W = self.mixing_coefficients
+
+        return gu.logsumexp([self.get_logp_cluster(query,k, W[k]) for k in range(self.K)])
 
     def simulate(self, rowid, query, evidence=None, N=None):
         raise NotImplementedError
