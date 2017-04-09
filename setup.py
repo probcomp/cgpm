@@ -148,6 +148,7 @@ setup(
         'cgpm.dummy',
         'cgpm.factor',
         'cgpm.kde',
+        'cgpm.k_means',
         'cgpm.knn',
         'cgpm.mixtures',
         'cgpm.network',
