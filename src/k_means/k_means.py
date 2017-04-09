@@ -124,14 +124,16 @@ class KMeans(CGpm):
         if evidence is not None and any(q in evidence for q in query):
             raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
         X = np.array(query.values())
-        # Case 1: simple mvn normal pdf.
-        if rowid is None and not evidence and self.K==1:
+        # Case 1: k = 1, simple unconditional mvn normal pdf
+        # which, since the diagonal cov matrix implies column independency, is
+        # identical to:
+        # Case 2: k = 1, conditional mvn normal pdf
+        if self.K==1:
             mu = np.array(
                 [self.cluster_centers[0][index] for index in query.keys()]
             )
             Sigma = np.diag([self.cluster_sigmas[0]] * len(query))
             log_p = mvn_logpdf(X, mu, Sigma)
-        # Case 2: mvn condintional pdf.
 
         # Case 3: unconditional mixture model pdf.
 
