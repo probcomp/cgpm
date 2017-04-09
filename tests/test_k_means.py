@@ -23,12 +23,10 @@ sys.path.insert(0, 'src/k_means')
 import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.stats import kstest
+from scipy.stats import ks_2samp
 
 import k_means
 from stochastic import stochastic
-
-def test_transition_crash():
-    raise NotImplementedError
 
 # Test whether incorp. and unincorp do the right thing.
 
@@ -67,18 +65,39 @@ def test_simulate_compare_to_single_Gaussian(seed):
     ks_test_result = kstest([sample[column] for sample in samples], 'norm')
     assert ks_test_result.pvalue > 0.05
 
-def test_simulate_number_of_Clusters():
-    """ Test with a heuristic method that the data generated really implies that
-    the number of clusters indeed equals K.
-
-    Synthetically create data that clearly clusters visisbly. Adjust distance of
-    clusters and distance of points inside a cluster.
-
-    E.G using an elbo method  or a AIC or BIC criterion.
+@stochastic(max_runs=3, min_passes=1)
+def test_simulate_dim_marginals(seed):
+    """Test that the distribution is correct, by using a KS two sample test on
+    the individual dimensions.
     """
-    raise NotImplementedError
+    km = k_means.KMeans(
+        [0,1],
+        [],
+        K=2,
+        params={'cluster_centers':[np.array([-1, -1]), np.array([2,2]),]}
+    )
+    query = [0,1]
+    rowid = None
+    samples = km.simulate(rowid, query, N=1000)
+
+    # compare by just sampling from two known clusters.
+    samples_k1 = np.random.multivariate_normal([-1,-1], [[1,0],[0,1]], 500)
+    samples_k2 = np.random.multivariate_normal([2,2], [[1,0],[0,1]], 500)
+    marginal_expected_dim1 = np.concatenate((samples_k1[:,0], samples_k2[:,0]))
+    marginal_expected_dim2 = np.concatenate((samples_k1[:,1], samples_k2[:,1]))
+    marginal_actual_dim1 = [sample[0] for sample in samples]
+    marginal_actual_dim2 = [sample[1] for sample in samples]
+
+    ks_test_result_dim1 = ks_2samp(marginal_expected_dim1, marginal_actual_dim1)
+    ks_test_result_dim2 = ks_2samp(marginal_expected_dim2, marginal_actual_dim2)
+
+    assert ks_test_result_dim1.pvalue > 0.05
+    assert ks_test_result_dim2.pvalue > 0.05
 
 # Test transition.
+def test_transition_crash():
+    raise NotImplementedError
+
 def test_transition_K_inferred_means_compared_with_K_known_means():
     raise NotImplementedError
 
