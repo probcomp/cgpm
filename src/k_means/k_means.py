@@ -18,7 +18,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-import sklearn.decomposition
+from sklearn.cluster import KMeans as SK_KMeans
 
 from cgpm.cgpm import CGpm
 from cgpm.utils import general as gu
@@ -175,8 +175,30 @@ class KMeans(CGpm):
 
         return [get_single_sample(gu.pflip(W)) for _ in range(N)]
 
+    def _get_new_sigma(self, data_table, labels, k):
+        """Get cluster sigma heuristically."""
+        cluster_members = data_table[labels==k]
+        return np.var(cluster_members.flatten())
+
     def transition(self, N=None):
-        raise NotImplementedError
+        """This functions calls sklearns K-means algorithm, then, for each
+        cluster, it fit's a covariance over all rows that are assigned to this
+        cluster."""
+        # Get a table of all rows without missing values.
+        X = np.asarray(self.data.values())
+        # Only run inference on observations without missing entries.
+        X = X[~np.any(np.isnan(X), axis=1)]
+
+        sk_kmeans = SK_KMeans(n_clusters=self.K)
+        sk_kmeans.fit(X)
+        # Update parameters of K-means (i.e. the constrained GMM).
+        cluster_assignments = sk_kmeans.labels_
+        assert np.unique(cluster_assignments).shape[0] == self.K
+        self.cluster_centers = sk_kmeans.cluster_centers_.tolist()
+        # For each cluster, heuristically compute the new sigma.
+        self.cluster_sigmas =\
+            [self._get_new_sigma(X, cluster_assignments, k) for k in range(self.K)]
+
 
     def populate_evidence(self, rowid, query, evidence):
         if evidence is None:
