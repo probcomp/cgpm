@@ -372,29 +372,33 @@ class State(CGpm):
         return gu.merged(evidence, data)
 
     def _validate_query_evidence(self, rowid, query, evidence):
+        # Is the rowid fresh?
+        fresh = self.hypothetical(rowid)
         # Is the query simulate or logpdf?
         simulate = isinstance(query, list)
         # Disallow duplicated query cols.
         if simulate and len(set(query)) != len(query):
             raise ValueError('Query columns must be unique.')
-        # Disallow overlap between query and evidence.
-        if len(set.intersection(set(query), set(evidence))) > 0:
-            raise ValueError('Query and evidence columns must be disjoint.')
-        # No further checks.
-        if self.hypothetical(rowid):
-            return
-        # Disallow evidence constraining/disagreeing with observed cells.
-        def good_evidence(rowid, e):
-            return (e not in self.outputs) or np.isnan(self.X[e][rowid]) \
-                or np.allclose(self.X[e][rowid], evidence[e])
-        if any(not good_evidence(rowid, e) for e in evidence):
-            raise ValueError('Cannot constrain observed cell in evidence.')
         # Disallow query constraining observed cells.
-        # XXX Only disallow logpdf constraints; simulate is permitted so that
-        # INFER EXPLICIT PREDICT through BQL can be answered.
-        # Refer to https://github.com/probcomp/cgpm/issues/116
-        if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
-            raise ValueError('Cannot constrain observed cell in query.')
+        # XXX Only disallows logpdf constraints; simulate is permitted for
+        # INFER EXPLICIT PREDICT through BQL to work. Refer to
+        # https://github.com/probcomp/cgpm/issues/116
+        if (not fresh) and (not simulate) and any(
+                not np.isnan(self.X[q][rowid]) for q in query):
+            raise ValueError('Query cannot constrain observed cell.')
+        # Check if the evidence is valid.
+        if evidence:
+            # Disallow overlap between query and evidence.
+            if len(set.intersection(set(query), set(evidence))) > 0:
+                raise ValueError('Query and evidence columns must be disjoint.')
+            # Disallow evidence constraining/disagreeing with observed cells.
+            def good_evidence(rowid, e):
+                return (e not in self.outputs) \
+                    or np.isnan(self.X[e][rowid]) \
+                    or np.allclose(self.X[e][rowid], evidence[e])
+            if (not fresh) and \
+                    any(not good_evidence(rowid, e) for e in evidence):
+                raise ValueError('Evidence cannot constrain observed cell.')
 
     # --------------------------------------------------------------------------
     # Bulk operations
