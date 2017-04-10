@@ -156,6 +156,12 @@ class State(CGpm):
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
 
+        # -- Composite ---------------------------------------------------------
+        # Does the state have any conditional GPMs? Conditional GPMs come from
+        # - a hooked cgpm;
+        # - a conditional dim.
+        self._composite = False
+
     # --------------------------------------------------------------------------
     # Observe
 
@@ -206,6 +212,8 @@ class State(CGpm):
         # Transition.
         self.transition_dims(cols=transition)
         self.transition_dim_hypers(cols=[col])
+        # Update composite flag.
+        self._update_is_composite()
         # Validate.
         self._check_partitions()
 
@@ -227,6 +235,8 @@ class State(CGpm):
         # Clear data, outputs, and view assignment.
         del self.X[col]
         del self.outputs[self.outputs.index(col)]
+        # Update composite flag.
+        self._update_is_composite()
         # Validate.
         self._check_partitions()
 
@@ -271,6 +281,9 @@ class State(CGpm):
         self.transition_dim_grids(cols=[col])
         self.transition_dim_params(cols=[col])
         self.transition_dim_hypers(cols=[col])
+        # Update composite flag.
+        self._update_is_composite()
+        # Validate.
         self._check_partitions()
 
     # --------------------------------------------------------------------------
@@ -285,12 +298,20 @@ class State(CGpm):
         except ValueError as e:
             del self.hooked_cgpms[token]
             raise e
+        self._update_is_composite()
         return token
 
     def decompose_cgpm(self, token):
         """Remove the composed cgpm with identifier `token`."""
         del self.hooked_cgpms[token]
+        self._update_is_composite()
         self.build_network()
+
+    def _update_is_composite(self):
+        """Update state._composite attribute."""
+        hooked = len(self.hooked_cgpms) > 0
+        conditional = any(d.is_conditional() for d in self.dims())
+        self._composite = hooked or conditional
 
     # --------------------------------------------------------------------------
     # logscore.

@@ -15,9 +15,9 @@
 # limitations under the License.
 
 
-import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+import numpy as np
 
 from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
@@ -55,7 +55,9 @@ def generate_regression_samples():
     state = State(
         D, cctypes=['normal','normal'], Zv={0:0, 1:0}, rng=gu.gen_rng(4))
     view = state.view_for(1)
+    assert not state._composite
     state.update_cctype(1, 'linear_regression')
+    assert state._composite
     state.transition(S=30, kernels=['rows','column_params','column_hypers'])
     samples = view.simulate(-1, [0, 1, view.outputs[0]], N=100)
     return [replace_key(s, view.outputs[0], -1) for s in samples]
