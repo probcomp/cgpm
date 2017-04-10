@@ -267,8 +267,7 @@ class State(CGpm):
     def update_cctype(self, col, cctype, distargs=None):
         """Update the distribution type of self.dims[col] to cctype."""
         assert col in self.outputs
-        self.view_for(col).update_cctype(
-            col, cctype, distargs=distargs)
+        self.view_for(col).update_cctype(col, cctype, distargs=distargs)
         self.transition_dim_grids(cols=[col])
         self.transition_dim_params(cols=[col])
         self.transition_dim_hypers(cols=[col])
@@ -333,8 +332,8 @@ class State(CGpm):
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
-        if evidence is None:
-            evidence = {}
+        evidence = evidence or dict()
+        # Ensure no invalid constraints based on rowid.
         self._validate_query_evidence(rowid, query, evidence)
         # If the rowid is hypothetical, just return.
         if self.hypothetical(rowid):

@@ -49,10 +49,10 @@ def test_view_hypothetical_unchanged():
     view = retrieve_view()
 
     rowid = -1
-    qr1 = {3:-1}
-    ev1 = {1:1, 2:2}
-    ev2 = view._populate_evidence(rowid, qr1, ev1)
-    assert ev1 == ev2
+    query1 = {3:-1}
+    evidence1 = {1:1, 2:2}
+    evidence2 = view._populate_evidence(rowid, query1, evidence1)
+    assert evidence1 == evidence2
 
 
 def test_view_only_rowid_to_populate():
@@ -60,10 +60,10 @@ def test_view_only_rowid_to_populate():
 
     # Can query X[2,0] for simulate.
     rowid = 2
-    qr1 = [0]
-    ev1 = {}
-    ev2 = view._populate_evidence(rowid, qr1, ev1)
-    assert ev2 == {-1: view.Zr(rowid)}
+    query1 = [0]
+    evidence1 = {}
+    evidence2 = view._populate_evidence(rowid, query1, evidence1)
+    assert evidence2 == {-1: view.Zr(rowid)}
 
 
 def test_view_constrain_cluster():
@@ -71,26 +71,26 @@ def test_view_constrain_cluster():
 
     # Cannot constrain cluster assignment of observed rowid.
     rowid = 1
-    qr1 = {-1: 2}
-    ev1 = {}
+    query1 = {-1: 2}
+    evidence1 = {}
     with pytest.raises(ValueError):
-        view._populate_evidence(rowid, qr1, ev1)
+        view._populate_evidence(rowid, query1, evidence1)
 
 
 def test_view_values_to_populate():
     view = retrieve_view()
 
     rowid = 0
-    qr1 = [1]
-    ev1 = {4:2}
-    ev2 = view._populate_evidence(rowid, qr1, ev1)
-    assert ev2 == {0:1, 2:2, 3:-1, 4:2, -1: view.Zr(rowid)}
+    query1 = [1]
+    evidence1 = {4:2}
+    evidence2 = view._populate_evidence(rowid, query1, evidence1)
+    assert evidence2 == {0:1, 2:2, 3:-1, 4:2, -1: view.Zr(rowid)}
 
     rowid = 0
-    qr1 = {1:1}
-    ev1 = {4:2}
-    ev2 = view._populate_evidence(rowid, qr1, ev1)
-    assert ev2 == {2:2, 0:1, 3:-1, 4:2, -1: view.Zr(rowid)}
+    query1 = {1:1}
+    evidence1 = {4:2}
+    evidence2 = view._populate_evidence(rowid, query1, evidence1)
+    assert evidence2 == {2:2, 0:1, 3:-1, 4:2, -1: view.Zr(rowid)}
 
 
 # ------------------------------------------------------------------------------
@@ -115,28 +115,28 @@ def test_state_constrain_logpdf():
     state = retrieve_state()
     # Cannot query X[2,0] for logpdf.
     rowid = 2
-    qr1 = {0:2}
-    ev1 = {}
+    query1 = {0:2}
+    evidence1 = {}
     with pytest.raises(ValueError):
-        ev2 = state._populate_evidence(rowid, qr1, ev1)
+        evidence2 = state._populate_evidence(rowid, query1, evidence1)
 
 def test_view_constrain_errors():
     state = retrieve_state()
 
     rowid = 1
-    qr1 = {1:1, 4:1}
-    ev1 = {}
+    query1 = {1:1, 4:1}
+    evidence1 = {}
     with pytest.raises(ValueError):
-        state._populate_evidence(rowid, qr1, ev1)
+        state._populate_evidence(rowid, query1, evidence1)
 
     rowid = 1
-    qr1 = {1:3}
-    ev1 = {4:-5}
+    query1 = {1:3}
+    evidence1 = {4:-5}
     with pytest.raises(ValueError):
-        state._populate_evidence(rowid, qr1, ev1)
+        state._populate_evidence(rowid, query1, evidence1)
 
     rowid = 1
-    qr1 = {0:1, 1:3}
-    ev1 = {}
+    query1 = {0:1, 1:3}
+    evidence1 = {}
     with pytest.raises(ValueError):
-        state._populate_evidence(rowid, qr1, ev1)
+        state._populate_evidence(rowid, query1, evidence1)
