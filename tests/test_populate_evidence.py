@@ -118,25 +118,25 @@ def test_state_constrain_logpdf():
     query1 = {0:2}
     evidence1 = {}
     with pytest.raises(ValueError):
-        evidence2 = state._populate_evidence(rowid, query1, evidence1)
+        state._validate_query_evidence(rowid, query1, evidence1)
 
-def test_view_constrain_errors():
+def test_state_constrain_errors():
     state = retrieve_state()
 
     rowid = 1
     query1 = {1:1, 4:1}
     evidence1 = {}
     with pytest.raises(ValueError):
-        state._populate_evidence(rowid, query1, evidence1)
+        state._validate_query_evidence(rowid, query1, evidence1)
 
     rowid = 1
     query1 = {1:3}
     evidence1 = {4:-5}
     with pytest.raises(ValueError):
-        state._populate_evidence(rowid, query1, evidence1)
+        state._validate_query_evidence(rowid, query1, evidence1)
 
     rowid = 1
     query1 = {0:1, 1:3}
     evidence1 = {}
     with pytest.raises(ValueError):
-        state._populate_evidence(rowid, query1, evidence1)
+        state._validate_query_evidence(rowid, query1, evidence1)

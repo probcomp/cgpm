@@ -28,6 +28,7 @@ from math import isnan
 import numpy as np
 
 from cgpm.cgpm import CGpm
+from cgpm.crosscat import sampling
 from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
 from cgpm.network.helpers import retrieve_ancestors
@@ -327,6 +328,9 @@ class State(CGpm):
     def logpdf(self, rowid, query, evidence=None, accuracy=None):
         assert isinstance(query, dict)
         assert evidence is None or isinstance(evidence, dict)
+        self._validate_query_evidence(rowid, query, evidence)
+        if not self._composite:
+            return sampling.state_logpdf(self, rowid, query, evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network(accuracy=accuracy)
         return network.logpdf(rowid, query, evidence)
@@ -337,6 +341,9 @@ class State(CGpm):
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
         assert isinstance(query, list)
         assert evidence is None or isinstance(evidence, dict)
+        self._validate_query_evidence(rowid, query, evidence)
+        if not self._composite:
+            return sampling.state_simulate(self, rowid, query, evidence, N)
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network(accuracy=accuracy)
         return network.simulate(rowid, query, evidence, N)
@@ -354,8 +361,6 @@ class State(CGpm):
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
         evidence = evidence or dict()
-        # Ensure no invalid constraints based on rowid.
-        self._validate_query_evidence(rowid, query, evidence)
         # If the rowid is hypothetical, just return.
         if self.hypothetical(rowid):
             return evidence
@@ -380,7 +385,7 @@ class State(CGpm):
         if simulate and len(set(query)) != len(query):
             raise ValueError('Query columns must be unique.')
         # Disallow query constraining observed cells.
-        # XXX Only disallows logpdf constraints; simulate is permitted for
+        # XXX Only disallow logpdf constraints; simulate is permitted for
         # INFER EXPLICIT PREDICT through BQL to work. Refer to
         # https://github.com/probcomp/cgpm/issues/116
         if (not fresh) and (not simulate) and any(
