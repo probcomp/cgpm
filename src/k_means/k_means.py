@@ -61,7 +61,7 @@ class KMeans(CGpm):
         # Parameters.
         D = len(outputs)
         cluster_centers = params.get(
-            'cluster_centers', [np.zeros(D) for _ in range(K)]
+            'cluster_centers', [[0] * D for _ in range(K)]
         )
         # Sigma parameter for cluster variances, as in sigma * I.
         cluster_sigmas = params.get(
@@ -172,8 +172,10 @@ class KMeans(CGpm):
             Sigma = np.diag([self.cluster_sigmas[k]] * len(query))
             sample_vector = self.rng.multivariate_normal(mean=mu, cov=Sigma, size=1)
             return {column:sample_vector[0][column] for column in query}
-
-        return [get_single_sample(gu.pflip(W)) for _ in range(N)]
+        if N is None:
+            return get_single_sample(gu.pflip(W))
+        else:
+            return [get_single_sample(gu.pflip(W)) for _ in range(N)]
 
     def _get_new_sigma(self, data_table, labels, k):
         """Get cluster sigma heuristically."""
@@ -199,6 +201,36 @@ class KMeans(CGpm):
         self.cluster_sigmas =\
             [self._get_new_sigma(X, cluster_assignments, k) for k in range(self.K)]
 
+    def to_metadata(self):
+        metadata = dict()
+        metadata['outputs'] = self.outputs
+        metadata['inputs'] = self.inputs
+        metadata['N'] = self.N
+        metadata['K'] = self.K
+        metadata['data'] = self.data.items()
+
+        # Store paramters as list for JSON.
+        metadata['params'] = dict()
+        metadata['params']['cluster_sigmas'] = list(self.cluster_sigmas)
+        metadata['params']['cluster_centers'] = self.cluster_centers
+        metadata['params']['mixing_coefficients'] = list(self.mixing_coefficients)
+
+        metadata['factory'] = ('cgpm.k_means.k_means', 'KMeans')
+        return metadata
+
+    @classmethod
+    def from_metadata(cls, metadata, rng=None):
+        if rng is None:
+            rng = gu.gen_rng(0)
+        km = cls(
+            outputs=metadata['outputs'],
+            inputs=metadata['inputs'],
+            K=metadata['K'],
+            params=metadata['params'],
+            rng=rng)
+        km.data = OrderedDict(metadata['data'])
+        km.N = metadata['N']
+        return km
 
     def populate_evidence(self, rowid, query, evidence):
         if evidence is None:
