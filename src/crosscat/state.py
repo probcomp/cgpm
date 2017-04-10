@@ -389,7 +389,10 @@ class State(CGpm):
                 or np.allclose(self.X[e][rowid], evidence[e])
         if any(not good_evidence(rowid, e) for e in evidence):
             raise ValueError('Cannot constrain observed cell in evidence.')
-        # Disallow query constraining observed cells (XXX logpdf, not simulate)
+        # Disallow query constraining observed cells.
+        # XXX Only disallow logpdf constraints; simulate is permitted so that
+        # INFER EXPLICIT PREDICT through BQL can be answered.
+        # Refer to https://github.com/probcomp/cgpm/issues/116
         if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
             raise ValueError('Cannot constrain observed cell in query.')
 
