@@ -62,7 +62,7 @@ def state():
     # Create an engine.
     engine = Engine(
         DATA, cctypes=['normal', 'categorical'], distargs=[None, {'k':6}],
-        num_states=4, rng=gu.gen_rng(2))
+        num_states=4, rng=gu.gen_rng(212))
     engine.transition(N=15)
     marginals = engine.logpdf_score()
     ranking = np.argsort(marginals)[::-1]
