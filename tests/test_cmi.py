@@ -36,13 +36,8 @@ def test_entropy_bernoulli_univariate__ci_():
     entropy_exact = - (.3*np.log(.3) + .7*np.log(.7))
 
     # logpdf computation.
-    logps = engine.logpdf_bulk(
-        [-1,-1], [{0:0}, {0:1}]
-    )
-    entropy_logpdf = [
-        -np.sum(np.exp(logp)*logp)
-        for logp in logps
-    ]
+    logps = engine.logpdf_bulk([-1,-1], [{0:0}, {0:1}])
+    entropy_logpdf = [-np.sum(np.exp(logp)*logp) for logp in logps]
 
     # mutual_information computation.
     entropy_mi = engine.mutual_information([0], [0], N=1000)
@@ -92,10 +87,7 @@ def test_entropy_bernoulli_bivariate__ci_():
     logps = engine.logpdf_bulk(
         [-1,-1,-1,-1], [{0:0, 1:0}, {0:0, 1:1}, {0:1, 1:0}, {0:1, 1:1}]
     )
-    entropy_logpdf = [
-        -np.sum(np.exp(logp)*logp)
-        for logp in logps
-    ]
+    entropy_logpdf = [-np.sum(np.exp(logp)*logp) for logp in logps]
 
     # mutual_information computation.
     entropy_mi = engine.mutual_information([0,1], [0,1], N=1000)
