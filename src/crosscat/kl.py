@@ -43,7 +43,6 @@ def compute_pairwise_kl(engine_0, engine_1, num_samples, variables=None):
     logpdfs_0 = logpdf_bulk_heterogeneous(engine_0, rowids, samples_0)
 
     # Compute logpdfs of samples_0 by states from engine_1.
-    rowids = [-1] * num_samples
     unraveled_samples_0 = np.ravel(samples_0)
     rowids = [-1] * len(unraveled_samples_0)
 
@@ -65,9 +64,8 @@ def compute_pairwise_kl(engine_0, engine_1, num_samples, variables=None):
     #         for j in xrange(engine_1.num_states())
     #     ] for i in xrange(engine_0.num_states())
     # ])
-
     pairwise_kl = np.transpose(
-        np.mean(np.asarray(logpdfs_0) - logpdfs_1, axis=-1))
+        np.mean(np.subtract(logpdfs_0, logpdfs_1), axis=-1))
 
     # Run some checks.
     assert pairwise_kl.shape == (engine_0.num_states(), engine_1.num_states())
@@ -77,7 +75,7 @@ def compute_pairwise_kl(engine_0, engine_1, num_samples, variables=None):
 
 
 def logpdf_bulk_heterogeneous(engine, rowids, queries, evidences=None,
-        multiprocess=None):
+        multiprocess=True):
     """Compute the logpdf in bulk, with different queries per state."""
     evidences = evidences or [None]*len(queries)
     mapper = parallel_map if multiprocess else map
