@@ -15,8 +15,6 @@
 # limitations under the License.
 
 
-import itertools
-
 import numpy as np
 import pytest
 
@@ -87,23 +85,3 @@ def test_logpdf_bulk_heterogeneous():
     for (i, (sample, state)) in enumerate(zip(queries, engine.states)):
         logpdfs = state.logpdf_bulk([-1]*len(sample), sample)
         assert np.allclose(logpdfs_bulk[i], logpdfs)
-
-
-def compute_kl(n_rows, n_iters):
-    engine = retrieve_engine(64, n_rows, n_iters)
-    engine_0 = engine
-    engine_1 = engine
-    num_samples = 200
-    pairwise_kl = kl.compute_pairwise_kl(engine_0, engine_1, num_samples)
-    np.savetxt(
-        'resources/kl_rows=%03d_iters=%03d' % (n_rows, n_iters),
-        pairwise_kl,
-        delimiter=',',
-    )
-
-n_rows = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
-n_iters = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
-
-for nr, ni in itertools.product(n_rows, n_iters):
-    print 'Computing: n_rows=%03d, iters=%03d' % (nr, ni)
-    compute_kl(nr, ni)
