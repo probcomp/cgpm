@@ -48,7 +48,7 @@ def retrieve_engine(num_states=16, n_rows=10, n_iters=100):
     engine = Engine(
         T.T, cctypes=cctypes, distargs=distargs, rng=gu.gen_rng(312),
         num_states=num_states)
-    engine.transition_lovecat(N=n_iters, progress=1)
+    engine.transition_lovecat(N=n_iters, progress=False)
     return engine
 
 
@@ -96,7 +96,7 @@ def compute_kl(n_rows, n_iters):
     num_samples = 200
     pairwise_kl = kl.compute_pairwise_kl(engine_0, engine_1, num_samples)
     np.savetxt(
-        'resources/kl_rows=%d_iters=%d' % (n_rows, n_iters),
+        'resources/kl_rows=%03d_iters=%03d' % (n_rows, n_iters),
         pairwise_kl,
         delimiter=',',
     )
@@ -105,5 +105,5 @@ n_rows = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
 n_iters = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
 
 for nr, ni in itertools.product(n_rows, n_iters):
-    print 'Computing: n_rows=%d, iters=%d' % (nr, ni)
+    print 'Computing: n_rows=%03d, iters=%03d' % (nr, ni)
     compute_kl(nr, ni)
