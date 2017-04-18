@@ -67,9 +67,8 @@ def compute_pairwise_kl(engine_0, engine_1, num_samples, variables=None):
     pairwise_kl = np.transpose(
         np.mean(np.subtract(logpdfs_0, logpdfs_1), axis=-1))
 
-    # Run some checks.
+    # Run sanity check.
     assert pairwise_kl.shape == (engine_0.num_states(), engine_1.num_states())
-    assert np.allclose(np.diag(pairwise_kl), 0)
 
     return pairwise_kl
 
