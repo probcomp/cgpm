@@ -50,7 +50,7 @@ def state_logpdf(state, rowid, query, evidence=None):
 
 def state_simulate(state, rowid, query, evidence=None, N=None):
     (queries, evidences) = partition_query_evidence(state.Zv(), query, evidence)
-    N_sim = N or 1
+    N_sim = N if N is not None else 1
     draws = (
         view_simulate(
             view=state.views[v],

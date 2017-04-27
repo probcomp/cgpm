@@ -152,6 +152,24 @@ def test_logpdf_chain_rule(engine):
     print t.interval
     assert np.allclose(joint, chain)
 
+
+def test_zero_length_samples(engine):
+    rowid = 1
+    query = [1, 4]
+    evidence = {}
+    N = 0
+
+    samples_a = engine.simulate(rowid, query, evidence, N)
+    for s in samples_a:
+        assert len(s) == 0
+
+    samples_b = [
+        adhoc_state_simulate_network(state, rowid, query, evidence, N)
+        for state in engine.states
+    ]
+    for s in samples_b:
+        assert len(s) == 0
+
 # if False:
 #     state2 = State(T.T, cctypes=cctypes, distargs=distargs, rng=gu.gen_rng(12))
 #     state2.transition(N=10, progress=1)
