@@ -144,12 +144,10 @@ def test_logpdf_chain_rule(engine):
     from cgpm.utils.timer import Timer
     with Timer() as t:
         joint = engine.logpdf(-1, {0:1, 1:2}, multiprocess=False)
-    print t.interval
     with Timer() as t:
         chain = np.add(
             engine.logpdf(-1, {0:1}, evidence={1:2}, multiprocess=False),
             engine.logpdf(-1, {1:2}, multiprocess=False))
-    print t.interval
     assert np.allclose(joint, chain)
 
 
@@ -169,29 +167,3 @@ def test_zero_length_samples(engine):
     ]
     for s in samples_b:
         assert len(s) == 0
-
-# if False:
-#     state2 = State(T.T, cctypes=cctypes, distargs=distargs, rng=gu.gen_rng(12))
-#     state2.transition(N=10, progress=1)
-
-#     # Joint equals chain rule for state 2.
-#     state2.logpdf(-1, {0:1, 1:2})
-#     state2.logpdf(-1, {0:1}, evidence={1:2}) + state2.logpdf(-1, {1:2})
-
-#     # Take the Monte Carlo average of the conditional.
-#     mc_conditional = np.log(.5) + gu.logsumexp([
-#         state.logpdf(-1, {0:1}, evidence={1:2}),
-#         state2.logpdf(-1, {0:1}, evidence={1:2})
-#     ])
-
-#     # Take the Monte Carlo average of the joint.
-#     mc_joint = np.log(.5) + gu.logsumexp([
-#         state.logpdf(-1, {0:1, 1:2}),
-#         state2.logpdf(-1, {0:1, 1:2})
-#     ])
-
-#     # Take the Monte Carlo average of the marginal.
-#     mc_marginal = np.log(.5) + gu.logsumexp([
-#         state.logpdf(-1, {1:2}),
-#         state2.logpdf(-1, {1:2})
-#     ])
