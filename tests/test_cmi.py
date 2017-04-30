@@ -22,8 +22,6 @@ from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 from cgpm.utils.general import gen_rng
 
-from markers import integration
-
 
 def test_entropy_bernoulli_univariate__ci_():
     rng = gen_rng(10)
@@ -38,13 +36,8 @@ def test_entropy_bernoulli_univariate__ci_():
     entropy_exact = - (.3*np.log(.3) + .7*np.log(.7))
 
     # logpdf computation.
-    logps = engine.logpdf_bulk(
-        [-1,-1], [{0:0}, {0:1}]
-    )
-    entropy_logpdf = [
-        -np.sum(np.exp(logp)*logp)
-        for logp in logps
-    ]
+    logps = engine.logpdf_bulk([-1,-1], [{0:0}, {0:1}])
+    entropy_logpdf = [-np.sum(np.exp(logp)*logp) for logp in logps]
 
     # mutual_information computation.
     entropy_mi = engine.mutual_information([0], [0], N=1000)
@@ -54,8 +47,13 @@ def test_entropy_bernoulli_univariate__ci_():
     assert np.allclose(entropy_exact, entropy_mi, atol=.1)
     assert np.allclose(entropy_logpdf, entropy_mi, atol=.05)
 
-@integration
 def test_entropy_bernoulli_bivariate__ci_():
+    # XXX Provisional kludge until we can get a working integration
+    # test flag.
+    try:
+        import crosscat
+    except ImportError:
+        pytest.skip('no crosscat')
     rng = gen_rng(10)
 
     # Generate a bivariate Bernoulli dataset.
@@ -89,10 +87,7 @@ def test_entropy_bernoulli_bivariate__ci_():
     logps = engine.logpdf_bulk(
         [-1,-1,-1,-1], [{0:0, 1:0}, {0:0, 1:1}, {0:1, 1:0}, {0:1, 1:1}]
     )
-    entropy_logpdf = [
-        -np.sum(np.exp(logp)*logp)
-        for logp in logps
-    ]
+    entropy_logpdf = [-np.sum(np.exp(logp)*logp) for logp in logps]
 
     # mutual_information computation.
     entropy_mi = engine.mutual_information([0,1], [0,1], N=1000)

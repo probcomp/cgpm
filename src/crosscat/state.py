@@ -28,6 +28,7 @@ from math import isnan
 import numpy as np
 
 from cgpm.cgpm import CGpm
+from cgpm.crosscat import sampling
 from cgpm.mixtures.dim import Dim
 from cgpm.mixtures.view import View
 from cgpm.network.helpers import retrieve_ancestors
@@ -156,6 +157,12 @@ class State(CGpm):
         # -- Validate ----------------------------------------------------------
         self._check_partitions()
 
+        # -- Composite ---------------------------------------------------------
+        # Does the state have any conditional GPMs? Conditional GPMs come from
+        # - a hooked cgpm;
+        # - a conditional dim.
+        self._composite = False
+
     # --------------------------------------------------------------------------
     # Observe
 
@@ -206,6 +213,8 @@ class State(CGpm):
         # Transition.
         self.transition_dims(cols=transition)
         self.transition_dim_hypers(cols=[col])
+        # Update composite flag.
+        self._update_is_composite()
         # Validate.
         self._check_partitions()
 
@@ -227,6 +236,8 @@ class State(CGpm):
         # Clear data, outputs, and view assignment.
         del self.X[col]
         del self.outputs[self.outputs.index(col)]
+        # Update composite flag.
+        self._update_is_composite()
         # Validate.
         self._check_partitions()
 
@@ -281,11 +292,13 @@ class State(CGpm):
     def update_cctype(self, col, cctype, distargs=None):
         """Update the distribution type of self.dims[col] to cctype."""
         assert col in self.outputs
-        self.view_for(col).update_cctype(
-            col, cctype, distargs=distargs)
+        self.view_for(col).update_cctype(col, cctype, distargs=distargs)
         self.transition_dim_grids(cols=[col])
         self.transition_dim_params(cols=[col])
         self.transition_dim_hypers(cols=[col])
+        # Update composite flag.
+        self._update_is_composite()
+        # Validate.
         self._check_partitions()
 
     # --------------------------------------------------------------------------
@@ -300,12 +313,20 @@ class State(CGpm):
         except ValueError as e:
             del self.hooked_cgpms[token]
             raise e
+        self._update_is_composite()
         return token
 
     def decompose_cgpm(self, token):
         """Remove the composed cgpm with identifier `token`."""
         del self.hooked_cgpms[token]
+        self._update_is_composite()
         self.build_network()
+
+    def _update_is_composite(self):
+        """Update state._composite attribute."""
+        hooked = len(self.hooked_cgpms) > 0
+        conditional = any(d.is_conditional() for d in self.dims())
+        self._composite = hooked or conditional
 
     # --------------------------------------------------------------------------
     # logscore.
@@ -321,6 +342,9 @@ class State(CGpm):
     def logpdf(self, rowid, query, evidence=None, accuracy=None):
         assert isinstance(query, dict)
         assert evidence is None or isinstance(evidence, dict)
+        self._validate_query_evidence(rowid, query, evidence)
+        if not self._composite:
+            return sampling.state_logpdf(self, rowid, query, evidence)
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network(accuracy=accuracy)
         return network.logpdf(rowid, query, evidence)
@@ -331,6 +355,9 @@ class State(CGpm):
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
         assert isinstance(query, list)
         assert evidence is None or isinstance(evidence, dict)
+        self._validate_query_evidence(rowid, query, evidence)
+        if not self._composite:
+            return sampling.state_simulate(self, rowid, query, evidence, N)
         evidence = self._populate_evidence(rowid, query, evidence)
         network = self.build_network(accuracy=accuracy)
         return network.simulate(rowid, query, evidence, N)
@@ -347,9 +374,7 @@ class State(CGpm):
 
     def _populate_evidence(self, rowid, query, evidence):
         """Loads query evidence from the dataset."""
-        if evidence is None:
-            evidence = {}
-        self._validate_query_evidence(rowid, query, evidence)
+        evidence = evidence or dict()
         # If the rowid is hypothetical, just return.
         if self.hypothetical(rowid):
             return evidence
@@ -366,26 +391,33 @@ class State(CGpm):
         return gu.merged(evidence, data)
 
     def _validate_query_evidence(self, rowid, query, evidence):
+        # Is the rowid fresh?
+        fresh = self.hypothetical(rowid)
         # Is the query simulate or logpdf?
         simulate = isinstance(query, list)
         # Disallow duplicated query cols.
         if simulate and len(set(query)) != len(query):
             raise ValueError('Query columns must be unique.')
-        # Disallow overlap between query and evidence.
-        if len(set.intersection(set(query), set(evidence))) > 0:
-            raise ValueError('Query and evidence columns must be disjoint.')
-        # No further checks.
-        if self.hypothetical(rowid):
-            return
-        # Disallow evidence constraining/disagreeing with observed cells.
-        def good_evidence(rowid, e):
-            return (e not in self.outputs) or np.isnan(self.X[e][rowid]) \
-                or np.allclose(self.X[e][rowid], evidence[e])
-        if any(not good_evidence(rowid, e) for e in evidence):
-            raise ValueError('Cannot constrain observed cell in evidence.')
-        # Disallow query constraining observed cells (XXX logpdf, not simulate)
-        if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):
-            raise ValueError('Cannot constrain observed cell in query.')
+        # Disallow query constraining observed cells.
+        # XXX Only disallow logpdf constraints; simulate is permitted for
+        # INFER EXPLICIT PREDICT through BQL to work. Refer to
+        # https://github.com/probcomp/cgpm/issues/116
+        if (not fresh) and (not simulate) and any(
+                not np.isnan(self.X[q][rowid]) for q in query):
+            raise ValueError('Query cannot constrain observed cell.')
+        # Check if the evidence is valid.
+        if evidence:
+            # Disallow overlap between query and evidence.
+            if len(set.intersection(set(query), set(evidence))) > 0:
+                raise ValueError('Query and evidence columns must be disjoint.')
+            # Disallow evidence constraining/disagreeing with observed cells.
+            def good_evidence(rowid, e):
+                return (e not in self.outputs) \
+                    or np.isnan(self.X[e][rowid]) \
+                    or np.allclose(self.X[e][rowid], evidence[e])
+            if (not fresh) and \
+                    any(not good_evidence(rowid, e) for e in evidence):
+                raise ValueError('Evidence cannot constrain observed cell.')
 
     # --------------------------------------------------------------------------
     # Bulk operations

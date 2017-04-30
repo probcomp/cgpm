@@ -54,7 +54,7 @@ class PieceWise(CGpm):
         assert self.inputs[0] in evidence
         y = evidence[self.inputs[0]]
         # Case 1: No evidence on outputs.
-        if evidence.keys() == self.inputs:
+        if sorted(evidence.keys()) == sorted(self.inputs):
             z = self.rng.choice([0, 1], p=[self.flip, 1-self.flip])
             x = y + (2*z-1) + self.rng.normal(0, self.sigma)
             sample = {}
@@ -78,7 +78,7 @@ class PieceWise(CGpm):
             sample = {self.outputs[1]: z}
         else:
             raise ValueError('Misunderstood query: %s' % query)
-        assert sample.keys() == query
+        assert sorted(sample.keys()) == sorted(query)
         return sample
 
     def logpdf(self, rowid, query, evidence=None):
@@ -86,7 +86,7 @@ class PieceWise(CGpm):
         assert self.inputs[0] in evidence
         y = evidence[self.inputs[0]]
         # Case 1: No evidence on outputs.
-        if evidence.keys() == self.inputs:
+        if sorted(evidence.keys()) == sorted(self.inputs):
             # Case 1.1: z in the query and x in the query.
             if self.outputs[0] in query and self.outputs[1] in query:
                 z, x = query[self.outputs[1]], query[self.outputs[1]]

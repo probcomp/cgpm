@@ -105,7 +105,7 @@ def validate_crp_constrained_input(N, Cd, Ci, Rd, Ri):
 
 def partition_query_evidence(Z, query, evidence):
     """Returns queries[k], evidences[k] are queries, evidences for cluster k."""
-    evidences = partition_dict(Z, evidence)
+    evidences = partition_dict(Z, evidence) if evidence is not None else dict()
     if isinstance(query, list):
         queries = partition_list(Z, query)
     else:
@@ -113,6 +113,14 @@ def partition_query_evidence(Z, query, evidence):
     return queries, evidences
 
 def partition_list(Z, L):
+    """Returns a dictionary partitioning list L according to assignments in Z.
+
+    Example:
+    >>> Z = {0:0, 1:2, 2:7, 3: 7, 4:0}
+    >>> L = [2, 1, 0, 4, 3]
+    >>> partition_list(Z, L)
+    {0:[0, 4], 2:[1], 7:[2, 3]}
+    """
     result = {}
     for l in L:
         k = Z[l]
@@ -123,6 +131,14 @@ def partition_list(Z, L):
     return result
 
 def partition_dict(Z, L):
+    """Returns a dictionary partitioning dict L according to assignments in Z.
+
+    Example:
+    >>> Z = {0:0, 1:2, 2:7, 3: 7, 4:0}
+    >>> L = {2:22, 1:11, 0:00, 4:44, 3:33}
+    >>> partition_list(Z, L)
+    {0:{0:00, 4:44}, 2:{1:11}, 7:{2:22, 3:33}}
+    """
     result = {}
     for l in L:
         k, val = Z[l], (l, L[l])

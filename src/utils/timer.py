@@ -14,7 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Set the matplotlib back end to a headless one before anything tries
-# to use matplotlib and get some other back end.
-import matplotlib
-matplotlib.use('pdf')
+import time
+
+class Timer(object):
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.time()
+        self.interval = self.end - self.start

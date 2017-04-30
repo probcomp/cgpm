@@ -123,11 +123,22 @@ class Crp(DistributionGpm):
         return [log(p_table(t)) for t in tables]
 
     def gibbs_tables(self, rowid, m=1):
+        """Retrieve a list of possible tables for rowid.
+
+        If rowid is an existing customer, then the standard Gibbs proposal
+        tables  are returned (i.e. with the rowid unincorporated). If
+        rowid was a singleton table, then the table is re-used as a proposal
+        and m-1 additional auxiliary tables are proposed, else m auxiliary
+        tables are returned.
+
+        If rowid is a new customer, then the returned tables are from the
+        predictive distribution, (using m auxiliary tables always).
+        """
         assert 0 < m
         K = sorted(self.counts)
         singleton = self.singleton(rowid)
-        m_aux = m-1 if singleton else m
-        t_aux = [max(self.counts)+1+m for m in range(m_aux)]
+        m_aux = m - 1 if singleton else m
+        t_aux = [max(self.counts) + 1 + m for m in range(m_aux)]
         return K + t_aux
 
     def singleton(self, rowid):

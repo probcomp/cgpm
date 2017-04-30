@@ -30,12 +30,15 @@
 Minimal test suite targeting cgpm.crosscat.loomcat.
 """
 
+import pytest
+if not pytest.config.getoption('--integration'):
+    pytest.mark.skip('specify --integration to run integration tests')
+
 import importlib
 import itertools
 import json
 
 import numpy
-import pytest
 
 from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State

@@ -36,12 +36,16 @@ def state():
         'beta',
         'vonmises'])
     T, Zv, Zc = tu.gen_data_table(
-    30, [1], [[.25, .25, .5]], cctypes, distargs,
-    [.95]*len(cctypes),rng=gu.gen_rng(0))
+        30, [1], [[.25, .25, .5]], cctypes, distargs,
+        [.95]*len(cctypes), rng=gu.gen_rng(0))
     T = T.T
     s = State(
-        T, cctypes=cctypes, distargs=distargs, rng=gu.gen_rng(0))
-    s.transition(N=2)
+        T,
+        cctypes=cctypes,
+        distargs=distargs,
+        Zv={i: 0 for i in xrange(len(cctypes))},
+        rng=gu.gen_rng(0)
+    )
     return s
 
 

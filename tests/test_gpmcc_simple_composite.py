@@ -73,6 +73,7 @@ def test_duplicated_outputs(state):
         with pytest.raises(ValueError):
             state.compose_cgpm(fourway)
             assert len(state.hooked_cgpms) == 0
+            assert not state._composite
 
 
 def test_decompose_cgpm(state):
@@ -84,10 +85,13 @@ def test_decompose_cgpm(state):
     two_token = state.compose_cgpm(two)
     assert state.hooked_cgpms[four_token] == four
     assert state.hooked_cgpms[two_token] == two
+    assert state._composite
     state.decompose_cgpm(two_token)
     assert state.hooked_cgpms[four_token] == four
+    assert state._composite
     state.decompose_cgpm(four_token)
     assert len(state.hooked_cgpms) == 0
+    assert not state._composite
 
 
 def test_same_logpdf(state):

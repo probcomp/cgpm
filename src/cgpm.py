@@ -28,8 +28,13 @@ class CGpm(object):
         ----------
         outputs : list<int>
             List of variables whose joint distribution is modeled by the CGpm.
+            The CGpm is required to simulate and evaluate the log density
+            of an arbitrary susbet of output variables, by marginalizing and/or
+            conditioning on another (disjoin) subset of output variables.
         inputs : list<int>, optional
-            List of variables that must accompany any observation or query.
+            List of variables unmodeled by the CGpm which are needed
+            on a per-row basis. An example would be the covariate variables
+            for a single output linear regression CGpm.
         schema : **kwargs
             An opaque binary parsed by the CGpm to initialize itself.
             Often contains information about hyperparameters, parameters,
@@ -41,32 +46,50 @@ class CGpm(object):
         raise NotImplementedError
 
     def incorporate(self, rowid, query, evidence=None):
-        """Record an observation for `rowid`.
+        """Record an observation for `rowid` into the dataset.
 
         rowid : int
             A unique integer identifying the member.
         query : dict{int:value}
             The observed values. The keys of `query` must be a subset of the
             `output` variables, and `value` must be type-matched based on
-            `schema`.
+            the statistical data type of that variable. Missing values may
+            be either omitted, or specified as float(nan).
         evidence : dict{int:value}, optional
             Values of all required `input` variables for the `rowid`.
         """
         raise NotImplementedError
 
     def unincorporate(self, rowid):
-        """Remove all incorporated observations of `rowid`."""
+        """Remove all incorporated observations of `rowid` from the dataset."""
         raise NotImplementedError
 
     def logpdf(self, rowid, query, evidence=None):
         """Return the conditional density of `query` given `evidence`.
 
+        rowid : int, (use None to indicate a hypothetical row)
+            Specifies the identity of the member against which to evaluate
+            the log density. Specifying an existing `rowid` automatically
+            populates all incorporated output variables for that rowid the
+            `evidence`, and typically conditions on any current unexposed latent
+            state for that `rowid`. If the `rowid` is hypothetical, then
+            unexposed latent state is usually marginalized over or sampled.
+
         query : dict{int:value}
             The keys of `query` must be a subset of the `output` variables.
+            If `rowid` corresponds to an existing member, it is an error
+            to query any output variable for that `rowid` which has already
+            been incorporated.
+
         evidence : dict{int:value}, optional
-            Values of all required `input` variables as well as any partial
-            observations of `output` variables to condition on (may not overlap
-            with `query`).
+            The keys of `evidence` must contain all `input` variables, as well
+            as an optional collection of partial observations of `output`
+            variables to condition on. No keys in the `evidence` can overlap
+            with keys in `query`. If `rowid` identifies a previously
+            incorporated member, then all data for the `rowid` will be
+            automatically used as `evidence`, and therefore the only valid keys
+            in `evidence` are those `output` variables for which no observation
+            was incorporated.
         """
         raise NotImplementedError
 
@@ -76,15 +99,35 @@ class CGpm(object):
         The sample must be drawn from the same distribution whose density is
         assessed by `logpdf`.
 
+        rowid : int, (use None to indicate a hypothetical row)
+            Specifies the identity of the member to simulate from.
+            Specifying an existing `rowid` automatically populates all
+            incorporated output variables for that rowid the `evidence`, and
+            typically conditions on any current unexposed latent state for that
+            `rowid`. If the `rowid` is hypothetical, then unexposed latent state
+            is usually marginalized over or sampled.
+
         query : list<int>
-            List of `output` variables to simulate.
+            List of `output` variables to simulate. If `rowid` corresponds to
+            an existing member, it is an error to simulate any output variable
+            which has already been incorporated.
+
         evidence : dict{int:value}, optional
-            Values of all required `input` variables as well as any partial
-            observations of `output` variables to condition on (may not overlap
-            with `query`).
-        N : int, optional
-            Number of samples to return. If None, returns a single sample. If
-            integer, results a list of samples of length N.
+            The keys of `evidence` must contain all `input` variables, as well
+            as an optional collection of partial observations of `output`
+            variables to condition on. No keys in the `evidence` can overlap
+            with keys in `query`. If `rowid` identifies a previously
+            incorporated member, then all data for the `rowid` will be
+            automatically used as `evidence`, and therefore the only valid keys
+            in `evidence` are those `output` variables for which no observation
+            was incorporated.
+
+        N : int, (optional, default None)
+            Number of samples to return. If None, returns a single sample as
+            a dictionary with size len(query), where each key is an `output`
+            variable and each value the sample for that dimension. If `N` is
+            is not None, a size N list of dictionaries will be returned, each
+            corresponding to a single sample.
         """
         raise NotImplementedError
 
@@ -95,8 +138,12 @@ class CGpm(object):
     def transition(self, **kwargs):
         """Apply an inference operator transitioning the internal state of CGpm.
 
-        program : keyword arguments
-            Opaque binary parsed by the CGpm to apply inference over latents.
+        **kwargs : arbitrary keyword arguments Opaque binary parsed by the CGpm
+            to apply inference over its latents. There are no restrictions on
+            the learning mechanism, which may be based on optimization
+            (variational inference, maximum likelihood, EM, etc), Markov chain
+            Monte Carlo sampling (SMC, MH, etc), arbitrary heuristics, or
+            others.
         """
         raise NotImplementedError
 
@@ -116,5 +163,8 @@ class CGpm(object):
 
     @staticmethod
     def from_metadata(cls, metadata, rng=None):
-        """Load CGpm from its binary representation."""
+        """Load CGpm from its binary representation.
+
+        Refer to the usage example in `to_metadata`.
+        """
         raise NotImplementedError
