@@ -20,11 +20,12 @@ This test suite targets cgpm.crosscat.lovecat
 
 import pytest
 if not pytest.config.getoption('--integration'):
-    pytest.skip('specify --integration to run integration tests')
+    pytest.mark.skip('specify --integration to run integration tests')
 
-import itertools
+
 import StringIO
 import contextlib
+import itertools
 import time
 
 import numpy as np
@@ -41,6 +42,7 @@ from cgpm.crosscat.state import State
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
+
 
 def nullify(bdb, table, null):
     from bayeslite import bql_quote_name
