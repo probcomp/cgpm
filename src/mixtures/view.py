@@ -95,9 +95,10 @@ class View(CGpm):
             hypers=None if alpha is None else {'alpha': alpha},
             rng=self.rng
         )
-        self.crp.transition_hyper_grids([1]*self.n_rows())
+        n_rows = len(self.X[self.X.keys()[0]])
+        self.crp.transition_hyper_grids([1]*n_rows)
         if Zr is None:
-            for i in xrange(self.n_rows()):
+            for i in xrange(n_rows):
                 s = self.crp.simulate(i, [self.outputs[0]], {-1:0})
                 self.crp.incorporate(i, s, {-1:0})
         else:
@@ -415,7 +416,7 @@ class View(CGpm):
 
 
     def n_rows(self):
-        return len(self.X[self.X.keys()[0]])
+        return len(self.Zr())
 
     def hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr()))
@@ -497,13 +498,16 @@ class View(CGpm):
         assert self.alpha() > 0.
         # Check that the number of dims actually assigned to the view
         # matches the count in Nv.
+        Zr = self.Zr()
+        Nk = self.Nk()
         rowids = range(self.n_rows())
-        Zr, Nk = self.Zr(), self.Nk()
-        assert set(Zr.keys()) == set(xrange(self.n_rows()))
+        assert set(Zr.keys()) == set(rowids)
         assert set(Zr.values()) == set(Nk)
-        for dim in self.dims.itervalues():
+        for i, dim in self.dims.iteritems():
             # Assert first output is first input of the Dim.
             assert self.outputs[0] == dim.inputs[0]
+            # Assert length of dataset is the same as rowids.
+            assert len(self.X[i]) == len(rowids)
             # Ensure number of clusters in each dim in views[v]
             # is the same and as described in the view (K, Nk).
             assignments = merged(dim.Zr, dim.Zi)
