@@ -165,13 +165,14 @@ class KMeans(CGpm):
         else:
             W = self.mixing_coefficients
         # First, sample a cluster according to the weight vector W:
+
         def get_single_sample(k):
             mu = np.array(
-                [self.cluster_centers[k][index] for index in query]
+                [self.cluster_centers[k][column] for column in query]
             )
             Sigma = np.diag([self.cluster_sigmas[k]] * len(query))
             sample_vector = self.rng.multivariate_normal(mean=mu, cov=Sigma, size=1)
-            return {column:sample_vector[0][column] for column in query}
+            return {column:sample_vector[0][index] for index,column in enumerate(query)}
         if N is None:
             return get_single_sample(gu.pflip(W))
         else:
