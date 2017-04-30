@@ -137,7 +137,7 @@ def test_hypothetical_no_mutation():
     )
     assert state.n_rows() == start_rows
     assert np.allclose(start_marginal, state.logpdf_score())
-    assert 0 < rp_state_0 < 1
+    assert rp_state_0 in [0, 1]
 
 
 def test_misc_errors():

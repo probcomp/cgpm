@@ -486,7 +486,7 @@ class State(CGpm):
             for d in view.dims:
                 self.X[d].pop()
             view.unincorporate(rowid)
-        return relevance
+        return int(relevance)
 
     # --------------------------------------------------------------------------
     # Mutual information
