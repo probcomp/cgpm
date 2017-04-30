@@ -16,7 +16,7 @@
 
 import pytest
 if not pytest.config.getoption('--integration'):
-    pytest.skip('specify --integration to run integration tests')
+    pytest.mark.skip('specify --integration to run integration tests')
 
 import importlib
 import json
