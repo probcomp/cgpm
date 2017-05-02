@@ -22,6 +22,8 @@ from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 from cgpm.utils.general import gen_rng
 
+from markers import integration
+
 
 def test_entropy_bernoulli_univariate__ci_():
     rng = gen_rng(10)
@@ -47,6 +49,7 @@ def test_entropy_bernoulli_univariate__ci_():
     assert np.allclose(entropy_exact, entropy_mi, atol=.1)
     assert np.allclose(entropy_logpdf, entropy_mi, atol=.05)
 
+@integration
 def test_entropy_bernoulli_bivariate__ci_():
     # XXX Provisional kludge until we can get a working integration
     # test flag.
