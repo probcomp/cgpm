@@ -18,9 +18,10 @@
 This test suite targets cgpm.crosscat.lovecat
 """
 
+import hacks
 import pytest
 if not pytest.config.getoption('--integration'):
-    pytest.mark.skip('specify --integration to run integration tests')
+    hacks.skip('specify --integration to run integration tests')
 
 
 import StringIO

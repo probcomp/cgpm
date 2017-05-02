@@ -14,9 +14,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import hacks
 import pytest
 if not pytest.config.getoption('--integration'):
-    pytest.mark.skip('specify --integration to run integration tests')
+    hacks.skip('specify --integration to run integration tests')
 
 import matplotlib.pyplot as plt
 import numpy as np
