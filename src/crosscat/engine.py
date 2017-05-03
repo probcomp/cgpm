@@ -277,7 +277,12 @@ class Engine(object):
         weights = np.zeros(len(samples)) if not evidence else\
             self.logpdf(rowid, evidence, multiprocess=multiprocess)
         n_model = np.bincount(gu.log_pflip(weights, size=N, rng=self.rng))
-        resamples = [s[:n] for s,n in zip(samples, n_model) if n]
+        indexes = [self.rng.choice(N, size=n, replace=False) for n in n_model]
+        resamples = [
+            [s[i] for i in index]
+            for s, index in zip(samples, indexes)
+            if len(index) > 0
+        ]
         return list(itertools.chain.from_iterable(resamples))
 
     # --------------------------------------------------------------------------
