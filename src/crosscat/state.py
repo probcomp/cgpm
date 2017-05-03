@@ -717,11 +717,9 @@ class State(CGpm):
             self, N=N, S=S, kernels=kernels, rowids=rowids, cols=cols,
             seed=seed, progress=progress, checkpoint=checkpoint)
         # Transition the non-structural parameters.
-        num_transitions = int(np.sqrt(len(self.outputs)))
-        for _ in xrange(num_transitions):
-            self.transition_dim_hypers()
-            self.transition_crp_alpha()
-            self.transition_view_alphas()
+        self.transition_dim_hypers()
+        self.transition_crp_alpha()
+        self.transition_view_alphas()
 
     def transition_loom(
             self, N=None, S=None, kernels=None, progress=None,
@@ -731,9 +729,8 @@ class State(CGpm):
             self, N=N, S=S, kernels=kernels, progress=progress,
             checkpoint=checkpoint, seed=seed)
         # Transition the non-structural parameters.
-        num_transitions = int(np.sqrt(len(self.outputs)))
         self.transition(
-            N=num_transitions,
+            N=1,
             kernels=['column_hypers', 'column_params', 'alpha', 'view_alphas'
         ])
 
