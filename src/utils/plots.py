@@ -96,6 +96,46 @@ def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
     ax.set_title(clusters.values()[0].name())
     return ax
 
+def plot_predictive_dist_continuous_engine(
+        engine, output, ax=None, Y=None, hist=True):
+    if ax is None:
+        _fig, ax = plt.subplots()
+    observations = engine.states[0].X[output]
+    # Set up x axis.
+    x_min = min(observations)
+    x_max = max(observations)
+    if Y is None:
+        Y = np.linspace(x_min, x_max, 200)
+    # Compute weighted pdfs.
+    rowids = [-1]*len(Y)
+    queries = [{output:y} for y in Y]
+    logpdfs = np.asarray(engine.logpdf_bulk(rowids, queries, evidences=None))
+    assert np.shape(logpdfs) == (engine.num_states(), len(queries))
+    pdfs = [
+        np.exp(engine._likelihood_weighted_integrate(lps, -1, evidence=None))
+        for lps in logpdfs.T
+    ]
+    # Plot the density.
+    ax.plot(Y, pdfs, color='black', linewidth=3)
+    # Plot the samples.
+    if hist:
+        nbins = min([len(observations), 50])
+        ax.hist(
+            observations, nbins, normed=True, color='black', alpha=.5,
+            edgecolor='none'
+        )
+    else:
+        y_max = ax.get_ylim()[1]
+        for x in observations:
+            ax.vlines(x, 0, y_max/10., linewidth=1)
+    # Labels.
+    ax.set_ylabel('Density')
+    ax.set_xlabel('Value')
+    ax.set_title('Predictive Density for Variable %d (%s)'
+        % (output, engine.states[0].cctypes()[output]))
+    ax.grid()
+    return ax
+
 def plot_clustermap(D, xticklabels=None, yticklabels=None):
     import seaborn as sns
     if xticklabels is None: xticklabels = range(D.shape[0])
