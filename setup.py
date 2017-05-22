@@ -170,7 +170,7 @@ setup(
         'numpy',
         'pandas',
         'scipy>=0.13.3',
-        'sklearn',
+        'scikit-learn',
         'statsmodels',
     ],
     tests_require=[
