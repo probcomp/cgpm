@@ -16,11 +16,11 @@
 
 import time
 
-import pytest
-
 from cgpm.crosscat.engine import Engine
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
+
+from markers import integration
 
 
 def retrieve_normal_dataset():
@@ -36,12 +36,8 @@ def retrieve_normal_dataset():
     return D
 
 
+@integration
 def test_simple_diagnostics():
-    try:
-        import crosscat
-    except ImportError:
-        pytest.skip('no crosscat installation')
-        return
     def diagnostics_without_iters(diagnostics):
         return (v for k, v in diagnostics.iteritems() if k != 'iterations')
     D = retrieve_normal_dataset()
