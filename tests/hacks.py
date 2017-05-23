@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Set the matplotlib back end to a headless one before anything tries
-# to use matplotlib and get some other back end.
-import matplotlib
-matplotlib.use('pdf')
+""""pytest hacks"""
 
-def pytest_addoption(parser):
-    parser.addoption(
-        '--integration',
-        action='store_true',
-        help='run integration tests'
-    )
+import pytest
+
+
+# XXX https://github.com/pytest-dev/pytest/issues/2338
+def skip(reason):
+    if pytest.__version__ >= '3':
+        raise pytest.skip.Exception(reason, allow_module_level=True)
+    else:
+        pytest.skip(reason)
