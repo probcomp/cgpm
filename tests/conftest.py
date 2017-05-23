@@ -19,8 +19,9 @@
 import matplotlib
 matplotlib.use('pdf')
 
-import pytest
-
 def pytest_addoption(parser):
-    parser.addoption('--integration', action='store_true',
-        help='run integration tests')
+    parser.addoption(
+        '--integration',
+        action='store_true',
+        help='run integration tests'
+    )
