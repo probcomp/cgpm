@@ -19,6 +19,7 @@ import sys
 import numpy as np
 
 from cgpm.mixtures.view import View
+from cgpm.utils import timer as tu
 
 
 def _crosscat_M_c(state):
@@ -292,11 +293,7 @@ def _progress(n_steps, max_time, step_idx, elapsed_secs, end=None):
         p_seconds = elapsed_secs / max_time if max_time != -1 else 0
         p_iters = float(step_idx) / n_steps
         percentage = max(p_iters, p_seconds)
-        progress = ' ' * 30
-        fill = int(percentage * len(progress))
-        progress = '[' + '=' * fill + progress[fill:] + ']'
-        print '\r{} {:1.2f}%'.format(progress, 100 * percentage),
-        sys.stdout.flush()
+        tu.progress(percentage, sys.stdout)
 
 
 def transition(

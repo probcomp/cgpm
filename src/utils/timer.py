@@ -24,3 +24,11 @@ class Timer(object):
     def __exit__(self, *args):
         self.end = time.time()
         self.interval = self.end - self.start
+
+
+def progress(percentage, stream):
+    progress = ' ' * 30
+    fill = int(percentage * len(progress))
+    progress = '[' + '=' * fill + progress[fill:] + ']'
+    stream.write('\r{} {:1.2f}%'.format(progress, 100 * percentage))
+    stream.flush()
