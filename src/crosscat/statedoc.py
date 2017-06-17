@@ -27,14 +27,14 @@ def load_docstrings(module):
             the column for all future queries. Defaults to range(0, X.shape[1])
         inputs : list<int>, optional
             Currently unsupported.
-        cctypes : list<str>, optional
+        cctypes : list<str>
             Data type of each column, see `utils.config` for valid cctypes.
-            Defaults to normal.
         distargs : list<dict>, optional
             See the documentation for each DistributionGpm for its distargs.
-        Zv : list<int>, optional
-            Assignmet of columns to views. Defaults to sampling from CRP.
-        Zrv : list(list<int>), optional
+        Zv : dict(int:int), optional
+            Assignment of output columns to views, where Zv[k] is the
+            view assignment for column k. Defaults to sampling from CRP.
+        Zrv : dict(int:list<int>), optional
             Assignment of rows to clusters in each view, where Zrv[k] is
             the Zr for View k. If specified, then Zv must also be specified.
             Defaults to sampling from CRP.
