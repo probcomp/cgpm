@@ -252,11 +252,12 @@ class Engine(object):
         if self.states[0].is_composite():
             raise ValueError('Cannot add new states to composite CGPMs.')
         # Arguments must be the same for all states.
-        forbidden = [ 'X', 'outputs', 'cctypes']
+        forbidden = [ 'X', 'outputs', 'cctypes', 'distargs']
         if [f for f in forbidden if f in kwargs]:
             raise ValueError('Cannot specify arguments for: %s.' % (forbidden,))
         X = self.states[0].data_array()
         kwargs['cctypes'] = self.states[0].cctypes()
+        kwargs['distargs'] = self.states[0].distargs()
         kwargs['outputs'] = self.states[0].outputs
         args = [(X, rng, kwargs) for rng in self._get_rngs(count)]
         new_states = mapper(_intialize, args)

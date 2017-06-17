@@ -24,10 +24,16 @@ from cgpm.utils import general as gu
 
 
 def get_engine():
-    X = [[0.123, 1], [1.12, 0], [1.1, 1]]
+    X = [[0.123, 1, 0], [1.12, 0, 1], [1.1, 1, 2]]
     rng = gu.gen_rng(1)
     return Engine(
-        X, outputs=[8,7], num_states=4, cctypes=['normal','bernoulli'], rng=rng)
+        X,
+        outputs=[8,7,9],
+        num_states=4,
+        cctypes=['normal', 'bernoulli', 'categorical'],
+        distargs=[None, None, {'k': 3}],
+        rng=rng
+    )
 
 
 def test_engine_add_state_basic():
@@ -45,9 +51,9 @@ def test_engine_add_state_basic():
 def test_engine_add_state_custom():
     # Add a state with a specified view and row partition.
     engine = get_engine()
-    engine.add_state(count=2, Zv={7:0, 8:1}, Zrv={0: [0,1,1], 1: [1,1,1]})
+    engine.add_state(count=2, Zv={7:0, 8:1, 9:0}, Zrv={0: [0,1,1], 1: [1,1,1]})
     new_state = engine.get_state(engine.num_states()-1)
-    assert new_state.Zv() == {7:0, 8:1}
+    assert new_state.Zv() == {7:0, 8:1, 9:0}
     assert new_state.views[0].Zr(0) == 0
     assert new_state.views[0].Zr(1) == 1
     assert new_state.views[0].Zr(2) == 1
@@ -67,6 +73,9 @@ def test_engine_add_state_kwarg_errors():
     with pytest.raises(ValueError):
         # Cannot specify new cctypes.
         engine.add_state(cctypes=['normal', 'normal'])
+    with pytest.raises(ValueError):
+        # Cannot specify new distargs.
+        engine.add_state(distargs=[None, None, {'k' : 3}])
     with pytest.raises(ValueError):
         # Cannot specify all together.
         engine.add_state(X=[[0,1]], outputs=[1,2], cctypes=['normal', 'normal'])
