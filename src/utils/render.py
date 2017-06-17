@@ -15,11 +15,14 @@
 # limitations under the License.
 
 import itertools
+import sys
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn
+
+from cgpm.utils import timer as tu
 
 
 seaborn.set_style('white')
@@ -250,6 +253,7 @@ def viz_state(
         row_names=None,
         col_names=None,
         savefile=None,
+        progress=None,
         figsize=None
     ):
     """Calls viz_view on each view in the state.
@@ -304,6 +308,8 @@ def viz_state(
             row_names,
             col_names_v
         )
+        if progress:
+            tu.progress((float(i)+1)/len(views), sys.stdout)
 
     plt.subplots_adjust(top=0.84)
     if savefile:
