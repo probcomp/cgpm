@@ -328,6 +328,9 @@ class State(CGpm):
         conditional = any(d.is_conditional() for d in self.dims())
         self._composite = hooked or conditional
 
+    def is_composite(self):
+        return self._composite
+
     # --------------------------------------------------------------------------
     # logscore.
 
