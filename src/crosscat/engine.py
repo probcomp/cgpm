@@ -246,6 +246,23 @@ class Engine(object):
     def num_states(self):
         return len(self.states)
 
+    def add_state(self, count=1, multiprocess=1, **kwargs):
+        mapper = parallel_map if multiprocess else map
+        # XXX Temporarily disallow adding states for composite CGPM.
+        if self.states[0].is_composite():
+            raise ValueError('Cannot add new states to composite CGPMs.')
+        # Arguments must be the same for all states.
+        forbidden = [ 'X', 'outputs', 'cctypes']
+        if [f for f in forbidden if f in kwargs]:
+            raise ValueError('Cannot specify arguments for: %s.' % (forbidden,))
+        X = self.states[0].data_array()
+        kwargs['cctypes'] = self.states[0].cctypes()
+        kwargs['outputs'] = self.states[0].outputs
+        args = [(X, rng, kwargs) for rng in self._get_rngs(count)]
+        new_states = mapper(_intialize, args)
+        self.states.extend(new_states)
+
+
     # --------------------------------------------------------------------------
     # Internal
 
