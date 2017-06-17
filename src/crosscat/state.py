@@ -37,6 +37,7 @@ from cgpm.network.helpers import retrieve_weakly_connected_components
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
+from cgpm.utils import timer as tu
 from cgpm.utils import validation as vu
 
 
@@ -808,11 +809,8 @@ class State(CGpm):
         self.diagnostics['column_partition'].append(self.Zv().items())
 
     def _progress(self, percentage):
-        progress = ' ' * 30
-        fill = int(percentage * len(progress))
-        progress = '[' + '=' * fill + progress[fill:] + ']'
-        print '\r{} {:1.2f}%'.format(progress, 100 * percentage),
-        sys.stdout.flush()
+        tu.progress(percentage, sys.stdout)
+
 
     # --------------------------------------------------------------------------
     # Helpers
