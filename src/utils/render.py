@@ -127,9 +127,11 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     data_dict = get_view_data(view)
     data_arr = np.array(data_dict.values()).T
 
-    # Partition rows based on their cluster assignments.
+    # Construct rowid -> table mapping, and unique crp tables.
     crp_lookup = view.Zr()
     crp_tables = set(view.Zr().values())
+
+    # Partition rows by cluster assignment.
     clustered_rows_raw = [
         [rowid for rowid in crp_lookup if crp_lookup[rowid] == table]
         for table in crp_tables
