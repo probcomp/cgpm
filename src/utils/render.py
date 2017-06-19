@@ -234,6 +234,7 @@ def viz_state(state, row_names=None, col_names=None, progress=None, **kwargs):
         col_names = range(data_arr.shape[1])
 
     fig = plt.figure()
+    fig.set_size_inches(32, 18)
 
     views = state.views.keys()
     views = sorted(views, key=lambda v: len(state.views[v].outputs))[::-1]
