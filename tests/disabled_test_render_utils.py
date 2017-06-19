@@ -125,36 +125,36 @@ COL_NAMES = string_generator(12, 7)
 
 
 def test_viz_data():
-    ru.viz_data(test_dataset_mixed_nan,
-        savefile=get_filename('test_viz_data.png'))
+    fig, _ax = ru.viz_data(test_dataset_mixed_nan,)
+    fig.savefig(get_filename('test_viz_data.png'))
 
 def test_viz_data_with_names():
     row_names = string_generator(12, 10)
     col_names = string_generator(6, 7)
-    ru.viz_data(
-        test_dataset_dpmm, row_names=row_names, col_names=col_names,
-        savefile=get_filename('test_viz_data_with_names.png'))
+    fig, _ax = ru.viz_data(
+        test_dataset_dpmm, row_names=row_names, col_names=col_names)
+    fig.savefig(get_filename('test_viz_data_with_names.png'))
 
 def test_viz_wide_data():
-    ru.viz_data(
-        test_dataset_wide, savefile=get_filename('test_viz_wide_data.png'))
+    fig, _ax = ru.viz_data(test_dataset_wide)
+    fig.savefig(get_filename('test_viz_wide_data.png'))
 
 def test_viz_tall_data():
-    ru.viz_data(
-        test_dataset_tall, savefile=get_filename('test_viz_tall_data.png'))
+    fig, _ax = ru.viz_data(test_dataset_tall)
+    fig.savefig(get_filename('test_viz_tall_data.png'))
 
 def test_viz_view():
-    ru.viz_view(VIEW, savefile=get_filename('test_viz_view.png'))
+    fig, _ax = ru.viz_view(VIEW)
+    fig.savefig(get_filename('test_viz_view.png'))
 
 def test_viz_view_with_names():
-    ru.viz_view(
-        VIEW, row_names=ROW_NAMES, col_names=COL_NAMES,
-        savefile=get_filename('test_viz_view_with_names.png'))
+    fig, _ax = ru.viz_view(VIEW, row_names=ROW_NAMES, col_names=COL_NAMES)
+    fig.savefig(get_filename('test_viz_view_with_names.png'))
 
 def test_viz_state():
-    ru.viz_state(STATE, savefile=get_filename('test_viz_state.png'))
+    fig, _ax = ru.viz_state(STATE)
+    fig.savefig(get_filename('test_viz_state.png'))
 
 def test_viz_state_with_names():
-    ru.viz_state(
-        STATE, row_names=ROW_NAMES, col_names=COL_NAMES,
-        savefile=get_filename('test_viz_state_with_names.png'))
+    fig, _ax = ru.viz_state(STATE, row_names=ROW_NAMES, col_names=COL_NAMES)
+    fig.savefig(get_filename('test_viz_state_with_names.png'))
