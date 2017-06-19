@@ -310,6 +310,8 @@ def viz_state(
         )
         if progress:
             tu.progress((float(i)+1)/len(views), sys.stdout)
+    if progress:
+        sys.stdout.write('\n')
 
     plt.subplots_adjust(top=0.84)
     if savefile:
