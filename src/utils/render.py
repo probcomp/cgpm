@@ -128,27 +128,27 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     data_arr = np.array(data_dict.values()).T
 
     # Partition rows based on their cluster assignments.
-    customers = view.Zr()
-    tables = set(view.Zr().values())
+    crp_lookup = view.Zr()
+    crp_tables = set(view.Zr().values())
     clustered_rows_raw = [
-        [c for c in customers if customers[c] == k]
-        for k in tables
+        [rowid for rowid in crp_lookup if crp_lookup[rowid] == table]
+        for table in crp_tables
     ]
 
     # Within a cluster, sort the rows by their predictive likelihood.
-    def retrieve_row_score(r):
+    def retrieve_row_score(rowid):
         data = {
-            d: data_dict[d][r] for d in data_dict
-            if not np.isnan(data_dict[d][r])
+            dim: data_dict[dim][rowid] for dim in data_dict
+            if not np.isnan(data_dict[dim][rowid])
         }
-        return view.logpdf(-1, data, {view.outputs[0]: view.Zr(r)})
+        return view.logpdf(-1, data, {view.outputs[0]: view.Zr(rowid)})
     row_scores = [
-        [retrieve_row_score(r) for r in cluster]
+        [retrieve_row_score(rowid) for rowid in cluster]
         for cluster in clustered_rows_raw
     ]
     clustered_rows = [
-        [r for s, r in sorted(zip(scores, row))]
-        for scores, row in zip(row_scores, clustered_rows_raw)
+        [rowid for _score, rowid in sorted(zip(scores, rowids))]
+        for scores, rowids in zip(row_scores, clustered_rows_raw)
     ]
 
     # Order the clusters by number of rows.
@@ -158,15 +158,17 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     clustered_data = np.vstack(
         [data_arr[cluster] for cluster in clustered_rows_reordered])
 
-    # Unravel the clusters one long list and find the cluster boundaries.
+    # Unravel the clusters one long list.
     row_indexes = list(itertools.chain.from_iterable(clustered_rows_reordered))
-    assignments = np.asarray([customers[r] for r in row_indexes])
+    assignments = np.asarray([crp_lookup[rowid] for rowid in row_indexes])
+
+    # Find the cluster boundaries.
     cluster_boundaries = np.nonzero(assignments[:-1] != assignments[1:])[0]
 
     # Retrieve the logscores of the dimensions for sorting.
     scores = [
-        [view.dims[d].clusters[k].logpdf_score() for k in tables]
-        for d in data_dict
+        [view.dims[dim].clusters[table].logpdf_score() for table in crp_tables]
+        for dim in data_dict
     ]
     dim_scores = np.sum(scores, axis=1)
     dim_ordering = np.argsort(dim_scores)
@@ -188,8 +190,11 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     # Plot lines between clusters
     for bd in cluster_boundaries:
         ax.plot(
-            [-0.5, clustered_data.shape[1]-0.5], [bd+0.5, bd+0.5],
-            color='magenta', linewidth=3)
+            [-0.5, clustered_data.shape[1]-0.5],
+            [bd+0.5, bd+0.5],
+            color='magenta',
+            linewidth=3,
+        )
 
     return fig, ax
 
