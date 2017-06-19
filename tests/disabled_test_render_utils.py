@@ -38,7 +38,7 @@ TIMESTAMP = cu.timestamp()
 # Define datasets.
 
 
-test_dataset_dpmm = [
+test_dataset_dpmm = np.array([
     [1, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 1],
@@ -51,9 +51,9 @@ test_dataset_dpmm = [
     [0, 0, 1, 1, 1, 0],
     [0, 0, 1, 1, 1, 0],
     [0, 0, 1, 1, 1, 0],
-]
+])
 
-test_dataset_with_distractors = [
+test_dataset_with_distractors = np.array([
     [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -66,13 +66,12 @@ test_dataset_with_distractors = [
     [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-]
+])
 
-X1 = np.array(test_dataset_dpmm)
-
-X2 = RNG.normal(10, 5, size=[12, 6])
-
-test_dataset_mixed = np.hstack((X1, X2))
+test_dataset_mixed = np.hstack((
+    np.array(test_dataset_dpmm),
+    RNG.normal(10, 5, size=[12, 6]),
+))
 
 test_dataset_mixed_nan = np.vstack((test_dataset_mixed, [np.nan]*12))
 
@@ -151,6 +150,17 @@ def test_viz_view_with_names():
     fig, _ax = ru.viz_view(VIEW, row_names=ROW_NAMES, col_names=COL_NAMES)
     fig.savefig(get_filename('test_viz_view_with_names.png'))
 
+def test_viz_view_with_names_subsample():
+    fig, _ax = ru.viz_view(
+        VIEW,
+        row_names=ROW_NAMES,
+        col_names=COL_NAMES,
+        subsample=2,
+        seed=2,
+        yticklabelsize='medium',
+    )
+    fig.savefig(get_filename('test_viz_view_with_names_subsample.png'))
+
 def test_viz_state():
     fig, _ax = ru.viz_state(STATE)
     fig.savefig(get_filename('test_viz_state.png'))
@@ -158,3 +168,16 @@ def test_viz_state():
 def test_viz_state_with_names():
     fig, _ax = ru.viz_state(STATE, row_names=ROW_NAMES, col_names=COL_NAMES)
     fig.savefig(get_filename('test_viz_state_with_names.png'))
+
+def test_viz_state_with_names_subsample():
+    # The subsampled rows should be the same for all views since identical seed
+    # is passed to viz_view_raw, and each function creates its own rng.
+    fig, _ax = ru.viz_state(
+        STATE,
+        row_names=ROW_NAMES,
+        col_names=COL_NAMES,
+        subsample=4,
+        seed=2,
+        yticklabelsize='medium',
+    )
+    fig.savefig(get_filename('test_viz_state_with_names_subsample.png'))

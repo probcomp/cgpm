@@ -23,6 +23,7 @@ import numpy as np
 import seaborn
 
 from cgpm.utils import timer as tu
+from cgpm.utils import general as gu
 
 
 seaborn.set_style('white')
@@ -34,9 +35,8 @@ def get_fig_axes(ax=None, nrows=1, ncols=1):
     return ax.get_figure(), ax
 
 
-def compute_axis_size_viz_data(data, row_names, col_names):
-    data = np.array(data)
-    height = data.shape[0] #/ 2. + row_height
+def compute_axis_size_viz_data(data, **kwargs):
+    height = kwargs.get('subsample', data.shape[0]) #/ 2. + row_height
     width = data.shape[1] #/ 2. + col_width
     return height, width
 
@@ -50,7 +50,7 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
     if col_names is None:
         col_names = range(data.shape[1])
 
-    height, width = compute_axis_size_viz_data(data, row_names, col_names)
+    height, width = compute_axis_size_viz_data(data)
 
     data_normed = nannormalize(data)
 
@@ -105,9 +105,9 @@ def viz_data(data, ax=None, row_names=None, col_names=None, **kwargs):
     if col_names is None:
         col_names = range(data.shape[1])
 
-    fig, ax = viz_data_raw(data, ax, row_names, col_names, **kwargs)
+    fig, ax = viz_data_raw(np.array(data), ax, row_names, col_names, **kwargs)
 
-    height, width = compute_axis_size_viz_data(data, row_names, col_names)
+    height, width = compute_axis_size_viz_data(data, **kwargs)
     fig.set_size_inches((width, height))
     fig.set_tight_layout(True)
 
@@ -127,28 +127,48 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     data_dict = get_view_data(view)
     data_arr = np.array(data_dict.values()).T
 
-    # Partition rows based on their cluster assignments.
-    customers = view.Zr()
-    tables = set(view.Zr().values())
+
+    # Construct rowid -> table mapping.
+    crp_lookup = view.Zr()
+
+    # Determine whether sub-sampling and react.
+    subsample = int(kwargs.get('subsample', 0))
+    seed = int(kwargs.get('seed', 1))
+    if subsample and subsample < len(data_arr):
+        rng = gu.gen_rng(seed)
+        rowids_subsample = rng.choice(
+            range(len(data_arr)),
+            replace=False,
+            size=subsample,
+        )
+        crp_lookup = {rowid : crp_lookup[rowid] for rowid in rowids_subsample}
+
+    # Unique CRP tables in the subsample.
+    crp_tables = set(crp_lookup.values())
+
+    # Unique CRP tables across all rows (for sorting).
+    crp_tables_all = set(view.Zr().values())
+
+    # Partition rows by cluster assignment.
     clustered_rows_raw = [
-        [c for c in customers if customers[c] == k]
-        for k in tables
+        [rowid for rowid in crp_lookup if crp_lookup[rowid] == table]
+        for table in crp_tables
     ]
 
     # Within a cluster, sort the rows by their predictive likelihood.
-    def retrieve_row_score(r):
+    def retrieve_row_score(rowid):
         data = {
-            d: data_dict[d][r] for d in data_dict
-            if not np.isnan(data_dict[d][r])
+            dim: data_dict[dim][rowid] for dim in data_dict
+            if not np.isnan(data_dict[dim][rowid])
         }
-        return view.logpdf(-1, data, {view.outputs[0]: view.Zr(r)})
+        return view.logpdf(-1, data, {view.outputs[0]: view.Zr(rowid)})
     row_scores = [
-        [retrieve_row_score(r) for r in cluster]
+        [retrieve_row_score(rowid) for rowid in cluster]
         for cluster in clustered_rows_raw
     ]
     clustered_rows = [
-        [r for s, r in sorted(zip(scores, row))]
-        for scores, row in zip(row_scores, clustered_rows_raw)
+        [rowid for _score, rowid in sorted(zip(scores, rowids))]
+        for scores, rowids in zip(row_scores, clustered_rows_raw)
     ]
 
     # Order the clusters by number of rows.
@@ -158,16 +178,21 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     clustered_data = np.vstack(
         [data_arr[cluster] for cluster in clustered_rows_reordered])
 
-    # Unravel the clusters one long list and find the cluster boundaries.
+    # Unravel the clusters one long list.
     row_indexes = list(itertools.chain.from_iterable(clustered_rows_reordered))
-    assignments = np.asarray([customers[r] for r in row_indexes])
+    assignments = np.asarray([crp_lookup[rowid] for rowid in row_indexes])
+
+    # Find the cluster boundaries.
     cluster_boundaries = np.nonzero(assignments[:-1] != assignments[1:])[0]
 
-    # Retrieve the logscores of the dimensions for sorting.
-    scores = [
-        [view.dims[d].clusters[k].logpdf_score() for k in tables]
-        for d in data_dict
+    # Retrieve the logscores of the dimensions for sorting. Note the iteration
+    # is over all the tables in the CRP, not those only in the subsample, for
+    # consistent ordering irrespective of the random subsample.
+    get_dim_score = lambda dim: [
+        view.dims[dim].clusters[table].logpdf_score()
+        for table in crp_tables_all
     ]
+    scores = map(get_dim_score, data_dict.iterkeys())
     dim_scores = np.sum(scores, axis=1)
     dim_ordering = np.argsort(dim_scores)
 
@@ -188,8 +213,11 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     # Plot lines between clusters
     for bd in cluster_boundaries:
         ax.plot(
-            [-0.5, clustered_data.shape[1]-0.5], [bd+0.5, bd+0.5],
-            color='magenta', linewidth=3)
+            [-0.5, clustered_data.shape[1]-0.5],
+            [bd+0.5, bd+0.5],
+            color='magenta',
+            linewidth=3,
+        )
 
     return fig, ax
 
@@ -213,11 +241,10 @@ def viz_view(view, ax=None, row_names=None, col_names=None, **kwargs):
 
     fig, ax = viz_view_raw(view, ax, row_names, col_names, **kwargs)
 
-    height, width = compute_axis_size_viz_data(data_arr, row_names, col_names)
-
-    fig.set_figheight(height)
-    fig.set_figwidth(width)
+    height, width = compute_axis_size_viz_data(data_arr, **kwargs)
+    fig.set_size_inches((width, height))
     fig.set_tight_layout(True)
+
     return fig, ax
 
 
@@ -244,11 +271,7 @@ def viz_state(state, row_names=None, col_names=None, progress=None, **kwargs):
     view_heights = []
     for view in views:
         data_view = np.array(get_view_data(state.views[view]).values()).T
-        _height, width = compute_axis_size_viz_data(
-            data_view,
-            row_names,
-            col_names,
-        )
+        _height, width = compute_axis_size_viz_data(data_view, **kwargs)
         view_widths.append(width)
         view_heights.append(1)
 
