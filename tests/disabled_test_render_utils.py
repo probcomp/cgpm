@@ -151,6 +151,17 @@ def test_viz_view_with_names():
     fig, _ax = ru.viz_view(VIEW, row_names=ROW_NAMES, col_names=COL_NAMES)
     fig.savefig(get_filename('test_viz_view_with_names.png'))
 
+def test_viz_view_with_names_subsample():
+    fig, _ax = ru.viz_view(
+        VIEW,
+        row_names=ROW_NAMES,
+        col_names=COL_NAMES,
+        subsample=2,
+        seed=2,
+        yticklabelsize='medium',
+    )
+    fig.savefig(get_filename('test_viz_view_with_names_subsample.png'))
+
 def test_viz_state():
     fig, _ax = ru.viz_state(STATE)
     fig.savefig(get_filename('test_viz_state.png'))
@@ -158,3 +169,16 @@ def test_viz_state():
 def test_viz_state_with_names():
     fig, _ax = ru.viz_state(STATE, row_names=ROW_NAMES, col_names=COL_NAMES)
     fig.savefig(get_filename('test_viz_state_with_names.png'))
+
+def test_viz_state_with_names_subsample():
+    # The subsampled rows should be the same for all views since identical seed
+    # is passed to viz_view_raw, and each function creates its own rng.
+    fig, _ax = ru.viz_state(
+        STATE,
+        row_names=ROW_NAMES,
+        col_names=COL_NAMES,
+        subsample=4,
+        seed=2,
+        yticklabelsize='medium',
+    )
+    fig.savefig(get_filename('test_viz_state_with_names_subsample.png'))
