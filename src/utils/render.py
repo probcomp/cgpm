@@ -254,32 +254,25 @@ def viz_state(state, row_names=None, col_names=None, progress=None,):
         view_widths.append(width)
         view_heights.append(1)
 
-    # Create grid for subplots.
+    # Create grid for subplots and axes.
     gs = gridspec.GridSpec(1, len(views), width_ratios=view_widths, wspace=1)
+    axes = [fig.add_subplot(gs[i]) for i in xrange(len(views))]
 
     # Plot data for each view
-    ax_list = []
-    for (i, v) in enumerate(views):
-        ax_list.append(fig.add_subplot(gs[i]))
-
+    for i, (ax, v) in enumerate(zip(axes, views)):
         # Find the columns applicable to this view.
         col_names_v = [
             col_names[state.outputs.index(o)]
             for o in state.views[v].outputs[1:]
         ]
-        ax_list[-1] = viz_view_raw(
-            state.views[v],
-            ax_list[-1],
-            row_names,
-            col_names_v
-        )
+        viz_view_raw(state.views[v], ax, row_names, col_names_v)
         if progress:
             tu.progress((float(i)+1)/len(views), sys.stdout)
     if progress:
         sys.stdout.write('\n')
 
     plt.subplots_adjust(top=0.84)
-    return fig, ax_list
+    return fig, axes
 
 
 # # Helpers # #
