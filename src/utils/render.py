@@ -67,13 +67,12 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
     ax.set_ylim([-0.5, data_normed.shape[0]-0.5])
 
     size = np.sqrt(width**2 + height**2)
-    yticklabelsize = size - height
     if row_names is not None:
         ax.set_yticks(range(data_normed.shape[0]))
         ax.set_yticklabels(
             row_names,
             ha='right',
-            size=yticklabelsize,
+            size=kwargs.get('yticklabelsize', size - height),
             rotation_mode='anchor'
         )
 
@@ -84,7 +83,7 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
             rotation=45,
             rotation_mode='anchor',
             ha='left',
-            size='x-large',
+            size=kwargs.get('xticklabelsize', 'x-large'),
             fontweight='bold'
         )
 
