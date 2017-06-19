@@ -111,16 +111,14 @@ def string_generator(N=1, length=10):
 def get_filename(name):
     return os.path.join(OUT, '%s_%s' % (TIMESTAMP, name,))
 
-# view1, state1 = init_binary_view_state(test_dataset_dpmm, 50)
-# view2, state2 = init_binary_view_state(test_dataset_with_distractors, 50)
 
-view3, state3 = init_view_state(
+# Global variables for test cases involving a CrossCat state.
+
+
+VIEW, STATE = init_view_state(
     test_dataset_mixed_nan, 25, ['bernoulli']*6 + ['normal']*6)
-
-row_names_test = string_generator(12, 10)
-col_names_test = string_generator(6, 7)
-row_names3 = string_generator(13, 10)
-col_names3 = string_generator(12, 7)
+ROW_NAMES = string_generator(13, 10)
+COL_NAMES = string_generator(12, 7)
 
 
 # Test cases
@@ -131,8 +129,10 @@ def test_viz_data():
         savefile=get_filename('test_viz_data.png'))
 
 def test_viz_data_with_names():
+    row_names = string_generator(12, 10)
+    col_names = string_generator(6, 7)
     ru.viz_data(
-        test_dataset_dpmm, row_names=row_names_test, col_names=col_names_test,
+        test_dataset_dpmm, row_names=row_names, col_names=col_names,
         savefile=get_filename('test_viz_data_with_names.png'))
 
 def test_viz_wide_data():
@@ -144,17 +144,17 @@ def test_viz_tall_data():
         test_dataset_tall, savefile=get_filename('test_viz_tall_data.png'))
 
 def test_viz_view():
-    ru.viz_view(view3, savefile=get_filename('test_viz_view.png'))
+    ru.viz_view(VIEW, savefile=get_filename('test_viz_view.png'))
 
 def test_viz_view_with_names():
     ru.viz_view(
-        view3, row_names=row_names3, col_names=col_names3,
+        VIEW, row_names=ROW_NAMES, col_names=COL_NAMES,
         savefile=get_filename('test_viz_view_with_names.png'))
 
 def test_viz_state():
-    ru.viz_state(state3, savefile=get_filename('test_viz_state.png'))
+    ru.viz_state(STATE, savefile=get_filename('test_viz_state.png'))
 
 def test_viz_state_with_names():
     ru.viz_state(
-        state3, row_names=row_names3, col_names=col_names3,
+        STATE, row_names=ROW_NAMES, col_names=COL_NAMES,
         savefile=get_filename('test_viz_state_with_names.png'))
