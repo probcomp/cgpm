@@ -38,7 +38,7 @@ TIMESTAMP = cu.timestamp()
 # Define datasets.
 
 
-test_dataset_dpmm = [
+test_dataset_dpmm = np.array([
     [1, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 1],
@@ -51,9 +51,9 @@ test_dataset_dpmm = [
     [0, 0, 1, 1, 1, 0],
     [0, 0, 1, 1, 1, 0],
     [0, 0, 1, 1, 1, 0],
-]
+])
 
-test_dataset_with_distractors = [
+test_dataset_with_distractors = np.array([
     [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -66,13 +66,12 @@ test_dataset_with_distractors = [
     [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-]
+])
 
-X1 = np.array(test_dataset_dpmm)
-
-X2 = RNG.normal(10, 5, size=[12, 6])
-
-test_dataset_mixed = np.hstack((X1, X2))
+test_dataset_mixed = np.hstack((
+    np.array(test_dataset_dpmm),
+    RNG.normal(10, 5, size=[12, 6]),
+))
 
 test_dataset_mixed_nan = np.vstack((test_dataset_mixed, [np.nan]*12))
 

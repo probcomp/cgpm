@@ -35,9 +35,8 @@ def get_fig_axes(ax=None, nrows=1, ncols=1):
     return ax.get_figure(), ax
 
 
-def compute_axis_size_viz_data(data, row_names, col_names):
-    data = np.array(data)
-    height = data.shape[0] #/ 2. + row_height
+def compute_axis_size_viz_data(data, **kwargs):
+    height = kwargs.get('subsample', data.shape[0]) #/ 2. + row_height
     width = data.shape[1] #/ 2. + col_width
     return height, width
 
@@ -51,7 +50,7 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
     if col_names is None:
         col_names = range(data.shape[1])
 
-    height, width = compute_axis_size_viz_data(data, row_names, col_names)
+    height, width = compute_axis_size_viz_data(data)
 
     data_normed = nannormalize(data)
 
@@ -106,9 +105,9 @@ def viz_data(data, ax=None, row_names=None, col_names=None, **kwargs):
     if col_names is None:
         col_names = range(data.shape[1])
 
-    fig, ax = viz_data_raw(data, ax, row_names, col_names, **kwargs)
+    fig, ax = viz_data_raw(np.array(data), ax, row_names, col_names, **kwargs)
 
-    height, width = compute_axis_size_viz_data(data, row_names, col_names)
+    height, width = compute_axis_size_viz_data(data, **kwargs)
     fig.set_size_inches((width, height))
     fig.set_tight_layout(True)
 
@@ -242,11 +241,10 @@ def viz_view(view, ax=None, row_names=None, col_names=None, **kwargs):
 
     fig, ax = viz_view_raw(view, ax, row_names, col_names, **kwargs)
 
-    height, width = compute_axis_size_viz_data(data_arr, row_names, col_names)
-
-    fig.set_figheight(height)
-    fig.set_figwidth(width)
+    height, width = compute_axis_size_viz_data(data_arr, **kwargs)
+    fig.set_size_inches((width, height))
     fig.set_tight_layout(True)
+
     return fig, ax
 
 
@@ -273,11 +271,7 @@ def viz_state(state, row_names=None, col_names=None, progress=None, **kwargs):
     view_heights = []
     for view in views:
         data_view = np.array(get_view_data(state.views[view]).values()).T
-        _height, width = compute_axis_size_viz_data(
-            data_view,
-            row_names,
-            col_names,
-        )
+        _height, width = compute_axis_size_viz_data(data_view, **kwargs)
         view_widths.append(width)
         view_heights.append(1)
 
