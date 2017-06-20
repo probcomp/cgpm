@@ -280,13 +280,15 @@ def viz_state(state, row_names=None, col_names=None, progress=None, **kwargs):
     axes = [fig.add_subplot(gs[i]) for i in xrange(len(views))]
 
     # Plot data for each view
+    row_names_trim = [row_name[:8] for row_name in row_names]
     for i, (ax, v) in enumerate(zip(axes, views)):
         # Find the columns applicable to this view.
         col_names_v = [
             col_names[state.outputs.index(o)]
             for o in state.views[v].outputs[1:]
         ]
-        viz_view_raw(state.views[v], ax, row_names, col_names_v, **kwargs)
+        row_names_v = row_names if i == 0 else row_names_trim
+        viz_view_raw(state.views[v], ax, row_names_v, col_names_v, **kwargs)
         if progress:
             tu.progress((float(i)+1)/len(views), sys.stdout)
     if progress:
