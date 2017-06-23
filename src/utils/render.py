@@ -20,13 +20,12 @@ import sys
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
+
 import seaborn
+seaborn.set_style('white')
 
 from cgpm.utils import timer as tu
 from cgpm.utils import general as gu
-
-
-seaborn.set_style('white')
 
 
 def get_fig_axes(ax=None, nrows=1, ncols=1):
@@ -46,9 +45,9 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
     if isinstance(data, list):
         data = np.array(data)
     if row_names is None:
-        row_names = range(data.shape[0])
+        row_names = map(str, range(data.shape[0]))
     if col_names is None:
-        col_names = range(data.shape[1])
+        col_names = map(str, range(data.shape[1]))
 
     height, width = compute_axis_size_viz_data(data)
 
@@ -101,9 +100,9 @@ def viz_data(data, ax=None, row_names=None, col_names=None, **kwargs):
     Standardizes data across columns. Ignores nan values (plotted white).
     """
     if row_names is None:
-        row_names = range(data.shape[0])
+        row_names = map(str, range(data.shape[0]))
     if col_names is None:
-        col_names = range(data.shape[1])
+        col_names = map(str, range(data.shape[1]))
 
     fig, ax = viz_data_raw(np.array(data), ax, row_names, col_names, **kwargs)
 
@@ -119,9 +118,9 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     Visualize using imshow with two colors only.
     """
     if isinstance(row_names, list):
-        row_names = np.array(row_names)
+        row_names = np.array(map(str, row_names))
     if isinstance(col_names, list):
-        col_names = np.array(col_names)
+        col_names = np.array(map(str, col_names))
 
     # Retrieve the dataset restricted to this view's outputs.
     data_dict = get_view_data(view)
@@ -232,9 +231,9 @@ def viz_view(view, ax=None, row_names=None, col_names=None, **kwargs):
     data_arr = np.array(data_dict.values()).T
 
     if row_names is None:
-        row_names = range(data_arr.shape[0])
+        row_names = map(str, range(data_arr.shape[0]))
     if col_names is None:
-        col_names = range(data_arr.shape[1])
+        col_names = map(str, range(data_arr.shape[1]))
 
     if isinstance(row_names, list):
         row_names = np.array(row_names)
@@ -256,9 +255,9 @@ def viz_state(state, row_names=None, col_names=None, progress=None, **kwargs):
     data_arr = np.array(state.X.values()).T
 
     if row_names is None:
-        row_names = range(data_arr.shape[0])
+        row_names = map(str, range(data_arr.shape[0]))
     if col_names is None:
-        col_names = range(data_arr.shape[1])
+        col_names = map(str, range(data_arr.shape[1]))
 
     fig = plt.figure()
     fig.set_size_inches(32, 18)
