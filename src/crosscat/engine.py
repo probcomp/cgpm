@@ -68,21 +68,29 @@ class Engine(object):
 
     def transition(
             self, N=None, S=None, kernels=None, rowids=None, cols=None,
-            views=None, progress=True, checkpoint=None, multiprocess=1):
+            views=None, progress=True, checkpoint=None, statenos=None,
+            multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('transition', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('transition', self.states[s],
                 (N, S, kernels, rowids, cols, views, progress, checkpoint))
-                for i in xrange(self.num_states())]
-        self.states = mapper(_modify, args)
+                for s in statenos]
+        states = mapper(_modify, args)
+        for s, state in zip(statenos, states):
+            self.states[s] = state
 
     def transition_lovecat(
             self, N=None, S=None, kernels=None, rowids=None,
-            cols=None, progress=None, checkpoint=None, multiprocess=1):
+            cols=None, progress=None, checkpoint=None, statenos=None,
+            multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('transition_lovecat', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('transition_lovecat', self.states[s],
                 (N, S, kernels, rowids, cols, progress, checkpoint))
-                for i in xrange(self.num_states())]
-        self.states = mapper(_modify, args)
+                for s in statenos]
+        states = mapper(_modify, args)
+        for s, state in zip(statenos, states):
+            self.states[s] = state
 
     def transition_loom(self, N=None, S=None, kernels=None,
             progress=None, checkpoint=None, multiprocess=1):
@@ -93,147 +101,171 @@ class Engine(object):
             checkpoint=checkpoint)
 
     def transition_foreign(self, N=None, S=None, cols=None, progress=True,
-            multiprocess=1):
+            statenos=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('transition_foreign', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('transition_foreign', self.states[s],
                 (N, S, cols, progress))
-                for i in xrange(self.num_states())]
-        self.states = mapper(_modify, args)
+                for s in statenos]
+        states = mapper(_modify, args)
+        for s, state in zip(statenos, states):
+            self.states[s] = state
 
     def incorporate_dim(self, T, outputs, inputs=None, cctype=None,
             distargs=None, v=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('incorporate_dim', self.states[i],
+        statenos = xrange(self.num_states())
+        args = [('incorporate_dim', self.states[s],
                 (T, outputs, inputs, cctype, distargs, v))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         self.states = mapper(_modify, args)
 
     def unincorporate_dim(self, col, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('unincorporate_dim', self.states[i],
+        statenos = xrange(self.num_states())
+        args = [('unincorporate_dim', self.states[s],
                 (col,))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         self.states = mapper(_modify, args)
 
     def incorporate(self, rowid, query, evidence=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('incorporate', self.states[i],
+        statenos = xrange(self.num_states())
+        args = [('incorporate', self.states[s],
                 (rowid, query, evidence))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         self.states = mapper(_modify, args)
 
     def unincorporate(self, rowid, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('unincorporate', self.states[i],
+        statenos = xrange(self.num_states())
+        args = [('unincorporate', self.states[s],
                 (rowid,))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         self.states = mapper(_modify, args)
 
     def update_cctype(self, col, cctype, distargs=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('update_cctype', self.states[i],
+        statenos = xrange(self.num_states())
+        args = [('update_cctype', self.states[s],
                 (col, cctype, distargs))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         self.states = mapper(_modify, args)
 
     def compose_cgpm(self, cgpms, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('compose_cgpm', self.states[i], cgpms[i].to_metadata(),
+        statenos = xrange(self.num_states())
+        args = [('compose_cgpm', self.states[s], cgpms[s].to_metadata(),
                 ())
-                for i in xrange(self.num_states())]
+                for s in statenos]
         self.states = mapper(_compose, args)
 
-    def logpdf(self, rowid, query, evidence=None, accuracy=None, multiprocess=1):
+    def logpdf(self, rowid, query, evidence=None, accuracy=None,
+            statenos=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('logpdf', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('logpdf', self.states[s],
                 (rowid, query, evidence, accuracy))
-            for i in xrange(self.num_states())]
+            for s in statenos]
         logpdfs = mapper(_evaluate, args)
         return logpdfs
 
-    def logpdf_bulk(self, rowids, queries, evidences=None, multiprocess=1):
+    def logpdf_bulk(self, rowids, queries, evidences=None, statenos=None,
+            multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('logpdf_bulk', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('logpdf_bulk', self.states[s],
                 (rowids, queries, evidences))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         logpdfs = mapper(_evaluate, args)
         return logpdfs
 
-    def logpdf_score(self, multiprocess=1):
+    def logpdf_score(self, statenos=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
-        args = [('logpdf_score', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('logpdf_score', self.states[s],
                 ())
-                for i in xrange(self.num_states())]
+                for s in statenos]
         logpdf_scores = mapper(_evaluate, args)
         return logpdf_scores
 
     def simulate(self, rowid, query, evidence=None, N=None, accuracy=None,
-            multiprocess=1):
+            statenos=None, multiprocess=1):
         self._seed_states()
         mapper = parallel_map if multiprocess else map
-        args = [('simulate', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('simulate', self.states[s],
                 (rowid, query, evidence, N, accuracy))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         samples = mapper(_evaluate, args)
         return samples
 
     def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
-            multiprocess=1):
+            statenos=None, multiprocess=1):
         """Returns list of simualate_bulk, one for each state."""
         self._seed_states()
         mapper = parallel_map if multiprocess else map
-        args = [('simulate_bulk', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('simulate_bulk', self.states[s],
                 (rowids, queries, evidences, Ns))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         samples = mapper(_evaluate, args)
         return samples
 
     def mutual_information(self, col0, col1, evidence=None, T=None, N=None,
-            progress=None, multiprocess=1):
+            progress=None, statenos=None, multiprocess=1):
         """Returns list of mutual information estimates, one for each state."""
         self._seed_states()
         mapper = parallel_map if multiprocess else map
-        args = [('mutual_information', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('mutual_information', self.states[s],
                 (col0, col1, evidence, T, N, progress))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         mis = mapper(_evaluate, args)
         return mis
 
-    def dependence_probability(self, col0, col1, multiprocess=1):
+    def dependence_probability(self, col0, col1, statenos=None, multiprocess=1):
         """Compute dependence probabilities between col0 and col1."""
         # XXX Ignore multiprocess.
-        return [s.dependence_probability(col0, col1) for s in self.states]
+        statenos = statenos or xrange(self.num_states())
+        return [self.states[s].dependence_probability(col0, col1)
+            for s in statenos]
 
-    def dependence_probability_pairwise(self):
+    def dependence_probability_pairwise(self, statenos=None):
         """Compute dependence probability between all pairs as matrix."""
         D = np.eye(len(self.states[0].outputs))
         reindex = {c: k for k, c in enumerate(self.states[0].outputs)}
         for i,j in itertools.combinations(self.states[0].outputs, 2):
-            d = np.mean(self.dependence_probability(i, j))
+            d = np.mean(self.dependence_probability(i, j, statenos=statenos))
             D[reindex[i], reindex[j]] = D[reindex[j], reindex[i]] = d
         return D
 
-    def row_similarity(self, row0, row1, cols=None, multiprocess=1):
-        """Compute similiarties between row0 and row1."""
-        return [s.row_similarity(row0, row1, cols) for s in self.states]
+    def row_similarity(self, row0, row1, cols=None, statenos=None,
+            multiprocess=1):
+        """Compute similarities between row0 and row1."""
+        statenos = statenos or xrange(self.num_states())
+        # XXX Ignore multiprocess.
+        return [self.states[s].row_similarity(row0, row1, cols)
+            for s in statenos]
 
     def relevance_probability(
             self, rowid_target, rowid_query, col, hypotheticals=None,
-            multiprocess=1):
+            statenos=None, multiprocess=1):
         """Compute relevance probability of query rows for target row."""
         mapper = parallel_map if multiprocess else map
-        args = [('relevance_probability', self.states[i],
+        statenos = statenos or xrange(self.num_states())
+        args = [('relevance_probability', self.states[s],
                 (rowid_target, rowid_query, col, hypotheticals))
-                for i in xrange(self.num_states())]
+                for s in statenos]
         probs = mapper(_evaluate, args)
         return probs
 
-    def row_similarity_pairwise(self, cols=None):
+    def row_similarity_pairwise(self, cols=None, statenos=None):
         """Compute dependence probability between all pairs as matrix."""
         n_rows = self.states[0].n_rows()
         S = np.eye(n_rows)
         for i,j in itertools.combinations(range(n_rows), 2):
-            s = np.mean(self.row_similarity(i,j, cols))
+            s = np.mean(self.row_similarity(i,j, cols, statenos=statenos))
             S[i,j] = S[j,i] = s
         return S
 
@@ -278,22 +310,26 @@ class Engine(object):
         return [gu.gen_rng(s) for s in seeds]
 
     def _likelihood_weighted_integrate(
-            self, logpdfs, rowid, evidence=None, multiprocess=1):
+            self, logpdfs, rowid, evidence=None, statenos=None, multiprocess=1):
         # Computes an importance sampling integral with likelihood weight.
-        assert len(logpdfs) == len(self.states)
+        assert len(logpdfs) == (
+            len(self.states) if statenos is None else len(statenos))
         if evidence:
-            weights = self.logpdf(rowid, evidence, multiprocess=multiprocess)
+            weights = self.logpdf(
+                rowid, evidence, statenos=statenos, multiprocess=multiprocess)
             return gu.logmeanexp_weighted(logpdfs, weights)
         else:
             return gu.logmeanexp(logpdfs)
 
     def _likelihood_weighted_resample(
-            self, samples, rowid, evidence=None, multiprocess=1):
-        assert len(samples) == len(self.states)
+            self, samples, rowid, evidence=None, statenos=None, multiprocess=1):
+        assert len(samples) == (
+            len(self.states) if statenos is None else len(statenos))
         assert all(len(s) == len(samples[0]) for s in samples[1:])
         N = len(samples[0])
         weights = np.zeros(len(samples)) if not evidence else\
-            self.logpdf(rowid, evidence, multiprocess=multiprocess)
+            self.logpdf(
+                rowid, evidence, statenos=statenos, multiprocess=multiprocess)
         n_model = np.bincount(gu.log_pflip(weights, size=N, rng=self.rng))
         indexes = [self.rng.choice(N, size=n, replace=False) for n in n_model]
         resamples = [

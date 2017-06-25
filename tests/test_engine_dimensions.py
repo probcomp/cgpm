@@ -54,7 +54,7 @@ def engine():
         'vonmises'
     ])
     T, Zv, Zc = tu.gen_data_table(
-        100, [1], [[.25, .25, .5]], cctypes, distargs,
+        20, [1], [[.25, .25, .5]], cctypes, distargs,
         [.95]*len(cctypes), rng=gu.gen_rng(0))
     T = T.T
     # Make some nan cells for evidence.
@@ -74,28 +74,33 @@ def engine():
 def test_logpdf__ci_(engine):
     engine = Engine.from_metadata(engine)
 
-    def test_correct_dimensions(rowid, query, evidence):
+    def test_correct_dimensions(rowid, query, evidence, statenos):
         # logpdfs should be a list of floats.
-        logpdfs = engine.logpdf(rowid, query, evidence=evidence)
-        assert len(logpdfs) == engine.num_states()
+        logpdfs = engine.logpdf(
+            rowid, query, evidence=evidence, statenos=statenos)
+        assert len(logpdfs) == (
+            engine.num_states() if statenos is None else len(statenos))
         for state_logpdfs in logpdfs:
             # Each element in logpdfs should be a single float.
             assert isinstance(state_logpdfs, float)
         lp = engine._likelihood_weighted_integrate(
-            logpdfs, rowid, evidence=evidence)
+            logpdfs, rowid, evidence=evidence, statenos=statenos)
         assert isinstance(lp, float)
 
-    test_correct_dimensions(-1, {0:1}, {2:1, 3:.5})
-    test_correct_dimensions(-1, {2:0, 5:3}, {0:4, 1:5})
-    test_correct_dimensions(5, {0:0, 2:0}, {3:3})
+    for statenos in (None, [0, 2, 4]):
+        test_correct_dimensions(-1, {0:1}, {2:1, 3:.5}, statenos)
+        test_correct_dimensions(-1, {2:0, 5:3}, {0:4, 1:5}, statenos)
+        test_correct_dimensions(5, {0:0, 2:0}, {3:3}, statenos)
 
 
 def test_simulate__ci_(engine):
     engine = Engine.from_metadata(engine)
 
-    def test_correct_dimensions(rowid, query, evidence, N):
-        samples = engine.simulate(rowid, query, evidence=evidence, N=N)
-        assert len(samples) == engine.num_states()
+    def test_correct_dimensions(rowid, query, evidence, N, statenos):
+        samples = engine.simulate(
+            rowid, query, evidence=evidence, N=N, statenos=statenos)
+        assert len(samples) == (
+            engine.num_states() if statenos is None else len(statenos))
         for states_samples in samples:
             # Each element of samples should be a list of N samples.
             assert len(states_samples) == N
@@ -104,20 +109,21 @@ def test_simulate__ci_(engine):
                 assert set(s.keys()) == set(query)
                 assert len(s) == len(query)
         s = engine._likelihood_weighted_resample(
-            samples, rowid, evidence=evidence)
+            samples, rowid, evidence=evidence, statenos=statenos)
         assert len(s) == N
 
     query1, evidence1 = [0], {2:0, 3:6}
     query2, evidence2 = [1,2,5], {0:3, 3:.8}
 
-    test_correct_dimensions(-1, query1, evidence1, 1)
-    test_correct_dimensions(-1, query1, evidence1, 8)
-    test_correct_dimensions(-1, query2, evidence2, 1)
-    test_correct_dimensions(-1, query2, evidence2, 8)
+    for statenos in (None, (1,3)):
+        test_correct_dimensions(-1, query1, evidence1, 1, statenos)
+        test_correct_dimensions(-1, query1, evidence1, 8, statenos)
+        test_correct_dimensions(-1, query2, evidence2, 1, statenos)
+        test_correct_dimensions(-1, query2, evidence2, 8, statenos)
 
-    query3, evidence3 = [0,1,2], {3:1}
-    test_correct_dimensions(5, query3, evidence3, 1)
-    test_correct_dimensions(5, query3, evidence3, 8)
+        query3, evidence3 = [0,1,2], {3:1}
+        test_correct_dimensions(5, query3, evidence3, 1, statenos)
+        test_correct_dimensions(5, query3, evidence3, 8, statenos)
 
 
 def test_logpdf_bulk__ci_(engine):
@@ -128,15 +134,21 @@ def test_logpdf_bulk__ci_(engine):
     rowids = [rowid1, rowid2]
     queries = [query1, query2]
     evidences = [evidence1, evidence2]
-    # Invoke
-    logpdfs = engine.logpdf_bulk(
-        rowids, queries, evidences=evidences)
-    assert np.allclose(len(logpdfs), engine.num_states())
-    for state_logpdfs in logpdfs:
-        # state_logpdfs should be a list of floats, one float per query.
-        assert len(state_logpdfs) == len(rowids)
-        for l in state_logpdfs:
-                assert isinstance(l, float)
+
+    def test_correct_dimensions(statenos):
+        # Invoke
+        logpdfs = engine.logpdf_bulk(
+            rowids, queries, evidences=evidences, statenos=statenos)
+        assert len(logpdfs) == (
+            engine.num_states() if statenos is None else len(statenos))
+        for state_logpdfs in logpdfs:
+            # state_logpdfs should be a list of floats, one float per query.
+            assert len(state_logpdfs) == len(rowids)
+            for l in state_logpdfs:
+                    assert isinstance(l, float)
+
+    test_correct_dimensions(statenos=None)
+    test_correct_dimensions(statenos=[0, 1, 4, 5])
 
 
 def test_simulate_bulk__ci_(engine):
@@ -149,14 +161,49 @@ def test_simulate_bulk__ci_(engine):
     queries = [query1, query2, query3]
     evidences = [evidence1, evidence2, evidence3]
     Ns = [N1, N2, N3]
-    # Invoke
-    samples = engine.simulate_bulk(
-        rowids, queries, evidences=evidences, Ns=Ns)
-    assert len(samples) == engine.num_states()
-    for states_samples in samples:
-        assert len(states_samples) == len(rowids)
-        for i, sample in enumerate(states_samples):
-            assert len(sample) == Ns[i]
-            for s in sample:
-                assert set(s.keys()) == set(queries[i])
-                assert len(s) == len(queries[i])
+
+    def test_correct_dimensions(statenos):
+        # Invoke
+        samples = engine.simulate_bulk(
+            rowids, queries, evidences=evidences, Ns=Ns, statenos=statenos)
+        assert len(samples) == (
+            engine.num_states() if statenos is None else len(statenos))
+        for states_samples in samples:
+            assert len(states_samples) == len(rowids)
+            for i, sample in enumerate(states_samples):
+                assert len(sample) == Ns[i]
+                for s in sample:
+                    assert set(s.keys()) == set(queries[i])
+                    assert len(s) == len(queries[i])
+
+    test_correct_dimensions(None)
+    test_correct_dimensions([4])
+
+
+def test_dependence_probability__ci_(engine):
+    engine = Engine.from_metadata(engine)
+
+    results = engine.dependence_probability(0, 2, statenos=None)
+    assert len(results) == engine.num_states()
+
+    results = engine.dependence_probability(0, 2, statenos=[1,4])
+    assert len(results) == 2
+
+def test_row_similarity__ci_(engine):
+    engine = Engine.from_metadata(engine)
+
+    results = engine.row_similarity(0, 2, statenos=None)
+    assert len(results) == engine.num_states()
+
+    results = engine.row_similarity(0, 2, statenos=[1,4,5])
+    assert len(results) == 3
+
+def test_relevance_probability__ci_(engine):
+    engine = Engine.from_metadata(engine)
+
+    results = engine.relevance_probability(0, [2, 14], 0, statenos=None)
+    assert len(results) == engine.num_states()
+
+    results = engine.relevance_probability(
+        0, [2, 14], 0, statenos=range(engine.num_states()))
+    assert len(results) == engine.num_states()
