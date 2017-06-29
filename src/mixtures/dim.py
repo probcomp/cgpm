@@ -37,7 +37,7 @@ class Dim(CGpm):
 
         Parameters
         ----------
-         cctype : str
+        cctype : str
              DistributionGpm name see `cgpm.utils.config`.
         outputs : list<int>
             A singleton list containing the identifier of the output variable.

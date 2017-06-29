@@ -30,7 +30,7 @@ class CGpm(object):
             List of variables whose joint distribution is modeled by the CGpm.
             The CGpm is required to simulate and evaluate the log density
             of an arbitrary susbet of output variables, by marginalizing and/or
-            conditioning on another (disjoin) subset of output variables.
+            conditioning on another (disjoint) subset of output variables.
         inputs : list<int>, optional
             List of variables unmodeled by the CGpm which are needed
             on a per-row basis. An example would be the covariate variables
