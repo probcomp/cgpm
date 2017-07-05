@@ -150,21 +150,43 @@ class Dim(CGpm):
 
     def transition_hypers(self):
         """Transitions the hyperparameters of each cluster."""
-        def transition_hyper(target):
-            def compute_cluster_proposal(k, g):
-                self.hypers[target] = g
-                self.clusters[k].set_hypers(self.hypers)
-                return self.clusters[k].logpdf_score()
-            def compute_proposal(g):
-                return sum(compute_cluster_proposal(k,g) for k in self.clusters)
-            logps = [compute_proposal(g) for g in self.hyper_grids[target]]
-            index = gu.log_pflip(logps, rng=self.rng)
-            self.hypers[target] = self.hyper_grids[target][index]
+        # def transition_hyper(target):
+        #     def compute_cluster_proposal(k, g):
+        #         self.hypers[target] = g
+        #         self.clusters[k].set_hypers(self.hypers)
+        #         return self.clusters[k].logpdf_score()
+        #     def compute_proposal(g):
+        #         return sum(compute_cluster_proposal(k,g) for k in self.clusters)
+        #     logps = [compute_proposal(g) for g in self.hyper_grids[target]]
+        #     index = gu.log_pflip(logps, rng=self.rng)
+        #     self.hypers[target] = self.hyper_grids[target][index]
         # Transition each of the hyperparameters.
         targets = self.hypers.keys()
         self.rng.shuffle(targets)
         for target in targets:
-            transition_hyper(target)
+
+            # def compute_cluster_proposal(k, g):
+            #     self.hypers[target] = g
+            #     self.clusters[k].set_hypers(self.hypers)
+            #     return self.clusters[k].logpdf_score()
+
+            # def compute_proposal(g):
+            #     return sum(compute_cluster_proposal(k,g) for k in self.clusters)
+
+            logps = []
+            for g in self.hyper_grids[target]:
+                lp = 0
+                for k in self.clusters:
+                    self.hypers[target] = g
+                    self.clusters[k].set_hypers(self.hypers)
+                    lp += self.clusters[k].logpdf_score()
+                # lp = sum(compute_cluster_proposal(k,g) for k in self.clusters)
+                logps.append(lp)
+
+            # logps = [compute_proposal(g) for g in self.hyper_grids[target]]
+            index = gu.log_pflip(logps, rng=self.rng)
+            self.hypers[target] = self.hyper_grids[target][index]
+
         for k in self.clusters:
             self.clusters[k].set_hypers(self.hypers)
         self.aux_model = self.create_aux_model()

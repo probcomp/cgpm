@@ -15,6 +15,8 @@
 # limitations under the License.
 
 from math import lgamma
+from math import log
+from math import pi
 
 import numpy as np
 
@@ -68,9 +70,9 @@ class Normal(DistributionGpm):
         self.sum_x_sq -= x*x
 
     def logpdf(self, rowid, query, evidence=None):
-        DistributionGpm.logpdf(self, rowid, query, evidence)
+        # DistributionGpm.logpdf(self, rowid, query, evidence)
         x = query[self.outputs[0]]
-        return Normal.calc_predictive_logp(
+        return calc_predictive_logp(
             x, self.N, self.sum_x, self.sum_x_sq, self.m, self.r,
             self.s, self.nu)
 
@@ -80,14 +82,14 @@ class Normal(DistributionGpm):
         DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
-        mn, rn, sn, nun = Normal.posterior_hypers(
+        mn, rn, sn, nun = posterior_hypers(
             self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
-        mu, rho = Normal.sample_parameters(mn, rn, sn, nun, self.rng)
+        mu, rho = sample_parameters(mn, rn, sn, nun, self.rng)
         x = self.rng.normal(loc=mu, scale=rho**-.5)
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
-        return Normal.calc_logpdf_marginal(
+        return calc_logpdf_marginal(
             self.N, self.sum_x, self.sum_x_sq, self.m, self.r, self.s, self.nu)
 
     ##################
@@ -151,48 +153,54 @@ class Normal(DistributionGpm):
     def is_numeric():
         return True
 
-    ##################
-    # HELPER METHODS #
-    ##################
+##################
+# HELPER METHODS #
+##################
 
-    @staticmethod
-    def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        mn, rn, sn, nun = Normal.posterior_hypers(
-            N, sum_x, sum_x_sq, m, r, s, nu)
-        mm, rm, sm, num = Normal.posterior_hypers(
-            N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
-        ZN = Normal.calc_log_Z(rn, sn, nun)
-        ZM = Normal.calc_log_Z(rm, sm, num)
-        return -.5 * np.log(2*np.pi) + ZM - ZN
+LOGPI = log(pi)
+LOG2PI = log(2*pi)
+LOG2 = log(2)
 
-    @staticmethod
-    def calc_logpdf_marginal(N, sum_x, sum_x_sq, m, r, s, nu):
-        mn, rn, sn, nun = Normal.posterior_hypers(
-            N, sum_x, sum_x_sq, m, r, s, nu)
-        Z0 = Normal.calc_log_Z(r, s, nu)
-        ZN = Normal.calc_log_Z(rn, sn, nun)
-        return -(N/2.) * np.log(2*np.pi) + ZN - Z0
 
-    @staticmethod
-    def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
-        rn = r + float(N)
-        nun = nu + float(N)
-        mn = (r*m + sum_x)/rn
-        sn = s + sum_x_sq + r*m*m - rn*mn*mn
-        if sn == 0: sn = s
-        return mn, rn, sn, nun
+from numba import jit
 
-    @staticmethod
-    def calc_log_Z(r, s, nu):
-        return (
-            ((nu + 1.) / 2.) * np.log(2)
-            + .5 * np.log(np.pi)
-            - .5 * np.log(r)
-            - (nu/2.) * np.log(s)
-            + lgamma(nu/2.0))
+@jit
+def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
+    mn, rn, sn, nun = posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu)
+    mm, rm, sm, num = posterior_hypers(N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
+    ZN = calc_log_Z(rn, sn, nun)
+    ZM = calc_log_Z(rm, sm, num)
+    return -.5 * LOG2PI + ZM - ZN
 
-    @staticmethod
-    def sample_parameters(m, r, s, nu, rng):
-        rho = rng.gamma(nu/2., scale=2./s)
-        mu = rng.normal(loc=m, scale=1./(rho*r)**.5)
-        return mu, rho
+@jit
+def calc_logpdf_marginal(N, sum_x, sum_x_sq, m, r, s, nu):
+    mn, rn, sn, nun = posterior_hypers(
+        N, sum_x, sum_x_sq, m, r, s, nu)
+    Z0 = calc_log_Z(r, s, nu)
+    ZN = calc_log_Z(rn, sn, nun)
+    return -(N/2.) * LOG2PI + ZN - Z0
+
+@jit
+def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
+    rn = r + N
+    nun = nu + N
+    mn = (r*m + sum_x)/rn
+    sn = s + sum_x_sq + r*m*m - rn*mn*mn
+    if sn == 0:
+        sn = s
+    return mn, rn, sn, nun
+
+@jit
+def calc_log_Z(r, s, nu):
+    return (
+        ((nu + 1.) / 2.) * LOG2
+        + .5 * LOGPI
+        - .5 * log(r)
+        - (nu/2.) * log(s)
+        + lgamma(nu/2.))
+
+
+def sample_parameters(m, r, s, nu, rng):
+    rho = rng.gamma(nu/2., scale=2./s)
+    mu = rng.normal(loc=m, scale=1./(rho*r)**.5)
+    return mu, rho

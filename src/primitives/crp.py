@@ -59,17 +59,17 @@ class Crp(DistributionGpm):
             del self.counts[x]
 
     def logpdf(self, rowid, query, evidence=None):
-        assert not evidence
-        assert query.keys() == self.outputs
+        # assert not evidence
+        # assert query.keys() == self.outputs
         x = int(query[self.outputs[0]])
         if rowid in self.data:
             return 0 if self.data[rowid] == x else -float('inf')
-        return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha)
+        return calc_predictive_logp(x, self.N, self.counts, self.alpha)
 
     def simulate(self, rowid, query, evidence=None, N=None):
         if N is not None:
             return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        DistributionGpm.simulate(self, rowid, query, evidence)
+        # DistributionGpm.simulate(self, rowid, query, evidence)
         if rowid in self.data:
             x = self.data[rowid]
         else:
@@ -80,7 +80,7 @@ class Crp(DistributionGpm):
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
-        return Crp.calc_logpdf_marginal(self.N, self.counts, self.alpha)
+        return calc_logpdf_marginal(self.N, self.counts, self.alpha)
 
     ##################
     # NON-GPM METHOD #
@@ -174,13 +174,11 @@ class Crp(DistributionGpm):
     # HELPER METHODS #
     ##################
 
-    @staticmethod
-    def calc_predictive_logp(x, N, counts, alpha):
-        numerator = counts.get(x, alpha)
-        denominator = N + alpha
-        return log(numerator) - log(denominator)
+def calc_predictive_logp(x, N, counts, alpha):
+    numerator = counts.get(x, alpha)
+    denominator = N + alpha
+    return log(numerator) - log(denominator)
 
-    @staticmethod
-    def calc_logpdf_marginal(N, counts, alpha):
-        return len(counts) * log(alpha) + sum(gammaln(counts.values())) \
-            + gammaln(alpha) - gammaln(N + alpha)
+def calc_logpdf_marginal(N, counts, alpha):
+    return len(counts) * log(alpha) + sum(gammaln(counts.values())) \
+        + gammaln(alpha) - gammaln(N + alpha)

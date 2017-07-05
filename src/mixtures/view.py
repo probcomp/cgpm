@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from numba import jit
+
 import itertools
 
 from math import isnan
@@ -382,8 +384,31 @@ class View(CGpm):
         self._check_partitions()
 
     def _logpdf_row_gibbs(self, rowid, K):
-        return [sum([self._logpdf_cell_gibbs(rowid, dim, k)
-            for dim in self.dims.itervalues()]) for k in K]
+        logps = []
+        for k in K:
+            logp = 0
+            for dim in self.dims.itervalues():
+                query = {dim.index: self.X[dim.index][rowid]}
+                evidence = self._get_evidence(rowid, dim, k)
+                # If rowid in cluster k then unincorporate then compute predictive.
+                if self.Zr(rowid) == k:
+                    dim.unincorporate(rowid)
+                    logp += dim.logpdf(rowid, query, evidence)
+                    dim.incorporate(rowid, query, evidence)
+                else:
+                    logp += dim.logpdf(rowid, query, evidence)
+            logps.append(logp)
+        return logps
+
+
+        # logps2 = [sum([
+        #     self._logpdf_cell_gibbs(rowid, dim, k)
+        #         for dim in self.dims.itervalues()
+        #     ]) for k in K
+        # ]
+        # if not np.allclose(logps, logps2):
+        #     import ipdb; ipdb.set_trace()
+        # return logps2
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         query = {dim.index: self.X[dim.index][rowid]}
