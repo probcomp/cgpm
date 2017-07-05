@@ -3,7 +3,8 @@
 The aim of this project is to provide a unified probabilistic programming
 framework to express different models and techniques from statistics, machine
 learning and non-parametric Bayes. It serves as the primary modeling and
-inference runtime system for [BayesDB](https://github.com/probcomp/bayeslite).
+inference runtime system for [bayeslite](https://github.com/probcomp/bayeslite),
+an open-source implementation of BayesDB.
 
 Composable generative population models (CGPM) are a computational abstraction
 for probabilistic objects. They provide an interface that explicitly
@@ -13,25 +14,47 @@ models as probabilistic programs that implement CGPMs, complex models can be
 built as compositions of sub-CGPMs, and queried in a model-independent way
 using the Bayesian Query Language.
 
-## Reference
+## Installing
+
+`cgpm` targets Ubuntu 14.04 and 16.04. The package is currently not available
+through pip but can be installed by cloning this repository and following these
+instructions. It is _highly recommended_ to install `cgpm` in a virtualenv which
+is was created `--system-site-packages` flag.
+
+1. Install the dependencies from `apt`, [listed here](https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L4-L14).
+
+2. Retrieve the source and install.
+
+    % git clone git@github.com:probcomp/cgpm
+    % cd cgpm
+    % python setup.py build && python setup.py install
+
+3. Verify the installation.
+
+    % python -c 'import cgpm'
+    % cd cgpm && ./check.sh
+
+## Publications
 
 CGPMs, and their integration as a runtime system for
 [BayesDB](probcomp.csail.mit.edu/bayesdb/), are described in the following
 technical report:
 
-> Probabilistic Data Analysis with Probabilistic Programming. Saad, F. and Mansinghka, V.
-> [arXiv:1608.05347](https://arxiv.org/abs/1608.05347).
+- __Probabilistic Data Analysis with Probabilistic Programming__.
+Saad, F., and Mansinghka, V. [_arXiv preprint, arXiv:1608.05347_](https://arxiv.org/abs/1608.05347), 2017.
 
-A shorter version of the technical report can be found in:
+Applications of using cgpm and bayeslite for data analysis tasks can be further
+found in:
 
-> A Probabilistic Programming Approach To Probabilistic Data Analysis.
-> Saad, F. and Mansinghka, V. Neural Information Processing Systems, 2016.
-> [PDF](https://papers.nips.cc/paper/6060-a-probabilistic-programming-approach-to-probabilistic-data-analysis).
+- __Probabilistic Search for Structured Data via Probabilistic Programming and Nonparametric Bayes__.
+Saad, F. Casarsa, L., and Mansinghka, V. [_arXiv preprint, arXiv:1704.01087_](https://arxiv.org/abs/1704.01087), 2017.
 
-## Installing
+- __Detecting Dependencies in Sparse, Multivariate Databases Using Probabilistic Programming and Non-parametric Bayes__.
+Saad, F., and Mansinghka, V. [_Artificial Intelligence and Statistics (AISTATS)_](http://proceedings.mlr.press/v54/saad17a.html), 2017.
 
-For developers: instructions for installing `cgpm` and related probcomp software
-can be found in the [iventure project](https://github.com/probcomp/iventure/blob/master/docs/virtualenvs.md).
+- __A Probabilistic Programming Approach to Probabilistic Data Analysis__.
+Saad, F., and Mansinghka, V. [_Advances in Neural Information Processing Systems (NIPS)_](https://papers.nips.cc/paper/6060-a-probabilistic-programming-approach-to-probabilistic-data-analysis.html), 2016.
+
 
 ## Tests
 
