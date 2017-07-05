@@ -230,3 +230,18 @@ def test_serialize(case):
         assert sample[1] == 15
 
         cgpm_test.incorporate(1, {0:10})
+
+
+@pytest.mark.xfail(strict=True, reason='Github issue #215 (serialization).')
+def test_engine_composition():
+    from cgpm.crosscat.engine import Engine
+
+    X = np.asarray([[1, 2, 0, 1], [1, 1, 0, 0],])
+    engine = Engine(X[:,[3]], outputs=[3], cctypes=['normal'], num_states=2)
+    cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=source_abstract,)
+
+    for i, row in enumerate(X):
+        cgpm.incorporate(i, query={0: row[0], 1: row[1]}, evidence={3: row[3]})
+
+    cgpm.transition(N=2)
+    engine.compose_cgpm([cgpm, cgpm], multiprocess=True)
