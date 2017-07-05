@@ -25,14 +25,18 @@ is was created `--system-site-packages` flag.
 
 2. Retrieve the source and install.
 
+    ```
     % git clone git@github.com:probcomp/cgpm
     % cd cgpm
     % python setup.py build && python setup.py install
+    ```
 
 3. Verify the installation.
 
+    ```
     % python -c 'import cgpm'
     % cd cgpm && ./check.sh
+    ```
 
 ## Publications
 
