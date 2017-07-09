@@ -83,4 +83,4 @@ def test_force_cell_valid():
     state.transition(N=1)
     # Force cell (3,[1,2])
     state.force_cell(3, {1: -7, 2:-2})
-    state.transition_lovecat(N=1)
+    state.transition(N=1)
