@@ -177,6 +177,14 @@ class View(CGpm):
             for dim in self.dims.itervalues():
                 del dim.clusters[k]     # XXX Abstract me!
 
+    # XXX Major hack to force values of NaN cells in incorporated rowids.
+    def force_cell(self, rowid, query):
+        k = self.Zr(rowid)
+        for d in query:
+            self.dims[d].unincorporate(rowid)
+            evidence = self._get_evidence(rowid, self.dims[d], k)
+            self.dims[d].incorporate(rowid, {d: query[d]}, evidence)
+
     # --------------------------------------------------------------------------
     # Update schema.
 
