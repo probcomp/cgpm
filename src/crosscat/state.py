@@ -636,9 +636,8 @@ class State(CGpm):
             self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True, checkpoint=None):
         # XXX Many combinations of the above kwargs will cause havoc.
-        # Moreover if cols contains a value that is neither modeled by gpmcc or
-        # a foreign the transition will proceed silently without throwing an
-        # error.
+
+        # Check columns exist, silently ignore non-existent columns.
         if cols and any(c not in self.outputs for c in cols):
             raise ValueError('Only CrossCat columns may be transitioned.')
 
@@ -647,13 +646,14 @@ class State(CGpm):
             ('alpha',
                 lambda : self.transition_crp_alpha()),
             ('view_alphas',
-                lambda : self.transition_view_alphas(views=views)),
+                lambda : self.transition_view_alphas(views=views, cols=cols)),
             ('column_params',
                 lambda : self.transition_dim_params(cols=cols)),
             ('column_hypers',
                 lambda : self.transition_dim_hypers(cols=cols)),
             ('rows',
-                lambda : self.transition_view_rows(views=views, rows=rowids)),
+                lambda : self.transition_view_rows(
+                    views=views, cols=cols, rows=rowids)),
             ('columns' ,
                 lambda : self.transition_dims(cols=cols)),
         ])
@@ -672,9 +672,9 @@ class State(CGpm):
         self.crp.transition_hypers()
         self._increment_iterations('alpha')
 
-    def transition_view_alphas(self, views=None):
+    def transition_view_alphas(self, views=None, cols=None):
         if views is None:
-            views = self.views.keys()
+            views = set(self.Zv(col) for col in cols) if cols else self.views
         for v in views:
             self.views[v].transition_crp_alpha()
         self._increment_iterations('view_alphas')
@@ -700,11 +700,11 @@ class State(CGpm):
             self.dim_for(c).transition_hyper_grids(self.X[c])
         self._increment_iterations('column_grids')
 
-    def transition_view_rows(self, views=None, rows=None):
+    def transition_view_rows(self, views=None, rows=None, cols=None):
         if self.n_rows() == 1:
             return
         if views is None:
-            views = self.views.keys()
+            views = set(self.Zv(col) for col in cols) if cols else self.views
         for v in views:
             self.views[v].transition_rows(rows=rows)
         self._increment_iterations('rows')
