@@ -41,6 +41,11 @@ def _modify((method, state, args)):
     getattr(state, method)(*args)
     return state
 
+def _alter((funcs, state)):
+    for func in funcs:
+        state = func(state)
+    return state
+
 def _compose((method, state, cgpm_metadata, args)):
     builder = getattr(
         importlib.import_module(cgpm_metadata['factory'][0]),
@@ -268,6 +273,15 @@ class Engine(object):
             s = np.mean(self.row_similarity(i,j, cols, statenos=statenos))
             S[i,j] = S[j,i] = s
         return S
+
+    def alter(self, funcs, statenos=None, multiprocess=1):
+        """Apply generic funcs on states in parallel."""
+        mapper = parallel_map if multiprocess else map
+        statenos = statenos or xrange(self.num_states())
+        args = [(funcs, self.states[s]) for s in statenos]
+        states = mapper(_alter, args)
+        for s, state in zip(statenos, states):
+            self.states[s] = state
 
     def get_state(self, index):
         return self.states[index]
