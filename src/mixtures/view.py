@@ -381,12 +381,8 @@ class View(CGpm):
         p_cluster = np.add(logp_data, logp_crp)
         z_b = gu.log_pflip(p_cluster, array=K, rng=self.rng)
         # Migrate the row.
-        if z_b != self.Zr(rowid):
-            self.unincorporate(rowid)
-            query = merged(
-                {d: self.X[d][rowid] for d in self.dims},
-                {self.outputs[0]: z_b})
-            self.incorporate(rowid, query)
+        if self.Zr(rowid) != z_b:
+            self._migrate_row(rowid, z_b)
         self._check_partitions()
 
     def _logpdf_row_gibbs(self, rowid, K):
@@ -404,6 +400,13 @@ class View(CGpm):
         else:
             logp = dim.logpdf(rowid, query, evidence)
         return logp
+
+    def _migrate_row(self, rowid, k):
+        self.unincorporate(rowid)
+        query = merged(
+            {d: self.X[d][rowid] for d in self.dims},
+            {self.outputs[0]: k})
+        self.incorporate(rowid, query)
 
     # --------------------------------------------------------------------------
     # Internal crp utils.
