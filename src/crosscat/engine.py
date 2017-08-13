@@ -236,12 +236,13 @@ class Engine(object):
         return [self.states[s].dependence_probability(col0, col1)
             for s in statenos]
 
-    def dependence_probability_pairwise(self, statenos=None, multiprocess=1):
+    def dependence_probability_pairwise(self, colnos=None, statenos=None,
+            multiprocess=1):
         """Compute dependence probability between all pairs as matrix."""
         mapper = parallel_map if multiprocess else map
         statenos = statenos or xrange(self.num_states())
         args = [('dependence_probability_pairwise', self.states[s],
-                ())
+                (colnos,))
                 for s in statenos]
         Ds = mapper(_evaluate, args)
         return Ds

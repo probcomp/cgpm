@@ -84,7 +84,6 @@ def test_dependence_probability():
     c4 = BareBonesCGpm(outputs=[74], inputs=[9721])
 
     for i, C in enumerate([s, e]):
-        print i
         C.compose_cgpm(c1 if i==0 else [c1])
         C.compose_cgpm(c2 if i==0 else [c2])
         C.compose_cgpm(c3 if i==0 else [c3])
@@ -128,8 +127,9 @@ def test_dependence_probability_pairwise():
         distargs=distargs, Zv={o:z for o,z in zip(outputs, Zv)},
         rng=gu.gen_rng(0))
 
-    Ds = engine.dependence_probability_pairwise(multiprocess=True)
+    Ds = engine.dependence_probability_pairwise(multiprocess=0)
     assert len(Ds) == engine.num_states()
+    assert all(np.shape(D) == (len(outputs), len(outputs)) for D in Ds)
     for D in Ds:
         for col0, col1 in itertools.product(outputs, outputs):
             i0 = outputs.index(col0)
@@ -137,3 +137,7 @@ def test_dependence_probability_pairwise():
             actual = D[i0,i1]
             expected = Zv[i0] == Zv[i1]
             assert actual == expected
+
+    Ds = engine.dependence_probability_pairwise(colnos=[0,2], multiprocess=0)
+    assert len(Ds) == engine.num_states()
+    assert all(np.shape(D) == (2,2) for D in Ds)

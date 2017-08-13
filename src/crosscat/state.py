@@ -472,10 +472,12 @@ class State(CGpm):
         cgpms = self.build_cgpms()
         return State._dependence_probability_composite(cgpms, Zv, col0, col1)
 
-    def dependence_probability_pairwise(self):
-        D = np.eye(len(self.outputs))
-        reindex = {c: k for k, c in enumerate(self.outputs)}
-        for i,j in itertools.combinations(self.outputs, 2):
+    def dependence_probability_pairwise(self, colnos=None):
+        if colnos is None:
+            colnos = self.outputs
+        D = np.eye(len(colnos))
+        reindex = {c: k for k, c in enumerate(colnos)}
+        for i,j in itertools.combinations(colnos, 2):
             d = self.dependence_probability(i, j)
             D[reindex[i], reindex[j]] = D[reindex[j], reindex[i]] = d
         return D
