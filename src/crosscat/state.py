@@ -64,7 +64,7 @@ class State(CGpm):
         else:
             assert len(outputs) == X.shape[1]
             assert all(o >= 0 for o in outputs)
-        self.outputs = list(outputs)
+        self.set_outputs(outputs)
         self.X = OrderedDict()
         for i, c in enumerate(self.outputs):
             self.X[c] = X[:,i].tolist()
@@ -189,7 +189,7 @@ class State(CGpm):
         # Append new output to outputs.
         col = outputs[0]
         self.X[col] = T
-        self.outputs.append(col)
+        self.set_outputs(self.outputs + [col])
         # If v unspecified then transition the col.
         transition = [col] if v is None else []
         # Determine correct view.
@@ -234,9 +234,9 @@ class State(CGpm):
         # Clear a singleton.
         if delete:
             self._delete_view(v_del)
-        # Clear data, outputs, and view assignment.
+        # Clear data for col and remove it from outputs.
         del self.X[col]
-        del self.outputs[self.outputs.index(col)]
+        self.set_outputs([i for i in self.outputs if i != col])
         # Update composite flag.
         self._update_is_composite()
         # Validate.
@@ -465,15 +465,23 @@ class State(CGpm):
     # Dependence probability.
 
     def dependence_probability(self, col0, col1):
-        cgpms = self.build_cgpms()
+        # Use the CrossCat view partition for state variables.
+        if self.has_output(col0) and self.has_output(col1):
+            return float(self.Zv(col0) == self.Zv(col1))
         Zv = {i: self.Zv(i) for i in self.outputs}
-        return State._dependence_probability(cgpms, Zv, col0, col1)
+        cgpms = self.build_cgpms()
+        return State._dependence_probability_composite(cgpms, Zv, col0, col1)
+
+    def dependence_probability_pairwise(self):
+        D = np.eye(len(self.outputs))
+        reindex = {c: k for k, c in enumerate(self.outputs)}
+        for i,j in itertools.combinations(self.outputs, 2):
+            d = self.dependence_probability(i, j)
+            D[reindex[i], reindex[j]] = D[reindex[j], reindex[i]] = d
+        return D
 
     @staticmethod
-    def _dependence_probability(cgpms, Zv, col0, col1):
-        # Use the CrossCat view partition for state variables.
-        if col0 in Zv and col1 in Zv:
-            return 1. if Zv[col0] == Zv[col1] else 0.
+    def _dependence_probability_composite(cgpms, Zv, col0, col1):
         # XXX Conservatively assume all outputs of a particular are dependent.
         if any(col0 in c.outputs and col1 in c.outputs for c in cgpms):
             return 1.
@@ -847,6 +855,18 @@ class State(CGpm):
     def distargs(self):
         """DistributionGpm distargs of each Dim."""
         return [d.get_distargs() for d in self.dims()]
+
+    # --------------------------------------------------------------------------
+    # Helpers for the outputs
+
+    def has_output(self, col):
+        """Optimized lookup checking if state has output."""
+        return col in self.outputs_set
+
+    def set_outputs(self, outputs):
+        """Update the outputs of the states."""
+        self.outputs = list(outputs)
+        self.outputs_set = set(self.outputs)
 
     # --------------------------------------------------------------------------
     # Plotting

@@ -113,3 +113,27 @@ def test_dependence_probability():
         assert compute_depprob(C.dependence_probability(1821, 1721)) == 0
         assert compute_depprob(C.dependence_probability(1821, 74)) == 0
         assert compute_depprob(C.dependence_probability(154, 74)) == 0
+
+
+def test_dependence_probability_pairwise():
+    cctypes, distargs = cu.parse_distargs(['normal', 'normal', 'normal'])
+
+    T, Zv, _Zc = tu.gen_data_table(
+        10, [.5, .5], [[.25, .25, .5], [.3,.7]], cctypes, distargs,
+        [.95]*len(cctypes), rng=gu.gen_rng(100))
+
+    outputs = [0,1,2]
+    engine = Engine(
+        T.T, outputs=outputs, cctypes=cctypes, num_states=4,
+        distargs=distargs, Zv={o:z for o,z in zip(outputs, Zv)},
+        rng=gu.gen_rng(0))
+
+    Ds = engine.dependence_probability_pairwise(multiprocess=True)
+    assert len(Ds) == engine.num_states()
+    for D in Ds:
+        for col0, col1 in itertools.product(outputs, outputs):
+            i0 = outputs.index(col0)
+            i1 = outputs.index(col1)
+            actual = D[i0,i1]
+            expected = Zv[i0] == Zv[i1]
+            assert actual == expected

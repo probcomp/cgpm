@@ -236,14 +236,15 @@ class Engine(object):
         return [self.states[s].dependence_probability(col0, col1)
             for s in statenos]
 
-    def dependence_probability_pairwise(self, statenos=None):
+    def dependence_probability_pairwise(self, statenos=None, multiprocess=1):
         """Compute dependence probability between all pairs as matrix."""
-        D = np.eye(len(self.states[0].outputs))
-        reindex = {c: k for k, c in enumerate(self.states[0].outputs)}
-        for i,j in itertools.combinations(self.states[0].outputs, 2):
-            d = np.mean(self.dependence_probability(i, j, statenos=statenos))
-            D[reindex[i], reindex[j]] = D[reindex[j], reindex[i]] = d
-        return D
+        mapper = parallel_map if multiprocess else map
+        statenos = statenos or xrange(self.num_states())
+        args = [('dependence_probability_pairwise', self.states[s],
+                ())
+                for s in statenos]
+        Ds = mapper(_evaluate, args)
+        return Ds
 
     def row_similarity(self, row0, row1, cols=None, statenos=None,
             multiprocess=1):
