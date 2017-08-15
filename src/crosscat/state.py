@@ -940,90 +940,98 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Inference helpers.
 
+    def _dim_is_member(self, view, dim):
+        """Is dim a member of view?"""
+        return view is not None and dim.index in view.dims
+
+    # Compute probability of dim data under view partition.
+    def _dim_get_data_logp(self, view, dim):
+        # collasped   member  reassign
+        # 0           0       1
+        # 0           1       0
+        # 1           0       1
+        # 1           0       1
+        # implies reassign = collapsed or (not member)
+        reassign = dim.is_collapsed() or not self._dim_is_member(view, dim)
+        logp = view.incorporate_dim(dim, reassign=reassign)
+        view.unincorporate_dim(dim)
+        return logp
+
+    def _dim_get_proposal(self, view, dim):
+        """Get a dim object propose to the view."""
+        # If collapsed dim, reuse the dim object. Otherwise uncollapsed dim,
+        # create copy to preserve uncollapsed state (can optimize).
+        if dim.is_collapsed() or self._dim_is_member(view, dim):
+            return dim
+        return copy.deepcopy(dim)
+
     def _gibbs_transition_dim(self, col, m):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
         # XXX Disable col transitions if \exists conditional model anywhere.
         if any(d.is_conditional() for d in self.dims()):
             raise ValueError('Cannot transition columns with conditional dims.')
 
-        def is_member(view, dim):
-            return view is not None and dim.index in view.dims
-
-        # Compute probability of dim data under view partition.
-        def get_data_logp(view, dim):
-            # collasped   member  reassign
-            # 0           0       1
-            # 0           1       0
-            # 1           0       1
-            # 1           0       1
-            # implies reassign = collapsed or (not member)
-            reassign = dim.is_collapsed() or not is_member(view, dim)
-            logp = view.incorporate_dim(dim, reassign=reassign)
-            view.unincorporate_dim(dim)
-            return logp
-
-        # Reuse collapsed, deepcopy uncollapsed.
-        def get_prop_dim(view, dim):
-            if dim.is_collapsed() or is_member(view, dim):
-                return dim
-            return copy.deepcopy(dim)
-
         # Current dim object and view index.
         dim = self.dim_for(col)
 
-        # Retrieve current view.
-        v_a = self.Zv(col)
-
-        # Existing view proposals.
-        dprop = [get_prop_dim(self.views[v], dim) for v in self.views]
+        # Compute logp of the dim under existing views.
+        dims_proposal = [
+            self._dim_get_proposal(self.views[view], dim)
+            for view in self.views
+        ]
         logp_data = [
-            get_data_logp(self.views[v], dim)
-            for (v, dim) in zip(self.views, dprop)
+            self._dim_get_data_logp(self.views[view], dim)
+            for (view, dim) in zip(self.views, dims_proposal)
         ]
 
-        # Auxiliary view proposals.
+        # Compute logp of the dim under auxiliary views.
         tables = self.crp.clusters[0].gibbs_tables(col, m=m)
         t_aux = tables[len(self.views):]
-        dprop_aux = [get_prop_dim(None, dim) for t in t_aux]
-        vprop_aux = [
+        dims_proposal_aux = [self._dim_get_proposal(None, dim) for _t in t_aux]
+        views_proposal_aux = [
             View(self.X, outputs=[self.crp_id_view + t], rng=self.rng)
             for t in t_aux
         ]
         logp_data_aux = [
-            get_data_logp(view, dim)
-            for (view, dim) in zip(vprop_aux, dprop_aux)
+            self._dim_get_data_logp(view, dim)
+            for (view, dim) in zip(views_proposal_aux, dims_proposal_aux)
         ]
 
-        # Extend data structs with auxiliary proposals.
-        dprop.extend(dprop_aux)
+        # Extend structures with auxiliary proposals.
+        dims_proposal.extend(dims_proposal_aux)
         logp_data.extend(logp_data_aux)
 
-        # Compute the CRP probabilities.
+        # Compute the CRP probabilities of each view.
         logp_crp = self.crp.clusters[0].gibbs_logps(col, m=m)
         assert len(logp_data) == len(logp_crp)
 
         # Overall view probabilities.
-        p_view = np.add(logp_data, logp_crp)
+        logp_views = np.add(logp_data, logp_crp)
 
         # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
         for a in avoid:
             index = self.views.keys().index(self.Zv(a))
-            p_view[index] = float('-inf')
+            logp_views[index] = float('-inf')
 
-        # Draw view.
-        assert len(tables) == len(p_view)
-        index = gu.log_pflip(p_view, rng=self.rng)
-        v_b = tables[index]
+        # Draw a new view.
+        assert len(tables) == len(logp_views)
+        draw = gu.log_pflip(logp_views, rng=self.rng)
+        v_sampled = tables[draw]
+        v_current = self.Zv(col)
 
-        # Migrate dimension.
-        if v_a != v_b:
-            if v_b > max(self.views):
-                self._append_view(vprop_aux[index-len(self.views)], v_b)
-            self._migrate_dim(v_a, v_b, dprop[index])
+        # Migrate dimension to a new view if necessary.
+        if v_current != v_sampled:
+            # If migrating dim to an aux view, add it to the state.
+            if v_sampled > max(self.views):
+                view_aux = views_proposal_aux[draw-len(self.views)]
+                self._append_view(view_aux, v_sampled)
+            self._migrate_dim(v_current, v_sampled, dims_proposal[draw])
         else:
-            self.views[v_a].incorporate_dim(
-                dprop[index], reassign=dprop[index].is_collapsed())
+            self.views[v_current].incorporate_dim(
+                dims_proposal[draw],
+                reassign=dims_proposal[draw].is_collapsed(),
+            )
 
         self._check_partitions()
 
