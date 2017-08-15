@@ -70,6 +70,16 @@ class State(CGpm):
             self.X[c] = X[:,i].tolist()
 
         # -- Column CRP --------------------------------------------------------
+        # Retrieve the dependence constraints.
+        if Rd is not None:
+            raise ValueError('Row dependence constraints not implemented.')
+        if Ri is not None:
+            raise ValueError('Row independence constraints not implemented.')
+        self.Cd = [] if Cd is None else Cd
+        self.Ci = [] if Ci is None else Ci
+        self.Rd = {}
+        self.Ri = {}
+        # Prepare the GPM for the column crp.
         crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp_id = 5**8
         self.crp = Dim(
@@ -80,32 +90,39 @@ class State(CGpm):
             rng=self.rng
         )
         self.crp.transition_hyper_grids([1]*self.n_cols())
+        # Simulate a CRP for the column partition.
         if Zv is None:
-            for c in self.outputs:
-                s = self.crp.simulate(c, [self.crp_id], {-1:0})
-                self.crp.incorporate(c, s, {-1:0})
+            # Simulate a constrained CRP.
+            if self.Ci or self.Cd:
+                # Require outputs are zero-based for now, rather than worry
+                # about maintaining a zero-based map.
+                if self.outputs != range(self.n_cols()):
+                    raise ValueError('Use zero-based outputs with constraints.')
+                if self.Ci:
+                    # Independence constraints are specified; simulate
+                    # the non-exchangeable version of the constrained crp.
+                    Zv = gu.simulate_crp_constrained(
+                        self.n_cols(), self.alpha(), self.Cd, self.Ci,
+                        self.Rd, self.Ri, rng=self.rng)
+                else:
+                    # Only dependence constraints are specified; simulate
+                    # the exchangeable version of the constrained crp.
+                    Zv = gu.simulate_crp_constrained_dependent(
+                        self.n_cols(), self.alpha(), self.Cd, self.rng)
+                # Incorporate hte the data.
+                for c, z in zip(self.outputs, Zv):
+                    self.crp.incorporate(c, {self.crp_id: z}, {-1:0})
+            # Otherwise simulate an unconstrained CRP.
+            else:
+                for c in self.outputs:
+                    s = self.crp.simulate(c, [self.crp_id], {-1:0})
+                    self.crp.incorporate(c, s, {-1:0})
+        # Load the provided Zv without simulation.
         else:
             for c, z in Zv.iteritems():
                 self.crp.incorporate(c, {self.crp_id: z}, {-1:0})
-        assert len(self.Zv()) == len(self.outputs)
 
-        # -- Dependency constraints --------------------------------------------
-        self.Cd = [] if Cd is None else Cd
-        self.Ci = [] if Ci is None else Ci
-        self.Rd = {} if Rd is None else Rd
-        self.Ri = {} if Ri is None else Ri
-        if len(self.Cd) > 0: # XXX Github issue #13.
-            raise ValueError('Dependency constraints not yet implemented.')
-        if self.Cd or self.Ci:
-            assert not Zv
-            Zv = gu.simulate_crp_constrained(
-                self.n_cols(), self.alpha(), self.Cd, self.Ci, self.Rd,
-                self.Ri, rng=self.rng)
-            for c in self.outputs:
-                self.crp.unincorporate(c)
-            for c, z in zip(self.outputs, Zv):
-                self.crp.incorporate(c, {self.crp_id: z}, {-1:0})
-            assert len(self.Zv()) == len(self.outputs)
+        assert len(self.Zv()) == len(self.outputs)
 
         # -- View data ---------------------------------------------------------
         cctypes = cctypes or [None] * len(self.outputs)
@@ -969,7 +986,12 @@ class State(CGpm):
         """Gibbs on col assignment to Views, with m auxiliary parameters"""
         # XXX Disable col transitions if \exists conditional model anywhere.
         if any(d.is_conditional() for d in self.dims()):
-            raise ValueError('Cannot transition columns with conditional dims.')
+            raise ValueError(
+                'Cannot transition columns with conditional dims.')
+        if self.Cd:
+            raise ValueError(
+                'Cannot transition columns with dependence constraint, '
+                'use State.transition_lovecat.')
 
         # Current dim object and view index.
         dim = self.dim_for(col)

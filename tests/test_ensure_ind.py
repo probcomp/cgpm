@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import itertools
-import unittest
+import pytest
 
 import numpy as np
 
@@ -23,19 +23,56 @@ from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
 from cgpm.utils import validation as vu
 
+from markers import integration
 
-def test_naive_bayes():
-    D = np.random.normal(size=(10,1))
+
+def test_naive_bayes_independence():
+    rng = gu.gen_rng(1)
+    D = rng.normal(size=(10,1))
     T = np.repeat(D, 10, axis=1)
     Ci = list(itertools.combinations(range(10), 2))
-    state = State(T, cctypes=['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
+    state = State(T, cctypes=['normal']*10, Ci=Ci, rng=rng)
     state.transition(N=10, progress=0)
     vu.validate_crp_constrained_partition(state.Zv(), [], Ci, {}, {})
 
-def test_complex_relationships():
-    D = np.random.normal(size=(10,1))
+
+def test_complex_independent_relationships():
+    rng = gu.gen_rng(1)
+    D = rng.normal(size=(10,1))
     T = np.repeat(D, 10, axis=1)
     Ci = [(2,8), (0,3)]
-    state = State(T, cctypes=['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
+    state = State(T, cctypes=['normal']*10, Ci=Ci, rng=rng)
     state.transition(N=10, progress=0)
     vu.validate_crp_constrained_partition(state.Zv(), [], Ci, {}, {})
+
+
+CIs = [[], [(2,8), (0,3)]]
+@pytest.mark.parametrize('Ci', CIs)
+def test_simple_dependence_constraint(Ci):
+    rng = gu.gen_rng(1)
+    D = rng.normal(size=(10,1))
+    T = np.repeat(D, 10, axis=1)
+    Cd = [(2,0), (8,3)]
+    state = State(T, cctypes=['normal']*10, Ci=Ci, Cd=Cd, rng=rng)
+    with pytest.raises(ValueError):
+        # Cannot transition columns with dependencies.
+        state.transition(N=10, kernels=['columns'], progress=0)
+    state.transition(
+        N=10,
+        kernels=['rows', 'alpha', 'column_hypers', 'alpha', 'view_alphas'],
+        progress=False)
+    vu.validate_crp_constrained_partition(state.Zv(), Cd, Ci, {}, {})
+
+
+def test_zero_based_outputs():
+    """Constraints must have zero-based output variables for now."""
+    rng = gu.gen_rng(1)
+    D = rng.normal(size=(10,1))
+    T = np.repeat(D, 10, axis=1)
+    outputs = range(10, 20)
+    with pytest.raises(ValueError):
+        State(T, outputs=range(10,20), cctypes=['normal']*10,
+            Cd=[(2,0)], rng=rng)
+    with pytest.raises(ValueError):
+        State(T, outputs=range(10,20), cctypes=['normal']*10,
+            Ci=[(2,0)], rng=gu.gen_rng(0))
