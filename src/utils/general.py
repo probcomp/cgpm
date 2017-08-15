@@ -228,11 +228,13 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     Z = [-1]*N
 
     # Friends dictionary from Cd.
-    friends = {col:block for block in Cd for col in block}
+    friends = {col: block for block in Cd for col in block}
 
     # Assign customers.
     for cust in xrange(N):
-        if Z[cust] > -1: continue
+        # If the customer has been assigned, skip.
+        if Z[cust] > -1:
+            continue
         # Find valid tables for cust and friends.
         assert all(Z[f] == -1 for f in friends.get(cust, [cust]))
         prob_table = [0] * (max(Z)+1)
@@ -279,17 +281,11 @@ def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
     assert num_constrained <= N
     assert num_blocks <= N
 
-    # Find indexes of the unconstrained customers.
-    # unconstrained_customers = set.difference(
-    #     set(xrange(N)),
-    #     set(itertools.chain.from_iterable(Cd)))
-
     # Find the number customers to simulate.
     num_simulate = (N - num_constrained) + num_blocks
 
     # Simulate a CRP based on the block structure.
     crp_block = simulate_crp(num_simulate, alpha, rng=rng)
-    print crp_block
 
     # Prepare the overall partition of length N.
     partition = [-1] * N
