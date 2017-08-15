@@ -76,3 +76,62 @@ def test_zero_based_outputs():
     with pytest.raises(ValueError):
         State(T, outputs=range(10,20), cctypes=['normal']*10,
             Ci=[(2,0)], rng=gu.gen_rng(0))
+
+@integration
+def test_naive_bayes_independence_lovecat():
+    rng = gu.gen_rng(1)
+    D = rng.normal(size=(10,1))
+    T = np.repeat(D, 10, axis=1)
+    Ci = list(itertools.combinations(range(10), 2))
+    state = State(T, cctypes=['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
+    state.transition(N=10, progress=0)
+    vu.validate_crp_constrained_partition(state.Zv(), [], Ci, {}, {})
+    state.transition_lovecat(N=100, progress=0)
+    vu.validate_crp_constrained_partition(state.Zv(), [], Ci, {}, {})
+
+
+@integration
+def test_complex_independent_relationships_lovecat():
+    rng = gu.gen_rng(1)
+    D = rng.normal(size=(10,1))
+    T = np.repeat(D, 10, axis=1)
+    Ci = [(2,8), (0,3)]
+    Cd = [(2,3), (0,8)]
+    state = State(T, cctypes=['normal']*10, Ci=Ci, Cd=Cd, rng=gu.gen_rng(0))
+    state.transition_lovecat(N=1000, progress=1)
+    vu.validate_crp_constrained_partition(state.Zv(), Cd, Ci, {}, {})
+
+@integration
+def test_independence_inference_quality_lovecat():
+    rng = gu.gen_rng(584)
+    column_view_1 = rng.normal(loc=0, size=(50,1))
+
+    column_view_2 = np.concatenate((
+        rng.normal(loc=10, size=(25,1)),
+        rng.normal(loc=20, size=(25,1)),
+    ))
+
+    data_view_1 = np.repeat(column_view_1, 4, axis=1)
+    data_view_2 = np.repeat(column_view_2, 4, axis=1)
+    data = np.column_stack((data_view_1, data_view_2))
+
+    Zv0 = {i: 0 for i in xrange(8)}
+    state = State(data, Zv=Zv0, cctypes=['normal']*8, rng=gu.gen_rng(10))
+    state.transition_lovecat(N=100, progress=1)
+    for col in [0, 1, 2, 3,]:
+        assert state.Zv(col) == state.Zv(0)
+    for col in [4, 5, 6, 7]:
+        assert state.Zv(col) == state.Zv(4)
+    print state.Zv()
+    assert state.Zv(0) != state.Zv(4)
+
+    # Get lovecat to merge the dependent columns into one view.
+    Cd = [(0,1), (2,3), (4,5), (6,7)]
+    Zv0 = {0:0, 1:0, 2:1, 3:1, 4:2, 5:2, 6:3, 7:3}
+    state = State(data, Zv=Zv0, cctypes=['normal']*8, Cd=Cd, rng=gu.gen_rng(1))
+    state.transition_lovecat(N=100, progress=1)
+    for col in [0, 1, 2, 3,]:
+        assert state.Zv(col) == state.Zv(0)
+    for col in [4, 5, 6, 7]:
+        assert state.Zv(col) == state.Zv(4)
+    assert state.Zv(0) != state.Zv(4)

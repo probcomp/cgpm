@@ -201,10 +201,27 @@ def _crosscat_X_L(state, M_c, X_D):
     # partition in each view), as well as X_L['column_partition']['assignments']
     view_states = [view_state(v) for v in views_unique]
 
+    # Generates X_L['col_ensure'].
+    col_ensure = dict()
+    if state.Cd:
+        col_ensure['dependent'] = {
+            str(column) : list(block)
+            for block in state.Cd for column in block
+        }
+    if state.Ci:
+        from crosscat.utils.general_utils import get_scc_from_tuples
+        col_ensure['independent'] = {
+            str(column) : list(block) for
+            column, block in get_scc_from_tuples(state.Ci).iteritems()
+        }
+
+    print col_ensure
+
     return {
         unicode('column_hypers'): column_hypers,
         unicode('column_partition'): column_partition,
-        unicode('view_state'): view_states
+        unicode('view_state'): view_states,
+        unicode('col_ensure'): col_ensure
     }
 
 
