@@ -115,8 +115,8 @@ class State(CGpm):
             # Otherwise simulate an unconstrained CRP.
             else:
                 for c in self.outputs:
-                    s = self.crp.simulate(c, [self.crp_id], {-1:0})
-                    self.crp.incorporate(c, s, {-1:0})
+                    z = self.crp.simulate(c, [self.crp_id], {-1:0})
+                    self.crp.incorporate(c, z, {-1:0})
         # Load the provided Zv without simulation.
         else:
             for c, z in Zv.iteritems():
