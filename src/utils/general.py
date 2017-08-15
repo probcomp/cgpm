@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import math
 import warnings
 
@@ -255,6 +256,59 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     assert all(0 <= t < N for t in Z)
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
     return Z
+
+def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
+    """Simulates a CRP with N customers and concentration alpha. Cd is a list,
+    where each entry is a list of friends. Each clique of friends are
+    effectively treated as one customer, since they are assigned to a table
+    jointly.
+
+    Note that this prior is different than simulate_crp_constrained, where
+    (unlike this function) clique of customers are not treated as a single
+    customer when computing the table probability.
+    """
+    if rng is None:
+        rng = gen_rng()
+
+    vu.validate_dependency_constraints(N, Cd, [])
+    assert N > 0 and alpha > 0
+
+    # Find the number of cliques and constrained customers.
+    num_blocks = len(Cd)
+    num_constrained = sum(len(block) for block in Cd)
+    assert num_constrained <= N
+    assert num_blocks <= N
+
+    # Find indexes of the unconstrained customers.
+    # unconstrained_customers = set.difference(
+    #     set(xrange(N)),
+    #     set(itertools.chain.from_iterable(Cd)))
+
+    # Find the number customers to simulate.
+    num_simulate = (N - num_constrained) + num_blocks
+
+    # Simulate a CRP based on the block structure.
+    crp_block = simulate_crp(num_simulate, alpha, rng=rng)
+    print crp_block
+
+    # Prepare the overall partition of length N.
+    partition = [-1] * N
+
+    # Assign constrained customers based on crp_block[:num_blocks].
+    for i, block in enumerate(Cd):
+        # Find the assignment for this block.
+        assignment = crp_block[i]
+        for customer in block:
+            partition[customer] = assignment
+
+    # Assign unconstrained customers based on crp_block[num_blocks:].
+    unused_assignments = iter(crp_block[num_blocks:])
+    for customer, assignment in enumerate(partition):
+        if assignment == -1:
+            partition[customer] = next(unused_assignments)
+
+    return partition
+
 
 def build_rowid_blocks(Zvr):
     A = np.asarray(Zvr).T

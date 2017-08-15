@@ -14,7 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Checks the simulate_crp_constrained produces valid partitions."""
+"""
+This test suite targets the following functions for simulating CRPs:
+
+    cgpm.utils.general.simulate_crp_constrained
+    cgpm.utils.general.simulate_crp_constrained_dependent
+
+Refer to the docstrings to understand how these priors differ.
+"""
 
 import itertools
 import pytest
@@ -87,25 +94,35 @@ def test_valid_constraints():
     assert vu.validate_crp_constrained_input(7, Cd, Ci, Rd, Ri)
 
 
-# Tests for simulate_crp_constrained.
+# Tests for simulate_crp_constrained and simulate_crp_constrained.
 
 
 def test_no_constraints():
     N, alpha = 10, .4
     Cd = Ci = []
     Rd = Ri = {}
+
     Z = gu.simulate_crp_constrained(
         N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
+
+    Z = gu.simulate_crp_constrained_dependent(
+        N, alpha, Cd, rng=gu.gen_rng(0))
+    assert vu.validate_crp_constrained_partition(Z, Cd, [], [], [])
 
 def test_all_friends():
     N, alpha = 10, 1.4
     Cd = [range(N)]
     Ci = []
     Rd = Ri = {}
+
     Z = gu.simulate_crp_constrained(
         N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
+
+    Z = gu.simulate_crp_constrained_dependent(
+        N, alpha, Cd, rng=gu.gen_rng(0))
+    assert vu.validate_crp_constrained_partition(Z, Cd, [], [], [])
 
 def test_all_enemies():
     N, alpha = 13, 1.4
