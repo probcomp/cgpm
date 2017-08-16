@@ -215,8 +215,6 @@ def _crosscat_X_L(state, M_c, X_D):
             column, block in get_scc_from_tuples(state.Ci).iteritems()
         }
 
-    print col_ensure
-
     return {
         unicode('column_hypers'): column_hypers,
         unicode('column_partition'): column_partition,
