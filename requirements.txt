@@ -1,0 +1,8 @@
+cython>=0.20.1
+matplotlib==1.4.3
+numpy>=1.7.0
+pandas
+pytest
+scipy>=0.11.0
+sklearn
+statsmodels
