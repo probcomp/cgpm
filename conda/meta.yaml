@@ -1,0 +1,41 @@
+package:
+  name: cgpm
+  version: {{ CONDA_PACKAGE_VERSION }}
+
+source:
+  path: ../
+
+build:
+  script: python setup.py install
+
+requirements:
+  # taken from https://github.com/probcomp/cgpm/blob/ebaf5eedf9f5ad721eeecf6a0d30b60d59b3832d/setup.py#L168...L175
+  # version numbers were modified to get tests to pass
+  build:
+    - git
+    - matplotlib 1.4.*
+    - numpy 1.8.*
+    - python
+  run:
+    - matplotlib
+    - numpy 1.8.*
+    - pandas
+    - python 2.7.*
+    - scipy >=0.13.3
+    - scikit-learn
+    - statsmodels
+
+test:
+  requires:
+    - matplotlib 1.4.*
+    - python 2.7.*
+    - pytest 2.5.1.*
+  imports:
+    - cgpm
+  commands:
+    - python -m pytest --pyargs cgpm -k "not __ci_"
+
+about:
+  home: https://github.com/probcomp/cgpm
+  license: Apache
+  license_file: LICENSE.txt
