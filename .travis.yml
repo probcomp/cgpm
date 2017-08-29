@@ -7,8 +7,11 @@ branches:
 
 python:
   - 2.7
+virtualenv:
+    system_site_package: true
 before_install:
-  - pip install -r requirements.txt
+  - sudo apt-get update
+  - sudo apt-get install -qq python-matplotlib python-numpy python-pandas python-pytest python-scipy python-sklearn python-statsmodels
   - python setup.py build
   - python setup.py install
 script: ./check.sh
