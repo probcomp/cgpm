@@ -316,14 +316,16 @@ class Engine(object):
     # Internal
 
     def _seed_states(self):
-        rngs = self._get_rngs()
-        for rng, state in zip(rngs, self.states):
-            state.rng = rng
+        seeds = self._get_seeds()
+        for seed, state in zip(seeds, self.states):
+            state.rng.seed(seed)
+
+    def _get_seeds(self, N=None):
+        num_draws = N if N is not None else self.num_states()
+        return self.rng.randint(low=1, high=2**32-1, size=num_draws)
 
     def _get_rngs(self, N=None):
-        num_states = N if N is not None else self.num_states()
-        seeds = self.rng.randint(low=1, high=2**32-1, size=num_states)
-        return [gu.gen_rng(s) for s in seeds]
+        return [gu.gen_rng(s) for s in self._get_seeds(N)]
 
     def _likelihood_weighted_integrate(
             self, logpdfs, rowid, evidence=None, statenos=None, multiprocess=1):
