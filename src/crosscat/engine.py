@@ -33,8 +33,8 @@ DummyCgpm = namedtuple('DummyCgpm', ['outputs', 'inputs'])
 
 # Multiprocessing functions.
 
-def _intialize((X, rng, kwargs)):
-    state = State(X, rng=rng, **kwargs)
+def _intialize((X, seed, kwargs)):
+    state = State(X, rng=gu.gen_rng(seed), **kwargs)
     return state
 
 def _modify((method, state, args)):
@@ -65,7 +65,7 @@ class Engine(object):
         mapper = parallel_map if multiprocess else map
         self.rng = gu.gen_rng(1) if rng is None else rng
         X = np.asarray(X)
-        args = [(X, rng, kwargs) for rng in self._get_rngs(num_states)]
+        args = [(X, seed, kwargs) for seed in self._get_seeds(num_states)]
         self.states = mapper(_intialize, args)
 
     # --------------------------------------------------------------------------
@@ -307,7 +307,7 @@ class Engine(object):
         kwargs['cctypes'] = self.states[0].cctypes()
         kwargs['distargs'] = self.states[0].distargs()
         kwargs['outputs'] = self.states[0].outputs
-        args = [(X, rng, kwargs) for rng in self._get_rngs(count)]
+        args = [(X, seed, kwargs) for seed in self._get_seeds(count)]
         new_states = mapper(_intialize, args)
         self.states.extend(new_states)
 
@@ -316,14 +316,13 @@ class Engine(object):
     # Internal
 
     def _seed_states(self):
-        rngs = self._get_rngs()
-        for rng, state in zip(rngs, self.states):
-            state.rng = rng
+        seeds = self._get_seeds()
+        for seed, state in zip(seeds, self.states):
+            state.rng.seed(seed)
 
-    def _get_rngs(self, N=None):
-        num_states = N if N is not None else self.num_states()
-        seeds = self.rng.randint(low=1, high=2**32-1, size=num_states)
-        return [gu.gen_rng(s) for s in seeds]
+    def _get_seeds(self, N=None):
+        num_draws = N if N is not None else self.num_states()
+        return self.rng.randint(low=1, high=2**32-1, size=num_draws)
 
     def _likelihood_weighted_integrate(
             self, logpdfs, rowid, evidence=None, statenos=None, multiprocess=1):
@@ -380,12 +379,12 @@ class Engine(object):
         for m in metadata['states']:
             m['X'] = metadata['X']
         num_states = len(metadata['states'])
-        def retrieve_state((state, rng)):
-            return State.from_metadata(state, rng=rng)
+        def retrieve_state((state, seed)):
+            return State.from_metadata(state, rng=gu.gen_rng(seed))
         mapper = parallel_map if multiprocess else map
         engine.states = mapper(
             retrieve_state,
-            zip(metadata['states'], engine._get_rngs(num_states)))
+            zip(metadata['states'], engine._get_seeds(num_states)))
         return engine
 
     def to_pickle(self, fileptr):
