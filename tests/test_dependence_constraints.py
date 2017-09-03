@@ -122,7 +122,6 @@ def test_independence_inference_quality_lovecat():
         assert state.Zv(col) == state.Zv(0)
     for col in [4, 5, 6, 7]:
         assert state.Zv(col) == state.Zv(4)
-    print state.Zv()
     assert state.Zv(0) != state.Zv(4)
 
     # Get lovecat to merge the dependent columns into one view.
