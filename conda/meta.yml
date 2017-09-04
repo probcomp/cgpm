@@ -1,0 +1,31 @@
+package:
+  name: cgpm
+  version: "0.1"
+
+source:
+  path: ./src
+
+requirements:
+  # taken from https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L7-L14
+  build:
+    script_env:
+      - CONDA_BLD_PATH
+    - git
+    - matplotlib
+    - numpy
+    - pandas
+    - scipy
+    - scikit-learn
+    - statsmodels
+  run:
+    - python
+
+test:
+  imports:
+    - pytest
+
+
+about:
+  home: https://github.com/probcomp/cgpm
+  license: Apache
+  license_file: LICENSE.txt

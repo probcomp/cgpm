@@ -9,6 +9,14 @@ python:
 before_install:
   - pip install -r requirements.txt
 install:
+  - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
   - python setup.py build
   - python setup.py install
 script: ./check.sh
+after_success:
+  - test $TRAVIS_BRANCH = "travis" && conda install conda-build && conda install anaconda-client && bash conda/conda_upload.sh
