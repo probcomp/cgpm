@@ -182,5 +182,6 @@ class Crp(DistributionGpm):
 
     @staticmethod
     def calc_logpdf_marginal(N, counts, alpha):
+        # http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
         return len(counts) * log(alpha) + sum(gammaln(counts.values())) \
             + gammaln(alpha) - gammaln(N + alpha)

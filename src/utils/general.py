@@ -57,7 +57,7 @@ def normalize(p):
 def logp_crp(N, Nk, alpha):
     """Returns the log normalized P(N,K|alpha), where N is the number of
     customers and K is the number of tables.
-    https://www.cs.princeton.edu/~blei/papers/GershmanBlei2012.pdf#page=4 (eq 8)
+    http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
     """
     return len(Nk)*log(alpha) + np.sum(lgamma(c) for c in Nk) \
         + lgamma(alpha) - lgamma(N+alpha)
