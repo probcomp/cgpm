@@ -15,11 +15,18 @@
 # limitations under the License.
 
 from math import lgamma
+from math import log
+from math import pi
 
 import numpy as np
 
 from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
+
+
+LOG2 = log(2)
+LOGPI = log(pi)
+LOG2PI = LOG2 + LOGPI
 
 
 class Normal(DistributionGpm):
@@ -163,7 +170,7 @@ class Normal(DistributionGpm):
             N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
-        return -.5 * np.log(2*np.pi) + ZM - ZN
+        return -.5 * LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -171,7 +178,7 @@ class Normal(DistributionGpm):
             N, sum_x, sum_x_sq, m, r, s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
-        return -(N/2.) * np.log(2*np.pi) + ZN - Z0
+        return -(N/2.) * LOG2PI + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
@@ -185,8 +192,8 @@ class Normal(DistributionGpm):
     @staticmethod
     def calc_log_Z(r, s, nu):
         return (
-            ((nu + 1.) / 2.) * np.log(2)
-            + .5 * np.log(np.pi)
+            ((nu + 1.) / 2.) * LOG2
+            + .5 * LOGPI
             - .5 * np.log(r)
             - (nu/2.) * np.log(s)
             + lgamma(nu/2.0))
