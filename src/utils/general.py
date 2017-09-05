@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import math
 import warnings
 
+from collections import defaultdict
 from math import lgamma
 from math import log
 
@@ -304,6 +304,58 @@ def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
             partition[customer] = next(unused_assignments)
 
     return partition
+
+
+def logp_crp_constrained_dependent(Z, alpha, Cd):
+    """Compute logp of CRP simulated by simulate_crp_constrained_dependent.
+
+    Z is a map from each customer to the table assignment. Cd is a list, where
+    each entry is a list of friends. Each clique of friends are effectively
+    treated as one customer, since they are assigned to a table jointly.
+    """
+    if not vu.validate_crp_constrained_partition(Z, Cd, [], [], []):
+        return -float('inf')
+
+    assert alpha > 0
+
+    # Get the effective number of customers.
+    num_simulate = get_crp_constrained_num_effective(len(Z), Cd)
+
+    # Get the effective counts.
+    counts = get_crp_constrained_partition_counts(Z, Cd)
+    Nk = counts.values()
+    assert sum(Nk) == num_simulate
+
+    return logp_crp(num_simulate, Nk, alpha)
+
+
+def get_crp_constrained_num_effective(N, Cd):
+    num_customers = N
+    num_blocks = len(Cd)
+    num_constrained = sum(len(block) for block in Cd)
+    assert num_constrained <= num_customers
+    assert num_blocks <= num_customers
+    num_effective = (num_customers - num_constrained) + num_blocks
+    return num_effective
+
+
+def get_crp_constrained_partition_counts(Z, Cd):
+    # Compute the effective partition.
+    counts = defaultdict(int)
+    seen = set()
+    # Table assignment of constrained customers.
+    for block in Cd:
+        seen.update(block)
+        customer = block[0]
+        table = Z[customer]
+        counts[table] += 1
+    # Table assignment of unconstrained customers.
+    for customer in Z:
+        if customer in seen:
+            continue
+        table = Z[customer]
+        counts[table] += 1
+    return counts
 
 
 def build_rowid_blocks(Zvr):
