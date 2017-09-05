@@ -194,9 +194,9 @@ class Normal(DistributionGpm):
         return (
             ((nu + 1.) / 2.) * LOG2
             + .5 * LOGPI
-            - .5 * np.log(r)
-            - (nu/2.) * np.log(s)
-            + lgamma(nu/2.0))
+            - .5 * log(r)
+            - (nu/2.) * log(s)
+            + lgamma(nu/2.))
 
     @staticmethod
     def sample_parameters(m, r, s, nu, rng):
