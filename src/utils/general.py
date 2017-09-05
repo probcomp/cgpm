@@ -275,14 +275,8 @@ def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
     vu.validate_dependency_constraints(N, Cd, [])
     assert N > 0 and alpha > 0
 
-    # Find the number of cliques and constrained customers.
-    num_blocks = len(Cd)
-    num_constrained = sum(len(block) for block in Cd)
-    assert num_constrained <= N
-    assert num_blocks <= N
-
-    # Find the number customers to simulate.
-    num_simulate = (N - num_constrained) + num_blocks
+    # Find number of effective customers to simulate.
+    num_simulate = get_crp_constrained_num_effective(N, Cd)
 
     # Simulate a CRP based on the block structure.
     crp_block = simulate_crp(num_simulate, alpha, rng=rng)
@@ -298,6 +292,7 @@ def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
             partition[customer] = assignment
 
     # Assign unconstrained customers based on crp_block[num_blocks:].
+    num_blocks = len(Cd)
     unused_assignments = iter(crp_block[num_blocks:])
     for customer, assignment in enumerate(partition):
         if assignment == -1:
