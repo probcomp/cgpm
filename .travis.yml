@@ -13,9 +13,10 @@ install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - pip install -r requirements.txt
-  - python setup.py build
-  - python setup.py install
+  - conda install --yes --file requirements.txt
 script: ./check.sh
 after_success:
-  - test $TRAVIS_BRANCH = "travis" && conda install conda-build && conda install anaconda-client && bash conda/conda_upload.sh
+  - python setup.py sdist
+  - python setup.py bdist
+  #- test $TRAVIS_BRANCH = "travis" && conda install conda-build && conda install anaconda-client && bash conda/conda_upload.sh
+  - conda install anaconda-client && anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USER -l test dist/*.tar.gz --force
