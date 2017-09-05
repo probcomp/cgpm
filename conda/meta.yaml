@@ -5,11 +5,13 @@ package:
 source:
   path: ./src
 
+build:
+  script_env:
+    - CONDA_BLD_PATH
+
 requirements:
   # taken from https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L7-L14
   build:
-    script_env:
-      - CONDA_BLD_PATH
     - git
     - matplotlib
     - numpy
