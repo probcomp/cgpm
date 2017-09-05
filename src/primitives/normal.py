@@ -164,9 +164,9 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, sum_x, sum_x_sq, m, r, s, nu):
-        mn, rn, sn, nun = Normal.posterior_hypers(
+        _mn, rn, sn, nun = Normal.posterior_hypers(
             N, sum_x, sum_x_sq, m, r, s, nu)
-        mm, rm, sm, num = Normal.posterior_hypers(
+        _mm, rm, sm, num = Normal.posterior_hypers(
             N+1, sum_x+x, sum_x_sq+x*x, m, r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
         ZM = Normal.calc_log_Z(rm, sm, num)
@@ -174,7 +174,7 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def calc_logpdf_marginal(N, sum_x, sum_x_sq, m, r, s, nu):
-        mn, rn, sn, nun = Normal.posterior_hypers(
+        _mn, rn, sn, nun = Normal.posterior_hypers(
             N, sum_x, sum_x_sq, m, r, s, nu)
         Z0 = Normal.calc_log_Z(r, s, nu)
         ZN = Normal.calc_log_Z(rn, sn, nun)
@@ -186,7 +186,8 @@ class Normal(DistributionGpm):
         nun = nu + float(N)
         mn = (r*m + sum_x)/rn
         sn = s + sum_x_sq + r*m*m - rn*mn*mn
-        if sn == 0: sn = s
+        if sn == 0:
+            sn = s
         return mn, rn, sn, nun
 
     @staticmethod
