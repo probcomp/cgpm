@@ -365,8 +365,18 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # logscore.
 
+    def logpdf_score_crp(self):
+        if self.Ci:
+            raise ValueError('Cannot compute crp score with independences.')
+        # Compute vanilla CRP probability.
+        if not self.Cd:
+            return self.crp.logpdf_score()
+        # Compute constrained CRP probability.
+        Zv, alpha = self.Zv(), self.alpha()
+        return gu.logp_crp_constrained_dependent(Zv, alpha, self.Cd)
+
     def logpdf_score(self):
-        logp_crp = self.crp.logpdf_score()
+        logp_crp = self.logpdf_score_crp()
         logp_views = sum(v.logpdf_score() for v in self.views.itervalues())
         return logp_crp + logp_views
 
