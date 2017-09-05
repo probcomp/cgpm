@@ -1151,6 +1151,10 @@ class State(CGpm):
             metadata['hypers'].append(dim.hypers)
             metadata['distargs'].append(dim.distargs)
 
+        # Dependence constraints.
+        metadata['Cd'] = self.Cd
+        metadata['Ci'] = self.Ci
+
         # View data.
         metadata['Zrv'] = []
         metadata['view_alphas'] = []
@@ -1195,6 +1199,8 @@ class State(CGpm):
             Zrv=to_dict(metadata.get('Zrv', None)),
             view_alphas=to_dict(metadata.get('view_alphas', None)),
             hypers=metadata.get('hypers', None),
+            Cd=metadata.get('Cd', None),
+            Ci=metadata.get('Ci', None),
             diagnostics=metadata.get('diagnostics', None),
             loom_path=metadata.get('loom_path', None),
             rng=rng,
