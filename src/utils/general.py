@@ -325,6 +325,11 @@ def logp_crp_constrained_dependent(Z, alpha, Cd):
 
 
 def get_crp_constrained_num_effective(N, Cd):
+    """Compute effective number of customers given dependence constraints.
+
+    N is the total number of customers, and Cd is a list of lists encoding
+    the dependence constraints.
+    """
     num_customers = N
     num_blocks = len(Cd)
     num_constrained = sum(len(block) for block in Cd)
@@ -335,6 +340,11 @@ def get_crp_constrained_num_effective(N, Cd):
 
 
 def get_crp_constrained_partition_counts(Z, Cd):
+    """Compute effective counts at each table given dependence constraints.
+
+    Z is a dictionary mapping customer to table, and Cd is a list of lists
+    encoding the dependence constraints.
+    """
     # Compute the effective partition.
     counts = defaultdict(int)
     seen = set()
