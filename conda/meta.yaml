@@ -15,20 +15,31 @@ requirements:
   # taken from https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L7-L14
   build:
     - git
-    - matplotlib
-    - numpy
+    - python
+    - cython 0.20.1
+    - matplotlib 1.4.3
+    - numpy >=1.8.2
     - pandas
-    - scipy
+    - scipy >=0.11.0
     - scikit-learn
     - statsmodels
-    - python
   run:
-    - python
+    - cython 0.20.1
+    - matplotlib 1.4.3
+    - numpy >=1.8.2
+    - pandas
+    - scipy >=0.11.0
+    - scikit-learn
+    - statsmodels
 
 test:
+  requires:
+    - pytest 2.5.1
+    - python
   imports:
-    - pytest
-
+    - cgpm
+  commands:
+    - python -m pytest --pyargs cgpm -k "not __ci_"
 
 about:
   home: https://github.com/probcomp/cgpm
