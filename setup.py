@@ -165,14 +165,6 @@ setup(
     package_data={
         'cgpm.tests': ['graphical/resources/satellites.csv'],
     },
-    install_requires=[
-        'matplotlib>=1.3.1',
-        'numpy',
-        'pandas',
-        'scipy>=0.13.3',
-        'scikit-learn',
-        'statsmodels',
-    ],
     tests_require=[
         'pytest',
     ],
