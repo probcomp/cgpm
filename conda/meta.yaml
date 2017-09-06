@@ -8,6 +8,8 @@ source:
 build:
   script_env:
     - CONDA_BLD_PATH
+  script: python setup.py install
+
 
 requirements:
   # taken from https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L7-L14
@@ -19,6 +21,7 @@ requirements:
     - scipy
     - scikit-learn
     - statsmodels
+    - python
   run:
     - python
 
