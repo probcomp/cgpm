@@ -17,6 +17,7 @@ requirements:
     - git
     - python
   run:
+    - python 2.7.*
     - matplotlib 1.4.3.*
     - numpy >=1.8.2
     - pandas
@@ -26,8 +27,8 @@ requirements:
 
 test:
   requires:
+    - python 2.7.*
     - pytest 2.5.1.*
-    - python
   imports:
     - cgpm
   commands:
