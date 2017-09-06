@@ -10,25 +10,17 @@ build:
     - CONDA_BLD_PATH
   script: python setup.py install
 
-
 requirements:
-  # taken from https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L7-L14
+  # taken from https://github.com/probcomp/cgpm/blob/ebaf5eedf9f5ad721eeecf6a0d30b60d59b3832d/setup.py#L168...L175
+  # version numbers were modified to get tests to pass
   build:
     - git
     - python
-    - cython 0.20.1
-    - matplotlib 1.4.3
-    - numpy >=1.8.2
-    - pandas
-    - scipy >=0.11.0
-    - scikit-learn
-    - statsmodels
   run:
-    - cython 0.20.1
     - matplotlib 1.4.3
     - numpy >=1.8.2
     - pandas
-    - scipy >=0.11.0
+    - scipy >=0.13.3
     - scikit-learn
     - statsmodels
 
