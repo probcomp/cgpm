@@ -17,4 +17,4 @@ install:
 script: conda build .
 after_success:
   - conda install anaconda-client
-  - anaconda -t $CONDA_UPLOAD_TOKEN upload -u $CONDA_USER ~/miniconda/conda-bld/$OS/$PKG_NAME-*.tar.bz2 --force
+  - anaconda -t $CONDA_UPLOAD_TOKEN upload -u $CONDA_USER ~/miniconda/conda-bld/linux-64/cgpm-*.tar.bz2 --force
