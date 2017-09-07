@@ -15,6 +15,6 @@ install:
   - conda update -q conda
   - conda install conda-build
 script: conda build .
-#after_success:
-  #- conda install anaconda-client && bash conda/conda_upload.sh
-  #- conda install anaconda-client && anaconda -t $CONDA_UPLOAD_TOKEN upload -u $CONDA_USER -l test dist/*.tar.gz --force
+after_success:
+  - conda install anaconda-client
+  - anaconda -t $CONDA_UPLOAD_TOKEN upload -u $CONDA_USER ~/miniconda/conda-bld/$OS/$PKG_NAME-*.tar.bz2 --force

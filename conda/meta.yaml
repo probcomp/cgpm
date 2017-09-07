@@ -6,8 +6,6 @@ source:
   path: ../
 
 build:
-  script_env:
-    - CONDA_BLD_PATH
   script: python setup.py install
 
 requirements:
