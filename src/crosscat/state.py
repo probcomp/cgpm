@@ -317,6 +317,10 @@ class State(CGpm):
             query_v = {c: query[c] for c in view_variables}
             self.views[view_id].force_cell(rowid, query_v)
 
+    def force_cell_bulk(self, rowids, queries):
+        for rowid, query in zip(rowids, queries):
+            self.force_cell(rowid, query)
+
     # --------------------------------------------------------------------------
     # Schema updates.
 

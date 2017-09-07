@@ -149,6 +149,22 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_modify, args)
 
+    def force_cell(self, rowid, query, multiprocess=1):
+        mapper = parallel_map if multiprocess else map
+        statenos = xrange(self.num_states())
+        args = [('force_cell', self.states[s],
+                (rowid, query, evidence))
+                for s in statenos]
+        self.states = mapper(_modify, args)
+
+    def force_cell_bulk(self, rowids, queries, multiprocess=1):
+        mapper = parallel_map if multiprocess else map
+        statenos = xrange(self.num_states())
+        args = [('force_cell_bulk', self.states[s],
+                (rowids, queries))
+                for s in statenos]
+        self.states = mapper(_modify, args)
+
     def update_cctype(self, col, cctype, distargs=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = xrange(self.num_states())
