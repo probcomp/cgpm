@@ -17,13 +17,11 @@ requirements:
     - numpy 1.8.*
     - python
   run:
-    - matplotlib
     - numpy 1.8.*
     - pandas
     - python 2.7.*
     - scipy >=0.13.3
     - scikit-learn
-    - six
     - statsmodels
 
 test:
