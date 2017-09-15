@@ -304,9 +304,9 @@ class LinearRegression(CGpm):
     @staticmethod
     def calc_predictive_logp(xs, ys, N, Y, x, a, b, mu, V):
         # Equation 19.
-        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+        an, bn, _mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
-        am, bm, mum, Vm_inv = LinearRegression.posterior_hypers(
+        am, bm, _mum, Vm_inv = LinearRegression.posterior_hypers(
             N+1, Y+[ys], x+[xs], a, b, mu, V)
         ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
         ZM = LinearRegression.calc_log_Z(am, bm, Vm_inv)
@@ -315,7 +315,7 @@ class LinearRegression(CGpm):
     @staticmethod
     def calc_logpdf_marginal(N, Y, x, a, b, mu, V):
         # Equation 19.
-        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+        an, bn, _mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
         Z0 = LinearRegression.calc_log_Z(a, b, np.linalg.inv(V))
         ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
