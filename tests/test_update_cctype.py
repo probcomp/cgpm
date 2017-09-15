@@ -42,9 +42,9 @@ T = T.T
 def test_categorical_bernoulli():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'bernoulli')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'categorical',
         distargs={'k':2})
 
@@ -52,9 +52,9 @@ def test_categorical_bernoulli():
 def test_poisson_categorical():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'poisson')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'categorical',
         distargs={'k':2})
 
@@ -62,9 +62,9 @@ def test_poisson_categorical():
 def test_vonmises_normal():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('vonmises'), 'normal')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('vonmises'), 'vonmises')
 
     # Incompatible numeric conversion.
@@ -75,9 +75,9 @@ def test_vonmises_normal():
 def test_geometric_exponential():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('geometric'), 'exponential')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
 
     # Incompatible numeric conversion.
     with pytest.raises(Exception):
@@ -87,7 +87,7 @@ def test_geometric_exponential():
 def test_categorical_forest():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     cat_id = CCTYPES.index('categorical')
 
     # If cat_id is singleton migrate first.
@@ -108,11 +108,11 @@ def test_categorical_forest():
     # Run valid transitions.
     state.transition(
         N=2, kernels=['rows','column_params','column_hypers'],
-        views=[state.Zv(cat_id)])
+        views=[state.Zv(cat_id)], progress=False)
 
     # Running column transition should raise.
     with pytest.raises(ValueError):
-        state.transition(N=1, kernels=['columns'])
+        state.transition(N=1, kernels=['columns'], progress=False)
 
     # Updating cctype in singleton View should raise.
     distargs = DISTARGS[cat_id].copy()
@@ -126,7 +126,7 @@ def test_categorical_forest():
 def test_categorical_forest_manual_inputs_errors():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     cat_id = CCTYPES.index('categorical')
 
     # Put 1201 into the first view.
