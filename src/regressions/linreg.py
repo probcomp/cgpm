@@ -35,9 +35,22 @@ class LinearRegression(CGpm):
     """Bayesian linear model with normal prior on regression parameters and
     inverse-gamma prior on both observation and regression variance.
 
-    \sigma2 ~ Inverse-Gamma(a, b)
-    w ~ Normal(\mu, \sigma2*I)
-    y ~ Normal(x'w, \sigma2)
+    Reference
+    http://www.biostat.umn.edu/~ph7440/pubh7440/BayesianLinearModelGoryDetails.pdf
+
+
+    Y_i = w' X_i + \sigma^2
+        Response data                   Y_i \in R
+        Covariate vector                X_i \in R^p
+        Regression coefficients         w \in R^p
+        Regression variance             \sigma^2 \in R
+
+    Hyperparameters:                    a=1, b=1, V=I, mu=[0], dimension=p
+
+    Parameters:                         \sigma2 ~ Inverse-Gamma(a, b)
+                                        w ~ MVNormal(\mu, \sigma2*I)
+
+    Data                                Y_i|x_i ~ Normal(w' x_i, \sigma2)
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None, distargs=None,
