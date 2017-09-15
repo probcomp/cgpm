@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import log
+from math import sqrt
+
 from collections import OrderedDict
 from collections import namedtuple
 
@@ -301,17 +304,17 @@ class LinearRegression(CGpm):
             N, Y, x, a, b, mu, V)
         am, bm, mum, Vm_inv = LinearRegression.posterior_hypers(
             N+1, Y+[ys], x+[xs], a, b, mu, V)
-        ZN = LinearRegression.calc_log_Z(an, bn)
-        ZM = LinearRegression.calc_log_Z(am, bm)
+        ZN = LinearRegression.calc_log_Z(an, bn, np.linalg.inv(Vn_inv))
+        ZM = LinearRegression.calc_log_Z(am, bm, np.linalg.inv(Vm_inv))
         return -(1/2.)*np.log(2*np.pi) + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, Y, x, a, b, mu, V):
         # Equation 19.
-        an, bn, mun, Vn = LinearRegression.posterior_hypers(
+        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
-        Z0 = LinearRegression.calc_log_Z(a, b)
-        ZN = LinearRegression.calc_log_Z(an, bn)
+        Z0 = LinearRegression.calc_log_Z(a, b, V)
+        ZN = LinearRegression.calc_log_Z(an, bn, np.linalg.inv(Vn_inv))
         return -(N/2.)*np.log(2*np.pi) + ZN - Z0
 
     @staticmethod
@@ -340,8 +343,9 @@ class LinearRegression(CGpm):
         return an, bn, mun, Vn_inv
 
     @staticmethod
-    def calc_log_Z(a, b):
-        return gammaln(a) - a*np.log(b)
+    def calc_log_Z(a, b, V):
+        # Equation 19.
+        return gammaln(a) + log(sqrt(np.linalg.det(V))) - a * np.log(b)
 
     @staticmethod
     def sample_parameters(a, b, mu, V, rng):
