@@ -195,11 +195,12 @@ class View(CGpm):
         inputs = []
         # XXX Horrid hack.
         if cctype_class(cctype).is_conditional():
-            if len(self.dims) == 0:
-                raise ValueError('Cannot incorporate single conditional dim.')
-            inputs = filter(
-                lambda d: d != col and not self.dims[d].is_conditional(),
-                sorted(self.dims))
+            inputs = distargs.get('inputs', [
+                d for d in sorted(self.dims)
+                if d != col and not self.dims[d].is_conditional()
+            ])
+            if len(self.dims) == 0 or len(inputs) == 0:
+                raise ValueError('No inputs for conditional dimension.')
             distargs['inputs'] = {
                 'stattypes': [self.dims[i].cctype for i in inputs],
                 'statargs': [self.dims[i].get_distargs() for i in inputs]
