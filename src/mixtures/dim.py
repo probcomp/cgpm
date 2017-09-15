@@ -150,21 +150,24 @@ class Dim(CGpm):
 
     def transition_hypers(self):
         """Transitions the hyperparameters of each cluster."""
-        def transition_hyper(target):
-            def compute_cluster_proposal(k, g):
-                self.hypers[target] = g
-                self.clusters[k].set_hypers(self.hypers)
-                return self.clusters[k].logpdf_score()
-            def compute_proposal(g):
-                return sum(compute_cluster_proposal(k,g) for k in self.clusters)
-            logps = [compute_proposal(g) for g in self.hyper_grids[target]]
+        hypers = self.hypers.keys()
+        self.rng.shuffle(hypers)
+        # For each hyper.
+        for hyper in hypers:
+            logps = []
+            # For each grid point.
+            for grid_value in self.hyper_grids[hyper]:
+                # Compute the probability of the grid point.
+                self.hypers[hyper] = grid_value
+                logp_k = 0
+                for k in self.clusters:
+                    self.clusters[k].set_hypers(self.hypers)
+                    logp_k += self.clusters[k].logpdf_score()
+                logps.append(logp_k)
+            # Sample a new hyperparameter from the grid.
             index = gu.log_pflip(logps, rng=self.rng)
-            self.hypers[target] = self.hyper_grids[target][index]
-        # Transition each of the hyperparameters.
-        targets = self.hypers.keys()
-        self.rng.shuffle(targets)
-        for target in targets:
-            transition_hyper(target)
+            self.hypers[hyper] = self.hyper_grids[hyper][index]
+        # Set the hyperparameters in each cluster.
         for k in self.clusters:
             self.clusters[k].set_hypers(self.hypers)
         self.aux_model = self.create_aux_model()
