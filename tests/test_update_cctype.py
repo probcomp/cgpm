@@ -121,3 +121,37 @@ def test_categorical_forest():
         cctype='categorical', distargs=distargs, v=max(state.views)+1)
     with pytest.raises(Exception):
         state.update_cctype(98, 'random_forest', distargs=distargs)
+
+
+def test_categorical_forest_manual_inputs_errors():
+    state = State(
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
+    state.transition(N=1)
+    cat_id = CCTYPES.index('categorical')
+
+    # Put 1201 into the first view.
+    view_idx = min(state.views)
+    state.incorporate_dim(
+        T[:,CCTYPES.index('categorical')], outputs=[1201],
+        cctype='categorical', distargs=DISTARGS[cat_id], v=view_idx)
+
+    # Updating cctype with completely invalid input should raise.
+    with pytest.raises(Exception):
+        distargs = DISTARGS[cat_id].copy()
+        distargs['inputs'] = [10000]
+        state.update_cctype(1201, 'random_forest', distargs=distargs)
+
+    # Updating cctype with input dimensions outside the view should raise.
+    cols_in_view = state.views[view_idx].dims.keys()
+    cols_out_view = [c for c in state.outputs if c not in cols_in_view]
+    assert len(cols_in_view) > 0 and len(cols_out_view) > 0
+    with pytest.raises(Exception):
+        distargs = DISTARGS[cat_id].copy()
+        distargs['inputs'] = cols_out_view
+        state.update_cctype(1201, 'random_forest', distargs=distargs)
+
+    # Updating cctype with no input dimensions should raise.
+    with pytest.raises(Exception):
+        distargs = DISTARGS[cat_id].copy()
+        distargs['inputs'] = []
+        state.update_cctype(1201, 'random_forest', distargs=distargs)
