@@ -22,6 +22,8 @@ from collections import namedtuple
 
 import numpy as np
 
+from numpy.linalg import det
+
 from scipy.special import gammaln
 
 from cgpm.cgpm import CGpm
@@ -304,18 +306,18 @@ class LinearRegression(CGpm):
             N, Y, x, a, b, mu, V)
         am, bm, mum, Vm_inv = LinearRegression.posterior_hypers(
             N+1, Y+[ys], x+[xs], a, b, mu, V)
-        ZN = LinearRegression.calc_log_Z(an, bn, np.linalg.inv(Vn_inv))
-        ZM = LinearRegression.calc_log_Z(am, bm, np.linalg.inv(Vm_inv))
-        return -(1/2.)*np.log(2*np.pi) + ZM - ZN
+        ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
+        ZM = LinearRegression.calc_log_Z(am, bm, Vm_inv)
+        return (-1/2.)*np.log(2*np.pi) + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, Y, x, a, b, mu, V):
         # Equation 19.
         an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
-        Z0 = LinearRegression.calc_log_Z(a, b, V)
-        ZN = LinearRegression.calc_log_Z(an, bn, np.linalg.inv(Vn_inv))
-        return -(N/2.)*np.log(2*np.pi) + ZN - Z0
+        Z0 = LinearRegression.calc_log_Z(a, b, np.linalg.inv(V))
+        ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
+        return (-N/2.)*np.log(2*np.pi) + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, Y, x, a, b, mu, V):
@@ -343,9 +345,9 @@ class LinearRegression(CGpm):
         return an, bn, mun, Vn_inv
 
     @staticmethod
-    def calc_log_Z(a, b, V):
+    def calc_log_Z(a, b, V_inv):
         # Equation 19.
-        return gammaln(a) + log(sqrt(np.linalg.det(V))) - a * np.log(b)
+        return gammaln(a) + log(sqrt(1./det(V_inv))) - a * np.log(b)
 
     @staticmethod
     def sample_parameters(a, b, mu, V, rng):
