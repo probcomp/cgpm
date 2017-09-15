@@ -155,3 +155,20 @@ def test_categorical_forest_manual_inputs_errors():
         distargs = DISTARGS[cat_id].copy()
         distargs['inputs'] = []
         state.update_cctype(1201, 'random_forest', distargs=distargs)
+
+
+def test_linreg_missing_data_ignore():
+    dataset = [
+        [1, 3, 1],
+        [2, 4, 1.5],
+        [float('nan'), 5, 1]]
+    state = State(dataset, cctypes=['normal']*3, Zv={0:0, 1:0, 2:0},
+        rng=gu.gen_rng(1))
+    # Make sure that missing covariates are handles as missing cell.
+    state.update_cctype(2, 'linear_regression', distargs={'inputs': [0,1]})
+    assert state.dim_for(2).inputs[1:] == [0,1]
+    state.transition(N=5, kernels=['rows', 'column_hypers', 'view_alphas'])
+    state.update_cctype(2, 'normal', distargs={'inputs': [0,1]})
+    # Make sure that specified inputs are set correctly.
+    state.update_cctype(2, 'linear_regression', distargs={'inputs': [1]})
+    assert state.dim_for(2).inputs[1:] == [1]

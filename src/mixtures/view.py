@@ -529,9 +529,13 @@ class View(CGpm):
             assert set(all_ks) == set(Nk.keys())
             for k in dim.clusters:
                 # Law of conservation of rowids.
-                rowids_nan = np.isnan(
-                    [self.X[dim.index][r] for r in rowids if Zr[r]==k])
-                assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
+                rowids_k = [r for r in rowids if Zr[r]==k]
+                cols = [dim.index]
+                if dim.is_conditional():
+                    cols.extend(dim.inputs[1:])
+                data = [[self.X[c][r] for c in cols] for r in rowids_k]
+                rowids_nan = np.any(np.isnan(data), axis=1) if data else []
+                assert (dim.clusters[k].N + np.sum(rowids_nan) == Nk[k])
 
     # --------------------------------------------------------------------------
     # Metadata
