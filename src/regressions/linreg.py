@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from math import log
+from math import pi
 from math import sqrt
 
 from collections import OrderedDict
@@ -33,6 +34,7 @@ from cgpm.utils import data as du
 from cgpm.utils import general as gu
 
 
+LOG2PI = log(2*pi)
 Data = namedtuple('Data', ['x', 'Y'])
 
 
@@ -308,7 +310,7 @@ class LinearRegression(CGpm):
             N+1, Y+[ys], x+[xs], a, b, mu, V)
         ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
         ZM = LinearRegression.calc_log_Z(am, bm, Vm_inv)
-        return (-1/2.)*np.log(2*np.pi) + ZM - ZN
+        return (-1/2.)*LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, Y, x, a, b, mu, V):
@@ -317,7 +319,7 @@ class LinearRegression(CGpm):
             N, Y, x, a, b, mu, V)
         Z0 = LinearRegression.calc_log_Z(a, b, np.linalg.inv(V))
         ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
-        return (-N/2.)*np.log(2*np.pi) + ZN - Z0
+        return (-N/2.)*LOG2PI + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, Y, x, a, b, mu, V):
