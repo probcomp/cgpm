@@ -14,10 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import log
+from math import pi
+from math import sqrt
+
 from collections import OrderedDict
 from collections import namedtuple
 
 import numpy as np
+
+from numpy.linalg import det
 
 from scipy.special import gammaln
 
@@ -28,6 +34,7 @@ from cgpm.utils import data as du
 from cgpm.utils import general as gu
 
 
+LOG2PI = log(2*pi)
 Data = namedtuple('Data', ['x', 'Y'])
 
 
@@ -35,9 +42,22 @@ class LinearRegression(CGpm):
     """Bayesian linear model with normal prior on regression parameters and
     inverse-gamma prior on both observation and regression variance.
 
-    \sigma2 ~ Inverse-Gamma(a, b)
-    w ~ Normal(\mu, \sigma2*I)
-    y ~ Normal(x'w, \sigma2)
+    Reference
+    http://www.biostat.umn.edu/~ph7440/pubh7440/BayesianLinearModelGoryDetails.pdf
+
+
+    Y_i = w' X_i + \sigma^2
+        Response data                   Y_i \in R
+        Covariate vector                X_i \in R^p
+        Regression coefficients         w \in R^p
+        Regression variance             \sigma^2 \in R
+
+    Hyperparameters:                    a=1, b=1, V=I, mu=[0], dimension=p
+
+    Parameters:                         \sigma2 ~ Inverse-Gamma(a, b)
+                                        w ~ MVNormal(\mu, \sigma2*I)
+
+    Data                                Y_i|x_i ~ Normal(w' x_i, \sigma2)
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None, distargs=None,
@@ -284,22 +304,22 @@ class LinearRegression(CGpm):
     @staticmethod
     def calc_predictive_logp(xs, ys, N, Y, x, a, b, mu, V):
         # Equation 19.
-        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+        an, bn, _mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
-        am, bm, mum, Vm_inv = LinearRegression.posterior_hypers(
+        am, bm, _mum, Vm_inv = LinearRegression.posterior_hypers(
             N+1, Y+[ys], x+[xs], a, b, mu, V)
-        ZN = LinearRegression.calc_log_Z(an, bn)
-        ZM = LinearRegression.calc_log_Z(am, bm)
-        return -(1/2.)*np.log(2*np.pi) + ZM - ZN
+        ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
+        ZM = LinearRegression.calc_log_Z(am, bm, Vm_inv)
+        return (-1/2.)*LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, Y, x, a, b, mu, V):
         # Equation 19.
-        an, bn, mun, Vn = LinearRegression.posterior_hypers(
+        an, bn, _mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
-        Z0 = LinearRegression.calc_log_Z(a, b)
-        ZN = LinearRegression.calc_log_Z(an, bn)
-        return -(N/2.)*np.log(2*np.pi) + ZN - Z0
+        Z0 = LinearRegression.calc_log_Z(a, b, np.linalg.inv(V))
+        ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
+        return (-N/2.)*LOG2PI + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, Y, x, a, b, mu, V):
@@ -327,8 +347,9 @@ class LinearRegression(CGpm):
         return an, bn, mun, Vn_inv
 
     @staticmethod
-    def calc_log_Z(a, b):
-        return gammaln(a) - a*np.log(b)
+    def calc_log_Z(a, b, V_inv):
+        # Equation 19.
+        return gammaln(a) + log(sqrt(1./det(V_inv))) - a * np.log(b)
 
     @staticmethod
     def sample_parameters(a, b, mu, V, rng):

@@ -195,11 +195,12 @@ class View(CGpm):
         inputs = []
         # XXX Horrid hack.
         if cctype_class(cctype).is_conditional():
-            if len(self.dims) == 0:
-                raise ValueError('Cannot incorporate single conditional dim.')
-            inputs = filter(
-                lambda d: d != col and not self.dims[d].is_conditional(),
-                sorted(self.dims))
+            inputs = distargs.get('inputs', [
+                d for d in sorted(self.dims)
+                if d != col and not self.dims[d].is_conditional()
+            ])
+            if len(self.dims) == 0 or len(inputs) == 0:
+                raise ValueError('No inputs for conditional dimension.')
             distargs['inputs'] = {
                 'stattypes': [self.dims[i].cctype for i in inputs],
                 'statargs': [self.dims[i].get_distargs() for i in inputs]
@@ -528,9 +529,13 @@ class View(CGpm):
             assert set(all_ks) == set(Nk.keys())
             for k in dim.clusters:
                 # Law of conservation of rowids.
-                rowids_nan = np.isnan(
-                    [self.X[dim.index][r] for r in rowids if Zr[r]==k])
-                assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
+                rowids_k = [r for r in rowids if Zr[r]==k]
+                cols = [dim.index]
+                if dim.is_conditional():
+                    cols.extend(dim.inputs[1:])
+                data = [[self.X[c][r] for c in cols] for r in rowids_k]
+                rowids_nan = np.any(np.isnan(data), axis=1) if data else []
+                assert (dim.clusters[k].N + np.sum(rowids_nan) == Nk[k])
 
     # --------------------------------------------------------------------------
     # Metadata
