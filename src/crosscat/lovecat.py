@@ -272,17 +272,19 @@ def _update_state(state, M_c, X_L, X_D):
         state._migrate_dim(v_a, v_b, state.dim_for(c))
 
     # Update the dim hyperparameters.
-    for i, c in enumerate(state.outputs):
-        dim = state.dim_for(c)
-        if dim.cctype == 'categorical':
-            dim.hypers['alpha'] = X_L['column_hypers'][i]['dirichlet_alpha']
-        elif dim.cctype == 'normal':
-            dim.hypers['m'] = X_L['column_hypers'][i]['mu']
-            dim.hypers['r'] = X_L['column_hypers'][i]['r']
-            dim.hypers['s'] = X_L['column_hypers'][i]['s']
-            dim.hypers['nu'] = X_L['column_hypers'][i]['nu']
-        else:
-            assert False
+    # This code is disabled because lovecat may give hypers which result in
+    # math domain errors!
+    # for i, c in enumerate(state.outputs):
+    #     dim = state.dim_for(c)
+    #     if dim.cctype == 'categorical':
+    #         dim.hypers['alpha'] = X_L['column_hypers'][i]['dirichlet_alpha']
+    #     elif dim.cctype == 'normal':
+    #         dim.hypers['m'] = X_L['column_hypers'][i]['mu']
+    #         dim.hypers['r'] = X_L['column_hypers'][i]['r']
+    #         dim.hypers['s'] = X_L['column_hypers'][i]['s']
+    #         dim.hypers['nu'] = X_L['column_hypers'][i]['nu']
+    #     else:
+    #         assert False
 
     assert len(state.views) == len(new_views)
     state._check_partitions()
