@@ -543,6 +543,16 @@ class State(CGpm):
         views = set(self.view_for(c) for c in cols)
         return np.mean([v.Zr(row0)==v.Zr(row1) for v in views])
 
+    def row_similarity_pairwise(self, cols=None):
+        if cols is None:
+            cols = self.outputs
+        rowids = range(self.n_rows())
+        S = np.eye(len(rowids))
+        for row0, row1 in itertools.combinations(rowids, 2):
+            s = self.row_similarity(row0, row1, cols=cols)
+            S[row0, row1] = S[row1, row0] = s
+        return S
+
     # --------------------------------------------------------------------------
     # Relevance probability.
 
