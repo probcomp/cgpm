@@ -108,17 +108,21 @@ class View(CGpm):
         # -- Dimensions --------------------------------------------------------
         self.dims = dict()
         for i, c in enumerate(self.outputs[1:]):
+            # Prepare inputs for dim, if necessary.
+            dim_inputs = []
+            if distargs[i] is not None and 'inputs' in distargs[i]:
+                dim_inputs = distargs[i]['inputs']['indexes']
+            dim_inputs = [self.outputs[0]] + dim_inputs
+            # Construct the Dim.
             dim = Dim(
                 outputs=[c],
-                inputs=[self.outputs[0]],
+                inputs=dim_inputs,
                 cctype=cctypes[i],
                 hypers=hypers[i],
                 distargs=distargs[i],
                 rng=self.rng
             )
             dim.transition_hyper_grids(self.X[c])
-            if dim.is_conditional():
-                raise ValueError('Use incorporate for conditional dims.')
             self.incorporate_dim(dim)
 
         # -- Validation --------------------------------------------------------
@@ -202,6 +206,7 @@ class View(CGpm):
             if len(self.dims) == 0 or len(inputs) == 0:
                 raise ValueError('No inputs for conditional dimension.')
             distargs['inputs'] = {
+                'indexes' : inputs,
                 'stattypes': [self.dims[i].cctype for i in inputs],
                 'statargs': [self.dims[i].get_distargs() for i in inputs]
             }
