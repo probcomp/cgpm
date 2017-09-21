@@ -271,6 +271,16 @@ class Engine(object):
         return [self.states[s].row_similarity(row0, row1, cols)
             for s in statenos]
 
+    def row_similarity_pairwise(self, cols=None, statenos=None, multiprocess=1):
+        """Compute row similarity between all pairs as matrix."""
+        mapper = parallel_map if multiprocess else map
+        statenos = statenos or xrange(self.num_states())
+        args = [('row_similarity_pairwise', self.states[s],
+                (cols,))
+                for s in statenos]
+        Ss = mapper(_evaluate, args)
+        return Ss
+
     def relevance_probability(
             self, rowid_target, rowid_query, col, hypotheticals=None,
             statenos=None, multiprocess=1):
@@ -282,16 +292,6 @@ class Engine(object):
                 for s in statenos]
         probs = mapper(_evaluate, args)
         return probs
-
-    def row_similarity_pairwise(self, cols=None, statenos=None, multiprocess=1):
-        """Compute row similarity between all pairs as matrix."""
-        mapper = parallel_map if multiprocess else map
-        statenos = statenos or xrange(self.num_states())
-        args = [('row_similarity_pairwise', self.states[s],
-                (cols,))
-                for s in statenos]
-        Ss = mapper(_evaluate, args)
-        return Ss
 
     def alter(self, funcs, statenos=None, multiprocess=1):
         """Apply generic funcs on states in parallel."""
