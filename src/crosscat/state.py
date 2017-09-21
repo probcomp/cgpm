@@ -1163,6 +1163,9 @@ class State(CGpm):
         for dim in self.dims():
             metadata['cctypes'].append(dim.cctype)
             metadata['hypers'].append(dim.hypers)
+            # XXX Inputs to conditional dim are stored in
+            # distargs['inputs']['indexes']; instead create a separate metadata
+            # entry for the dimension inputs.
             metadata['distargs'].append(dim.distargs)
 
         # Dependence constraints.

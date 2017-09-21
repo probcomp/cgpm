@@ -196,16 +196,17 @@ class View(CGpm):
         """Update the distribution type of self.dims[col] to cctype."""
         if distargs is None:
             distargs = {}
+        distargs_dim = dict(distargs)
         inputs = []
         # XXX Horrid hack.
         if cctype_class(cctype).is_conditional():
-            inputs = distargs.get('inputs', [
+            inputs = distargs_dim.get('inputs', [
                 d for d in sorted(self.dims)
                 if d != col and not self.dims[d].is_conditional()
             ])
             if len(self.dims) == 0 or len(inputs) == 0:
                 raise ValueError('No inputs for conditional dimension.')
-            distargs['inputs'] = {
+            distargs_dim['inputs'] = {
                 'indexes' : inputs,
                 'stattypes': [self.dims[i].cctype for i in inputs],
                 'statargs': [self.dims[i].get_distargs() for i in inputs]
@@ -213,7 +214,7 @@ class View(CGpm):
         D_old = self.dims[col]
         D_new = Dim(
             outputs=[col], inputs=[self.outputs[0]]+inputs,
-            cctype=cctype, distargs=distargs, rng=self.rng)
+            cctype=cctype, distargs=distargs_dim, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
 
