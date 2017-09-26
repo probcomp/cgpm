@@ -125,11 +125,7 @@ class LinearRegression(CGpm):
         if rowid in self.data.x:
             return {self.outputs[0]: self.data.x[rowid]}
         xt, yt = self.preprocess(None, evidence)
-        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
-            self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
-            self.mu, self.V)
-        sigma2, b = LinearRegression.sample_parameters(
-            an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
+        sigma2, b = self.simulate_params()
         x = self.rng.normal(np.dot(yt, b), np.sqrt(sigma2))
         return {self.outputs[0]: x}
 
@@ -137,6 +133,13 @@ class LinearRegression(CGpm):
         return LinearRegression.calc_logpdf_marginal(
             self.N, self.data.Y.values(), self.data.x.values(),
             self.a, self.b, self.mu, self.V)
+
+    def simulate_params(self):
+        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+            self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
+            self.mu, self.V)
+        return LinearRegression.sample_parameters(
+            an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
 
     ##################
     # NON-GPM METHOD #
