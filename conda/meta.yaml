@@ -27,6 +27,7 @@ requirements:
 
 test:
   requires:
+    - matplotlib 1.4.*
     - python 2.7.*
     - pytest 2.5.1.*
   imports:
