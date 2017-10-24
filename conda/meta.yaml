@@ -13,7 +13,7 @@ requirements:
   # version numbers were modified to get tests to pass
   build:
     - git
-    - matplotlib
+    - matplotlib 1.5.*
     - numpy 1.8.*
     - python
   run:
