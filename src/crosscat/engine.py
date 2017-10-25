@@ -149,6 +149,22 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_modify, args)
 
+    def force_cell(self, rowid, query, multiprocess=1):
+        mapper = parallel_map if multiprocess else map
+        statenos = xrange(self.num_states())
+        args = [('force_cell', self.states[s],
+                (rowid, query, evidence))
+                for s in statenos]
+        self.states = mapper(_modify, args)
+
+    def force_cell_bulk(self, rowids, queries, multiprocess=1):
+        mapper = parallel_map if multiprocess else map
+        statenos = xrange(self.num_states())
+        args = [('force_cell_bulk', self.states[s],
+                (rowids, queries))
+                for s in statenos]
+        self.states = mapper(_modify, args)
+
     def update_cctype(self, col, cctype, distargs=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = xrange(self.num_states())
@@ -255,6 +271,16 @@ class Engine(object):
         return [self.states[s].row_similarity(row0, row1, cols)
             for s in statenos]
 
+    def row_similarity_pairwise(self, cols=None, statenos=None, multiprocess=1):
+        """Compute row similarity between all pairs as matrix."""
+        mapper = parallel_map if multiprocess else map
+        statenos = statenos or xrange(self.num_states())
+        args = [('row_similarity_pairwise', self.states[s],
+                (cols,))
+                for s in statenos]
+        Ss = mapper(_evaluate, args)
+        return Ss
+
     def relevance_probability(
             self, rowid_target, rowid_query, col, hypotheticals=None,
             statenos=None, multiprocess=1):
@@ -266,15 +292,6 @@ class Engine(object):
                 for s in statenos]
         probs = mapper(_evaluate, args)
         return probs
-
-    def row_similarity_pairwise(self, cols=None, statenos=None):
-        """Compute dependence probability between all pairs as matrix."""
-        n_rows = self.states[0].n_rows()
-        S = np.eye(n_rows)
-        for i,j in itertools.combinations(range(n_rows), 2):
-            s = np.mean(self.row_similarity(i,j, cols, statenos=statenos))
-            S[i,j] = S[j,i] = s
-        return S
 
     def alter(self, funcs, statenos=None, multiprocess=1):
         """Apply generic funcs on states in parallel."""

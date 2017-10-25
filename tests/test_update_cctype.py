@@ -42,9 +42,9 @@ T = T.T
 def test_categorical_bernoulli():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'bernoulli')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'categorical',
         distargs={'k':2})
 
@@ -52,9 +52,9 @@ def test_categorical_bernoulli():
 def test_poisson_categorical():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'poisson')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('categorical'), 'categorical',
         distargs={'k':2})
 
@@ -62,9 +62,9 @@ def test_poisson_categorical():
 def test_vonmises_normal():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('vonmises'), 'normal')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('vonmises'), 'vonmises')
 
     # Incompatible numeric conversion.
@@ -75,9 +75,9 @@ def test_vonmises_normal():
 def test_geometric_exponential():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(0))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     state.update_cctype(CCTYPES.index('geometric'), 'exponential')
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
 
     # Incompatible numeric conversion.
     with pytest.raises(Exception):
@@ -87,18 +87,17 @@ def test_geometric_exponential():
 def test_categorical_forest():
     state = State(
         T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
-    state.transition(N=1)
+    state.transition(N=1, progress=False)
     cat_id = CCTYPES.index('categorical')
-    cat_distargs = DISTARGS[cat_id]
 
     # If cat_id is singleton migrate first.
     if len(state.view_for(cat_id).dims) == 1:
+        distargs = DISTARGS[cat_id].copy()
         state.unincorporate_dim(cat_id)
         state.incorporate_dim(
-            T[:,cat_id], outputs=[120], cctype='categorical',
-            distargs=cat_distargs, v=0)
-        cat_id = 120
-    state.update_cctype(cat_id, 'random_forest', distargs=cat_distargs)
+            T[:,cat_id], outputs=[cat_id], cctype='categorical',
+            distargs=distargs, v=0)
+    state.update_cctype(cat_id, 'random_forest', distargs=distargs)
 
     bernoulli_id = CCTYPES.index('bernoulli')
     state.incorporate_dim(
@@ -109,15 +108,67 @@ def test_categorical_forest():
     # Run valid transitions.
     state.transition(
         N=2, kernels=['rows','column_params','column_hypers'],
-        views=[state.Zv(cat_id)])
+        views=[state.Zv(cat_id)], progress=False)
 
     # Running column transition should raise.
     with pytest.raises(ValueError):
-        state.transition(N=1, kernels=['columns'])
+        state.transition(N=1, kernels=['columns'], progress=False)
 
     # Updating cctype in singleton View should raise.
+    distargs = DISTARGS[cat_id].copy()
     state.incorporate_dim(
         T[:,CCTYPES.index('categorical')], outputs=[98],
-        cctype='categorical', distargs=cat_distargs, v=max(state.views)+1)
+        cctype='categorical', distargs=distargs, v=max(state.views)+1)
     with pytest.raises(Exception):
-        state.update_cctype(98, 'random_forest', distargs=cat_distargs)
+        state.update_cctype(98, 'random_forest', distargs=distargs)
+
+
+def test_categorical_forest_manual_inputs_errors():
+    state = State(
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
+    state.transition(N=1, progress=False)
+    cat_id = CCTYPES.index('categorical')
+
+    # Put 1201 into the first view.
+    view_idx = min(state.views)
+    state.incorporate_dim(
+        T[:,CCTYPES.index('categorical')], outputs=[1201],
+        cctype='categorical', distargs=DISTARGS[cat_id], v=view_idx)
+
+    # Updating cctype with completely invalid input should raise.
+    with pytest.raises(Exception):
+        distargs = DISTARGS[cat_id].copy()
+        distargs['inputs'] = [10000]
+        state.update_cctype(1201, 'random_forest', distargs=distargs)
+
+    # Updating cctype with input dimensions outside the view should raise.
+    cols_in_view = state.views[view_idx].dims.keys()
+    cols_out_view = [c for c in state.outputs if c not in cols_in_view]
+    assert len(cols_in_view) > 0 and len(cols_out_view) > 0
+    with pytest.raises(Exception):
+        distargs = DISTARGS[cat_id].copy()
+        distargs['inputs'] = cols_out_view
+        state.update_cctype(1201, 'random_forest', distargs=distargs)
+
+    # Updating cctype with no input dimensions should raise.
+    with pytest.raises(Exception):
+        distargs = DISTARGS[cat_id].copy()
+        distargs['inputs'] = []
+        state.update_cctype(1201, 'random_forest', distargs=distargs)
+
+
+def test_linreg_missing_data_ignore():
+    dataset = [
+        [1, 3, 1],
+        [2, 4, 1.5],
+        [float('nan'), 5, 1]]
+    state = State(dataset, cctypes=['normal']*3, Zv={0:0, 1:0, 2:0},
+        rng=gu.gen_rng(1))
+    # Make sure that missing covariates are handles as missing cell.
+    state.update_cctype(2, 'linear_regression', distargs={'inputs': [0,1]})
+    assert state.dim_for(2).inputs[1:] == [0,1]
+    state.transition(N=5, kernels=['rows', 'column_hypers', 'view_alphas'])
+    state.update_cctype(2, 'normal', distargs={'inputs': [0,1]})
+    # Make sure that specified inputs are set correctly.
+    state.update_cctype(2, 'linear_regression', distargs={'inputs': [1]})
+    assert state.dim_for(2).inputs[1:] == [1]

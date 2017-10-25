@@ -17,6 +17,7 @@
 import math
 import warnings
 
+from collections import defaultdict
 from math import lgamma
 from math import log
 
@@ -56,7 +57,7 @@ def normalize(p):
 def logp_crp(N, Nk, alpha):
     """Returns the log normalized P(N,K|alpha), where N is the number of
     customers and K is the number of tables.
-    https://www.cs.princeton.edu/~blei/papers/GershmanBlei2012.pdf#page=4 (eq 8)
+    http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
     """
     return len(Nk)*log(alpha) + np.sum(lgamma(c) for c in Nk) \
         + lgamma(alpha) - lgamma(N+alpha)
@@ -227,11 +228,13 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     Z = [-1]*N
 
     # Friends dictionary from Cd.
-    friends = {col:block for block in Cd for col in block}
+    friends = {col: block for block in Cd for col in block}
 
     # Assign customers.
     for cust in xrange(N):
-        if Z[cust] > -1: continue
+        # If the customer has been assigned, skip.
+        if Z[cust] > -1:
+            continue
         # Find valid tables for cust and friends.
         assert all(Z[f] == -1 for f in friends.get(cust, [cust]))
         prob_table = [0] * (max(Z)+1)
@@ -255,6 +258,110 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     assert all(0 <= t < N for t in Z)
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
     return Z
+
+def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
+    """Simulates a CRP with N customers and concentration alpha. Cd is a list,
+    where each entry is a list of friends. Each clique of friends are
+    effectively treated as one customer, since they are assigned to a table
+    jointly.
+
+    Note that this prior is different than simulate_crp_constrained, where
+    (unlike this function) clique of customers are not treated as a single
+    customer when computing the table probability.
+    """
+    if rng is None:
+        rng = gen_rng()
+
+    vu.validate_dependency_constraints(N, Cd, [])
+    assert N > 0 and alpha > 0
+
+    # Find number of effective customers to simulate.
+    num_simulate = get_crp_constrained_num_effective(N, Cd)
+
+    # Simulate a CRP based on the block structure.
+    crp_block = simulate_crp(num_simulate, alpha, rng=rng)
+
+    # Prepare the overall partition of length N.
+    partition = [-1] * N
+
+    # Assign constrained customers based on crp_block[:num_blocks].
+    for i, block in enumerate(Cd):
+        # Find the assignment for this block.
+        assignment = crp_block[i]
+        for customer in block:
+            partition[customer] = assignment
+
+    # Assign unconstrained customers based on crp_block[num_blocks:].
+    num_blocks = len(Cd)
+    unused_assignments = iter(crp_block[num_blocks:])
+    for customer, assignment in enumerate(partition):
+        if assignment == -1:
+            partition[customer] = next(unused_assignments)
+
+    return partition
+
+
+def logp_crp_constrained_dependent(Z, alpha, Cd):
+    """Compute logp of CRP simulated by simulate_crp_constrained_dependent.
+
+    Z is a map from each customer to the table assignment. Cd is a list, where
+    each entry is a list of friends. Each clique of friends are effectively
+    treated as one customer, since they are assigned to a table jointly.
+    """
+    if not vu.validate_crp_constrained_partition(Z, Cd, [], [], []):
+        return -float('inf')
+
+    assert alpha > 0
+
+    # Get the effective number of customers.
+    num_simulate = get_crp_constrained_num_effective(len(Z), Cd)
+
+    # Get the effective counts.
+    counts = get_crp_constrained_partition_counts(Z, Cd)
+    Nk = counts.values()
+    assert sum(Nk) == num_simulate
+
+    return logp_crp(num_simulate, Nk, alpha)
+
+
+def get_crp_constrained_num_effective(N, Cd):
+    """Compute effective number of customers given dependence constraints.
+
+    N is the total number of customers, and Cd is a list of lists encoding
+    the dependence constraints.
+    """
+    num_customers = N
+    num_blocks = len(Cd)
+    num_constrained = sum(len(block) for block in Cd)
+    assert num_constrained <= num_customers
+    assert num_blocks <= num_customers
+    num_effective = (num_customers - num_constrained) + num_blocks
+    return num_effective
+
+
+def get_crp_constrained_partition_counts(Z, Cd):
+    """Compute effective counts at each table given dependence constraints.
+
+    Z is a dictionary mapping customer to table, and Cd is a list of lists
+    encoding the dependence constraints.
+    """
+    # Compute the effective partition.
+    counts = defaultdict(int)
+    seen = set()
+    # Table assignment of constrained customers.
+    for block in Cd:
+        seen.update(block)
+        customer = block[0]
+        table = Z[customer]
+        counts[table] += 1
+    # Table assignment of unconstrained customers.
+    for customer in Z:
+        if customer in seen:
+            continue
+        table = Z[customer]
+        counts[table] += 1
+    return counts
+
 
 def build_rowid_blocks(Zvr):
     A = np.asarray(Zvr).T

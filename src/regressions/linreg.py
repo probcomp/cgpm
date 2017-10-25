@@ -14,10 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import log
+from math import pi
+from math import sqrt
+
 from collections import OrderedDict
 from collections import namedtuple
 
 import numpy as np
+
+from numpy.linalg import det
 
 from scipy.special import gammaln
 
@@ -28,6 +34,7 @@ from cgpm.utils import data as du
 from cgpm.utils import general as gu
 
 
+LOG2PI = log(2*pi)
 Data = namedtuple('Data', ['x', 'Y'])
 
 
@@ -35,9 +42,22 @@ class LinearRegression(CGpm):
     """Bayesian linear model with normal prior on regression parameters and
     inverse-gamma prior on both observation and regression variance.
 
-    \sigma2 ~ Inverse-Gamma(a, b)
-    w ~ Normal(\mu, \sigma2*I)
-    y ~ Normal(x'w, \sigma2)
+    Reference
+    http://www.biostat.umn.edu/~ph7440/pubh7440/BayesianLinearModelGoryDetails.pdf
+
+
+    Y_i = w' X_i + \sigma^2
+        Response data                   Y_i \in R
+        Covariate vector                X_i \in R^p
+        Regression coefficients         w \in R^p
+        Regression variance             \sigma^2 \in R
+
+    Hyperparameters:                    a=1, b=1, V=I, mu=[0], dimension=p
+
+    Parameters:                         \sigma2 ~ Inverse-Gamma(a, b)
+                                        w ~ MVNormal(\mu, \sigma2*I)
+
+    Data                                Y_i|x_i ~ Normal(w' x_i, \sigma2)
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None, distargs=None,
@@ -52,8 +72,6 @@ class LinearRegression(CGpm):
         assert len(distargs['inputs']['stattypes']) == len(self.inputs)
         self.input_cctypes = distargs['inputs']['stattypes']
         self.input_ccargs = distargs['inputs']['statargs']
-        # Add a heuristic imputer?
-        self.impute = distargs.get('impute', None)
         # Determine number of covariates (with 1 bias term) and number of
         # categories for categorical covariates.
         p, counts = zip(*[
@@ -105,11 +123,7 @@ class LinearRegression(CGpm):
         if rowid in self.data.x:
             return {self.outputs[0]: self.data.x[rowid]}
         xt, yt = self.preprocess(None, evidence)
-        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
-            self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
-            self.mu, self.V)
-        sigma2, b = LinearRegression.sample_parameters(
-            an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
+        sigma2, b = self.simulate_params()
         x = self.rng.normal(np.dot(yt, b), np.sqrt(sigma2))
         return {self.outputs[0]: x}
 
@@ -117,6 +131,13 @@ class LinearRegression(CGpm):
         return LinearRegression.calc_logpdf_marginal(
             self.N, self.data.Y.values(), self.data.x.values(),
             self.a, self.b, self.mu, self.V)
+
+    def simulate_params(self):
+        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+            self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
+            self.mu, self.V)
+        return LinearRegression.sample_parameters(
+            an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
 
     ##################
     # NON-GPM METHOD #
@@ -229,38 +250,10 @@ class LinearRegression(CGpm):
         else:
             x = None
         # Crash on missing inputs since it violates a CGPM contract!
-        # Skeleton code for imputation is here anyway and can be activated by
-        # passing in distargs['impute']
-        # if set(evidence.keys()) != set(self.inputs):
-        #     raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
-        def impute(i, val):
-            # Use the final "wildcard" category for missing values or
-            # unseen categories.
-            def impute_categorical(i, val):
-                k = self.inputs_discrete[i]
-                if (val is None) or (np.isnan(val)) or (not (0<=val<k)):
-                    if self.impute:
-                        return k-1
-                    else:
-                        raise ValueError()
-                else:
-                    return val
-            # Use mean value from the observations, or 0 if not exist.
-            def impute_numerical(i, val):
-                if not (val is None or np.isnan(val)):
-                    return val
-                elif not self.impute:
-                    raise ValueError()
-                if self.N == 0:
-                    return 0
-                index = self.lookup_numerical_index[i]
-                observations = [v[index] for v in self.data.Y.values()]
-                assert len(observations) == self.N
-                return sum(observations) / float(self.N)
-            return impute_categorical(i, val) if i in self.inputs_discrete else\
-                impute_numerical(i, val)
+        if set(evidence.keys()) != set(self.inputs):
+            raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
         # Retrieve the covariates.
-        y = [impute(c, evidence.get(i,None)) for c,i in enumerate(self.inputs)]
+        y = [evidence.get(i) for i in self.inputs]
         # Dummy code covariates.
         y = du.dummy_code(y, self.inputs_discrete)
         assert len(y) == self.p-1
@@ -284,22 +277,22 @@ class LinearRegression(CGpm):
     @staticmethod
     def calc_predictive_logp(xs, ys, N, Y, x, a, b, mu, V):
         # Equation 19.
-        an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
+        an, bn, _mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
-        am, bm, mum, Vm_inv = LinearRegression.posterior_hypers(
+        am, bm, _mum, Vm_inv = LinearRegression.posterior_hypers(
             N+1, Y+[ys], x+[xs], a, b, mu, V)
-        ZN = LinearRegression.calc_log_Z(an, bn)
-        ZM = LinearRegression.calc_log_Z(am, bm)
-        return -(1/2.)*np.log(2*np.pi) + ZM - ZN
+        ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
+        ZM = LinearRegression.calc_log_Z(am, bm, Vm_inv)
+        return (-1/2.)*LOG2PI + ZM - ZN
 
     @staticmethod
     def calc_logpdf_marginal(N, Y, x, a, b, mu, V):
         # Equation 19.
-        an, bn, mun, Vn = LinearRegression.posterior_hypers(
+        an, bn, _mun, Vn_inv = LinearRegression.posterior_hypers(
             N, Y, x, a, b, mu, V)
-        Z0 = LinearRegression.calc_log_Z(a, b)
-        ZN = LinearRegression.calc_log_Z(an, bn)
-        return -(N/2.)*np.log(2*np.pi) + ZN - Z0
+        Z0 = LinearRegression.calc_log_Z(a, b, np.linalg.inv(V))
+        ZN = LinearRegression.calc_log_Z(an, bn, Vn_inv)
+        return (-N/2.)*LOG2PI + ZN - Z0
 
     @staticmethod
     def posterior_hypers(N, Y, x, a, b, mu, V):
@@ -327,8 +320,9 @@ class LinearRegression(CGpm):
         return an, bn, mun, Vn_inv
 
     @staticmethod
-    def calc_log_Z(a, b):
-        return gammaln(a) - a*np.log(b)
+    def calc_log_Z(a, b, V_inv):
+        # Equation 19.
+        return gammaln(a) + log(sqrt(1./det(V_inv))) - a * np.log(b)
 
     @staticmethod
     def sample_parameters(a, b, mu, V, rng):

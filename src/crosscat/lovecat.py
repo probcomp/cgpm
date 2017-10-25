@@ -201,10 +201,25 @@ def _crosscat_X_L(state, M_c, X_D):
     # partition in each view), as well as X_L['column_partition']['assignments']
     view_states = [view_state(v) for v in views_unique]
 
+    # Generates X_L['col_ensure'].
+    col_ensure = dict()
+    if state.Cd:
+        col_ensure['dependent'] = {
+            str(column) : list(block)
+            for block in state.Cd for column in block
+        }
+    if state.Ci:
+        from crosscat.utils.general_utils import get_scc_from_tuples
+        col_ensure['independent'] = {
+            str(column) : list(block) for
+            column, block in get_scc_from_tuples(state.Ci).iteritems()
+        }
+
     return {
         unicode('column_hypers'): column_hypers,
         unicode('column_partition'): column_partition,
-        unicode('view_state'): view_states
+        unicode('view_state'): view_states,
+        unicode('col_ensure'): col_ensure
     }
 
 
@@ -255,6 +270,21 @@ def _update_state(state, M_c, X_L, X_D):
         v_a = state.Zv(c)
         v_b = X_L['column_partition']['assignments'][i] + offset
         state._migrate_dim(v_a, v_b, state.dim_for(c))
+
+    # Update the dim hyperparameters.
+    # This code is disabled because lovecat may give hypers which result in
+    # math domain errors!
+    # for i, c in enumerate(state.outputs):
+    #     dim = state.dim_for(c)
+    #     if dim.cctype == 'categorical':
+    #         dim.hypers['alpha'] = X_L['column_hypers'][i]['dirichlet_alpha']
+    #     elif dim.cctype == 'normal':
+    #         dim.hypers['m'] = X_L['column_hypers'][i]['mu']
+    #         dim.hypers['r'] = X_L['column_hypers'][i]['r']
+    #         dim.hypers['s'] = X_L['column_hypers'][i]['s']
+    #         dim.hypers['nu'] = X_L['column_hypers'][i]['nu']
+    #     else:
+    #         assert False
 
     assert len(state.views) == len(new_views)
     state._check_partitions()

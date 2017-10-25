@@ -170,7 +170,6 @@ def test_missing_inputs():
             'stattypes': ['normal', 'categorical', 'categorical'],
             'statargs': [None, {'k': 4}, {'k': 1}]
         },
-        'impute': True,
     }
     linreg = LinearRegression(
         outputs=outputs,
@@ -182,12 +181,13 @@ def test_missing_inputs():
     # terms is {2:1}, the next four terms are the dummy code of {4:100}, and the
     # last term is the code for {6:0}
     rowid = 0
-    linreg.incorporate(rowid, {0:1}, {2:1, 4:100, 6:0})
-    assert linreg.data.Y[rowid] == [1, 1, 0, 0, 0, 0, 1]
+    with pytest.raises(ValueError):
+        linreg.incorporate(rowid, {0:1}, {2:1, 4:100, 6:0})
 
     # Incorporate invalid cateogry 6:1. The first term is the bias, the second
     # terms is {2:5}, the next four terms are the dummy code of {4:3}, and the
-    # last term is the code for {6:0}
+    # last term is the code for {6:0}. Since linreg has a wildcard category
+    # for composition with the CRP mixture, should be handled without error.
     rowid = 1
     linreg.incorporate(rowid, {0:2}, {2:5, 4:3, 6:1})
     assert linreg.data.Y[rowid] == [1, 5, 0, 0, 0, 1, 0]
@@ -196,21 +196,12 @@ def test_missing_inputs():
     # second terms is {2:5}, the next four terms are the dummy code of {4:0}
     # and the last term is the code for {6:missing}.
     rowid = 2
-    linreg.incorporate(rowid, {0:5}, {2:6, 4:0})
-    assert linreg.data.Y[rowid] == [1, 6, 1, 0, 0, 0, 0]
+    with pytest.raises(ValueError):
+        linreg.incorporate(rowid, {0:5}, {2:6, 4:0})
 
     # Missing input 2 should be imputed to av(1,5,7) == 4.
     rowid = 3
-    linreg.incorporate(rowid, {0:4}, {4:1, 6:0})
-    assert linreg.data.Y[rowid] == [1, 4, 0, 1, 0, 0, 1]
+    with pytest.raises(ValueError):
+        linreg.incorporate(rowid, {0:4}, {4:1, 6:0})
 
     linreg.transition_hypers(N=10)
-
-    # Missing input 2 without any observations should be imputed to 0.
-    rowid = 4
-    linreg.unincorporate(0)
-    linreg.unincorporate(1)
-    linreg.unincorporate(2)
-    linreg.unincorporate(3)
-    linreg.incorporate(rowid, {0:4}, {4:1, 6:0})
-    assert linreg.data.Y[rowid] == [1, 0, 0, 1, 0, 0, 1]

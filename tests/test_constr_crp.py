@@ -14,9 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Checks the simulate_crp_constrained produces valid partitions."""
+"""
+This test suite targets the following functions for simulating CRPs:
+
+    cgpm.utils.general.simulate_crp_constrained
+    cgpm.utils.general.simulate_crp_constrained_dependent
+    cgpm.utils.general.logp_crp_constrained_dependent
+
+Refer to the docstrings to understand how these priors differ.
+"""
 
 import itertools
+
+from collections import defaultdict
+
+import numpy as np
 import pytest
 
 from cgpm.utils import general as gu
@@ -87,25 +99,35 @@ def test_valid_constraints():
     assert vu.validate_crp_constrained_input(7, Cd, Ci, Rd, Ri)
 
 
-# Tests for simulate_crp_constrained.
+# Tests for simulate_crp_constrained and simulate_crp_constrained_dependent.
 
 
 def test_no_constraints():
     N, alpha = 10, .4
     Cd = Ci = []
     Rd = Ri = {}
+
     Z = gu.simulate_crp_constrained(
         N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
+
+    Z = gu.simulate_crp_constrained_dependent(
+        N, alpha, Cd, rng=gu.gen_rng(0))
+    assert vu.validate_crp_constrained_partition(Z, Cd, [], [], [])
 
 def test_all_friends():
     N, alpha = 10, 1.4
     Cd = [range(N)]
     Ci = []
     Rd = Ri = {}
+
     Z = gu.simulate_crp_constrained(
         N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
+
+    Z = gu.simulate_crp_constrained_dependent(
+        N, alpha, Cd, rng=gu.gen_rng(0))
+    assert vu.validate_crp_constrained_partition(Z, Cd, [], [], [])
 
 def test_all_enemies():
     N, alpha = 13, 1.4
@@ -135,3 +157,56 @@ def test_complex_relationships():
     Z = gu.simulate_crp_constrained(
         N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
+
+# Tests for simulate_crp_constrained and simulate_crp_constrained_dependent.
+
+def get_partition_counts(Z):
+    counts = defaultdict(int)
+    for customer in Z:
+        table = Z[customer]
+        counts[table] += 1
+    return counts.values()
+
+def test_logp_no_dependence_constraints():
+    Z = {0:0, 1:0, 2:0, 3:1}
+    alpha = 2
+    Cd = []
+    lp0 = gu.logp_crp(len(Z), get_partition_counts(Z), alpha)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    assert np.allclose(lp0, lp1)
+
+    Z = {0:1, 1:2, 2:3, 3:4}
+    alpha = 2
+    Cd = []
+    lp0 = gu.logp_crp(len(Z), get_partition_counts(Z), alpha)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    assert np.allclose(lp0, lp1)
+
+def test_logp_simple_dependence_constraints():
+    Z = {0:0, 1:0, 2:0, 3:1}
+    alpha = 2
+    Cd = [[0,1]]
+    lp0 = gu.logp_crp(len(Z)-1, [2, 1], alpha)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    assert np.allclose(lp0, lp1)
+
+    Z = {0:0, 1:1, 2:1, 3:0}
+    alpha = 2
+    Cd = [[0,3], [1,2]]
+    lp0 = gu.logp_crp(len(Z)-2, [1,1], alpha)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    assert np.allclose(lp0, lp1)
+
+def test_logp_impossible():
+    Z = {0:0, 1:1, 2:0}
+    alpha = 2
+    Cd = [[0,1]]
+    lp = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    assert lp == -float('inf')
+
+def test_logp_deterministic():
+    Z = {0:0, 1:0, 2:0, 3:0}
+    alpha = 2
+    Cd = [[0,1,2,3]]
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    assert np.allclose(0, lp1)

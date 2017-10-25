@@ -108,17 +108,21 @@ class View(CGpm):
         # -- Dimensions --------------------------------------------------------
         self.dims = dict()
         for i, c in enumerate(self.outputs[1:]):
+            # Prepare inputs for dim, if necessary.
+            dim_inputs = []
+            if distargs[i] is not None and 'inputs' in distargs[i]:
+                dim_inputs = distargs[i]['inputs']['indexes']
+            dim_inputs = [self.outputs[0]] + dim_inputs
+            # Construct the Dim.
             dim = Dim(
                 outputs=[c],
-                inputs=[self.outputs[0]],
+                inputs=dim_inputs,
                 cctype=cctypes[i],
                 hypers=hypers[i],
                 distargs=distargs[i],
                 rng=self.rng
             )
             dim.transition_hyper_grids(self.X[c])
-            if dim.is_conditional():
-                raise ValueError('Use incorporate for conditional dims.')
             self.incorporate_dim(dim)
 
         # -- Validation --------------------------------------------------------
@@ -192,22 +196,25 @@ class View(CGpm):
         """Update the distribution type of self.dims[col] to cctype."""
         if distargs is None:
             distargs = {}
+        distargs_dim = dict(distargs)
         inputs = []
         # XXX Horrid hack.
         if cctype_class(cctype).is_conditional():
-            if len(self.dims) == 0:
-                raise ValueError('Cannot incorporate single conditional dim.')
-            inputs = filter(
-                lambda d: d != col and not self.dims[d].is_conditional(),
-                sorted(self.dims))
-            distargs['inputs'] = {
+            inputs = distargs_dim.get('inputs', [
+                d for d in sorted(self.dims)
+                if d != col and not self.dims[d].is_conditional()
+            ])
+            if len(self.dims) == 0 or len(inputs) == 0:
+                raise ValueError('No inputs for conditional dimension.')
+            distargs_dim['inputs'] = {
+                'indexes' : inputs,
                 'stattypes': [self.dims[i].cctype for i in inputs],
                 'statargs': [self.dims[i].get_distargs() for i in inputs]
             }
         D_old = self.dims[col]
         D_new = Dim(
             outputs=[col], inputs=[self.outputs[0]]+inputs,
-            cctype=cctype, distargs=distargs, rng=self.rng)
+            cctype=cctype, distargs=distargs_dim, rng=self.rng)
         self.unincorporate_dim(D_old)
         self.incorporate_dim(D_new)
 
@@ -528,9 +535,13 @@ class View(CGpm):
             assert set(all_ks) == set(Nk.keys())
             for k in dim.clusters:
                 # Law of conservation of rowids.
-                rowids_nan = np.isnan(
-                    [self.X[dim.index][r] for r in rowids if Zr[r]==k])
-                assert dim.clusters[k].N + np.sum(rowids_nan) == Nk[k]
+                rowids_k = [r for r in rowids if Zr[r]==k]
+                cols = [dim.index]
+                if dim.is_conditional():
+                    cols.extend(dim.inputs[1:])
+                data = [[self.X[c][r] for c in cols] for r in rowids_k]
+                rowids_nan = np.any(np.isnan(data), axis=1) if data else []
+                assert (dim.clusters[k].N + np.sum(rowids_nan) == Nk[k])
 
     # --------------------------------------------------------------------------
     # Metadata
