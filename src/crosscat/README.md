@@ -45,8 +45,6 @@ Key ideas on the development roadmap are:
 - Several DistributionGpms for the different MML data-types, not just
   Normal and Multinomial.
 
-
-## Static Example
 ## Static Example
 
 The simplest example is creating a synthetic dataset where each variable is a

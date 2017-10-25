@@ -16,19 +16,19 @@ using the Bayesian Query Language.
 
 ## Installing
 
-`cgpm` targets Ubuntu 14.04 and 16.04. The package is currently not available
-through pip but can be installed by cloning this repository and following these
-instructions. It is _highly recommended_ to install `cgpm` in a virtualenv which
-is was created `--system-site-packages` flag.
+`cgpm` targets Ubuntu 14.04 and 16.04. The package can be installed by cloning
+this repository and following these instructions. It is _highly recommended_ to
+install `cgpm` inside of a virtualenv which was created using the
+`--system-site-packages` flag.
 
-1. Install the dependencies from `apt`, [listed here](https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L4-L14).
+1. Install dependencies from `apt`, [listed here](https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L4-L14).
 
-2. Retrieve the source and install.
+2. Retrieve and build the source.
 
     ```
     % git clone git@github.com:probcomp/cgpm
     % cd cgpm
-    % python setup.py build && python setup.py install
+    % pip install --no-deps .
     ```
 
 3. Verify the installation.
@@ -70,7 +70,9 @@ are not considered ready. The tip of every branch merged into master __must__
 pass `./check.sh`, and be consistent with the code conventions outlined in
 [HACKING](HACKING).
 
-To run the full test suite, use `./check.sh --integration tests/`.
+To run the full test suite, use `./check.sh --integration tests/`. Note that the
+full integration test suite requires installing the C++
+[crosscat](https://github.com/probcomp/crosscat) backend.
 
 ## License
 
