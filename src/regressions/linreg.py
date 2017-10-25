@@ -72,8 +72,6 @@ class LinearRegression(CGpm):
         assert len(distargs['inputs']['stattypes']) == len(self.inputs)
         self.input_cctypes = distargs['inputs']['stattypes']
         self.input_ccargs = distargs['inputs']['statargs']
-        # Add a heuristic imputer?
-        self.impute = distargs.get('impute', None)
         # Determine number of covariates (with 1 bias term) and number of
         # categories for categorical covariates.
         p, counts = zip(*[
@@ -252,38 +250,10 @@ class LinearRegression(CGpm):
         else:
             x = None
         # Crash on missing inputs since it violates a CGPM contract!
-        # Skeleton code for imputation is here anyway and can be activated by
-        # passing in distargs['impute']
-        # if set(evidence.keys()) != set(self.inputs):
-        #     raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
-        def impute(i, val):
-            # Use the final "wildcard" category for missing values or
-            # unseen categories.
-            def impute_categorical(i, val):
-                k = self.inputs_discrete[i]
-                if (val is None) or (np.isnan(val)) or (not (0<=val<k)):
-                    if self.impute:
-                        return k-1
-                    else:
-                        raise ValueError()
-                else:
-                    return val
-            # Use mean value from the observations, or 0 if not exist.
-            def impute_numerical(i, val):
-                if not (val is None or np.isnan(val)):
-                    return val
-                elif not self.impute:
-                    raise ValueError()
-                if self.N == 0:
-                    return 0
-                index = self.lookup_numerical_index[i]
-                observations = [v[index] for v in self.data.Y.values()]
-                assert len(observations) == self.N
-                return sum(observations) / float(self.N)
-            return impute_categorical(i, val) if i in self.inputs_discrete else\
-                impute_numerical(i, val)
+        if set(evidence.keys()) != set(self.inputs):
+            raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
         # Retrieve the covariates.
-        y = [impute(c, evidence.get(i,None)) for c,i in enumerate(self.inputs)]
+        y = [evidence.get(i) for i in self.inputs]
         # Dummy code covariates.
         y = du.dummy_code(y, self.inputs_discrete)
         assert len(y) == self.p-1
