@@ -1,0 +1,5 @@
+This directory contains Dockerfiles that build and install cgpm.
+
+Note that the file ubuntu1404-int is used as part of an integration test on the
+probcomp Jenkins test server at https://probcomp-4.csail.mit.edu. This file is
+not appropriate for being run in isolation.
