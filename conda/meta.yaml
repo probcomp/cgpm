@@ -17,19 +17,19 @@ requirements:
     - numpy 1.8.*
     - python
   run:
-    - matplotlib
+    - matplotlib >=1.4,<2.1
     - numpy 1.8.*
-    - pandas
+    - pandas >=0.14,<0.19
     - python 2.7.*
-    - scipy >=0.13.3
+    - scipy >=0.13,<=0.19
     - scikit-learn
     - statsmodels
 
 test:
   requires:
     - matplotlib 1.4.*
-    - python 2.7.*
     - pytest 2.5.1.*
+    - python 2.7.*
   imports:
     - cgpm
   commands:
