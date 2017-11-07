@@ -19,9 +19,9 @@ requirements:
   run:
     - matplotlib >=1.4,<2.1
     - numpy 1.8.*
-    - pandas >=0.14,<0.19
+    - pandas >=0.14,<0.19.*
     - python 2.7.*
-    - scipy >=0.13,<=0.19
+    - scipy >=0.13,<=0.19.*
     - scikit-learn
     - statsmodels
 
