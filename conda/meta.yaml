@@ -13,22 +13,22 @@ requirements:
   # version numbers were modified to get tests to pass
   build:
     - git
-    - matplotlib 1.5.1
-    - numpy 1.11.0
+    - matplotlib 1.5.*
+    - numpy 1.11.*
     - python 2.7.*
   run:
-    - matplotlib 1.5.1
-    - numpy 1.11.0
-    - pandas 0.17.1
+    - matplotlib 1.5.*
+    - numpy 1.11.*
+    - pandas 0.17.*
     - python 2.7.*
-    - scipy 0.17.0
+    - scipy 0.17.*
     - scikit-learn 0.17.*
-    - statsmodels 0.6.1
+    - statsmodels 0.6.*
 
 test:
   requires:
-    - matplotlib 1.5.1
-    - pytest 2.8.7
+    - matplotlib 1.5.*
+    - pytest 2.8.*
     - python 2.7.*
   imports:
     - cgpm
