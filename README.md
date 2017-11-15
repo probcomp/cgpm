@@ -1,5 +1,7 @@
 # cgpm
 
+[![Build Status](https://travis-ci.org/probcomp/cgpm.svg?branch=master)](https://travis-ci.org/probcomp/cgpm)
+
 The aim of this project is to provide a unified probabilistic programming
 framework to express different models and techniques from statistics, machine
 learning and non-parametric Bayes. It serves as the primary modeling and
