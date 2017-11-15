@@ -9,8 +9,6 @@ build:
   script: python setup.py install
 
 requirements:
-  # taken from https://github.com/probcomp/cgpm/blob/ebaf5eedf9f5ad721eeecf6a0d30b60d59b3832d/setup.py#L168...L175
-  # version numbers were modified to get tests to pass
   build:
     - git
     - matplotlib 1.5.*
@@ -21,8 +19,8 @@ requirements:
     - numpy 1.11.*
     - pandas 0.18.*
     - python 2.7.*
-    - scipy 0.17.*
     - scikit-learn 0.17.*
+    - scipy 0.17.*
     - statsmodels 0.6.*
 
 test:
