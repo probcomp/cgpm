@@ -181,7 +181,9 @@ def test_dependence_probability():
     logscore1 = engine.logpdf_score()
     assert numpy.mean(logscore1) > numpy.mean(logscore0)
 
-    dependence_probability = engine.dependence_probability_pairwise()
+    dependence_probability = numpy.mean(
+        engine.dependence_probability_pairwise(),
+        axis=0)
 
     assert dependence_probability[0,1] > 0.8
     assert dependence_probability[1,2] > 0.8
