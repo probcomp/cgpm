@@ -173,7 +173,7 @@ def test_dependence_probability():
         cctypes=['normal']*len(D),
         distargs=[None]*6,
         rng=gu.gen_rng(122),
-        num_states=64,
+        num_states=20,
     )
 
     logscore0 = engine.logpdf_score()
