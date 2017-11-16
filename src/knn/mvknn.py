@@ -91,10 +91,10 @@ class MultivariateKnn(CGpm):
         self.K = K
         self.M = M
 
-    def incorporate(self, rowid, query, evidence=None):
-        self._validate_incorporate(rowid, query, evidence)
+    def incorporate(self, rowid, observation, inputs=None):
+        self._validate_incorporate(rowid, observation, inputs)
         # Incorporate observed variables.
-        x = [query.get(q, np.nan) for q in self.outputs]
+        x = [observation.get(q, np.nan) for q in self.outputs]
         # Update dataset and counts.
         self.data[rowid] = x
         self.N += 1
@@ -340,20 +340,20 @@ class MultivariateKnn(CGpm):
                 and any(np.isnan(v) for v in query.itervalues()):
             raise ValueError('Nan value in query: %s.' % query)
 
-    def _validate_incorporate(self, rowid, query, evidence):
+    def _validate_incorporate(self, rowid, observation, inputs):
         # No duplicate observation.
         if rowid in self.data:
             raise ValueError('Already observed: %d.' % rowid)
-        # No evidence.
-        if evidence:
-            raise ValueError('No evidence allowed: %s.' % evidence)
-        # Missing query.
-        if not query:
-            raise ValueError('No query specified: %s.' % query)
+        # No inputs.
+        if inputs:
+            raise ValueError('No inputs allowed: %s.' % inputs)
+        # Missing observation.
+        if not observation:
+            raise ValueError('No observation specified: %s.' % observation)
         # No unknown variables.
-        if any(q not in self.outputs for q in query):
+        if any(q not in self.outputs for q in observation):
             raise ValueError('Unknown variables: (%s,%s).'
-                % (query, self.outputs))
+                % (observation, self.outputs))
 
     def _validate_unincorporate(self, rowid):
         if rowid not in self.data:

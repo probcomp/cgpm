@@ -259,22 +259,22 @@ class State(CGpm):
         # Validate.
         self._check_partitions()
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         # XXX Only allow new rows for now.
         if rowid != self.n_rows():
             raise ValueError('Only contiguous rowids supported: %d' % (rowid,))
-        if evidence:
-            raise ValueError('Cannot incoroprate with evidence: %s' % evidence)
+        if inputs:
+            raise ValueError('Cannot incorporate with inputs: %s' % inputs)
         valid_clusters = set([self.views[v].outputs[0] for v in self.views])
-        query_clusters = [q for q in query if q in valid_clusters]
-        query_outputs = [q for q in query if q not in query_clusters]
+        query_clusters = [q for q in observation if q in valid_clusters]
+        query_outputs = [q for q in observation if q not in query_clusters]
         if not all(q in self.outputs for q in query_outputs):
-            raise ValueError('Invalid query: %s' % query)
-        if any(isnan(v) for v in query.values()):
-            raise ValueError('Cannot incorporate nan: %s.' % query)
+            raise ValueError('Invalid observation: %s' % observation)
+        if any(isnan(v) for v in observation.values()):
+            raise ValueError('Cannot incorporate nan: %s.' % observation)
         # Append the observation to dataset.
         for c in self.outputs:
-            self.X[c].append(query.get(c, float('nan')))
+            self.X[c].append(observation.get(c, float('nan')))
         # Pick a fresh rowid.
         if self.hypothetical(rowid):
             rowid = self.n_rows()-1
@@ -282,7 +282,8 @@ class State(CGpm):
         for v in self.views:
             query_v = {d: self.X[d][rowid] for d in self.views[v].dims}
             crp_v = self.views[v].outputs[0]
-            cluster_v = {crp_v: query[crp_v]} if crp_v in query else {}
+            cluster_v = {crp_v: observation[crp_v]} if crp_v in observation\
+                else {}
             self.views[v].incorporate(rowid, gu.merged(cluster_v, query_v))
         # Validate.
         self._check_partitions()

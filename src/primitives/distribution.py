@@ -47,10 +47,10 @@ class DistributionGpm(CGpm):
         self.data = dict()
         self.rng = gu.gen_rng() if rng is None else rng
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data
-        assert not evidence
-        assert query.keys() == self.outputs
+        assert not inputs
+        assert observation.keys() == self.outputs
 
     def logpdf(self, rowid, query, evidence=None):
         assert rowid not in self.data

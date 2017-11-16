@@ -67,12 +67,12 @@ class OrdinaryLeastSquares(CGpm):
         if self.regressor is None:
             self.regressor = LinearRegression()
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
-        if self.outputs[0] not in query:
-            raise ValueError('No query in incorporate: %s.' % query)
-        x, y = self.preprocess(query, evidence)
+        if self.outputs[0] not in observation:
+            raise ValueError('No observation in incorporate: %s' % observation)
+        x, y = self.preprocess(observation, inputs)
         self.N += 1
         self.data.x[rowid] = x
         self.data.Y[rowid] = y

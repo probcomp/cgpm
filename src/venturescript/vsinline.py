@@ -56,7 +56,7 @@ class InlineVsCGpm(CGpm):
         self.ripl.execute_program(self.expression)
         self.ripl.execute_program('assume uniform = uniform_continuous')
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):

@@ -241,7 +241,7 @@ def test_engine_composition():
     cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=source_abstract,)
 
     for i, row in enumerate(X):
-        cgpm.incorporate(i, query={0: row[0], 1: row[1]}, evidence={3: row[3]})
+        cgpm.incorporate(i, {0: row[0], 1: row[1]}, {3: row[3]})
 
     cgpm.transition(N=2)
     engine.compose_cgpm([cgpm, cgpm], multiprocess=True)

@@ -90,22 +90,22 @@ class MultivariateKde(CGpm):
         # Parameters of the kernels.
         self.bw = params.get('bw', [self._default_bw(o) for o in self.outputs])
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         # No duplicate observation.
         if rowid in self.data:
             raise ValueError('Already observed: %d.' % rowid)
-        # No evidence.
-        if evidence:
-            raise ValueError('No evidence allowed: %s.' % evidence)
-        # Missing query.
-        if not query:
-            raise ValueError('No query specified: %s.' % query)
+        # No inputs.
+        if inputs:
+            raise ValueError('No inputs allowed: %s.' % inputs)
+        # Missing observation.
+        if not observation:
+            raise ValueError('No observation specified: %s.' % observation)
         # No unknown variables.
-        if any(q not in self.outputs for q in query):
+        if any(q not in self.outputs for q in observation):
             raise ValueError('Unknown variables: (%s,%s).'
-                % (query, self.outputs))
+                % (observation, self.outputs))
         # Incorporate observed variables.
-        x = [query.get(q, np.nan) for q in self.outputs]
+        x = [observation.get(q, np.nan) for q in self.outputs]
         # Update dataset and counts.
         self.data[rowid] = x
         self.N += 1

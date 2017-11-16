@@ -24,7 +24,7 @@ class BareBonesCGpm(CGpm):
         self.outputs = outputs
         self.inputs = inputs
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):

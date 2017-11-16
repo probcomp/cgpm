@@ -39,7 +39,7 @@ class FourWay(CGpm):
         self.outputs = list(outputs)
         self.inputs = list(inputs)
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):

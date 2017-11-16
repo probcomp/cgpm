@@ -157,9 +157,10 @@ def test_serialize_composite_cgpm():
     # Incorporate the data.
     def incorporate_data(cgpm, rowid, row):
         cgpm.incorporate(
-            rowid=rowid,
-            query={i: row[i] for i in cgpm.outputs},
-            evidence={i: row[i] for i in cgpm.inputs})
+            rowid,
+            {i: row[i] for i in cgpm.outputs},
+            {i: row[i] for i in cgpm.inputs},
+        )
     for rowid, row in enumerate(D):
         incorporate_data(forest, rowid, row)
         incorporate_data(linreg, rowid, row)

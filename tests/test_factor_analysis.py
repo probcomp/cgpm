@@ -102,7 +102,7 @@ def test_incorporate():
     # Cannot incorporate a latent variable.
     with pytest.raises(ValueError):
         fa.incorporate(0, {4:1, 5:1, 9:1, 0:0})
-    # Cannot incorporate with evidence.
+    # Cannot incorporate with inputs.
     with pytest.raises(ValueError):
         fa.incorporate(0, {4:1, 5:1, 9:1}, {0:0})
     # Need a query variable.

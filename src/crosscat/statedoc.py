@@ -97,7 +97,7 @@ def load_docstrings(module):
         rowid : int
             Only rowid = -1 is currently supported, pending Github #84 which
             will support cell-level operations.
-        query : dict{output:val}
+        observation : dict{output:val}
             Keys of the query must a subset of the State output, unspecified
             outputs will be nan. At least one non-nan value must be specified.
             To optionally specify the cluster assignment in a particular view v,

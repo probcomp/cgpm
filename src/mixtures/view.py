@@ -146,28 +146,29 @@ class View(CGpm):
         self.outputs = self.outputs[:1] + self.dims.keys()
         return dim.logpdf_score()
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         """Incorporate an observation into the View.
 
         Parameters
         ----------
         rowid : int
             Fresh, non-negative rowid.
-        query : dict{output:val}
-            Keys of the query must exactly be the output (Github issue 89).
+        observation : dict{output:val}
+            Keys of the observation must exactly be the output (Github #89).
             Optionally, use {self.outputs[0]: k} to specify the latent cluster
-            assignment of rowid. The cluster is a query variable since View
-            has a generative model for k, unlike Dim which takes k as evidence.
+            assignment of rowid. The cluster is an observation variable since
+            View has a generative model for k, unlike Dim which requires k as
+            inputs.
         """
-        k = query.get(self.outputs[0], 0)
+        k = observation.get(self.outputs[0], 0)
         self.crp.incorporate(rowid, {self.outputs[0]: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
-                query={d: query[d]},
-                evidence=self._get_evidence(rowid, self.dims[d], k))
+                observation={d: observation[d]},
+                inputs=self._get_evidence(rowid, self.dims[d], k))
         # If the user did not specify a cluster assignment, sample one.
-        if self.outputs[0] not in query:
+        if self.outputs[0] not in observation:
             self.transition_rows(rows=[rowid])
 
     def unincorporate(self, rowid):
@@ -472,10 +473,9 @@ class View(CGpm):
         dim.Zi = {}         # Mapping of nan rowids to cluster k.
         dim.aux_model = dim.create_aux_model()
         for rowid, k in self.Zr().iteritems():
-            dim.incorporate(
-                rowid,
-                query={dim.index: self.X[dim.index][rowid]},
-                evidence=self._get_evidence(rowid, dim, k))
+            observation = {dim.index: self.X[dim.index][rowid]}
+            inputs = self._get_evidence(rowid, dim, k)
+            dim.incorporate(rowid, observation, inputs)
         assert merged(dim.Zr, dim.Zi) == self.Zr()
         dim.transition_params()
 

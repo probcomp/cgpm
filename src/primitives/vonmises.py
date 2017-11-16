@@ -57,9 +57,9 @@ class Vonmises(DistributionGpm):
         assert 0 <= self.b <= 2*pi
         assert self.k > 0
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if not (0 <= x <= 2*pi):
             raise ValueError('Invalid Vonmises: %s' % str(x))
         self.N += 1

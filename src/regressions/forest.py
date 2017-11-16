@@ -63,10 +63,10 @@ class RandomForest(CGpm):
         if self.regressor is None:
             self.regressor = RandomForestClassifier(random_state=self.rng)
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
-        x, y = self.preprocess(query, evidence)
+        x, y = self.preprocess(observation, inputs)
         self.N += 1
         self.counts[x] += 1
         self.data.x[rowid] = x

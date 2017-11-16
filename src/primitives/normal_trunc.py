@@ -55,9 +55,9 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma = NormalTrunc.sample_parameters(
                 self.alpha, self.beta, self.l, self.h, self.rng)
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if not (self.l <= x <= self.h):
             raise ValueError(
                 'Invalid NormalTrunc(%f,%f): %s' % (self.l, self.h, str(x)))

@@ -92,15 +92,15 @@ class Dim(CGpm):
     # --------------------------------------------------------------------------
     # Observe
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         if rowid in self.Zr or rowid in self.Zi:
             raise ValueError('rowid already incorporated: %d.' % rowid)
-        k, evidence, valid = self.preprocess(query, evidence)
+        k, inputs, valid = self.preprocess(observation, inputs)
         if k not in self.clusters:
             self.clusters[k] = self.aux_model
             self.aux_model = self.create_aux_model()
         if valid:
-            self.clusters[k].incorporate(rowid, query, evidence)
+            self.clusters[k].incorporate(rowid, observation, inputs)
             self.Zr[rowid] = k
         else:
             self.Zi[rowid] = k

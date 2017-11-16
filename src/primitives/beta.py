@@ -55,9 +55,9 @@ class Beta(DistributionGpm):
         assert self.alpha > 0
         assert self.beta > 0
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if np.allclose(0, x):
             x = 0.001
         elif np.allclose(1, x):

@@ -60,9 +60,9 @@ class Normal(DistributionGpm):
         assert self.r > 0.
         assert self.nu > 0.
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         self.N += 1.
         self.sum_x += x
         self.sum_x_sq += x*x

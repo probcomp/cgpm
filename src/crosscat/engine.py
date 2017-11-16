@@ -133,11 +133,11 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_modify, args)
 
-    def incorporate(self, rowid, query, evidence=None, multiprocess=1):
+    def incorporate(self, rowid, observation, inputs=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = xrange(self.num_states())
         args = [('incorporate', self.states[s],
-                (rowid, query, evidence))
+                (rowid, observation, inputs))
                 for s in statenos]
         self.states = mapper(_modify, args)
 

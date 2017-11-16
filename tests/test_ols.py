@@ -61,9 +61,9 @@ def test_integration():
 
     # Incorporate first 20 rows.
     for rowid, row in enumerate(D[:20]):
-        query = {0: row[0]}
-        evidence = {i: row[i] for i in ols.inputs}
-        ols.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        inputs = {i: row[i] for i in ols.inputs}
+        ols.incorporate(rowid, observation, inputs)
     # Unincorporating row 20 should raise.
     with pytest.raises(ValueError):
         ols.unincorporate(20)
@@ -75,25 +75,25 @@ def test_integration():
         ols.unincorporate(0)
     # Incorporating with wrong covariate dimensions should raise.
     with pytest.raises(ValueError):
-        query = {0: D[0,0]}
-        evidence = {i: v for (i, v) in enumerate(D[0])}
-        ols.incorporate(0, query, evidence)
+        observation = {0: D[0,0]}
+        inputs = {i: v for (i, v) in enumerate(D[0])}
+        ols.incorporate(0, observation, inputs)
     # Incorporating with None output value should raise.
     with pytest.raises(ValueError):
-        query = {0: None}
-        evidence = {i: D[0,i] for i in ols.inputs}
-        ols.incorporate(0, query, evidence)
-    # Incorporating with nan evidence value should raise.
+        observation = {0: None}
+        inputs = {i: D[0,i] for i in ols.inputs}
+        ols.incorporate(0, observation, inputs)
+    # Incorporating with nan inputs value should raise.
     with pytest.raises(ValueError):
-        query = {0: 100}
-        evidence = {i: D[0,i] for i in ols.inputs}
-        evidence[evidence.keys()[0]] = np.nan
-        ols.incorporate(0, query, evidence)
+        observation = {0: 100}
+        inputs = {i: D[0,i] for i in ols.inputs}
+        inputs[inputs.keys()[0]] = np.nan
+        ols.incorporate(0, observation, inputs)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):
-        query = {0: row[0]}
-        evidence = {i: row[i] for i in ols.inputs}
-        ols.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        inputs = {i: row[i] for i in ols.inputs}
+        ols.incorporate(rowid, observation, inputs)
 
     # Run a transition.
     ols.transition()

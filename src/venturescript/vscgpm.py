@@ -76,10 +76,10 @@ class VsCGpm(CGpm):
         # Evidence and labels for incorporate/unincorporate.
         self.obs = defaultdict(lambda: defaultdict(dict))
 
-    def incorporate(self, rowid, query, evidence=None):
-        evidence = self._validate_incorporate(rowid, query, evidence)
-        for q, value in query.iteritems():
-            self._observe_cell(rowid, q, value, evidence)
+    def incorporate(self, rowid, observation, inputs=None):
+        inputs = self._validate_incorporate(rowid, observation, inputs)
+        for q, value in observation.iteritems():
+            self._observe_cell(rowid, q, value, inputs)
 
     def unincorporate(self, rowid):
         if rowid not in self.obs:

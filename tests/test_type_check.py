@@ -114,7 +114,7 @@ cases = {
 }
 
 
-def get_query_evidence(t):
+def get_observation_inputs(t):
     # Assumes that the output is always column id 0.
     return ({0: t[0]}, t[1]) if isinstance(t, tuple) else ({0: t}, None)
 
@@ -135,19 +135,19 @@ def assert_distribution(cctype, outputs, inputs, distargs, good, bad):
 
 
 def assert_good(model, rowid, g):
-    query, evidence = get_query_evidence(g)
-    model.incorporate(rowid, query, evidence)
+    observation, inputs = get_observation_inputs(g)
+    model.incorporate(rowid, observation, inputs)
     model.unincorporate(rowid)
-    assert model.logpdf(-1, query, evidence) != -float('inf')
+    assert model.logpdf(-1, observation, inputs) != -float('inf')
 
 
 def assert_bad(model, rowid, b):
-    query, evidence = get_query_evidence(b)
+    observation, inputs = get_observation_inputs(b)
     with pytest.raises(Exception):
-        model.incorporate(rowid, query, evidence)
+        model.incorporate(rowid, observation, inputs)
     with pytest.raises(Exception):
         model.unincorporate(rowid)
     try: # GPM return negative infinity for invalid input.
-        assert model.logpdf(-1, query, evidence) == -float('inf')
-    except Exception: # Conditional GPM throw error on wrong evidence variables.
+        assert model.logpdf(-1, observation, inputs) == -float('inf')
+    except Exception: # Conditional GPM throws error on wrong input variables.
         assert True

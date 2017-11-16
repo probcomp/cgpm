@@ -44,18 +44,16 @@ def test_invalid_evidence_keys():
     # Non-existent view -3.
     with pytest.raises(ValueError):
         state.incorporate(
-            rowid=state.n_rows(),
-            query={0:0, 1:1, 2:2, 3:3, 4:4, state.crp_id_view+2:0})
+            state.n_rows(),
+            {0:0, 1:1, 2:2, 3:3, 4:4, state.crp_id_view+2:0}
+        )
 
 
 def test_invalid_evidence():
     state = get_state()
     # Evidence is disabled since State has no inputs.
     with pytest.raises(Exception):
-        state.incorporate(
-            rowid=state.n_rows(),
-            query={0:0, 1:1, 2:2, 3:3, 4:4},
-            evidence={12:1})
+        state.incorporate(state.n_rows(), {0:0, 1:1, 2:2, 3:3, 4:4}, {12:1})
 
 
 def test_invalid_cluster():
@@ -63,17 +61,15 @@ def test_invalid_cluster():
     # Should crash with None.
     with pytest.raises(Exception):
         state.incorporate(
-            rowid=state.n_rows(),
-            query={0:0, 1:1, 2:2, 3:3, 4:4, state.views[0].outputs[0]:None})
+            state.n_rows(),
+            {0:0, 1:1, 2:2, 3:3, 4:4, state.views[0].outputs[0]:None})
 
 
 def test_invalid_query_nan():
     state = get_state()
     # Not allowed to incorporate nan.
     with pytest.raises(ValueError):
-        state.incorporate(
-            rowid=state.n_rows(),
-            query={0:np.nan, 1:1, 2:2, 3:3, 4:4})
+        state.incorporate(state.n_rows(), {0:np.nan, 1:1, 2:2, 3:3, 4:4})
 
 
 def test_invalid_rowid():
@@ -81,29 +77,28 @@ def test_invalid_rowid():
     # Non-contiguous rowids disabled.
     for rowid in range(state.n_rows()):
         with pytest.raises(ValueError):
-            state.incorporate(rowid=rowid, query={0:2})
+            state.incorporate(rowid, {0:2})
 
 def test_incorporate_valid():
     state = get_state()
     # Incorporate row into cluster 0 for all views.
     previous = np.asarray([state.views[v].Nk(0) for v in [0,1]])
     state.incorporate(
-        rowid=state.n_rows(),
-        query={0:0, 1:1, 2:2, 3:3, 4:4, state.views[0].outputs[0]:0,
-            state.views[1].outputs[0]:0})
+        state.n_rows(),
+        {0:0, 1:1, 2:2, 3:3, 4:4, state.views[0].outputs[0]:0,
+            state.views[1].outputs[0]:0}
+    )
     assert [state.views[v].Nk(0) for v in [0,1]] == list(previous+1)
     # Incorporate row into cluster 0 for view 1 with some missing values.
     previous = state.views[1].Nk(0)
-    state.incorporate(
-        rowid=state.n_rows(),
-        query={0:0, 2:2, state.views[1].outputs[0]:0})
+    state.incorporate(state.n_rows(), {0:0, 2:2, state.views[1].outputs[0]:0})
     assert state.views[1].Nk(0) == previous+1
     state.transition(N=2)
     # Hypothetical cluster 100.
     view = state.views[state.views.keys()[0]]
     state.incorporate(
-        rowid=state.n_rows(),
-        query={0:0, 1:1, 2:2, 3:3, 4:4, view.outputs[0]:100})
+        state.n_rows(),
+        {0:0, 1:1, 2:2, 3:3, 4:4, view.outputs[0]:100})
 
 
 def test_unincorporate():
@@ -136,13 +131,13 @@ def test_incorporate_session():
         state.views[1].outputs[0]: previous[1],
         state.views[2].outputs[0]: previous[2],
     }
-    state.incorporate(rowid=state.n_rows(), query=gu.merged(data, clusters))
+    state.incorporate(state.n_rows(), gu.merged(data, clusters))
     assert [len(state.views[v].Nk()) for v in [0,1,2]] == \
         [p+1 for p in previous]
     # Incorporate row without specifying clusters, and some missing values
     data = {i: rng.normal() for i in xrange(2)}
-    state.incorporate(rowid=state.n_rows(), query=data)
+    state.incorporate(state.n_rows(), data)
     state.transition(N=3)
     # Remove the incorporated rowid.
-    state.unincorporate(rowid=state.n_rows()-1)
+    state.unincorporate(state.n_rows()-1)
     state.transition(N=3)

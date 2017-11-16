@@ -60,9 +60,9 @@ def test_incorporate():
         distargs=RF_DISTARGS, rng=gu.gen_rng(0))
     # Incorporate first 20 rows.
     for rowid, row in enumerate(D[:20]):
-        query = {0: row[0]}
-        evidence = {i: row[i] for i in forest.inputs}
-        forest.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        inputs = {i: row[i] for i in forest.inputs}
+        forest.incorporate(rowid, observation, inputs)
     # Unincorporating row 20 should raise.
     with pytest.raises(ValueError):
         forest.unincorporate(20)
@@ -74,25 +74,25 @@ def test_incorporate():
         forest.unincorporate(0)
     # Incorporating with wrong covariate dimensions should raise.
     with pytest.raises(ValueError):
-        query = {0: D[0,0]}
-        evidence = {i: v for (i, v) in enumerate(D[0])}
-        forest.incorporate(0, query, evidence)
+        observation = {0: D[0,0]}
+        inputs = {i: v for (i, v) in enumerate(D[0])}
+        forest.incorporate(0, observation, inputs)
     # Incorporating with wrong output categorical value should raise.
     with pytest.raises(IndexError):
-        query = {0: 100}
-        evidence = {i: D[0,i] for i in forest.inputs}
-        forest.incorporate(0, query, evidence)
-    # Incorporating with nan evidence value should raise.
+        observation = {0: 100}
+        inputs = {i: D[0,i] for i in forest.inputs}
+        forest.incorporate(0, observation, inputs)
+    # Incorporating with nan inputs value should raise.
     with pytest.raises(ValueError):
-        query = {0: 100}
-        evidence = {i: D[0,i] for i in forest.inputs}
-        evidence[evidence.keys()[0]] = np.nan
-        forest.incorporate(0, query, evidence)
+        observation = {0: 100}
+        inputs = {i: D[0,i] for i in forest.inputs}
+        inputs[inputs.keys()[0]] = np.nan
+        forest.incorporate(0, observation, inputs)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):
-        query = {0: row[0]}
-        evidence = {i: row[i] for i in forest.inputs}
-        forest.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        inputs = {i: row[i] for i in forest.inputs}
+        forest.incorporate(rowid, observation, inputs)
 
 
 def test_logpdf_uniform():
@@ -115,9 +115,9 @@ def test_logpdf_normalized():
             outputs=RF_OUTPUTS, inputs=RF_INPUTS,
             distargs=RF_DISTARGS, rng=gu.gen_rng(0))
         for rowid, row in D_sub:
-            query = {0: row[0]}
-            evidence = {i: row[i] for i in forest.inputs}
-            forest.incorporate(rowid, query, evidence)
+            observation = {0: row[0]}
+            inputs = {i: row[i] for i in forest.inputs}
+            forest.incorporate(rowid, observation, inputs)
         forest.transition_params()
         return forest
 
@@ -144,9 +144,9 @@ def test_logpdf_score():
         outputs=RF_OUTPUTS, inputs=RF_INPUTS,
         distargs=RF_DISTARGS, rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:25]):
-        query = {0: row[0]}
-        evidence = {i: row[i] for i in forest.inputs}
-        forest.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        inputs = {i: row[i] for i in forest.inputs}
+        forest.incorporate(rowid, observation, inputs)
     forest.transition_params()
     forest.transition_params()
 
@@ -164,6 +164,7 @@ def test_logpdf_score():
     assert np.allclose(forest2.counts, forest.counts)
     assert np.allclose(forest2.logpdf_score(), logscore)
 
+
 def test_transition_hypers():
     forest = Dim(
         outputs=RF_OUTPUTS, inputs=[-1]+RF_INPUTS, cctype='random_forest',
@@ -174,10 +175,10 @@ def test_transition_hypers():
     Zr = np.zeros(len(D), dtype=int)
     Zr[len(D)/2:] = 1
     for rowid, row in enumerate(D[:25]):
-        query = {0: row[0]}
-        evidence = gu.merged(
+        observation = {0: row[0]}
+        inputs = gu.merged(
             {i: row[i] for i in forest.inputs}, {-1: Zr[rowid]})
-        forest.incorporate(rowid, query, evidence)
+        forest.incorporate(rowid, observation, inputs)
 
 
 @stochastic(max_runs=3, min_passes=1)
@@ -204,11 +205,11 @@ def test_simulate(seed):
 
     # Incorporate data into 1 cluster.
     for rowid, (x, y) in enumerate(zip(X_train, Y_train)):
-        query = {5: x}
-        evidence = gu.merged(
+        observation = {5: x}
+        inputs = gu.merged(
             {-1: 0},
             {i: t for (i,t) in zip(range(4), y)})
-        forest.incorporate(rowid, query, evidence)
+        forest.incorporate(rowid, observation, inputs)
 
     # Transitions.
     for i in xrange(2):

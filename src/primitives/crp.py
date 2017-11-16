@@ -42,9 +42,9 @@ class Crp(DistributionGpm):
         if hypers is None: hypers = {}
         self.alpha = hypers.get('alpha', 1.)
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = int(query[self.outputs[0]])
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = int(observation[self.outputs[0]])
         self.N += 1
         if x not in self.counts:
             self.counts[x] = 0

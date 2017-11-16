@@ -45,17 +45,17 @@ class CGpm(object):
         """
         raise NotImplementedError
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         """Record an observation for `rowid` into the dataset.
 
         rowid : int
             A unique integer identifying the member.
-        query : dict{int:value}
-            The observed values. The keys of `query` must be a subset of the
+        observation : dict{int:value}
+            The observed values. The keys of `observation` must be a subset of the
             `output` variables, and `value` must be type-matched based on
             the statistical data type of that variable. Missing values may
             be either omitted, or specified as float(nan).
-        evidence : dict{int:value}, optional
+        inputs : dict{int:value}, optional
             Values of all required `input` variables for the `rowid`.
         """
         raise NotImplementedError

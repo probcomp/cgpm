@@ -33,7 +33,7 @@ class TrollNormal(CGpm):
         self.inputs = list(inputs)
         self.rowids = set([])
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.rowids
         self.rowids.add(rowid)
 

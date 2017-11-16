@@ -55,9 +55,9 @@ def test_incorporate():
         rng=gu.gen_rng(0))
     # Incorporate first 20 rows.
     for rowid, row in enumerate(D[:20]):
-        query = {0: row[0]}
-        evidence = {i:row[i] for i in linreg.inputs}
-        linreg.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        inputs = {i:row[i] for i in linreg.inputs}
+        linreg.incorporate(rowid, observation, inputs)
     # Unincorporating row 20 should raise.
     with pytest.raises(ValueError):
         linreg.unincorporate(20)
@@ -69,24 +69,24 @@ def test_incorporate():
         linreg.unincorporate(0)
     # Incorporating with wrong covariate dimensions should raise.
     with pytest.raises(ValueError):
-        query = {0: D[0,0]}
-        evidence = {i:v for (i, v) in enumerate(D[0])}
-        linreg.incorporate(0, query, evidence)
-    # Incorporating with missing query should raise.
+        observation = {0: D[0,0]}
+        inputs = {i:v for (i, v) in enumerate(D[0])}
+        linreg.incorporate(0, observation, inputs)
+    # Incorporating with missing observation should raise.
     with pytest.raises(ValueError):
-        query = {0: None}
-        evidence = {i:v for (i, v) in enumerate(D[0])}
-        linreg.incorporate(0, query, evidence)
-    # Incorporating with wrong query should raise.
+        observation = {0: None}
+        inputs = {i:v for (i, v) in enumerate(D[0])}
+        linreg.incorporate(0, observation, inputs)
+    # Incorporating with wrong observation should raise.
     with pytest.raises(ValueError):
-        query = {1: 2}
-        evidence = {i:v for (i, v) in enumerate(D[0])}
-        linreg.incorporate(0, query, evidence)
+        observation = {1: 2}
+        inputs = {i:v for (i, v) in enumerate(D[0])}
+        linreg.incorporate(0, observation, inputs)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):
-        query = {0: row[0]}
-        evidence = {i:row[i] for i in linreg.inputs}
-        linreg.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        inputs = {i:row[i] for i in linreg.inputs}
+        linreg.incorporate(rowid, observation, inputs)
 
 
 def test_logpdf_score():
@@ -95,9 +95,9 @@ def test_logpdf_score():
         distargs={'inputs':{'stattypes': CCTYPES, 'statargs': CCARGS}},
         rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:10]):
-        query = {0: row[0]}
-        evidence = {i:row[i] for i in linreg.inputs}
-        linreg.incorporate(rowid, query, evidence)
+        observation = {0: row[0]}
+        query = {i:row[i] for i in linreg.inputs}
+        linreg.incorporate(rowid, observation, query)
     linreg.transition_hypers(N=10)
     assert linreg.logpdf_score() < 0
 

@@ -41,7 +41,7 @@ class PieceWise(CGpm):
         self.flip = flip
         self.rng = rng
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):

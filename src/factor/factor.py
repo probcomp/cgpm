@@ -128,27 +128,27 @@ class FactorAnalysis(CGpm):
         # Internal factor analysis model.
         self.fa = None
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         # No duplicate observation.
         if rowid in self.data:
             raise ValueError('Already observed: %d.' % rowid)
         # No inputs.
-        if evidence:
-            raise ValueError('No evidence allowed: %s.' % evidence)
-        if not query:
-            raise ValueError('No query specified: %s.' % query)
+        if inputs:
+            raise ValueError('No inputs allowed: %s.' % inputs)
+        if not observation:
+            raise ValueError('No observation specified: %s.' % observation)
         # No unknown variables.
-        if any(q not in self.outputs for q in query):
+        if any(q not in self.outputs for q in observation):
             raise ValueError('Unknown variables: (%s,%s).'
-                % (query, self.outputs))
+                % (observation, self.outputs))
         # No incorporation of latent variables.
-        if any(q in self.latents for q in query):
+        if any(q in self.latents for q in observation):
             raise ValueError('Cannot incorporate latent vars: (%s,%s,%s).'
-                % (query, self.outputs, self.latents))
-        # Reindex the query variables.
-        query_r = {self.outputs.index(q): query[q] for q in query}
+                % (observation, self.outputs, self.latents))
+        # Reindex the observation variables.
+        obs_r = {self.outputs.index(q): observation[q] for q in observation}
         # Incorporate observed variables.
-        x = [query_r.get(i, np.nan) for i in xrange(self.D)]
+        x = [obs_r.get(i, np.nan) for i in xrange(self.D)]
         # Update dataset and counts.
         self.data[rowid] = x
         self.N += 1
