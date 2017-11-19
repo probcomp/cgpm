@@ -149,11 +149,11 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_modify, args)
 
-    def force_cell(self, rowid, query, multiprocess=1):
+    def force_cell(self, rowid, observation, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = xrange(self.num_states())
         args = [('force_cell', self.states[s],
-                (rowid, query, evidence))
+                (rowid, observation))
                 for s in statenos]
         self.states = mapper(_modify, args)
 

@@ -306,17 +306,18 @@ class State(CGpm):
         self._check_partitions()
 
     # XXX Major hack to force values of NaN cells in incorporated rowids.
-    def force_cell(self, rowid, query):
+    def force_cell(self, rowid, observation):
         if not 0 <= rowid < self.n_rows():
             raise ValueError('Force observation requires existing rowid.')
-        if not all(np.isnan(self.X[c][rowid]) for c in query):
+        if not all(np.isnan(self.X[c][rowid]) for c in observation):
             raise ValueError('Force observations requires NaN cells.')
-        for col, value in query.iteritems():
+        for col, value in observation.iteritems():
             self.X[col][rowid] = value
-        queries = vu.partition_list({c: self.Zv(c) for c in query}, query)
+        queries = vu.partition_list(
+            {c: self.Zv(c) for c in observation}, observation)
         for view_id, view_variables in queries.iteritems():
-            query_v = {c: query[c] for c in view_variables}
-            self.views[view_id].force_cell(rowid, query_v)
+            observation_v = {c: observation[c] for c in view_variables}
+            self.views[view_id].force_cell(rowid, observation_v)
 
     def force_cell_bulk(self, rowids, queries):
         for rowid, query in zip(rowids, queries):
