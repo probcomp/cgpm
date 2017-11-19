@@ -84,8 +84,8 @@ def test_incorporate_state():
     state.transition(N=1)
 
     # Some crash testing queries.
-    state.logpdf(-1, {10:1}, evidence={0:2, 1:1})
-    state.simulate(-1, [10], evidence={0:2})
+    state.logpdf(-1, {10:1}, constraints={0:2, 1:1})
+    state.simulate(-1, [10], constraints={0:2})
 
     # Incorporating with a duplicated output should raise.
     with pytest.raises(ValueError):

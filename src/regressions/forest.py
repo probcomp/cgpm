@@ -63,10 +63,10 @@ class RandomForest(CGpm):
         if self.regressor is None:
             self.regressor = RandomForestClassifier(random_state=self.rng)
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
-        x, y = self.preprocess(query, evidence)
+        x, y = self.preprocess(observation, inputs)
         self.N += 1
         self.counts[x] += 1
         self.data.x[rowid] = x
@@ -80,24 +80,26 @@ class RandomForest(CGpm):
             raise ValueError('No such observation: %d' % rowid)
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence=None):
-        assert query.keys() == self.outputs
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        assert not constraints
+        assert targets.keys() == self.outputs
         assert rowid not in self.data.x
         try:
-            x, y = self.preprocess(query, evidence)
+            x, y = self.preprocess(targets, inputs)
         except IndexError:
             return -float('inf')
         return RandomForest.calc_predictive_logp(
             x, y, self.regressor, self.counts, self.alpha)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert query == self.outputs
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert targets == self.outputs
+        assert not constraints
         if rowid in self.data.x:
             return {self.outputs[0]: self.data.x[rowid]}
-        logps = [self.logpdf(rowid, {query[0]: x}, evidence)
-            for x in xrange(self.k)]
+        logps = [self.logpdf(rowid, {targets[0]: x}, None, inputs)
+            for x in xrange(self.k)
+        ]
         x = gu.log_pflip(logps, rng=self.rng)
         return {self.outputs[0]: x}
 
@@ -182,23 +184,20 @@ class RandomForest(CGpm):
     # HELPER METHODS #
     ##################
 
-    def preprocess(self, query, evidence):
-        # Retrieve the value x of the query variable.
-        if self.outputs[0] in evidence:
-            raise ValueError('Cannot condition on output {}: {}'.format(
-                    self.outputs, evidence.keys()))
-        x = query.get(self.outputs[0], None)
+    def preprocess(self, targets, inputs):
+        # Retrieve the value x of the targets variable.
+        if self.outputs[0] in inputs:
+            raise ValueError('Cannot specify output as input: %s' % (inputs,))
+        x = targets.get(self.outputs[0], None)
         if x is None or np.isnan(x):
-            raise ValueError('Invalid query: %s.' % query)
-        # Retrieve the evidence values.
-        if not set.issubset(set(self.inputs), set(evidence.keys())):
-            raise ValueError(
-                'RandomForest requires inputs {}: {}'.format(
-                    self.inputs, evidence.keys()))
-        y = [evidence[c] for c in sorted(evidence)]
+            raise ValueError('Invalid targets: %s' % (targets,))
+        # Retrieve the inputs values.
+        if not set.issubset(set(self.inputs), set(inputs.keys())):
+            raise ValueError('RandomForest requires inputs %s' % (self.inputs,))
+        y = [inputs[c] for c in sorted(inputs)]
         if any(np.isnan(v) for v in y):
             raise ValueError(
-                'Random Forest cannot accept nan inputs: %s.' % evidence)
+                'Random Forest cannot accept nan inputs: %s.' % (inputs,))
         if len(y) != self.p:
             raise ValueError(
                 'RandomForest requires input length %s: %s' % (self.p, y))
@@ -225,7 +224,8 @@ class RandomForest(CGpm):
             logp_rf = regressor.predict_log_proba([y])[0][index]
             return gu.logsumexp([
                 np.log(alpha) + logp_uniform,
-                np.log(1-alpha) + logp_rf])
+                np.log(1-alpha) + logp_rf
+            ])
 
 
     def to_metadata(self):

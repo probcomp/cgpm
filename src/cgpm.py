@@ -27,35 +27,36 @@ class CGpm(object):
         Parameters
         ----------
         outputs : list<int>
-            List of variables whose joint distribution is modeled by the CGpm.
-            The CGpm is required to simulate and evaluate the log density
-            of an arbitrary susbet of output variables, by marginalizing and/or
-            conditioning on another (disjoint) subset of output variables.
+            List of endogenous variables whose joint distribution is modeled by
+            the CGpm. The CGpm is required to simulate and evaluate the log
+            density of an arbitrary susbet of output variables, by marginalizing
+            and/or conditioning on another (disjoint) subset of output
+            variables.
         inputs : list<int>, optional
-            List of variables unmodeled by the CGpm which are needed
-            on a per-row basis. An example would be the covariate variables
-            for a single output linear regression CGpm.
+            List of exogenous variables unmodeled by the CGpm which are needed
+            on a per-row basis. A full realization of all inputs (if any)
+            is required for each simulate and logpdf query.
         schema : **kwargs
-            An opaque binary parsed by the CGpm to initialize itself.
+            An arbitrary data structure used by the CGpm to initialize itself.
             Often contains information about hyperparameters, parameters,
-            sufficient statistics, configuration settings,
-            or metadata about the input variables.
+            sufficient statistics, configuration settings, or metadata about
+            the input variables.
         rng : numpy.random.RandomState
             Source of entropy.
         """
         raise NotImplementedError
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         """Record an observation for `rowid` into the dataset.
 
         rowid : int
             A unique integer identifying the member.
-        query : dict{int:value}
-            The observed values. The keys of `query` must be a subset of the
+        observation : dict{int:value}
+            The observed values. The keys of `observation` must be a subset of the
             `output` variables, and `value` must be type-matched based on
             the statistical data type of that variable. Missing values may
             be either omitted, or specified as float(nan).
-        evidence : dict{int:value}, optional
+        inputs : dict{int:value}, optional
             Values of all required `input` variables for the `rowid`.
         """
         raise NotImplementedError
@@ -64,63 +65,64 @@ class CGpm(object):
         """Remove all incorporated observations of `rowid` from the dataset."""
         raise NotImplementedError
 
-    def logpdf(self, rowid, query, evidence=None):
-        """Return the conditional density of `query` given `evidence`.
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        """Return the density of `targets` given `constraints` and `inputs`.
 
-        rowid : int, (use None to indicate a hypothetical row)
-            Specifies the identity of the member against which to evaluate
-            the log density. Specifying an existing `rowid` automatically
-            populates all incorporated output variables for that rowid the
-            `evidence`, and typically conditions on any current unexposed latent
-            state for that `rowid`. If the `rowid` is hypothetical, then
-            unexposed latent state is usually marginalized over or sampled.
+            Pr[targets | constraints; inputs]
 
-        query : dict{int:value}
-            The keys of `query` must be a subset of the `output` variables.
-            If `rowid` corresponds to an existing member, it is an error
-            to query any output variable for that `rowid` which has already
-            been incorporated.
+        rowid : int, or None to indicate a hypothetical row
+            Specifies the identity of the population member against which to
+            evaluate the log density.
 
-        evidence : dict{int:value}, optional
-            The keys of `evidence` must contain all `input` variables, as well
-            as an optional collection of partial observations of `output`
-            variables to condition on. No keys in the `evidence` can overlap
-            with keys in `query`. If `rowid` identifies a previously
-            incorporated member, then all data for the `rowid` will be
-            automatically used as `evidence`, and therefore the only valid keys
-            in `evidence` are those `output` variables for which no observation
-            was incorporated.
+        targets : dict{int:value}
+            The keys of `targets` must be a subset of the `output` variables.
+            If `rowid` corresponds to an existing member, it is an error for
+            `targets` to contain any output variable for that `rowid` which has
+            already been incorporated.
+
+        constraints : dict{int:value}, optional
+            The keys of `constraints` must be a subset of the `output`
+            variables, and disjoint from the keys of `targets`. These
+            constraints serve as probabilistic conditions on the multivariate
+            output distribution. If `rowid` corresponds to an existing member,
+            it is an error for `constraints` to contain any output variable for
+            that `rowid` which has already been incorporated.
+
+        inputs : dict{int:value}, optional
+            The keys of `inputs` must contain all the cgpm's `input` variables,
+            if any. These values comprise a full realization of all exogenous
+            variables required by the cgpm. If `rowid` corresponds to an
+            existing member, then `inputs` is expected to be None.
         """
         raise NotImplementedError
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        """Return N iid samples of `query` variables conditioned on `evidence`.
+    def simulate(self, rowid, query, constraints=None, inputs=None, N=None):
+        """Return N iid samples of `targets` given `constraints` and `inputs`.
 
-        The sample must be drawn from the same distribution whose density is
-        assessed by `logpdf`.
+            (X_1, X_2, ... X_N) ~iid Pr[targets | constraints; inputs]
 
-        rowid : int, (use None to indicate a hypothetical row)
-            Specifies the identity of the member to simulate from.
-            Specifying an existing `rowid` automatically populates all
-            incorporated output variables for that rowid the `evidence`, and
-            typically conditions on any current unexposed latent state for that
-            `rowid`. If the `rowid` is hypothetical, then unexposed latent state
-            is usually marginalized over or sampled.
+        rowid : int, or None to indicate a hypothetical row
+            Specifies the identity of the population member whose posterior
+            distribution over unobserved outputs to simulate from.
 
         query : list<int>
-            List of `output` variables to simulate. If `rowid` corresponds to
-            an existing member, it is an error to simulate any output variable
-            which has already been incorporated.
+            List of `output` variables to simulate. If `rowid` corresponds to an
+            existing member, it is an error for `targets` to contain any output
+            variable for that `rowid` which has already been incorporated.
 
-        evidence : dict{int:value}, optional
-            The keys of `evidence` must contain all `input` variables, as well
-            as an optional collection of partial observations of `output`
-            variables to condition on. No keys in the `evidence` can overlap
-            with keys in `query`. If `rowid` identifies a previously
-            incorporated member, then all data for the `rowid` will be
-            automatically used as `evidence`, and therefore the only valid keys
-            in `evidence` are those `output` variables for which no observation
-            was incorporated.
+        constraints : dict{int:value}, optional
+            The keys of `constraints` must be a subset of the `output`
+            variables, and disjoint from the keys of `targets`. These
+            constraints serve as probabilistic conditions on the multivariate
+            output distribution. If `rowid` corresponds to an existing member,
+            it is an error for `constraints` to contain any output variable for
+            that `rowid` which has already been incorporated.
+
+        inputs : dict{int:value}, optional
+            The keys of `inputs` must contain all the cgpm's `input` variables,
+            if any. These values comprise a full realization of all exogenous
+            variables required by the cgpm. If `rowid` corresponds to an
+            existing member, then `inputs` is expected to be None.
 
         N : int, (optional, default None)
             Number of samples to return. If None, returns a single sample as

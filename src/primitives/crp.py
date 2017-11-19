@@ -42,9 +42,9 @@ class Crp(DistributionGpm):
         if hypers is None: hypers = {}
         self.alpha = hypers.get('alpha', 1.)
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = int(query[self.outputs[0]])
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = int(observation[self.outputs[0]])
         self.N += 1
         if x not in self.counts:
             self.counts[x] = 0
@@ -58,24 +58,25 @@ class Crp(DistributionGpm):
         if self.counts[x] == 0:
             del self.counts[x]
 
-    def logpdf(self, rowid, query, evidence=None):
-        assert not evidence
-        assert query.keys() == self.outputs
-        x = int(query[self.outputs[0]])
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        # Do not call DistributionGpm.logpdf since crp allows observed rowid.
+        assert not inputs
+        assert not constraints
+        assert targets.keys() == self.outputs
+        x = int(targets[self.outputs[0]])
         if rowid in self.data:
             return 0 if self.data[rowid] == x else -float('inf')
         return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        DistributionGpm.simulate(self, rowid, query, evidence)
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
         if rowid in self.data:
             x = self.data[rowid]
         else:
             K = sorted(self.counts) + [max(self.counts) + 1] if self.counts\
                 else [0]
-            logps = [self.logpdf(rowid, {query[0]: x}, evidence) for x in K]
+            logps = [self.logpdf(rowid, {targets[0]: x}, None) for x in K]
             x = gu.log_pflip(logps, array=K, rng=self.rng)
         return {self.outputs[0]: x}
 

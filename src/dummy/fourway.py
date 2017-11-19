@@ -30,34 +30,39 @@ class FourWay(CGpm):
             rng = gu.gen_rng(1)
         self.rng = rng
         self.probabilities =[
-            [.7, .1, .05, .05],
-            [.1, .8, .1, .1],
-            [.1, .15, .65, .1],
-            [.1, .05, .1, .75]]
+            [.70, .10, .05, .05],
+            [.10, .80, .10, .10],
+            [.10, .15, .65, .10],
+            [.10, .05, .10, .75],
+        ]
         assert len(outputs) == 1
         assert len(inputs) == 2
         self.outputs = list(outputs)
         self.inputs = list(inputs)
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):
         return
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         regime = self.lookup_quadrant(
-            evidence[self.inputs[0]], evidence[self.inputs[1]])
+            inputs[self.inputs[0]],
+            inputs[self.inputs[1]],
+        )
         x = gu.pflip(self.probabilities[regime], rng=self.rng)
         return {self.outputs[0]: x}
 
-    def logpdf(self, rowid, query, evidence=None):
-        x = query[self.outputs[0]]
-        if not (0 <= x <= 3): return -float('inf')
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        x = targets[self.outputs[0]]
+        if not (0 <= x <= 3):
+            return -float('inf')
         regime = self.lookup_quadrant(
-            evidence[self.inputs[0]], evidence[self.inputs[1]])
+            inputs[self.inputs[0]],
+            inputs[self.inputs[1]],
+        )
         return np.log(self.probabilities[regime][x])
 
     def transition(self, N=None, S=None):

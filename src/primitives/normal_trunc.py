@@ -55,9 +55,9 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma = NormalTrunc.sample_parameters(
                 self.alpha, self.beta, self.l, self.h, self.rng)
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if not (self.l <= x <= self.h):
             raise ValueError(
                 'Invalid NormalTrunc(%f,%f): %s' % (self.l, self.h, str(x)))
@@ -72,9 +72,9 @@ class NormalTrunc(DistributionGpm):
         self.sum_x -= x
         self.sum_x_sq -= x*x
 
-    def logpdf(self, rowid, query, evidence=None):
-        DistributionGpm.logpdf(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        DistributionGpm.logpdf(self, rowid, targets, constraints, inputs)
+        x = targets[self.outputs[0]]
         if not (self.l <= x <= self.h):
             return -float('inf')
         logpdf_unorm = NormalTrunc.calc_predictive_logp(
@@ -83,10 +83,9 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma, self.l, self.h)
         return logpdf_unorm - logcdf_norm
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        DistributionGpm.simulate(self, rowid, query, evidence)
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         max_iters = 1000

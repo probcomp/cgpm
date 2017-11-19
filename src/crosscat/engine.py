@@ -133,11 +133,11 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_modify, args)
 
-    def incorporate(self, rowid, query, evidence=None, multiprocess=1):
+    def incorporate(self, rowid, observation, inputs=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = xrange(self.num_states())
         args = [('incorporate', self.states[s],
-                (rowid, query, evidence))
+                (rowid, observation, inputs))
                 for s in statenos]
         self.states = mapper(_modify, args)
 
@@ -149,11 +149,11 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_modify, args)
 
-    def force_cell(self, rowid, query, multiprocess=1):
+    def force_cell(self, rowid, observation, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = xrange(self.num_states())
         args = [('force_cell', self.states[s],
-                (rowid, query, evidence))
+                (rowid, observation))
                 for s in statenos]
         self.states = mapper(_modify, args)
 
@@ -181,22 +181,22 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_compose, args)
 
-    def logpdf(self, rowid, query, evidence=None, accuracy=None,
-            statenos=None, multiprocess=1):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None,
+            accuracy=None, statenos=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = statenos or xrange(self.num_states())
         args = [('logpdf', self.states[s],
-                (rowid, query, evidence, accuracy))
+                (rowid, targets, constraints, inputs, accuracy))
             for s in statenos]
         logpdfs = mapper(_evaluate, args)
         return logpdfs
 
-    def logpdf_bulk(self, rowids, queries, evidences=None, statenos=None,
-            multiprocess=1):
+    def logpdf_bulk(self, rowids, targets_list, constraints_list=None,
+            inputs_list=None, statenos=None, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = statenos or xrange(self.num_states())
         args = [('logpdf_bulk', self.states[s],
-                (rowids, queries, evidences))
+                (rowids, targets_list, constraints_list, inputs_list))
                 for s in statenos]
         logpdfs = mapper(_evaluate, args)
         return logpdfs
@@ -210,37 +210,37 @@ class Engine(object):
         logpdf_scores = mapper(_evaluate, args)
         return logpdf_scores
 
-    def simulate(self, rowid, query, evidence=None, N=None, accuracy=None,
-            statenos=None, multiprocess=1):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None,
+            accuracy=None, statenos=None, multiprocess=1):
         self._seed_states()
         mapper = parallel_map if multiprocess else map
         statenos = statenos or xrange(self.num_states())
         args = [('simulate', self.states[s],
-                (rowid, query, evidence, N, accuracy))
+                (rowid, targets, constraints, inputs, N, accuracy))
                 for s in statenos]
         samples = mapper(_evaluate, args)
         return samples
 
-    def simulate_bulk(self, rowids, queries, evidences=None, Ns=None,
-            statenos=None, multiprocess=1):
+    def simulate_bulk(self, rowids, targets_list, constraints_list=None,
+            inputs_list=None, Ns=None, statenos=None, multiprocess=1):
         """Returns list of simualate_bulk, one for each state."""
         self._seed_states()
         mapper = parallel_map if multiprocess else map
         statenos = statenos or xrange(self.num_states())
         args = [('simulate_bulk', self.states[s],
-                (rowids, queries, evidences, Ns))
+                (rowids, targets_list, constraints_list, inputs_list, Ns))
                 for s in statenos]
         samples = mapper(_evaluate, args)
         return samples
 
-    def mutual_information(self, col0, col1, evidence=None, T=None, N=None,
+    def mutual_information(self, col0, col1, constraints=None, T=None, N=None,
             progress=None, statenos=None, multiprocess=1):
         """Returns list of mutual information estimates, one for each state."""
         self._seed_states()
         mapper = parallel_map if multiprocess else map
         statenos = statenos or xrange(self.num_states())
         args = [('mutual_information', self.states[s],
-                (col0, col1, evidence, T, N, progress))
+                (col0, col1, constraints, T, N, progress))
                 for s in statenos]
         mis = mapper(_evaluate, args)
         return mis
@@ -341,27 +341,27 @@ class Engine(object):
         num_draws = N if N is not None else self.num_states()
         return self.rng.randint(low=1, high=2**32-1, size=num_draws)
 
-    def _likelihood_weighted_integrate(
-            self, logpdfs, rowid, evidence=None, statenos=None, multiprocess=1):
+    def _likelihood_weighted_integrate(self, logpdfs, rowid, constraints=None,
+            inputs=None, statenos=None, multiprocess=1):
         # Computes an importance sampling integral with likelihood weight.
-        assert len(logpdfs) == (
-            len(self.states) if statenos is None else len(statenos))
-        if evidence:
-            weights = self.logpdf(
-                rowid, evidence, statenos=statenos, multiprocess=multiprocess)
+        assert len(logpdfs) == \
+            len(self.states) if statenos is None else len(statenos)
+        if constraints:
+            weights = self.logpdf(rowid, constraints, inputs, statenos=statenos,
+                multiprocess=multiprocess)
             return gu.logmeanexp_weighted(logpdfs, weights)
         else:
             return gu.logmeanexp(logpdfs)
 
-    def _likelihood_weighted_resample(
-            self, samples, rowid, evidence=None, statenos=None, multiprocess=1):
-        assert len(samples) == (
-            len(self.states) if statenos is None else len(statenos))
+    def _likelihood_weighted_resample(self, samples, rowid, constraints=None,
+            inputs=None, statenos=None, multiprocess=1):
+        assert len(samples) == \
+            len(self.states) if statenos is None else len(statenos)
         assert all(len(s) == len(samples[0]) for s in samples[1:])
         N = len(samples[0])
-        weights = np.zeros(len(samples)) if not evidence else\
-            self.logpdf(
-                rowid, evidence, statenos=statenos, multiprocess=multiprocess)
+        weights = np.zeros(len(samples)) if not constraints else \
+            self.logpdf(rowid, constraints, inputs,
+                statenos=statenos, multiprocess=multiprocess)
         n_model = np.bincount(gu.log_pflip(weights, size=N, rng=self.rng))
         indexes = [self.rng.choice(N, size=n, replace=False) for n in n_model]
         resamples = [

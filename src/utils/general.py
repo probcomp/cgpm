@@ -25,6 +25,9 @@ import numpy as np
 
 from cgpm.utils import validation as vu
 
+from cgpm.cgpm import CGpm
+CGPM_SIMULATE_NARGS = CGpm.simulate.func_code.co_argcount
+
 
 colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
     'black']
@@ -367,3 +370,16 @@ def build_rowid_blocks(Zvr):
     A = np.asarray(Zvr).T
     U = map(tuple, A)
     return {u:np.where(np.all(A==u, axis=1))[0] for u in U}
+
+
+def simulate_many(simulate):
+    """Simple wrapper for a cgpm `simulate` method to call itself N times."""
+    def simulate_wrapper(*args, **kwargs):
+        if len(args) == CGPM_SIMULATE_NARGS:
+            N = args[-1]
+        else:
+            N = kwargs.get('N', None)
+        if N is None:
+            return simulate(*args, **kwargs)
+        return [simulate(*args, **kwargs) for _i in xrange(N)]
+    return simulate_wrapper

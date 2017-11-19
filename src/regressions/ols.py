@@ -67,12 +67,12 @@ class OrdinaryLeastSquares(CGpm):
         if self.regressor is None:
             self.regressor = LinearRegression()
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
-        if self.outputs[0] not in query:
-            raise ValueError('No query in incorporate: %s.' % query)
-        x, y = self.preprocess(query, evidence)
+        if self.outputs[0] not in observation:
+            raise ValueError('No observation in incorporate: %s' % observation)
+        x, y = self.preprocess(observation, inputs)
         self.N += 1
         self.data.x[rowid] = x
         self.data.Y[rowid] = y
@@ -85,27 +85,27 @@ class OrdinaryLeastSquares(CGpm):
             raise ValueError('No such observation: %d' % rowid)
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence=None):
-        xt, yt = self.preprocess(query, evidence)
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert rowid not in self.data.x
+        assert not constraints
+        xt, yt = self.preprocess(targets, inputs)
         mean = self.regressor.predict([yt])[0]
         return logpdf_gaussian(xt, mean, self.noise)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert query == self.outputs
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert targets == self.outputs
+        assert not constraints
         if rowid in self.data.x:
             return {self.outputs[0]: self.data.x[rowid]}
-        xt, yt = self.preprocess(None, evidence)
+        _xt, yt = self.preprocess(None, inputs)
         mean = self.regressor.predict([yt])[0]
-        x = self.rng.normal(mean, self.noise)
-        # XXX Temporarily disable stochastic sample.
-        return {self.outputs[0]: mean}
+        x = self.rng.normal(mean, self.noise, size=N)
+        # XXX Temporarily disable noise in the OLS sample.
+        sample = {self.outputs[0]: mean}
+        return sample if not N else [sample] * N
 
     def logpdf_score(self):
         pass
-
 
     ##################
     # NON-GPM METHOD #
@@ -185,30 +185,27 @@ class OrdinaryLeastSquares(CGpm):
             raise ValueError('Invalid stattype, stargs: %s, %s.' % (cct, cca))
         return int(p), counts
 
-    def preprocess(self, query, evidence):
-        # Retrieve the value x of the query variable.
-        if self.outputs[0] in evidence:
-            raise ValueError(
-                'Cannot condition on output %s: %s' %
-                (self.outputs, evidence.keys()))
-        if query:
-            x = query.get(self.outputs[0], None)
+    def preprocess(self, targets, inputs):
+        # Retrieve the value x of the target variable.
+        if self.outputs[0] in inputs:
+            raise ValueError('Cannot condition on output %s: %s'
+                % (self.outputs, inputs.keys()))
+        if targets:
+            x = targets.get(self.outputs[0], None)
             if x is None or np.isnan(x):
-                raise ValueError('Invalid query: %s.' % query)
+                raise ValueError('Invalid targets: %s' % (targets,))
         else:
             x = None
-
-        # Retrieve the evidence values and dummy code them.
-        if set(evidence.keys()) !=  set(self.inputs):
-            raise ValueError(
-                'OLS requires inputs %s: %s' %
-                (self.inputs, evidence.keys()))
-        y = [evidence[c] for c in self.inputs]
+        # Retrieve the input values and dummy code them.
+        if set(inputs.keys()) != set(self.inputs):
+            raise ValueError('OLS requires inputs %s: %s'
+                % (self.inputs, inputs.keys()))
+        y = [inputs[c] for c in self.inputs]
         if any(np.isnan(v) for v in y):
-            raise ValueError('OLS cannot accept nan inputs: %s.' % evidence)
+            raise ValueError('OLS cannot accept nan inputs: %s.' % (inputs,))
         y = du.dummy_code(y, self.inputs_discrete)
         assert len(y) == self.p - 1
-
+        # Return target and inputs.
         return x, y
 
     ####################

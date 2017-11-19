@@ -157,9 +157,10 @@ def test_serialize_composite_cgpm():
     # Incorporate the data.
     def incorporate_data(cgpm, rowid, row):
         cgpm.incorporate(
-            rowid=rowid,
-            query={i: row[i] for i in cgpm.outputs},
-            evidence={i: row[i] for i in cgpm.inputs})
+            rowid,
+            {i: row[i] for i in cgpm.outputs},
+            {i: row[i] for i in cgpm.inputs},
+        )
     for rowid, row in enumerate(D):
         incorporate_data(forest, rowid, row)
         incorporate_data(linreg, rowid, row)
@@ -201,7 +202,7 @@ def test_serialize_composite_cgpm():
     e.compose_cgpm([linreg, linreg], multiprocess=1)
     e.transition_foreign(N=1, cols=[forest.outputs[0], linreg.outputs[0]])
     e.dependence_probability(0,1)
-    e.simulate(-1, [0,1], {2:1})
+    e.simulate(-1, [0,1], {2:1}, multiprocess=0)
     e.logpdf(-1, {1:1}, {2:1, 0:0}, multiprocess=0)
 
     state3 = e.get_state(0)

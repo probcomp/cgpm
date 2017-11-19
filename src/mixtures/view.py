@@ -99,7 +99,7 @@ class View(CGpm):
         self.crp.transition_hyper_grids([1]*n_rows)
         if Zr is None:
             for i in xrange(n_rows):
-                s = self.crp.simulate(i, [self.outputs[0]], {-1:0})
+                s = self.crp.simulate(i, [self.outputs[0]], None, {-1:0})
                 self.crp.incorporate(i, s, {-1:0})
         else:
             for i, z in enumerate(Zr):
@@ -146,28 +146,29 @@ class View(CGpm):
         self.outputs = self.outputs[:1] + self.dims.keys()
         return dim.logpdf_score()
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         """Incorporate an observation into the View.
 
         Parameters
         ----------
         rowid : int
             Fresh, non-negative rowid.
-        query : dict{output:val}
-            Keys of the query must exactly be the output (Github issue 89).
+        observation : dict{output:val}
+            Keys of the observation must exactly be the output (Github #89).
             Optionally, use {self.outputs[0]: k} to specify the latent cluster
-            assignment of rowid. The cluster is a query variable since View
-            has a generative model for k, unlike Dim which takes k as evidence.
+            assignment of rowid. The cluster is an observation variable since
+            View has a generative model for k, unlike Dim which requires k as
+            inputs.
         """
-        k = query.get(self.outputs[0], 0)
+        k = observation.get(self.outputs[0], 0)
         self.crp.incorporate(rowid, {self.outputs[0]: k}, {-1: 0})
         for d in self.dims:
             self.dims[d].incorporate(
                 rowid,
-                query={d: query[d]},
-                evidence=self._get_evidence(rowid, self.dims[d], k))
+                observation={d: observation[d]},
+                inputs=self._get_input_values(rowid, self.dims[d], k))
         # If the user did not specify a cluster assignment, sample one.
-        if self.outputs[0] not in query:
+        if self.outputs[0] not in observation:
             self.transition_rows(rows=[rowid])
 
     def unincorporate(self, rowid):
@@ -182,12 +183,12 @@ class View(CGpm):
                 del dim.clusters[k]     # XXX Abstract me!
 
     # XXX Major hack to force values of NaN cells in incorporated rowids.
-    def force_cell(self, rowid, query):
+    def force_cell(self, rowid, observation):
         k = self.Zr(rowid)
-        for d in query:
+        for d in observation:
             self.dims[d].unincorporate(rowid)
-            evidence = self._get_evidence(rowid, self.dims[d], k)
-            self.dims[d].incorporate(rowid, {d: query[d]}, evidence)
+            inputs = self._get_input_values(rowid, self.dims[d], k)
+            self.dims[d].incorporate(rowid, {d: observation[d]}, inputs)
 
     # --------------------------------------------------------------------------
     # Update schema.
@@ -262,94 +263,97 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         # As discussed in https://github.com/probcomp/cgpm/issues/116 for an
         # observed rowid, we synthetize a new hypothetical row which is
         # identical (in terms of observed and latent values) to the observed
         # rowid. In this version of the implementation, the user may not
-        # override any non-null values in the observed rowid (_populate_evidence
-        # returns an error in this case). A user should either (i) use another
-        # rowid, since overriding existing values in the observed rowid no
-        # longer specifies that rowid, or (ii) use some sequence of
-        # incorporate/unicorporate depending on their query.
-        evidence = self._populate_evidence(rowid, query, evidence)
+        # override any non-null values in the observed rowid
+        # (_populate_constraints returns an error in this case). A user should
+        # either (i) use another rowid, since overriding existing values in the
+        # observed rowid no longer specifies that rowid, or (ii) use some
+        # sequence of incorporate/unicorporate depending on their query.
+        constraints = self._populate_constraints(rowid, targets, constraints)
         if not self.hypothetical(rowid):
             rowid = None
         # Prepare the importance network.
         network = self.build_network()
-        if self.outputs[0] in evidence:
+        if self.outputs[0] in constraints:
             # Condition on the cluster assignment.
-            # p(xQ|xE,z=k)                      computed directly by network.
-            return network.logpdf(rowid, query, evidence)
-        elif self.outputs[0] in query:
+            # p(xT|xC,z=k)                      computed directly by network.
+            return network.logpdf(rowid, targets, constraints, inputs)
+        elif self.outputs[0] in targets:
             # Query the cluster assignment.
-            # p(z=k,xQ|xE)
-            # = p(z=k,xQ,xE) / p(xE)            Bayes rule
-            # = p(z=k)p(xQ,xE|z=k) / p(xE)      chain rule on numerator
+            # p(z=k,xT|xC)
+            # = p(z=k,xT,xC) / p(xC)            Bayes rule
+            # = p(z=k)p(xT,xC|z=k) / p(xC)      chain rule on numerator
             # The terms are then:
             # p(z=k)                            lp_cluster
-            # p(xQ,xE|z=k)                      lp_numer
-            # p(xE)                             lp_denom
-            k = query[self.outputs[0]]
-            evidence_z = {self.outputs[0]: k}
-            query_nz = {c: query[c] for c in query if c != self.outputs[0]}
-            query_numer = merged(query_nz, evidence)
-            lp_cluster = network.logpdf(rowid, evidence_z)
-            lp_numer = (network.logpdf(rowid, query_numer, evidence_z)
-                if query_numer else 0)
-            lp_denom = self.logpdf(rowid, evidence) if evidence else 0
+            # p(xT,xC|z=k)                      lp_numer
+            # p(xC)                             lp_denom
+            k = targets[self.outputs[0]]
+            constraints_z = {self.outputs[0]: k}
+            targets_nz = {c: targets[c] for c in targets if c != self.outputs[0]}
+            targets_numer = merged(targets_nz, constraints)
+            lp_cluster = network.logpdf(rowid, constraints_z, inputs)
+            lp_numer = \
+                network.logpdf(rowid, targets_numer, constraints_z, inputs) \
+                if targets_numer else 0
+            lp_denom = self.logpdf(rowid, constraints) if constraints else 0
             return (lp_cluster + lp_numer) - lp_denom
         else:
             # Marginalize over cluster assignment by enumeration.
             # Let K be a list of values for the support of z:
-            # P(xQ|xE)
-            # = \sum_k p(xQ|z=k,xE)p(z=k|xE)            marginalization
-            # Now consider p(z=k|xE) \propto p(z=k,xE)  Bayes rule
-            # p(z=K[i],xE)                              logp_evidence_unorm[i]
-            # p(z=K[i]|xE)                              logp_evidence[i]
-            # p(xQ|z=K[i],xE)                           logp_query[i]
+            # P(xT|xC)
+            # = \sum_k p(xT|z=k,xC)p(z=k|xC)            marginalization
+            # Now consider p(z=k|xC) \propto p(z=k,xC)  Bayes rule
+            # p(z=K[i],xC)                              lp_constraints_unorm[i]
+            # p(z=K[i]|xC)                              lp_constraints[i]
+            # p(xT|z=K[i],xC)                           lp_targets[i]
             K = self.crp.clusters[0].gibbs_tables(-1)
-            evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
-            lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
-            lp_evidence = gu.log_normalize(lp_evidence_unorm)
-            lp_query = [network.logpdf(rowid, query, ev) for ev in evidences]
-            return gu.logsumexp(np.add(lp_evidence, lp_query))
+            constraints = [merged(constraints, {self.outputs[0]: k}) for k in K]
+            lp_constraints_unorm = [network.logpdf(rowid, const, None, inputs)
+                for const in constraints]
+            lp_constraints = gu.log_normalize(lp_constraints_unorm)
+            lp_targets = [network.logpdf(rowid, targets, const, inputs)
+                for const in constraints]
+            return gu.logsumexp(np.add(lp_constraints, lp_targets))
 
     # --------------------------------------------------------------------------
     # simulate
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         # Refer to comment in logpdf.
-        evidence = self._populate_evidence(rowid, query, evidence)
+        constraints = self._populate_constraints(rowid, targets, constraints)
         if not self.hypothetical(rowid):
             rowid = None
         network = self.build_network()
         # Condition on the cluster assignment.
-        if self.outputs[0] in evidence:
-            return network.simulate(rowid, query, evidence, N)
+        if self.outputs[0] in constraints:
+            return network.simulate(rowid, targets, constraints, inputs, N)
         # Determine how many samples to return.
         unwrap_result = N is None
         if unwrap_result:
             N = 1
         # Expose cluster assignments to the samples?
-        exposed = self.outputs[0] in query
+        exposed = self.outputs[0] in targets
         if exposed:
-            query = [q for q in query if q != self.outputs[0]]
-        # Weight cluster assignments by likelihood of evidence in each cluster.
+            targets = [q for q in targets if q != self.outputs[0]]
+        # Weight clusters by probability of constraints in each cluster.
         K = self.crp.clusters[0].gibbs_tables(-1)
-        evidences = [merged(evidence, {self.outputs[0]: k}) for k in K]
-        lp_evidence_unorm = [network.logpdf(rowid, ev) for ev in evidences]
+        constr2 = [merged(constraints, {self.outputs[0]: k}) for k in K]
+        lp_constraints_unorm = [network.logpdf(rowid, ev) for ev in constr2]
         # Find number of samples in each cluster.
-        Ks = gu.log_pflip(lp_evidence_unorm, array=K, size=N, rng=self.rng)
+        Ks = gu.log_pflip(lp_constraints_unorm, array=K, size=N, rng=self.rng)
         counts = {k:n for k, n in enumerate(np.bincount(Ks)) if n > 0}
-        # Add the cluster assignment to the evidence and sample the rest.
-        evidences = {k: merged(evidence, {self.outputs[0]: k}) for k in counts}
-        samples = [network.simulate(rowid, query, evidences[k], counts[k])
+        # Add the cluster assignment to the constraints and sample the rest.
+        constr3 = {k: merged(constraints, {self.outputs[0]: k}) for k in counts}
+        samples = [network.simulate(rowid, targets, constr3[k], inputs, counts[k])
             for k in counts]
         # If cluster assignments are exposed, append them to the samples.
         if exposed:
-            expose = lambda S, k: [merged(l, {self.outputs[0]: k}) for l in S]
-            samples = [expose(s, k) for s, k in zip(samples, counts)]
+            samples = [[merged(l, {self.outputs[0]: k}) for l in s]
+                for s, k in zip(samples, counts)]
         # Return 1 sample if N is None, otherwise a list.
         result = list(itertools.chain.from_iterable(samples))
         return result[0] if unwrap_result else result
@@ -397,23 +401,23 @@ class View(CGpm):
             for dim in self.dims.itervalues()]) for k in K]
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
-        query = {dim.index: self.X[dim.index][rowid]}
-        evidence = self._get_evidence(rowid, dim, k)
+        targets = {dim.index: self.X[dim.index][rowid]}
+        inputs = self._get_input_values(rowid, dim, k)
         # If rowid in cluster k then unincorporate then compute predictive.
         if self.Zr(rowid) == k:
             dim.unincorporate(rowid)
-            logp = dim.logpdf(rowid, query, evidence)
-            dim.incorporate(rowid, query, evidence)
+            logp = dim.logpdf(rowid, targets, None, inputs)
+            dim.incorporate(rowid, targets, inputs)
         else:
-            logp = dim.logpdf(rowid, query, evidence)
+            logp = dim.logpdf(rowid, targets, None, inputs)
         return logp
 
     def _migrate_row(self, rowid, k):
         self.unincorporate(rowid)
-        query = merged(
+        observation = merged(
             {d: self.X[d][rowid] for d in self.dims},
             {self.outputs[0]: k})
-        self.incorporate(rowid, query)
+        self.incorporate(rowid, observation)
 
     # --------------------------------------------------------------------------
     # Internal crp utils.
@@ -439,28 +443,30 @@ class View(CGpm):
     def hypothetical(self, rowid):
         return not (0 <= rowid < len(self.Zr()))
 
-    def _populate_evidence(self, rowid, query, evidence):
-        """Loads query evidence from the dataset."""
-        if evidence is None:
-            evidence = {}
-        self._validate_query_evidence(rowid, query, evidence)
+    def _populate_constraints(self, rowid, targets, constraints):
+        """Loads constraints from the dataset."""
+        if constraints is None:
+            constraints = {}
+        self._validate_cgpm_query(rowid, targets, constraints)
         # If the rowid is hypothetical, just return.
         if self.hypothetical(rowid):
-            return evidence
-        # Retrieve all other values for this rowid not in query or evidence.
+            return constraints
+        # Retrieve all values for this rowid not in targets or constraints.
         data = {
             c: self.X[c][rowid]
             for c in self.outputs[1:]
-            if (c not in query) and (c not in evidence)
-                and (not isnan(self.X[c][rowid]))
+            if \
+                c not in targets \
+                and c not in constraints \
+                and not isnan(self.X[c][rowid])
         }
         # Add the cluster assignment.
         data[self.outputs[0]] = self.Zr(rowid)
 
-        return merged(evidence, data)
+        return merged(constraints, data)
 
-    def _get_evidence(self, rowid, dim, k):
-        """Prepare the evidence for a Dim logpdf/simulate query."""
+    def _get_input_values(self, rowid, dim, k):
+        """Prepare the inputs for a Dim logpdf or simulate query."""
         inputs = {i: self.X[i][rowid] for i in dim.inputs[1:]}
         cluster = {self.outputs[0]: k}
         return merged(inputs, cluster)
@@ -472,34 +478,35 @@ class View(CGpm):
         dim.Zi = {}         # Mapping of nan rowids to cluster k.
         dim.aux_model = dim.create_aux_model()
         for rowid, k in self.Zr().iteritems():
-            dim.incorporate(
-                rowid,
-                query={dim.index: self.X[dim.index][rowid]},
-                evidence=self._get_evidence(rowid, dim, k))
+            observation = {dim.index: self.X[dim.index][rowid]}
+            inputs = self._get_input_values(rowid, dim, k)
+            dim.incorporate(rowid, observation, inputs)
         assert merged(dim.Zr, dim.Zi) == self.Zr()
         dim.transition_params()
 
-    def _validate_query_evidence(self, rowid, query, evidence):
+    def _validate_cgpm_query(self, rowid, targets, constraints):
         # Is the query simulate or logpdf?
-        simulate = isinstance(query, list)
-        # Disallow duplicated query cols.
-        if simulate and len(set(query)) != len(query):
-            raise ValueError('Query columns must be unique.')
-        # Disallow overlap between query and evidence.
-        if len(set.intersection(set(query), set(evidence))) > 0:
-            raise ValueError('Query and evidence columns must be disjoint.')
-        # No further  check.
+        simulate = isinstance(targets, list)
+        # Disallow duplicated target cols.
+        if simulate and len(set(targets)) != len(targets):
+            raise ValueError('Columns in targets must be unique.')
+        # Disallow overlap between targets and constraints.
+        if len(set.intersection(set(targets), set(constraints))) > 0:
+            raise ValueError('Targets and constraints must be disjoint.')
+        # No further check.
         if self.hypothetical(rowid):
             return
         # Cannot constrain the cluster of observed rowid; unincorporate first.
-        if self.outputs[0] in query or self.outputs[0] in evidence:
+        if self.outputs[0] in targets or self.outputs[0] in constraints:
             raise ValueError('Cannot constrain cluster of an observed rowid.')
-        # Disallow evidence constraining/disagreeing with observed cells.
-        def good_evidence(rowid, e):
-            return (e not in self.outputs) or np.isnan(self.X[e][rowid]) \
-                or np.allclose(self.X[e][rowid], evidence[e])
-        if any(not good_evidence(rowid, e) for e in evidence):
-            raise ValueError('Cannot constrain observed cell in evidence.')
+        # Disallow constraints constraining/disagreeing with observed cells.
+        def good_constraints(rowid, e):
+            return \
+                e not in self.outputs\
+                or np.isnan(self.X[e][rowid]) \
+                or np.allclose(self.X[e][rowid], constraints[e])
+        if any(not good_constraints(rowid, e) for e in constraints):
+            raise ValueError('Cannot use observed cell in constraints.')
         # The next check is enforced at the level of State not View.
         # Disallow query constraining observed cells (XXX logpdf, not simulate)
         # if not simulate and any(not np.isnan(self.X[q][rowid]) for q in query):

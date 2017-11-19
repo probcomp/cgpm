@@ -49,14 +49,14 @@ def test_crash_logpdf_joint(state):
     state.logpdf(-1, {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8})
 
 def test_crash_simulate_conditional(state):
-    state.simulate(-1, [1, 4, 5, 6, 7, 8], evidence={0:1, 2:1, 3:3}, N=10)
+    state.simulate(-1, [1, 4, 5, 6, 7, 8], {0:1, 2:1, 3:3}, None, 10)
 
 def test_crash_logpdf_conditional(state):
     state.logpdf(
-        -1, {1:2, 4:1, 5:10, 6:.4, 7:2, 8:1.8}, evidence={0:1, 2:1, 3:3})
+        -1, {1:2, 4:1, 5:10, 6:.4, 7:2, 8:1.8}, {0:1, 2:1, 3:3})
 
 def test_crash_simulate_joint_observed(state):
-    state.simulate(1, [0, 1, 2, 3, 4, 5, 6, 7, 8], N=10)
+    state.simulate(1, [0, 1, 2, 3, 4, 5, 6, 7, 8], None, None, 10)
 
 def test_crash_logpdf_joint_observed(state):
     with pytest.raises(ValueError):
@@ -64,12 +64,12 @@ def test_crash_logpdf_joint_observed(state):
 
 def test_crash_simulate_conditional_observed(state):
     with pytest.raises(ValueError):
-        state.simulate(1, [1, 4, 5, 6, 7, 8], evidence={0:1, 2:1, 3:3}, N=10)
+        state.simulate(1, [1, 4, 5, 6, 7, 8], {0:1, 2:1, 3:3}, None, 10)
 
 def test_crash_logpdf_conditional_observed(state):
     with pytest.raises(ValueError):
         state.logpdf(
-            1, {1:2, 4:1, 5:10, 6:.4, 7:2, 8:1.8}, evidence={0:1, 2:1, 3:3})
+            1, {1:2, 4:1, 5:10, 6:.4, 7:2, 8:1.8}, {0:1, 2:1, 3:3})
 
 # Plot!
 state.plot()
@@ -86,7 +86,7 @@ test_crash_logpdf_conditional_observed(state)
 
 # Joint equals chain rule for state 1.
 joint = state.logpdf(-1, {0:1, 1:2})
-chain = state.logpdf(-1, {0:1}, evidence={1:2}) + state.logpdf(-1, {1:2})
+chain = state.logpdf(-1, {0:1}, {1:2}) + state.logpdf(-1, {1:2})
 assert np.allclose(joint, chain)
 
 if False:
@@ -95,19 +95,22 @@ if False:
 
     # Joint equals chain rule for state 2.
     state2.logpdf(-1, {0:1, 1:2})
-    state2.logpdf(-1, {0:1}, evidence={1:2}) + state2.logpdf(-1, evidence={1:2})
+    state2.logpdf(-1, {0:1}, {1:2}) + state2.logpdf(-1, {1:2})
 
     # Take the Monte Carlo average of the conditional.
     mc_conditional = np.log(.5) + gu.logsumexp([
-        state.logpdf(-1, {0:1}, evidence={1:2}),
-        state2.logpdf(-1, {0:1}, evidence={1:2})])
+        state.logpdf(-1, {0:1}, {1:2}),
+        state2.logpdf(-1, {0:1}, {1:2})
+    ])
 
     # Take the Monte Carlo average of the joint.
     mc_joint = np.log(.5) + gu.logsumexp([
         state.logpdf(-1, {0:1, 1:2}),
-        state2.logpdf(-1, {0:1, 1:2})])
+        state2.logpdf(-1, {0:1, 1:2})
+    ])
 
     # Take the Monte Carlo average of the marginal.
     mc_marginal = np.log(.5) + gu.logsumexp([
         state.logpdf(-1, {1:2}),
-        state2.logpdf(-1, {1:2})])
+        state2.logpdf(-1, {1:2})
+    ])

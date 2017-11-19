@@ -99,10 +99,10 @@ def test_same_logpdf(state):
     logpdf values for queries not involving the child cgpms."""
 
     # Get some logpdfs and samples before composing with cgpms.
-    logp_before_one = state.logpdf(-1, {0: 1, 1: 1})
-    logp_before_two = state.logpdf(-1, {0: 1, 1: 1}, {2:1})
-    simulate_before_one = state.simulate(-1, [0,1,2], N=10)
-    simulate_before_two = state.simulate(-1, [1,2], {0:1})
+    logp_before_one = state.logpdf(-1, {0: 1, 1: 1}, None, None)
+    logp_before_two = state.logpdf(-1, {0: 1, 1: 1}, {2:1}, None)
+    simulate_before_one = state.simulate(-1, [0,1,2], None, None, 10)
+    simulate_before_two = state.simulate(-1, [1,2], {0:1}, None)
 
     # Compose the CGPMs.
     four_index = state.compose_cgpm(FourWay([5], [0,2], rng=state.rng))
@@ -141,7 +141,7 @@ def crash_test_simulate_logpdf(state):
 
 
 def test_inference_quality__ci_(state):
-    """This test explores inference quality for simulate/logpdf invesrion."""
+    """This test explores inference quality for simulate/logpdf inversion."""
     # Build CGPMs.
     fourway = FourWay([5], [0,2], rng=state.rng)
     twoway = TwoWay([10], [1], rng=state.rng)
@@ -174,14 +174,11 @@ def test_inference_quality__ci_(state):
     for v in [0, 1, 2, 3]:
         x0, x1 = FourWay.retrieve_y_for_x(v)
 
-        lp_exact = fourway.logpdf(
-            -1, {5:v}, {0:x0, 2:x1})
+        lp_exact = fourway.logpdf(None, {5:v}, None, {0:x0, 2:x1})
         lp_fully_conditioned = state.logpdf(
-            -1, {5:v}, {0:x0, 1:1, 2:x1, 10:0}, accuracy=100)
-        lp_missing_one = state.logpdf(
-            -1, {5:v}, {0: x0, 1:1}, accuracy=100)
-        lp_missing_two = state.logpdf(
-            -1, {5:v}, accuracy=100)
+            None, {5:v}, {0:x0, 1:1, 2:x1, 10:0}, accuracy=100)
+        lp_missing_one = state.logpdf(None, {5:v}, {0: x0, 1:1}, accuracy=100)
+        lp_missing_two = state.logpdf(None, {5:v}, accuracy=100)
 
         assert np.allclose(lp_fully_conditioned, lp_exact)
         assert lp_missing_one < lp_fully_conditioned
@@ -200,20 +197,17 @@ def test_inference_quality__ci_(state):
     for v in [0, 1]:
         x1 = TwoWay.retrieve_y_for_x(v)
 
-        lp_exact = twoway.logpdf(-1, {10:v}, {0:0, 1:x1})
-        lp_fully_conditioned = state.logpdf(
-            -1, {10: v}, {0:0, 1:x1, 2:1})
-        lp_missing_one = state.logpdf(
-            -1, {10: v}, {0:0, 2:1}, accuracy=200)
+        lp_exact = twoway.logpdf(None, {10:v}, None, {0:0, 1:x1})
+        lp_fully_conditioned = state.logpdf(None, {10: v}, {0:0, 1:x1, 2:1})
+        lp_missing_one = state.logpdf(None, {10: v}, {0:0, 2:1}, accuracy=200)
 
         assert np.allclose(lp_fully_conditioned, lp_exact)
         assert lp_missing_one < lp_fully_conditioned
 
         # Invert the query conditioning on two_index.
         lp_inverse_evidence = state.logpdf(
-            -1, {0:0, 1:x1}, {10:v}, accuracy=100)
-        lp_inverse_no_evidence = state.logpdf(
-            -1, {0:0, 1:x1})
+            None, {0:0, 1:x1}, {10:v}, accuracy=100)
+        lp_inverse_no_evidence = state.logpdf(None, {0:0, 1:x1})
 
         assert lp_inverse_no_evidence < lp_inverse_evidence
 

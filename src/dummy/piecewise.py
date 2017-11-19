@@ -24,6 +24,12 @@ from cgpm.utils import general as gu
 
 
 class PieceWise(CGpm):
+    """Generates data from a linear model with a 2-mixture over the slope.
+
+    y := exogenous covariate
+    z ~ Bernoulli(.5)
+    x | z; y = y + (2*z - 1) + Normal(0, \sigma)
+    """
 
     def __init__(self, outputs, inputs, sigma=None, flip=None, distargs=None,
             rng=None):
@@ -41,98 +47,122 @@ class PieceWise(CGpm):
         self.flip = flip
         self.rng = rng
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):
         return
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert query
-        assert self.inputs[0] in evidence
-        y = evidence[self.inputs[0]]
-        # Case 1: No evidence on outputs.
-        if sorted(evidence.keys()) == sorted(self.inputs):
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert targets
+        assert inputs.keys() == self.inputs
+        y = inputs[self.inputs[0]]
+        # Case 1: No constraints on outputs.
+        if not constraints:
             z = self.rng.choice([0, 1], p=[self.flip, 1-self.flip])
             x = y + (2*z-1) + self.rng.normal(0, self.sigma)
             sample = {}
-            if self.outputs[0] in query:
+            if self.outputs[0] in targets:
                 sample[self.outputs[0]] = x
-            if self.outputs[1] in query:
+            if self.outputs[1] in targets:
                 sample[self.outputs[1]] = z
-        # Case 2: Simulating data given the latent.
-        elif self.outputs[1] in evidence:
-            assert query == [self.outputs[0]]
-            z = evidence[self.outputs[1]]
-            x = y + (2*z-1) + self.rng.normal(0, self.sigma)
+        # Case 2: Simulating x given the z.
+        elif constraints.keys() == [self.outputs[1]]:
+            assert targets == [self.outputs[0]]
+            z = constraints[self.outputs[1]]
+            x = y + (2*z - 1) + self.rng.normal(0, self.sigma)
             sample = {self.outputs[0]: x}
-        # Case 3: Simulating latent given data.
-        elif self.outputs[0] in evidence:
-            assert query == [self.outputs[1]]
+        # Case 3: Simulating z given the x.
+        elif constraints.keys() == [self.outputs[0]]:
+            assert targets == [self.outputs[1]]
             # Compute probabilities for z | x,y
-            p_z0 = self.logpdf(rowid, {self.outputs[1]: 0}, evidence)
-            p_z1 = self.logpdf(rowid, {self.outputs[1]: 1}, evidence)
+            p_z0 = self.logpdf(rowid, {self.outputs[1]: 0}, constraints, inputs)
+            p_z1 = self.logpdf(rowid, {self.outputs[1]: 1}, constraints, inputs)
             z = self.rng.choice([0, 1], p=[np.exp(p_z0), np.exp(p_z1)])
             sample = {self.outputs[1]: z}
         else:
-            raise ValueError('Misunderstood query: %s' % query)
-        assert sorted(sample.keys()) == sorted(query)
+            raise ValueError('Invalid query pattern: %s, %s, %s'
+                % (targets, constraints, inputs))
+        assert sorted(sample.keys()) == sorted(targets)
         return sample
 
-    def logpdf(self, rowid, query, evidence=None):
-        assert query
-        assert self.inputs[0] in evidence
-        y = evidence[self.inputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        assert targets
+        assert inputs.keys() == self.inputs
+        y = inputs[self.inputs[0]]
         # Case 1: No evidence on outputs.
-        if sorted(evidence.keys()) == sorted(self.inputs):
-            # Case 1.1: z in the query and x in the query.
-            if self.outputs[0] in query and self.outputs[1] in query:
-                z, x = query[self.outputs[1]], query[self.outputs[1]]
+        if not constraints:
+            # Case 1.1: z in the targets and x in the targets.
+            if self.outputs[0] in targets and self.outputs[1] in targets:
+                z, x = targets[self.outputs[1]], targets[self.outputs[1]]
                 # XXX Check if z in [0, 1]
                 logp_z = np.log(self.flip) if z == 0 else np.log(1-self.flip)
-                logp_x = logpdf_normal(x, y + (2*z-1), self.sigma)
+                logp_x = logpdf_normal(x, y + (2*z - 1), self.sigma)
                 logp = logp_x + logp_z
-            # Case 1.2: z in the query only.
-            elif self.outputs[1] in query:
-                z = query[self.outputs[1]]
+            # Case 1.2: z in the targets only.
+            elif self.outputs[1] in targets:
+                z = targets[self.outputs[1]]
                 logp_z = np.log(self.flip) if z == 0 else np.log(1-self.flip)
                 logp = logp_z
-            # Case 1.2: x in the query only.
-            elif self.outputs[0] in query:
-                x = query[self.outputs[0]]
+            # Case 1.2: x in the targets only.
+            elif self.outputs[0] in targets:
+                x = targets[self.outputs[0]]
                 logp_xz0 = self.logpdf(
-                    rowid, {self.outputs[0]: x, self.outputs[1]: 0}, evidence)
+                    rowid,
+                    {self.outputs[0]: x, self.outputs[1]: 0},
+                    constraints,
+                    inputs
+                )
                 logp_xz1 = self.logpdf(
-                    rowid, {self.outputs[0]: x, self.outputs[1]: 1}, evidence)
+                    rowid,
+                    {self.outputs[0]: x, self.outputs[1]: 1},
+                    constraints,
+                    inputs,
+                )
                 logp = gu.logsumexp([logp_xz0, logp_xz1])
             else:
-                raise ValueError('Misunderstood query: %s.' % query)
+                raise ValueError('Invalid query pattern: %s %s %s'
+                    % (targets, constraints, inputs))
         # Case 2: logpdf of x given the z.
-        elif self.outputs[1] in evidence:
-            assert query.keys() == [self.outputs[0]]
-            z = evidence[self.outputs[1]]
-            x = query[self.outputs[0]]
+        elif constraints.keys() == [self.outputs[1]]:
+            assert targets.keys() == [self.outputs[0]]
+            z = constraints[self.outputs[1]]
+            x = targets[self.outputs[0]]
             logp_xz = self.logpdf(
-                rowid, {self.outputs[0]: x, self.outputs[1]: z},
-                {self.inputs[0]: y})
-            logp_z = self.logpdf(rowid, {self.outputs[1]: z},
-                {self.inputs[0]: y})
+                rowid,
+                {self.outputs[0]: x, self.outputs[1]: z},
+                None,
+                {self.inputs[0]: y}
+            )
+            logp_z = self.logpdf(
+                rowid,
+                {self.outputs[1]: z},
+                None,
+                {self.inputs[0]: y}
+            )
             logp = logp_xz - logp_z
         # Case 2: logpdf of z given the x.
-        elif self.outputs[0] in evidence:
-            assert query.keys() == [self.outputs[1]]
-            z = query[self.outputs[1]]
-            x = evidence[self.outputs[0]]
+        elif constraints.keys() == [self.outputs[0]]:
+            assert targets.keys() == [self.outputs[1]]
+            z = targets[self.outputs[1]]
+            x = constraints[self.outputs[0]]
             logp_xz = self.logpdf(
-                rowid, {self.outputs[0]: x, self.outputs[1]: z},
-                {self.inputs[0]: y})
-            logp_x = self.logpdf(rowid, {self.outputs[0]: x},
-                {self.inputs[0]: y})
+                rowid,
+                {self.outputs[0]: x, self.outputs[1]: z},
+                None,
+                {self.inputs[0]: y}
+            )
+            logp_x = self.logpdf(
+                rowid,
+                {self.outputs[0]: x},
+                None,
+                {self.inputs[0]: y}
+            )
             logp = logp_xz - logp_x
         else:
-            raise ValueError('Misunderstood query: %s.' % query)
+            raise ValueError('Invalid query pattern: %s %s %s'
+                % (targets, constraints, inputs))
         return logp
 
     def transition(self, N=None, S=None):

@@ -57,9 +57,9 @@ class Vonmises(DistributionGpm):
         assert 0 <= self.b <= 2*pi
         assert self.k > 0
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if not (0 <= x <= 2*pi):
             raise ValueError('Invalid Vonmises: %s' % str(x))
         self.N += 1
@@ -73,18 +73,17 @@ class Vonmises(DistributionGpm):
         self.sum_sin_x -= sin(x)
         self.sum_cos_x -= cos(x)
 
-    def logpdf(self, rowid, query, evidence=None):
-        DistributionGpm.logpdf(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        DistributionGpm.logpdf(self, rowid, targets, constraints, inputs)
+        x = targets[self.outputs[0]]
         if not (0 <= x <= 2*pi):
             return -float('inf')
         return Vonmises.calc_predictive_logp(
             x, self.N, self.sum_sin_x, self.sum_cos_x, self.a, self.b, self.k)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        DistributionGpm.simulate(self, rowid, query, evidence)
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         an, bn = Vonmises.posterior_hypers(

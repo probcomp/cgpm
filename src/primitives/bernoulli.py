@@ -43,9 +43,9 @@ class Bernoulli(DistributionGpm):
         assert self.alpha > 0
         assert self.beta > 0
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if x not in [0, 1]:
             raise ValueError('Invalid Bernoulli: %s' % str(x))
         self.N += 1
@@ -57,18 +57,17 @@ class Bernoulli(DistributionGpm):
         self.N -= 1
         self.x_sum -= x
 
-    def logpdf(self, rowid, query, evidence=None):
-        DistributionGpm.logpdf(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        DistributionGpm.logpdf(self, rowid, targets, constraints, inputs)
+        x = targets[self.outputs[0]]
         if x not in [0, 1]:
             return -float('inf')
         return Bernoulli.calc_predictive_logp(
             x, self.N, self.x_sum, self.alpha, self.beta)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        DistributionGpm.simulate(self, rowid, query, evidence)
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         p0 = Bernoulli.calc_predictive_logp(

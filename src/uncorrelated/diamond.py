@@ -18,13 +18,13 @@ from cgpm.cgpm import CGpm
 from cgpm.network.importance import ImportanceNetwork
 from cgpm.uncorrelated.directed import DirectedXyGpm
 from cgpm.uncorrelated.uniformx import UniformX
-from cgpm.utils.general import gen_rng
+from cgpm.utils import general as gu
 
 
 class DiamondY(CGpm):
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
         if rng is None:
-            rng = gen_rng(1)
+            rng = gu.gen_rng(1)
         if outputs is None:
             outputs = [0]
         if inputs is None:
@@ -36,12 +36,11 @@ class DiamondY(CGpm):
         self.inputs = inputs
         self.noise = noise
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert query == self.outputs
-        assert evidence.keys() == self.inputs
-        x = evidence[self.inputs[0]]
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert targets == self.outputs
+        assert inputs.keys() == self.inputs
+        x = inputs[self.inputs[0]]
         slope = self.rng.rand()
         noise = self.rng.uniform(high=self.noise)
         if x < 0 and slope < .5:
@@ -56,7 +55,7 @@ class DiamondY(CGpm):
             raise ValueError()
         return {self.outputs[0]: y}
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         raise NotImplementedError
 
 

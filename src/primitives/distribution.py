@@ -47,19 +47,21 @@ class DistributionGpm(CGpm):
         self.data = dict()
         self.rng = gu.gen_rng() if rng is None else rng
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data
-        assert not evidence
-        assert query.keys() == self.outputs
+        assert not inputs
+        assert observation.keys() == self.outputs
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert rowid not in self.data
-        assert not evidence
-        assert query.keys() == self.outputs
+        assert not inputs
+        assert not constraints
+        assert targets.keys() == self.outputs
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        assert not evidence
-        assert query == self.outputs
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert not constraints
+        assert not inputs
+        assert targets == self.outputs
 
     ##################
     # NON-GPM METHOD #
@@ -137,5 +139,5 @@ class DistributionGpm(CGpm):
 
     @staticmethod
     def is_numeric():
-        """Is the support of the pdf a numeric of symbolic set?"""
+        """Is the support of the pdf a numeric or a symbolic set?"""
         raise NotImplementedError

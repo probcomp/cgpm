@@ -34,81 +34,83 @@ from cgpm.utils.general import merged
 from cgpm.utils.validation import partition_query_evidence
 
 
-def state_logpdf(state, rowid, query, evidence=None):
-    (queries, evidences) = partition_query_evidence(state.Zv(), query, evidence)
+def state_logpdf(state, rowid, targets, constraints=None):
+    targets_lookup, constraints_lookup = partition_query_evidence(
+        state.Zv(), targets, constraints)
     logps = (
         view_logpdf(
             view=state.views[v],
             rowid=rowid,
-            query=queries[v],
-            evidence=evidences.get(v, dict())
+            targets=targets_lookup[v],
+            constraints=constraints_lookup.get(v, {})
         )
-        for v in queries
+        for v in targets_lookup
     )
     return sum(logps)
 
 
-def state_simulate(state, rowid, query, evidence=None, N=None):
-    (queries, evidences) = partition_query_evidence(state.Zv(), query, evidence)
+def state_simulate(state, rowid, targets, constraints=None, N=None):
+    targets_lookup, constraints_lookup = partition_query_evidence(
+        state.Zv(), targets, constraints)
     N_sim = N if N is not None else 1
     draws = (
         view_simulate(
             view=state.views[v],
             rowid=rowid,
-            query=queries[v],
-            evidence=evidences.get(v, dict()),
+            targets=targets_lookup[v],
+            constraints=constraints_lookup.get(v, {}),
             N=N_sim
         )
-        for v in queries
+        for v in targets_lookup
     )
     samples = [merged(*l) for l in zip(*draws)]
     return samples if N is not None else samples[0]
 
 
-def view_logpdf(view, rowid, query, evidence):
+def view_logpdf(view, rowid, targets, constraints):
     if not view.hypothetical(rowid):
-        return _logpdf_row(view, query, view.Zr(rowid))
+        return _logpdf_row(view, targets, view.Zr(rowid))
     Nk = view.Nk()
     N_rows = len(view.Zr())
     K = view.crp.clusters[0].gibbs_tables(-1)
     lp_crp = [Crp.calc_predictive_logp(k, N_rows, Nk, view.alpha()) for k in K]
-    lp_evidence = [_logpdf_row(view, evidence, k) for k in K]
-    if all(np.isinf(lp_evidence)):
-        raise ValueError('Zero density evidence: %s' % (evidence))
-    lp_cluster = log_normalize(np.add(lp_crp, lp_evidence))
-    lp_query = [_logpdf_row(view, query, k) for k in K]
-    return logsumexp(np.add(lp_cluster, lp_query))
+    lp_constraints = [_logpdf_row(view, constraints, k) for k in K]
+    if all(np.isinf(lp_constraints)):
+        raise ValueError('Zero density constraints: %s' % (constraints,))
+    lp_cluster = log_normalize(np.add(lp_crp, lp_constraints))
+    lp_targets = [_logpdf_row(view, targets, k) for k in K]
+    return logsumexp(np.add(lp_cluster, lp_targets))
 
 
-def view_simulate(view, rowid, query, evidence, N):
+def view_simulate(view, rowid, targets, constraints, N):
     if not view.hypothetical(rowid):
-        return _simulate_row(view, query, view.Zr(rowid), N)
+        return _simulate_row(view, targets, view.Zr(rowid), N)
     Nk = view.Nk()
     N_rows = len(view.Zr())
     K = view.crp.clusters[0].gibbs_tables(-1)
     lp_crp = [Crp.calc_predictive_logp(k, N_rows, Nk, view.alpha()) for k in K]
-    lp_evidence = [_logpdf_row(view, evidence, k) for k in K]
-    if all(np.isinf(lp_evidence)):
-        raise ValueError('Zero density evidence: %s' % (evidence))
-    lp_cluster = np.add(lp_crp, lp_evidence)
+    lp_constraints = [_logpdf_row(view, constraints, k) for k in K]
+    if all(np.isinf(lp_constraints)):
+        raise ValueError('Zero density constraints: %s' % (constraints,))
+    lp_cluster = np.add(lp_crp, lp_constraints)
     ks = log_pflip(lp_cluster, array=K, size=N, rng=view.rng)
     counts = {k:n for k,n in enumerate(np.bincount(ks)) if n > 0}
-    samples = (_simulate_row(view, query, k, counts[k]) for k in counts)
+    samples = (_simulate_row(view, targets, k, counts[k]) for k in counts)
     return chain.from_iterable(samples)
 
 
-def _logpdf_row(view, query, cluster):
-    """Return joint density of the query in a fixed cluster."""
+def _logpdf_row(view, targets, cluster):
+    """Return joint density of the targets in a fixed cluster."""
     return sum(
-        view.dims[c].logpdf(None, {c:x}, {view.outputs[0]: cluster})
-        for c, x in query.iteritems()
+        view.dims[c].logpdf(None, {c:x}, None, {view.outputs[0]: cluster})
+        for c, x in targets.iteritems()
     )
 
 
-def _simulate_row(view, query, cluster, N):
-    """Return sample of the query in a fixed cluster."""
+def _simulate_row(view, targets, cluster, N):
+    """Return sample of the targets in a fixed cluster."""
     samples = (
-        view.dims[c].simulate(None, [c], {view.outputs[0]: cluster}, N)
-        for c in query
+        view.dims[c].simulate(None, [c], None, {view.outputs[0]: cluster}, N)
+        for c in targets
     )
     return (merged(*l) for l in zip(*samples))

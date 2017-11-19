@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Inference quality tests for the conditional GPM  (aka foreign predictor)
-features of State."""
-
 import time
 
 import numpy as np
@@ -34,32 +31,32 @@ class TwoWay(CGpm):
         self.rng = rng
         self.probabilities =[
             [.9, .1],
-            [.3, .7]]
+            [.3, .7],
+        ]
         assert len(outputs) == 1
         assert len(inputs) == 1
         self.outputs = list(outputs)
         self.inputs = list(inputs)
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):
         return
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        y = evidence[self.inputs[0]]
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        y = inputs[self.inputs[0]]
         assert int(y) == float(y)
         assert y in [0, 1]
         x = gu.pflip(self.probabilities[y], rng=self.rng)
         return {self.outputs[0]: x}
 
-    def logpdf(self, rowid, query, evidence=None):
-        y = evidence[self.inputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        y = inputs[self.inputs[0]]
         assert int(y) == float(y)
         assert y in [0, 1]
-        x = query[self.outputs[0]]
+        x = targets[self.outputs[0]]
         return np.log(self.probabilities[y][x]) if x in [0,1] else -float('inf')
 
     def transition(self, N=None):
@@ -67,8 +64,10 @@ class TwoWay(CGpm):
 
     @staticmethod
     def retrieve_y_for_x(x):
-        if x == 0: return 0
-        if x == 1: return 1
+        if x == 0:
+            return 0
+        if x == 1:
+            return 1
         raise ValueError('Invalid value: %s' % str(x))
 
     def to_metadata(self):
@@ -80,8 +79,10 @@ class TwoWay(CGpm):
 
     @classmethod
     def from_metadata(cls, metadata, rng=None):
-        if rng is None: rng = gu.gen_rng(0)
+        if rng is None:
+            rng = gu.gen_rng(0)
         return cls(
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
-            rng=rng)
+            rng=rng,
+        )

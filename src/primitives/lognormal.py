@@ -50,9 +50,9 @@ class Lognormal(DistributionGpm):
         assert self.s > 0.
         assert self.nu > 0.
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if x <= 0:
             raise ValueError('Invalid Lognormal: %s' % str(x))
         self.N += 1
@@ -66,9 +66,9 @@ class Lognormal(DistributionGpm):
         self.sum_log_x -= log(x)
         self.sum_log_x_sq -= log(x) * log(x)
 
-    def logpdf(self, rowid, query, evidence=None):
-        DistributionGpm.logpdf(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        DistributionGpm.logpdf(self, rowid, targets, constraints, inputs)
+        x = targets[self.outputs[0]]
         if x <= 0:
             return -float('inf')
         return - log(x) + \
@@ -76,12 +76,11 @@ class Lognormal(DistributionGpm):
                 log(x), self.N, self.sum_log_x, self.sum_log_x_sq, self.m,
                 self.r, self.s, self.nu)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         # XXX This implementation is not verified but will be covered in
         # future univariate simulate tests, see Github issue #14.
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        DistributionGpm.simulate(self, rowid, query, evidence)
+        DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         # Simulate normal parameters.

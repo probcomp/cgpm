@@ -57,23 +57,23 @@ def engine():
 
 
 
-def adhoc_state_logpdf_network(state, rowid, query, evidence):
+def adhoc_state_logpdf_network(state, rowid, targets, constraints):
     """Force state to use network logpdf by adding a cgpm."""
     dummy = DummyCgpm(inputs=state.outputs, outputs=[100000])
     token = state.compose_cgpm(dummy)
     assert state._composite
-    logpdf = state.logpdf(rowid, query, evidence)
+    logpdf = state.logpdf(rowid, targets, constraints)
     state.decompose_cgpm(token)
     assert not state._composite
     return logpdf
 
 
-def adhoc_state_simulate_network(state, rowid, query, evidence, N):
+def adhoc_state_simulate_network(state, rowid, targets, constraints, N):
     """Force state to use network simulate by adding a cgpm."""
     dummy = DummyCgpm(inputs=state.outputs, outputs=[100000])
     token = state.compose_cgpm(dummy)
     assert state._composite
-    samples = state.simulate(rowid, query, evidence, N)
+    samples = state.simulate(rowid, targets, constraints=constraints, N=N)
     state.decompose_cgpm(token)
     assert not state._composite
     return samples
@@ -81,63 +81,63 @@ def adhoc_state_simulate_network(state, rowid, query, evidence, N):
 
 def test_logpdf_joint_conformance(engine):
     rowid = -1
-    query = {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
+    targets = {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
 
-    lp_direct = engine.logpdf(rowid, query)
+    lp_direct = engine.logpdf(rowid, targets, multiprocess=0)
     lp_network = [
-        adhoc_state_logpdf_network(s, rowid, query, None)
-        for s in engine.states
+        adhoc_state_logpdf_network(state, rowid, targets, None)
+        for state in engine.states
     ]
     assert np.allclose(lp_direct, lp_network)
 
 
 def test_logpdf_conditional_conformance(engine):
     rowid = -1
-    query = {1:2, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
-    evidence = {0:1, 2:1, 3:3}
+    targets = {1:2, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
+    constraints = {0:1, 2:1, 3:3}
 
-    lp_direct = engine.logpdf(rowid, query, evidence)
+    lp_direct = engine.logpdf(rowid, targets, constraints, multiprocess=0)
     lp_network = [
-        adhoc_state_logpdf_network(s, rowid, query, evidence)
-        for s in engine.states
+        adhoc_state_logpdf_network(state, rowid, targets, constraints)
+        for state in engine.states
     ]
     assert np.allclose(lp_direct, lp_network)
 
 
 def test_crash_logpdf_joint_observed(engine):
     rowid = 1
-    query = {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
+    targets = {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
 
     for state in engine.states:
         with pytest.raises(ValueError):
-            state.logpdf(rowid, query)
+            state.logpdf(rowid, targets)
         with pytest.raises(ValueError):
-            adhoc_state_logpdf_network(state, rowid, query, None)
+            adhoc_state_logpdf_network(state, rowid, targets, None)
 
 
 def test_crash_logpdf_conditional_observed(engine):
     rowid = 1
-    query = {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
-    evidence = {0:1, 2:1, 3:3}
+    targets = {0:1, 1:2, 2:1, 3:3, 4:1, 5:10, 6:.4, 7:2, 8:1.8}
+    constraints = {0:1, 2:1, 3:3}
 
     for state in engine.states:
         with pytest.raises(ValueError):
-            state.logpdf(rowid, query)
+            state.logpdf(rowid, targets)
         with pytest.raises(ValueError):
-            adhoc_state_logpdf_network(state, rowid, query, None)
+            adhoc_state_logpdf_network(state, rowid, targets, None)
 
 
 def test_crash_simulate_conditional_observed(engine):
     rowid = 1
-    query = [1, 4, 5, 6, 7, 8]
-    evidence = {0:1, 2:1, 3:3}
+    targets = [1, 4, 5, 6, 7, 8]
+    constraints = {0:1, 2:1, 3:3}
     N = 10
 
     for state in engine.states:
         with pytest.raises(ValueError):
-            state.simulate(rowid, query, evidence, N)
+            state.simulate(rowid, targets, constraints, None, N)
         with pytest.raises(ValueError):
-            adhoc_state_simulate_network(state, rowid, query, evidence, N)
+            adhoc_state_simulate_network(state, rowid, targets, constraints, N)
 
 
 def test_logpdf_chain_rule(engine):
@@ -146,23 +146,23 @@ def test_logpdf_chain_rule(engine):
         joint = engine.logpdf(-1, {0:1, 1:2}, multiprocess=False)
     with Timer() as t:
         chain = np.add(
-            engine.logpdf(-1, {0:1}, evidence={1:2}, multiprocess=False),
+            engine.logpdf(-1, {0:1}, constraints={1:2}, multiprocess=False),
             engine.logpdf(-1, {1:2}, multiprocess=False))
     assert np.allclose(joint, chain)
 
 
 def test_zero_length_samples(engine):
     rowid = 1
-    query = [1, 4]
-    evidence = {}
+    targets = [1, 4]
+    constraints = {}
     N = 0
 
-    samples_a = engine.simulate(rowid, query, evidence, N)
+    samples_a = engine.simulate(rowid, targets, constraints, None, N)
     for s in samples_a:
         assert len(s) == 0
 
     samples_b = [
-        adhoc_state_simulate_network(state, rowid, query, evidence, N)
+        adhoc_state_simulate_network(state, rowid, targets, constraints, N)
         for state in engine.states
     ]
     for s in samples_b:

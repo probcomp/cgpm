@@ -102,7 +102,7 @@ def test_incorporate():
     # Cannot incorporate a latent variable.
     with pytest.raises(ValueError):
         fa.incorporate(0, {4:1, 5:1, 9:1, 0:0})
-    # Cannot incorporate with evidence.
+    # Cannot incorporate with inputs.
     with pytest.raises(ValueError):
         fa.incorporate(0, {4:1, 5:1, 9:1}, {0:0})
     # Need a query variable.
@@ -175,8 +175,8 @@ def test_logpdf_simulate_rigorous(outputs, L):
         # Compute using the marginalize features of fact.fa.
         mG, covG = FactorAnalysis.mvn_condition(
             fact.mu, fact.cov,
-            query=fact.reindex(outputs[-L:]),
-            evidence={
+            fact.reindex(outputs[-L:]),
+            {
                 fact.reindex([outputs[0]])[0]: row[0],
                 fact.reindex([outputs[1]])[0]: row[1],
                 fact.reindex([outputs[2]])[0]: row[2],
@@ -189,18 +189,14 @@ def test_logpdf_simulate_rigorous(outputs, L):
         assert np.allclose(S2, covG)
 
         # TEST 2: Log density of observation.
-        # Compue using the factor analyzer.
+        # Compute using the factor analyzer.
         logp1 = fact.fa.score(np.asarray([row]))
         # Compute manually.
         logp2 = multivariate_normal.logpdf(row, mu, Phi + np.dot(W, W.T))
         # Compute using fact with rowid=-1.
-        logp3 = fact.logpdf(
-            rowid=-1,
-            query={o: row[i] for i,o in enumerate(outputs[:-L])})
+        logp3 = fact.logpdf(-1, {o: row[i] for i,o in enumerate(outputs[:-L])})
         # Compute using fact with rowid=r.
-        logp4 = fact.logpdf(
-            rowid=rowid,
-            query={o: row[i] for i,o in enumerate(outputs[:-L])})
+        logp4 = fact.logpdf(rowid, {o: row[i] for i,o in enumerate(outputs[:-L])})
         assert np.allclose(logp1, logp2)
         assert np.allclose(logp2, logp3)
         assert np.allclose(logp3, logp4)
@@ -219,19 +215,21 @@ def test_logpdf_simulate_rigorous(outputs, L):
         # Using a hypothetical rowid.
         samples_a = fact.simulate(
             rowid=-1,
-            query=outputs[-L:],
-            evidence={
+            targets=outputs[-L:],
+            constraints={
                 outputs[0]: row[0],
                 outputs[1]: row[1],
                 outputs[2]: row[2],
                 outputs[3]: row[3]},
-            N=2000)
+            N=2000
+        )
         check_mean_covariance_match(samples_a)
         # Using observed rowid.
         samples_b = fact.simulate(
             rowid=rowid,
-            query=outputs[-L:],
-            N=2000)
+            targets=outputs[-L:],
+            N=2000
+        )
         check_mean_covariance_match(samples_b)
 
 def test_serialize():

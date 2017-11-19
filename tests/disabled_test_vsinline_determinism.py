@@ -36,7 +36,7 @@ vsy_s5 = InlineVsCGpm([1], [0],
     rng=gu.gen_rng(5))
 
 # Simulate the uniform x from vsx.
-samples_x4 = vsx_s4.simulate(0, [0], evidence=None, N=200)
+samples_x4 = vsx_s4.simulate(0, [0], N=200)
 
 # Simulate Y from each of the seed 4 and 5.
 samples_y4 = [vsy_s4.simulate(0, [1], sx) for sx in samples_x4]

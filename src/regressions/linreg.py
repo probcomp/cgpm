@@ -91,12 +91,12 @@ class LinearRegression(CGpm):
         self.mu = hypers.get('mu', np.zeros(self.p))
         self.V = hypers.get('V', np.eye(self.p))
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data.x
         assert rowid not in self.data.Y
-        if self.outputs[0] not in query:
-            raise ValueError('No query in incorporate: %s.' % query)
-        x, y = self.preprocess(query, evidence)
+        if self.outputs[0] not in observation:
+            raise ValueError('No observation in incorporate: %s' % observation)
+        x, y = self.preprocess(observation, inputs)
         self.N += 1
         self.data.x[rowid] = x
         self.data.Y[rowid] = y
@@ -109,20 +109,21 @@ class LinearRegression(CGpm):
             raise ValueError('No such observation: %d' % rowid)
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence=None):
-        xt, yt = self.preprocess(query, evidence)
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert rowid not in self.data.x
+        assert not constraints
+        xt, yt = self.preprocess(targets, inputs)
         return LinearRegression.calc_predictive_logp(
             xt, yt, self.N, self.data.Y.values(), self.data.x.values(), self.a,
             self.b, self.mu, self.V)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert query == self.outputs
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert targets == self.outputs
+        assert not constraints
         if rowid in self.data.x:
             return {self.outputs[0]: self.data.x[rowid]}
-        xt, yt = self.preprocess(None, evidence)
+        xt, yt = self.preprocess(None, inputs)
         sigma2, b = self.simulate_params()
         x = self.rng.normal(np.dot(yt, b), np.sqrt(sigma2))
         return {self.outputs[0]: x}
@@ -235,25 +236,25 @@ class LinearRegression(CGpm):
         return {c: compute_offset(c) for c in numericals}
 
 
-    def preprocess(self, query, evidence):
-        # Retrieve the value x of the query variable.
-        if self.outputs[0] in evidence:
-            raise ValueError('Cannot condition on output {}: {}'.format(
-                    self.outputs, evidence.keys()))
-        if query:
-            x = query.get(self.outputs[0], 'missing')
+    def preprocess(self, targets, inputs):
+        # Retrieve the value x of the target variable.
+        if self.outputs[0] in inputs:
+            raise ValueError('Cannot specify output as input %s: %s'
+                % (self.outputs, inputs.keys()))
+        if targets:
+            x = targets.get(self.outputs[0], 'missing')
             if x == 'missing':
-                raise ValueError(
-                    'No query: %s, %s.' % (self.outputs, query))
+                raise ValueError('No targets: %s, %s'
+                    % (self.outputs, targets))
             elif x is None or np.isnan(x):
-                raise ValueError('Invalid query: %s.' % query)
+                raise ValueError('Invalid targets: %s' % (targets,))
         else:
             x = None
         # Crash on missing inputs since it violates a CGPM contract!
-        if set(evidence.keys()) != set(self.inputs):
-            raise ValueError('Missing inputs: %s, %s' % (evidence, self.inputs))
+        if set(inputs.keys()) != set(self.inputs):
+            raise ValueError('Missing inputs: %s, %s' % (inputs, self.inputs))
         # Retrieve the covariates.
-        y = [evidence.get(i) for i in self.inputs]
+        y = [inputs.get(i) for i in self.inputs]
         # Dummy code covariates.
         y = du.dummy_code(y, self.inputs_discrete)
         assert len(y) == self.p-1

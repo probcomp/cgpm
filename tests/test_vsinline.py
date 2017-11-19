@@ -61,7 +61,7 @@ def test_simulate_uniform():
         assert np.allclose(vs.logpdf(0, {0:x}), lp)
     assert np.isinf(vs.logpdf(0, {0:12}))
 
-    samples = vs.simulate(0, [0], evidence=None, N=200)
+    samples = vs.simulate(0, [0], None, None, N=200)
     extracted = [s[0] for s in samples]
     fig, ax = plt.subplots()
     ax.hist(extracted)
@@ -81,8 +81,8 @@ def test_simulate_noisy_cos():
                 {uniform(low: cos(x), high: cos(x) + .5)}}""",
         rng=gu.gen_rng(12))
 
-    samples_x = vs_x.simulate(0, [0], evidence=None, N=200)
-    samples_y = [vs_y.simulate(0, [1], sx) for sx in samples_x]
+    samples_x = vs_x.simulate(0, [0], None, None, N=200)
+    samples_y = [vs_y.simulate(0, [1], None, sx) for sx in samples_x]
 
     # Plot the joint query.
     fig, ax = plt.subplots()
@@ -100,6 +100,8 @@ def test_simulate_noisy_cos():
 
     # Plot the density from y=0 to y=2 for x = 0
     fig, ax = plt.subplots()
-    logpdfs = np.exp(
-        [vs_y.logpdf(0, {1:y}, {0:0}) for y in np.linspace(0,2,50)])
+    logpdfs = np.exp([
+        vs_y.logpdf(0, {1:y}, None, {0:0})
+        for y in np.linspace(0,2,50)
+    ])
     ax.plot(np.linspace(0, 2, 50), logpdfs)

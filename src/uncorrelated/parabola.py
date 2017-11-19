@@ -21,15 +21,15 @@ from scipy.stats import uniform
 
 from cgpm.cgpm import CGpm
 from cgpm.network.importance import ImportanceNetwork
-from cgpm.uncorrelated.uniformx import UniformX
 from cgpm.uncorrelated.directed import DirectedXyGpm
-from cgpm.utils.general import gen_rng
+from cgpm.uncorrelated.uniformx import UniformX
+from cgpm.utils import general as gu
 
 
 class ParabolaY(CGpm):
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
         if rng is None:
-            rng = gen_rng(1)
+            rng = gu.gen_rng(1)
         if outputs is None:
             outputs = [0]
         if inputs is None:
@@ -42,12 +42,12 @@ class ParabolaY(CGpm):
         self.noise = noise
         self.uniform = uniform(loc=-self.noise, scale=2*self.noise)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert query == self.outputs
-        assert evidence.keys() == self.inputs
-        x = evidence[self.inputs[0]]
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert targets == self.outputs
+        assert inputs.keys() == self.inputs
+        assert not constraints
+        x = inputs[self.inputs[0]]
         u = self.rng.rand()
         noise = self.rng.uniform(low=-self.noise, high=self.noise)
         if u < .5:
@@ -56,14 +56,16 @@ class ParabolaY(CGpm):
             y = -(x**2 + noise)
         return {self.outputs[0]: y}
 
-    def logpdf(self, rowid, query, evidence=None):
-        assert query.keys() == self.outputs
-        assert evidence.keys() == self.inputs
-        x = evidence[self.inputs[0]]
-        y = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        assert targets.keys() == self.outputs
+        assert inputs.keys() == self.inputs
+        assert not constraints
+        x = inputs[self.inputs[0]]
+        y = targets[self.outputs[0]]
         return logsumexp([
             np.log(.5)+self.uniform.logpdf(y-x**2),
-            np.log(.5)+self.uniform.logpdf(-y-x**2)])
+            np.log(.5)+self.uniform.logpdf(-y-x**2)
+        ])
 
 
 class Parabola(DirectedXyGpm):

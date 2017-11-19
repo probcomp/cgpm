@@ -90,22 +90,22 @@ class MultivariateKde(CGpm):
         # Parameters of the kernels.
         self.bw = params.get('bw', [self._default_bw(o) for o in self.outputs])
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         # No duplicate observation.
         if rowid in self.data:
             raise ValueError('Already observed: %d.' % rowid)
-        # No evidence.
-        if evidence:
-            raise ValueError('No evidence allowed: %s.' % evidence)
-        # Missing query.
-        if not query:
-            raise ValueError('No query specified: %s.' % query)
+        # No inputs.
+        if inputs:
+            raise ValueError('No inputs allowed: %s.' % inputs)
+        # Missing observation.
+        if not observation:
+            raise ValueError('No observation specified: %s.' % observation)
         # No unknown variables.
-        if any(q not in self.outputs for q in query):
+        if any(q not in self.outputs for q in observation):
             raise ValueError('Unknown variables: (%s,%s).'
-                % (query, self.outputs))
+                % (observation, self.outputs))
         # Incorporate observed variables.
-        x = [query.get(q, np.nan) for q in self.outputs]
+        x = [observation.get(q, np.nan) for q in self.outputs]
         # Update dataset and counts.
         self.data[rowid] = x
         self.N += 1
@@ -117,72 +117,80 @@ class MultivariateKde(CGpm):
             raise ValueError('No such observation: %d.' % rowid)
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         if self.N == 0:
             raise ValueError('KDE requires at least one observation.')
-        evidence = self.populate_evidence(rowid, query, evidence)
-        if not query:
-            raise ValueError('No query: %s.' % query)
-        if any(np.isnan(v) for v in query.values()):
-            raise ValueError('Cannot query nan values: %s' % query)
-        if any(q not in self.outputs for q in query):
-            raise ValueError('Unknown variables: (%s,%s).'
-                % (query, self.outputs))
-        if any(q in evidence for q in query):
-            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
-        if not evidence:
+        constraints = self.populate_constraints(rowid, targets, constraints)
+        if inputs:
+            raise ValueError('Prohibited inputs: %s' % (inputs,))
+        if not targets:
+            raise ValueError('No targets: %s' % (targets,))
+        if any(np.isnan(v) for v in targets.values()):
+            raise ValueError('Invalid nan values in targets: %s' % (targets,))
+        if any(q not in self.outputs for q in targets):
+            raise ValueError('Unknown targets: %s' % (targets,))
+        if any(q in constraints for q in targets):
+            raise ValueError('Duplicate variable: %s, %s'
+                % (targets, constraints,))
+        if not constraints:
             model = kernel_density.KDEMultivariate(
-                self._dataset(query),
-                self._stattypes(query),
-                bw=self._bw(query))
-            pdf = model.pdf(query.values())
+                self._dataset(targets),
+                self._stattypes(targets),
+                bw=self._bw(targets),
+            )
+            pdf = model.pdf(targets.values())
         else:
-            full_members = self._dataset(query.keys() + evidence.keys())
+            full_members = self._dataset(targets.keys() + constraints.keys())
             model = kernel_density.KDEMultivariateConditional(
-                full_members[:,:len(query)],
-                full_members[:,len(query):],
-                self._stattypes(query),
-                self._stattypes(evidence),
-                bw=np.concatenate((self._bw(query), self._bw(evidence))))
-            pdf = model.pdf(query.values(), evidence.values())
+                full_members[:,:len(targets)],
+                full_members[:,len(targets):],
+                self._stattypes(targets),
+                self._stattypes(constraints),
+                bw=np.concatenate((self._bw(targets), self._bw(constraints))),
+            )
+            pdf = model.pdf(targets.values(), constraints.values())
         return np.log(pdf)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         if self.N == 0:
             raise ValueError('KDE requires at least one observation.')
-        evidence = self.populate_evidence(rowid, query, evidence)
-        if not query:
-            raise ValueError('No query: %s.' % query)
-        if any(q not in self.outputs for q in query):
-            raise ValueError(
-                'Unknown variables: (%s,%s).' % (query, self.outputs))
-        if any(q in evidence for q in query):
-            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
-        if evidence:
-            full_members = self._dataset(query + evidence.keys())
+        if inputs:
+            raise ValueError('Prohibited inputs: %s' % (inputs,))
+        if not targets:
+            raise ValueError('No targets: %s' % (targets,))
+        if any(q not in self.outputs for q in targets):
+            raise ValueError('Unknown targets: %s' % (targets,))
+        if constraints and any(q in constraints for q in targets):
+            raise ValueError('Duplicate variable: %s, %s'
+                % (targets, constraints,))
+        constraints = self.populate_constraints(rowid, targets, constraints)
+        if constraints:
+            full_members = self._dataset(targets + constraints.keys())
             weights = _kernel_base.gpke(
-                self._bw(evidence),
-                full_members[:,len(query):],
-                evidence.values(),
-                self._stattypes(evidence),
-                tosum=False)
-            query_members = full_members[:,:len(query)]
+                self._bw(constraints),
+                full_members[:,len(targets):],
+                constraints.values(),
+                self._stattypes(constraints),
+                tosum=False,
+            )
+            targets_members = full_members[:,:len(targets)]
         else:
-            query_members = self._dataset(query)
-            weights = [1] * len(query_members)
-        assert len(weights) == len(query_members)
+            targets_members = self._dataset(targets)
+            weights = [1] * len(targets_members)
+        assert len(weights) == len(targets_members)
         index = gu.pflip(weights, size=N, rng=self.rng)
-        return self._simulate_member(query_members[index], query) if N is None\
-            else [self._simulate_member(query_members[i], query) for i in index]
+        if N is None:
+            return self._simulate_member(targets_members[index], targets)
+        return [self._simulate_member(targets_members[i], targets) for i in index]
 
-    def _simulate_member(self, row, query):
-        assert len(row) == len(query)
+    def _simulate_member(self, row, targets):
+        assert len(row) == len(targets)
         lookup = {
             'c': self._simulate_gaussian_kernel,
             'u': self._simulate_aitchison_aitken_kernel
         }
-        funcs = [lookup[s] for s in self._stattypes(query)]
-        return {q: f(q, v) for f, q, v in zip(funcs, query, row)}
+        funcs = [lookup[s] for s in self._stattypes(targets)]
+        return {q: f(q, v) for f, q, v in zip(funcs, targets, row)}
 
     def _simulate_gaussian_kernel(self, q, Xi):
         idx = self.outputs.index(q)
@@ -200,12 +208,12 @@ class MultivariateKde(CGpm):
         return self.rng.choice(range(c), p=probs)
 
     def logpdf_score(self):
-        def compute_logpdf(r, x):
+        def compute_logpdf(rowid, x):
             assert len(x) == len(self.outputs)
-            query = {self.outputs[i]: v
+            targets = {self.outputs[i]: v
                 for i, v in enumerate(x) if not np.isnan(v)}
-            return self.logpdf(r, query, evidence=None)
-        return sum(compute_logpdf(r, x) for r, x in self.data.iteritems())
+            return self.logpdf(rowid, targets)
+        return sum(compute_logpdf(rowid, x) for rowid, x in self.data.items())
 
     def transition(self, N=None):
         if self.N > 0:
@@ -219,8 +227,8 @@ class MultivariateKde(CGpm):
     # --------------------------------------------------------------------------
     # Internal.
 
-    def _dataset(self, query):
-        indexes = [self.outputs.index(q) for q in query]
+    def _dataset(self, outputs):
+        indexes = [self.outputs.index(q) for q in outputs]
         X = np.asarray(self.data.values())[:,indexes]
         return X[~np.any(np.isnan(X), axis=1)]
 
@@ -228,12 +236,12 @@ class MultivariateKde(CGpm):
         i = self.outputs.index(q)
         return 1 if self.stattypes[i] == 'numerical' else .1
 
-    def _bw(self, query):
-        indexes = [self.outputs.index(q) for q in query]
+    def _bw(self, outputs):
+        indexes = [self.outputs.index(q) for q in outputs]
         return np.asarray([self.bw[i] for i in indexes])
 
-    def _stattypes(self, query):
-        indexes = [self.outputs.index(q) for q in query]
+    def _stattypes(self, outputs):
+        indexes = [self.outputs.index(q) for q in outputs]
         lookup = {
             'numerical': 'c',
             'categorical': 'u',
@@ -241,17 +249,21 @@ class MultivariateKde(CGpm):
         }
         return str.join('', [lookup[self.stattypes[i]] for i in indexes])
 
-    def populate_evidence(self, rowid, query, evidence):
-        if evidence is None:
-            evidence = {}
+    def populate_constraints(self, rowid, targets, constraints):
+        if constraints is None:
+            constraints = {}
         if rowid in self.data:
             values = self.data[rowid]
             assert len(values) == len(self.outputs)
-            evidence_obs = {e:v for e,v in zip(self.outputs, values)
-                if not np.isnan(v) and e not in query and e not in evidence
+            observations = {
+                output : value
+                for output, value in zip(self.outputs, values)
+                if not np.isnan(value)
+                    and output not in targets
+                    and output not in constraints
             }
-            evidence = gu.merged(evidence, evidence_obs)
-        return evidence
+            constraints = gu.merged(constraints, observations)
+        return constraints
 
     def get_params(self):
         return {

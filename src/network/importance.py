@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 from math import isinf
 
 from cgpm.network import helpers as hu
@@ -34,69 +36,94 @@ class ImportanceNetwork(object):
         self.extraneous = hu.retrieve_extraneous_inputs(self.cgpms, self.v_to_c)
         self.topo = hu.topological_sort(self.adjacency)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        if evidence is None: evidence = {}
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        if constraints is None:
+            constraints = {}
+        if inputs is None:
+            inputs = {}
         samples, weights = zip(*[
-            self.weighted_sample(rowid, query, evidence)
-            for i in xrange(self.accuracy)
+            self.weighted_sample(rowid, targets, constraints, inputs)
+            for _i in xrange(self.accuracy)
         ])
         if all(isinf(l) for l in weights):
-            raise ValueError('Zero density evidence: %s' % (evidence))
+            raise ValueError('Zero density constraints: %s' % (constraints,))
         # Skip an expensive random choice if there is only one option.
         index = 0 if self.accuracy == 1 else \
             gu.log_pflip(weights, rng=self.rng)
-        return {q: samples[index][q] for q in query}
+        return {q: samples[index][q] for q in targets}
 
-    def logpdf(self, rowid, query, evidence=None):
-        if evidence is None: evidence = {}
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        if constraints is None:
+            constraints = {}
+        if inputs is None:
+            inputs = {}
         # Compute joint probability.
         samples_joint, weights_joint = zip(*[
-            self.weighted_sample(rowid, [], gu.merged(evidence, query))
-            for i in xrange(self.accuracy)
+            self.weighted_sample(
+                rowid, [], gu.merged(targets, constraints), inputs)
+            for _i in xrange(self.accuracy)
         ])
         logp_joint = gu.logmeanexp(weights_joint)
         # Compute marginal probability.
         samples_marginal, weights_marginal = zip(*[
-            self.weighted_sample(rowid, [], evidence)
-            for i in xrange(self.accuracy)
-        ]) if evidence else ({}, [0.])
+            self.weighted_sample(rowid, [], constraints, inputs)
+            for _i in xrange(self.accuracy)
+        ]) if constraints else ({}, [0.])
         if all(isinf(l) for l in weights_marginal):
-            raise ValueError('Zero density evidence: %s' % (evidence))
-        logp_evidence = gu.logmeanexp(weights_marginal)
+            raise ValueError('Zero density constraints: %s' % (constraints,))
+        logp_constraints = gu.logmeanexp(weights_marginal)
         # Return log ratio.
-        return logp_joint - logp_evidence
+        return logp_joint - logp_constraints
 
-    def weighted_sample(self, rowid, query, evidence):
-        query_all = query + self.retrieve_missing_inputs(query, evidence)
-        sample = dict(evidence)
+    def weighted_sample(self, rowid, targets, constraints, inputs):
+        targets_required = self.retrieve_required_inputs(targets, constraints)
+        targets_all = targets + targets_required
+        sample = dict(constraints)
         weight = 0
         for l in self.topo:
-            sl, wl = self.invoke_cgpm(rowid, self.cgpms[l], query_all, sample)
+            sl, wl = self.invoke_cgpm(
+                rowid, self.cgpms[l], targets_all, sample, inputs)
             sample.update(sl)
             weight += wl
-        assert set(sample.keys()) == set.union(set(evidence), set(query_all))
+        assert set(sample) == set.union(set(constraints), set(targets_all))
         return sample, weight
 
-    def invoke_cgpm(self, rowid, cgpm, query, evidence):
-        ev_in = {e:x for e,x in evidence.iteritems() if e in cgpm.inputs}
-        ev_out = {e:x for e,x in evidence.iteritems() if e in cgpm.outputs}
-        ev_all = gu.merged(ev_in, ev_out)
-        qry_out = [q for q in query if q in cgpm.outputs]
-        if ev_out or qry_out: assert all(i in evidence for i in cgpm.inputs)
-        weight = cgpm.logpdf(rowid, ev_out, ev_in) if ev_out else 0
-        sample = cgpm.simulate(rowid, qry_out, ev_all) if qry_out else {}
+    def invoke_cgpm(self, rowid, cgpm, targets, constraints, inputs):
+        cgpm_inputs = {
+            e : x for e, x in
+                itertools.chain(inputs.iteritems(), constraints.iteritems())
+            if e in cgpm.inputs
+        }
+        cgpm_constraints = {
+            e:x for e, x in constraints.iteritems()
+            if e in cgpm.outputs
+        }
+        # ev_all = gu.merged(ev_in, ev_out)
+        cgpm_targets = [q for q in targets if q in cgpm.outputs]
+        if cgpm_constraints or cgpm_targets:
+            assert all(i in cgpm_inputs for i in cgpm.inputs)
+        weight = cgpm.logpdf(
+            rowid,
+            targets=cgpm_constraints,
+            constraints=None,
+            inputs=cgpm_inputs) if cgpm_constraints else 0
+        sample = cgpm.simulate(
+            rowid,
+            targets=cgpm_targets,
+            constraints=cgpm_constraints,
+            inputs=cgpm_inputs
+            ) if cgpm_targets else {}
         return sample, weight
 
-    def retrieve_missing_inputs(self, query, evidence):
-        """Return list of inputs (not in evidence) required to answer query."""
-        def retrieve_missing_input(cgpm, query):
-            active = any(i in query or i in evidence for i in cgpm.outputs)
+    def retrieve_required_inputs(self, targets, constraints):
+        """Return list of inputs required to answer query."""
+        def retrieve_required_inputs(cgpm, targets):
+            active = any(i in targets or i in constraints for i in cgpm.outputs)
             return cgpm.inputs if active else []
-        missing = set(query)
+        required_all = set(targets)
         for l in reversed(self.topo):
-            missing_l = retrieve_missing_input(self.cgpms[l], missing)
-            missing.update(missing_l)
-        return [c for c in missing if
-            all(c not in x for x in [query, evidence, self.extraneous])]
+            required_l = retrieve_required_inputs(self.cgpms[l], required_all)
+            required_all.update(required_l)
+        return [c for c in required_all if
+            all(c not in x for x in [targets, constraints, self.extraneous])]

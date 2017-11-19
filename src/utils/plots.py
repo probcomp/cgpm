@@ -52,7 +52,7 @@ def plot_dist_continuous(X, output, clusters, ax=None, Y=None, hist=True):
     W = [log(clusters[k].N) - log(float(len(X))) for k in clusters]
     for i, k in enumerate(clusters):
         pdf[i,:] = np.exp(
-            [W[i] + clusters[k].logpdf(-1, {output:y}, []) for y in Y])
+            [W[i] + clusters[k].logpdf(None, {output:y}) for y in Y])
         color, alpha = gu.curve_color(i)
         ax.plot(Y, pdf[i,:], color=color, linewidth=5, alpha=alpha)
     # Plot the sum of pdfs.
@@ -85,7 +85,7 @@ def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
     W = [log(clusters[k].N) - log(float(len(X))) for k in clusters]
     for i, k in enumerate(clusters):
         pdf[i,:] = np.exp(
-            [W[i] + clusters[k].logpdf(-1, {output:y}, []) for y in Y])
+            [W[i] + clusters[k].logpdf(None, {output:y}) for y in Y])
         color, alpha = gu.curve_color(i)
         ax.bar(Y, pdf[i,:], color=color, edgecolor='none', alpha=alpha)
     # Plot the sum of pdfs.

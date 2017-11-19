@@ -24,19 +24,18 @@ class BareBonesCGpm(CGpm):
         self.outputs = outputs
         self.inputs = inputs
 
-    def incorporate(self, rowid, query, evidence=None):
+    def incorporate(self, rowid, observation, inputs=None):
         return
 
     def unincorporate(self, rowid):
         return
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         return 0
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        return {i:1 for i in self.outputs}
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        result = {i:1 for i in self.outputs}
+        return result if N is None else [result] * N
 
     def transition(self, **kwargs):
         return

@@ -19,8 +19,9 @@ from math import log
 import numpy as np
 import scipy
 
-from cgpm.utils import sampling as su
 from cgpm.primitives.distribution import DistributionGpm
+from cgpm.utils import general as gu
+from cgpm.utils import sampling as su
 
 
 class Beta(DistributionGpm):
@@ -55,9 +56,9 @@ class Beta(DistributionGpm):
         assert self.alpha > 0
         assert self.beta > 0
 
-    def incorporate(self, rowid, query, evidence=None):
-        DistributionGpm.incorporate(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def incorporate(self, rowid, observation, inputs=None):
+        DistributionGpm.incorporate(self, rowid, observation, inputs)
+        x = observation[self.outputs[0]]
         if np.allclose(0, x):
             x = 0.001
         elif np.allclose(1, x):
@@ -75,17 +76,16 @@ class Beta(DistributionGpm):
         self.sum_log_x -= log(x)
         self.sum_minus_log_x -= log(1.-x)
 
-    def logpdf(self, rowid, query, evidence=None):
-        DistributionGpm.logpdf(self, rowid, query, evidence)
-        x = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        DistributionGpm.logpdf(self, rowid, targets, constraints, inputs)
+        x = targets[self.outputs[0]]
         if not 0 < x < 1:
             return -float('inf')
         return Beta.calc_predictive_logp(x, self.strength, self.balance)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        DistributionGpm.simulate(self, rowid, query, evidence)
+    @gu.simulate_many
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         alpha = self.strength * self.balance
