@@ -33,30 +33,33 @@ class UnDirectedXyGpm(CGpm):
         self.inputs = []
         self.noise = noise
 
-    def logpdf(self, rowid, query, evidence=None):
-        if not evidence:
-            if len(query) == 2:
-                x, y = query.values()
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        assert not inputs
+        if not constraints:
+            if len(targets) == 2:
+                x, y = targets.values()
                 return self.logpdf_joint(x, y)
             else:
-                z = query.values()[0]
+                z = targets.values()[0]
                 return self.logpdf_maringal(z)
         else:
-            assert len(evidence) == len(query) == 1
-            z = evidence.values()[0]
-            w = query.values()[0]
+            assert len(constraints) == len(targets) == 1
+            z = constraints.values()[0]
+            w = targets.values()[0]
             return self.logpdf_conditional(w, z)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        assert not inputs
         if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        if not evidence:
+            return [self.simulate(rowid, targets, constraints, inputs) for
+                _i in xrange(N)]
+        if not constraints:
             sample = self.simulate_joint()
-            return {q: sample[self.outputs.index(q)] for q in query}
+            return {q: sample[self.outputs.index(q)] for q in targets}
         else:
-            assert len(evidence) == len(query) == 1
-            z = evidence.values()[0]
-            return {query[0]: self.simulate_conditional(z)}
+            assert len(constraints) == len(targets) == 1
+            z = constraints.values()[0]
+            return {targets[0]: self.simulate_conditional(z)}
 
     # Internal simulators and assesors.
 

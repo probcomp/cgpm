@@ -95,12 +95,12 @@ class Dim(CGpm):
     def incorporate(self, rowid, observation, inputs=None):
         if rowid in self.Zr or rowid in self.Zi:
             raise ValueError('rowid already incorporated: %d.' % rowid)
-        k, inputs, valid = self.preprocess(observation, inputs)
+        k, inputs_cluster, valid = self.preprocess(observation, None, inputs)
         if k not in self.clusters:
             self.clusters[k] = self.aux_model
             self.aux_model = self.create_aux_model()
         if valid:
-            self.clusters[k].incorporate(rowid, observation, inputs)
+            self.clusters[k].incorporate(rowid, observation, inputs_cluster)
             self.Zr[rowid] = k
         else:
             self.Zi[rowid] = k
@@ -124,20 +124,21 @@ class Dim(CGpm):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence=None):
-        k, evidence, valid = self.preprocess(query, evidence)
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        k, inputs2, valid = self.preprocess(targets, constraints, inputs)
         cluster = self.clusters.get(k, self.aux_model)
-        return cluster.logpdf(rowid, query, evidence) if valid else 0
+        # XXX Find out why returning 0 if the query is not valid
+        return cluster.logpdf(rowid, targets, constraints, inputs2) \
+            if valid else 0
 
     # --------------------------------------------------------------------------
     # Simulate
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        k, evidence, valid = self.preprocess(query, evidence)
-        if not valid:
-            raise ValueError('Bad simulate args: %s, %s.') % (query, evidence)
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        k, inputs2, valid = self.preprocess(targets, constraints, inputs)
         cluster = self.clusters.get(k, self.aux_model)
-        return cluster.simulate(rowid, query, evidence, N=N)
+        assert valid
+        return cluster.simulate(rowid, targets, constraints, inputs2, N)
 
     # --------------------------------------------------------------------------
     # Inferece
@@ -228,16 +229,20 @@ class Dim(CGpm):
             outputs=[self.index], inputs=self.inputs[1:], hypers=self.hypers,
             distargs=self.distargs, rng=self.rng)
 
-    def preprocess(self, query, evidence):
-        evidence = evidence.copy()
+    def preprocess(self, targets, constraints, inputs):
+        inputs2 = inputs.copy()
         try:
-            k = evidence.pop(self.inputs[0])
+            k = inputs2.pop(self.inputs[0])
         except KeyError:
-            raise ValueError('Dim needs inputs[0] in evidence: %s' % evidence)
-        valid_x = True
-        valid_y = True
-        if isinstance(query, dict):
-            valid_x = not math.isnan(query[self.index])
-        if evidence:
-            valid_y = not any(np.isnan(evidence.values()))
-        return k, evidence, valid_x and valid_y
+            raise ValueError('Dim needs inputs %d.' % (self.inputs[0],))
+        valid_targets = True
+        valid_constraints = True
+        valid_inputs = True
+        if isinstance(targets, dict):
+            valid_targets = not math.isnan(targets[self.index])
+        if constraints:
+            valid_constraints = not any(np.isnan(constraints.values()))
+        if inputs:
+            valid_inputs = not any(np.isnan(inputs2.values()))
+        assert valid_constraints
+        return k, inputs2, valid_targets and valid_inputs

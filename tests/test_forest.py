@@ -102,14 +102,16 @@ def test_logpdf_uniform():
         distargs=RF_DISTARGS, rng=gu.gen_rng(0))
     forest.transition_params()
     for x in xrange(NUM_CLASSES):
-        query = {0: x}
-        evidence = {i: D[0,i] for i in forest.inputs}
+        targets = {0: x}
+        inputs = {i: D[0,i] for i in forest.inputs}
         assert np.allclose(
-            forest.logpdf(-1, query, evidence), -log(NUM_CLASSES))
+            forest.logpdf(None, targets, None, inputs),
+            -log(NUM_CLASSES),
+        )
 
 
 def test_logpdf_normalized():
-    def train_on(c):
+    def train_one(c):
         D_sub = [(i, row) for (i, row) in enumerate(D) if row[0] in c]
         forest = RandomForest(
             outputs=RF_OUTPUTS, inputs=RF_INPUTS,
@@ -121,22 +123,22 @@ def test_logpdf_normalized():
         forest.transition_params()
         return forest
 
-    def test_on(forest, c):
+    def test_one(forest, c):
         D_sub = [(i, row) for (i, row) in enumerate(D) if row[0] not in c]
         for rowid, row in D_sub:
-            evidence = {i: row[i] for i in forest.inputs}
-            queries =[{0: x} for x in xrange(NUM_CLASSES)]
-            lps = [forest.logpdf(rowid, q, evidence) for q in queries]
+            inputs = {i: row[i] for i in forest.inputs}
+            targets =[{0: x} for x in xrange(NUM_CLASSES)]
+            lps = [forest.logpdf(rowid, q, None, inputs) for q in targets]
             assert np.allclose(gu.logsumexp(lps), 0)
 
-    forest = train_on([])
-    test_on(forest, [])
+    forest = train_one([])
+    test_one(forest, [])
 
-    forest = train_on([2])
-    test_on(forest, [2])
+    forest = train_one([2])
+    test_one(forest, [2])
 
-    forest = train_on([0,1])
-    test_on(forest, [0,1])
+    forest = train_one([0,1])
+    test_one(forest, [0,1])
 
 
 def test_logpdf_score():
@@ -212,16 +214,16 @@ def test_simulate(seed):
         forest.incorporate(rowid, observation, inputs)
 
     # Transitions.
-    for i in xrange(2):
+    for _i in xrange(2):
         forest.transition_hypers()
         forest.transition_params()
 
     correct, total = 0, 0.
     for rowid, (x, y) in enumerate(zip(X_test, Y_test)):
-        evidence = gu.merged(
+        inputs = gu.merged(
             {-1: 0},
             {i: t for (i,t) in zip(range(4), y)})
-        samples = forest.simulate(-1, [5], evidence, N=10)
+        samples = forest.simulate(None, [5], None, inputs, 10)
         prediction = np.argmax(np.bincount([s[5] for s in samples]))
         correct += (prediction==x)
         total += 1.

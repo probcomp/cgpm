@@ -72,7 +72,7 @@ def test_crp_posterior_logpdf():
 def test_logpdf_observed_nan():
     view = retrieve_view()
     logp_view = view.logpdf(2, {1:1})
-    logp_dim = view.dims[1].logpdf(2, {1:1}, {view.outputs[0]: view.Zr(2)})
+    logp_dim = view.dims[1].logpdf(2, {1:1}, None, {view.outputs[0]: view.Zr(2)})
     assert np.allclose(logp_view, logp_dim)
 
 

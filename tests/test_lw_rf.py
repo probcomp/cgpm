@@ -33,36 +33,34 @@ def state():
         'categorical(k=5)',
         'normal',
         'poisson',
-        'bernoulli'])
-    T, Zv, Zc = tu.gen_data_table(
-        50, [1], [[.33, .33, .34]], cctypes, distargs, [.95]*len(cctypes),
-        rng=gu.gen_rng(0))
-    s = State(
-        T.T, cctypes=cctypes, distargs=distargs,
+        'bernoulli'
+    ])
+    T, Zv, Zc = tu.gen_data_table(50, [1], [[.33, .33, .34]], cctypes, distargs,
+        [.95]*len(cctypes), rng=gu.gen_rng(0))
+    s = State(T.T, cctypes=cctypes, distargs=distargs,
         Zv={i:0 for i in xrange(len(cctypes))}, rng=gu.gen_rng(0))
     s.update_cctype(0, 'random_forest', distargs={'k':5})
     # XXX Uncomment me for a bug!
     # state.update_cctype(1, 'linear_regression')
-    s.transition(
-        N=10,
-        kernels=['rows','view_alphas','alpha','column_params','column_hypers'])
+    kernels = ['rows','view_alphas','alpha','column_params','column_hypers']
+    s.transition(N=1, kernels=kernels)
     return s
 
 
 def test_simulate_unconditional__ci_(state):
     for rowid in [-1, 1]:
         samples = state.simulate(rowid, [0], N=2)
-        check_members(samples, range(5))
+        check_entries_in_list(samples, range(5))
 
 
 def test_simulate_conditional__ci_(state):
     samples = state.simulate(
-        -1, [0], evidence={1:-1, 2:1, 3:1}, N=2)
-    check_members(samples, range(5))
-    samples = state.simulate(-1, [0, 2, 3], N=2)
-    check_members(samples, range(5))
-    samples = state.simulate(1, [0, 2, 3], N=2)
-    check_members(samples, range(5))
+        -1, [0], {1:-1, 2:1, 3:1}, None, 2)
+    check_entries_in_list(samples, range(5))
+    samples = state.simulate(-1, [0, 2, 3], None, None, N=2)
+    check_entries_in_list(samples, range(5))
+    samples = state.simulate(1, [0, 2, 3], None, None, 2)
+    check_entries_in_list(samples, range(5))
 
 
 def test_logpdf_unconditional__ci_(state):
@@ -71,14 +69,12 @@ def test_logpdf_unconditional__ci_(state):
 
 
 def test_logpdf_deterministic__ci_(state):
-    # Ensure logpdf estimation deterministic when all parents in evidence.
+    # Ensure logpdf estimation deterministic when all parents in constraints.
     for k in xrange(5):
-        lp1 = state.logpdf(
-            -1, {0:k, 3:0}, evidence={1:1, 2:1})
-        lp2 = state.logpdf(
-            -1, {0:k, 3:0}, evidence={1:1, 2:1})
+        lp1 = state.logpdf(-1, {0:k, 3:0}, {1:1, 2:1})
+        lp2 = state.logpdf(-1, {0:k, 3:0}, {1:1, 2:1})
         assert np.allclose(lp1, lp2)
-    # Observed cell already has parents in evidence.
+    # Observed cell already has parents in constraints
     # Currently, logpdf for a non-nan observed cell is not possible.
     for k in xrange(5):
         with pytest.raises(ValueError):
@@ -89,18 +85,21 @@ def test_logpdf_deterministic__ci_(state):
 
 
 def test_logpdf_impute__ci_(state):
-    # Ensure logpdf estimation deterministic when all parents in evidence.
+    # Ensure logpdf estimation nondeterministic when all parents in constraints.
+    # In practice, since the Random Forest discretizes its input, is quite
+    # likely that different importance sampling estimates return the same
+    # probability even when the parent nodes have different values.
     for k in xrange(5):
-        lp1 = state.logpdf(-1, {0:k}, evidence={1:1})
-        lp2 = state.logpdf(-1, {0:k}, evidence={1:1})
+        lp1 = state.logpdf(-1, {0:k}, {1:1})
+        lp2 = state.logpdf(-1, {0:k}, {1:1})
         print lp1, lp2
-    # Observed cell already has parents in evidence.
+    # Observed cell already has parents in constraints.
     for k in xrange(5):
-        lp1 = state.logpdf(-1, query={1:1, 2:2}, evidence={0:k})
-        lp2 = state.logpdf(-1, query={1:1, 2:2}, evidence={0:k})
+        lp1 = state.logpdf(-1, {1:1, 2:2}, {0:k})
+        lp2 = state.logpdf(-1, {1:1, 2:2}, {0:k})
         print lp1, lp2
 
 
-def check_members(samples, allowed):
-    for s in samples:
-        assert s[0] in allowed
+def check_entries_in_list(entries, allowed):
+    for entry in entries:
+        assert entry[0] in allowed

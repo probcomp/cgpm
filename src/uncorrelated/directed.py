@@ -32,7 +32,7 @@ class DirectedXyGpm(CGpm):
             Source of entropy.
         """
         if type(self) is DirectedXyGpm:
-            raise Exception('Cannot directly insantiate DirectedXyGpm.')
+            raise Exception('Cannot directly instantiate DirectedXyGpm.')
         if rng is None:
             rng = gen_rng(0)
         if outputs is None:
@@ -46,12 +46,12 @@ class DirectedXyGpm(CGpm):
         # Override the network in subclass.
         self.network = None
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         if self.network is None:
-            raise ValueError('self.network not defined by %s' % type(self))
-        return self.network.logpdf(rowid, query, evidence)
+            raise ValueError('self.network not defined by %s' % (type(self),))
+        return self.network.logpdf(rowid, targets, inputs)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         if self.network is None:
-            raise ValueError('self.network not defined by %s' % type(self))
-        return self.network.simulate(rowid, query, evidence, N)
+            raise ValueError('self.network not defined by %s' % (type(self),))
+        return self.network.simulate(rowid, targets, inputs, N)

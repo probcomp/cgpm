@@ -115,7 +115,7 @@ class State(CGpm):
             # Otherwise simulate an unconstrained CRP.
             else:
                 for c in self.outputs:
-                    z = self.crp.simulate(c, [self.crp_id], {-1:0})
+                    z = self.crp.simulate(c, [self.crp_id], None, {-1:0})
                     self.crp.incorporate(c, z, {-1:0})
         # Load the provided Zv without simulation.
         else:
@@ -388,28 +388,32 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # logpdf
 
-    def logpdf(self, rowid, query, evidence=None, accuracy=None):
-        assert isinstance(query, dict)
-        assert evidence is None or isinstance(evidence, dict)
-        self._validate_query_evidence(rowid, query, evidence)
+    def logpdf(self, rowid, targets, constraints=None, inputs=None,
+            accuracy=None):
+        assert isinstance(targets, dict)
+        assert constraints is None or isinstance(constraints, dict)
+        self._validate_cgpm_query(rowid, targets, constraints)
         if not self._composite:
-            return sampling.state_logpdf(self, rowid, query, evidence)
-        evidence = self._populate_evidence(rowid, query, evidence)
+            assert not inputs
+            return sampling.state_logpdf(self, rowid, targets, constraints)
+        constraints = self._populate_constraints(rowid, targets, constraints)
         network = self.build_network(accuracy=accuracy)
-        return network.logpdf(rowid, query, evidence)
+        return network.logpdf(rowid, targets, constraints, inputs)
 
     # --------------------------------------------------------------------------
     # Simulate
 
-    def simulate(self, rowid, query, evidence=None, N=None, accuracy=None):
-        assert isinstance(query, list)
-        assert evidence is None or isinstance(evidence, dict)
-        self._validate_query_evidence(rowid, query, evidence)
+    def simulate(self, rowid, targets, constraints=None, inputs=None,
+            N=None, accuracy=None):
+        assert isinstance(targets, list)
+        assert inputs is None or isinstance(inputs, dict)
+        self._validate_cgpm_query(rowid, targets, constraints)
         if not self._composite:
-            return sampling.state_simulate(self, rowid, query, evidence, N)
-        evidence = self._populate_evidence(rowid, query, evidence)
+            assert not inputs
+            return sampling.state_simulate(self, rowid, targets, constraints, N)
+        constraints = self._populate_constraints(rowid, targets, constraints)
         network = self.build_network(accuracy=accuracy)
-        return network.simulate(rowid, query, evidence, N)
+        return network.simulate(rowid, targets, constraints, inputs, N)
 
     # --------------------------------------------------------------------------
     # simulate/logpdf helpers
@@ -421,76 +425,100 @@ class State(CGpm):
     def build_cgpms(self):
         return [self.views[v] for v in self.views] + self.hooked_cgpms.values()
 
-    def _populate_evidence(self, rowid, query, evidence):
-        """Loads query evidence from the dataset."""
-        evidence = evidence or dict()
+    def _populate_constraints(self, rowid, targets, constraints):
+        """Loads constraints from the dataset."""
+        constraints = constraints or dict()
         # If the rowid is hypothetical, just return.
         if self.hypothetical(rowid):
-            return evidence
-        # Retrieve all other values for this rowid not in query or evidence.
+            return constraints
+        # Retrieve all values for this rowid not in targets or constraints.
         data = {
             c: self.X[c][rowid]
             for c in self.outputs[1:]
             if not any([
-                (c in query),
-                (c in evidence),
-                (isnan(self.X[c][rowid]))
+                c in targets,
+                c in constraints,
+                isnan(self.X[c][rowid]),
             ])
         }
-        return gu.merged(evidence, data)
+        return gu.merged(constraints, data)
 
-    def _validate_query_evidence(self, rowid, query, evidence):
+    def _validate_cgpm_query(self, rowid, targets, constraints):
         # Is the rowid fresh?
         fresh = self.hypothetical(rowid)
         # Is the query simulate or logpdf?
-        simulate = isinstance(query, list)
-        # Disallow duplicated query cols.
-        if simulate and len(set(query)) != len(query):
-            raise ValueError('Query columns must be unique.')
+        simulate = isinstance(targets, list)
+        # Disallow duplicated target cols.
+        if simulate and len(set(targets)) != len(targets):
+            raise ValueError('Columns in targets must be unique.')
         # Disallow query constraining observed cells.
         # XXX Only disallow logpdf constraints; simulate is permitted for
         # INFER EXPLICIT PREDICT through BQL to work. Refer to
         # https://github.com/probcomp/cgpm/issues/116
-        if (not fresh) and (not simulate) and any(
-                not np.isnan(self.X[q][rowid]) for q in query):
-            raise ValueError('Query cannot constrain observed cell.')
-        # Check if the evidence is valid.
-        if evidence:
-            # Disallow overlap between query and evidence.
-            if len(set.intersection(set(query), set(evidence))) > 0:
-                raise ValueError('Query and evidence columns must be disjoint.')
-            # Disallow evidence constraining/disagreeing with observed cells.
-            def good_evidence(rowid, e):
-                return (e not in self.outputs) \
+        if not fresh \
+                and not simulate \
+                and any(not np.isnan(self.X[q][rowid]) for q in targets):
+            raise ValueError('Cannot constrain observed cell.')
+        # Check if the constraints is valid.
+        if constraints:
+            # Disallow overlap between targets and constraints.
+            if len(set.intersection(set(targets), set(constraints))) > 0:
+                raise ValueError('Targets and constraints must be disjoint.')
+            # Disallow constraints specifying with observed cells.
+            def good_constraint(rowid, e):
+                return \
+                    e not in self.outputs \
                     or np.isnan(self.X[e][rowid]) \
-                    or np.allclose(self.X[e][rowid], evidence[e])
-            if (not fresh) and \
-                    any(not good_evidence(rowid, e) for e in evidence):
-                raise ValueError('Evidence cannot constrain observed cell.')
+                    or np.allclose(self.X[e][rowid], constraints[e])
+            if not fresh \
+                    and any(not good_constraint(rowid, e) for e in constraints):
+                raise ValueError('Cannot use observed cell in constraints.')
 
     # --------------------------------------------------------------------------
     # Bulk operations
 
-    def simulate_bulk(self, rowids, queries, evidences=None, Ns=None):
+    def simulate_bulk(self, rowids, targets_list, constraints_list=None,
+            inputs_list=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None:
-            evidences = [{} for i in xrange(len(rowids))]
+        if constraints_list is None:
+            constraints_list = [{} for i in xrange(len(rowids))]
+        if inputs_list is None:
+            inputs_list = [{} for i in xrange(len(rowids))]
         if Ns is None:
             Ns = [1 for i in xrange(len(rowids))]
-        assert len(rowids) == len(queries) == len(evidences) == len(Ns)
+        assert len(rowids) == len(targets_list)
+        assert len(rowids) == len(constraints_list)
+        assert len(rowids) == len(inputs_list)
+        assert len(rowids) == len(Ns)
         return [
-            self.simulate(r, q, e, n)
-            for (r, q, e, n) in zip(rowids, queries, evidences, Ns)
+            self.simulate(r, t, c, i, n)
+            for (r, t, c, i, n) in zip(
+                rowids,
+                targets_list,
+                constraints_list,
+                inputs_list,
+                Ns
+            )
         ]
 
-    def logpdf_bulk(self, rowids, queries, evidences=None):
+    def logpdf_bulk(self, rowids, targets_list, constraints_list=None,
+            inputs_list=None):
         """Evaluate multiple queries at once, used by Engine."""
-        if evidences is None:
-            evidences = [{} for _ in xrange(len(rowids))]
-        assert len(rowids) == len(queries) == len(evidences)
+        if constraints_list is None:
+            constraints_list = [{} for i in xrange(len(rowids))]
+        if inputs_list is None:
+            inputs_list = [{} for i in xrange(len(rowids))]
+        assert len(rowids) == len(targets_list)
+        assert len(rowids) == len(constraints_list)
+        assert len(rowids) == len(inputs_list)
         return [
-            self.logpdf(r, q, e)
-            for (r, q, e) in zip(rowids, queries, evidences)
+            self.logpdf(r, t, c, i)
+            for (r, t, c, i) in zip(
+                rowids,
+                targets_list,
+                constraints_list,
+                inputs_list
+            )
         ]
 
     # --------------------------------------------------------------------------
@@ -592,80 +620,81 @@ class State(CGpm):
     # --------------------------------------------------------------------------
     # Mutual information
 
-    def mutual_information(
-            self, col0, col1, evidence=None, T=None, N=None, progress=None):
-        if evidence is None:
-            evidence = dict()
-        # Disallow duplicated variables in evidence and targets.
-        if any(i in evidence for i in col0) or any(j in evidence for j in col1):
-            raise ValueError('Target and evidence columns must be disjoint.')
+    def mutual_information(self, col0, col1, constraints=None, T=None, N=None,
+            progress=None):
+        if constraints is None:
+            constraints = dict()
+        # Disallow duplicated variables in constraints and targets.
+        if any(c in constraints for c in col0 + col1):
+            raise ValueError('Target and constraints columns must be disjoint.')
         # Disallow duplicates in targets, except exact match (entropy).
         if any(c in col1 for c in col0) and set(col0) != set(col1):
             raise ValueError('Targets must match exactly or be disjoint.')
         # Partition the query into independent blocks.
-        blocks = self._partition_mutual_information_query(col0, col1, evidence)
+        blocks = self._partition_mutual_information_query(
+            col0, col1, constraints)
         return sum(
-            self._compute_mutual_information(c0, c1, ev, T, N, progress)
-            for c0, c1, ev in blocks
+            self._compute_mutual_information(c0, c1, const, T, N, progress)
+            for c0, c1, const in blocks
             if c0 and c1
         )
 
-    def _compute_mutual_information(
-            self, col0, col1, evidence, T=None, N=None, progress=None):
+    def _compute_mutual_information(self, col0, col1, constraints, T=None,
+            N=None, progress=None):
         N = N or 100
         T = T or 100
-        # Partition evidence into equality `e` and marginalization `m` types.
-        e_evidence = {e:x for e, x in evidence.iteritems() if x is not None}
-        m_evidence = [e for e, x in evidence.iteritems() if x is None]
+        # Partition constraints into equality (e) and marginalization (m) forms.
+        e_constraints = {e:x for e,x in constraints.iteritems() if x is not None}
+        m_constraints = [e for e,x in constraints.iteritems() if x is None]
         # Determine the estimator to use.
-        estimator = self._compute_mi if set(col0) != set(col1) else\
-            self._compute_entropy
+        estimator = self._compute_mi if set(col0) != set(col1) \
+            else self._compute_entropy
         # No marginalization constraints.
-        if not m_evidence:
-            return estimator(col0, col1, evidence, N)
-        # Compute CMI by Monte Carlo marginalization.
-        def compute_one(i, s):
-            ev = gu.merged(e_evidence, s)
-            m = estimator(col0, col1, ev, N)
+        if not m_constraints:
+            return estimator(col0, col1, constraints, N)
+        # Compute CMI by Monte Carlo.
+        def compute_one(i, sample):
+            const = gu.merged(e_constraints, sample)
+            m = estimator(col0, col1, const, N)
             if progress:
                 self._progress(float(i)/T)
             return m
         if progress:
             self._progress(0./T)
-        samples = self.simulate(-1, m_evidence, N=T)
-        mi = sum(compute_one(i,s) for (i,s) in enumerate(samples))
+        m_samples = self.simulate(None, m_constraints, N=T)
+        mi = sum(compute_one(i, samp) for i, samp in enumerate(m_samples))
         return mi / float(T)
 
-    def _compute_mi(self, col0, col1, evidence, N):
-        samples = self.simulate(-1, col0 + col1, evidence=evidence, N=N)
+    def _compute_mi(self, col0, col1, constraints, N):
+        samples = self.simulate(None, col0 + col1, constraints, None, N)
         PXY = self.logpdf_bulk(
             rowids=[-1]*N,
-            queries=samples,
-            evidences=[evidence]*N
+            targets_list=samples,
+            constraints_list=[constraints]*N
         )
         PX = self.logpdf_bulk(
             rowids=[-1]*N,
-            queries=[{c0: s[c0] for c0 in col0} for s in samples],
-            evidences=[evidence]*N,
+            targets_list=[{c0: s[c0] for c0 in col0} for s in samples],
+            constraints_list=[constraints]*N,
         )
         PY = self.logpdf_bulk(
             rowids=[-1]*N,
-            queries=[{c1: s[c1] for c1 in col1} for s in samples],
-            evidences=[evidence]*N,
+            targets_list=[{c1: s[c1] for c1 in col1} for s in samples],
+            constraints_list=[constraints]*N,
         )
         return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
 
-    def _compute_entropy(self, col0, col1, evidence, N):
+    def _compute_entropy(self, col0, col1, constraints, N):
         assert set(col0) == set(col1)
-        samples = self.simulate(-1, col0, evidence=evidence, N=N)
+        samples = self.simulate(-1, col0, constraints, None, N)
         PX = self.logpdf_bulk(
             rowids=[-1]*N,
-            queries=[{c0: s[c0] for c0 in col0} for s in samples],
-            evidences=[evidence]*N,
+            targets_list=[{c0: s[c0] for c0 in col0} for s in samples],
+            constraints_list=[constraints]*N,
         )
-        return - np.sum(PX) / N
+        return -np.sum(PX) / N
 
-    def _partition_mutual_information_query(self, col0, col1, evidence):
+    def _partition_mutual_information_query(self, col0, col1, constraints):
         cgpms = self.build_cgpms()
         var_to_cgpm = retrieve_variable_to_cgpm(cgpms)
         connected_components = retrieve_weakly_connected_components(cgpms)
@@ -676,9 +705,9 @@ class State(CGpm):
         for variable in col1:
             component = connected_components[var_to_cgpm[variable]]
             blocks[component][1].append(variable)
-        for variable in evidence:
+        for variable in constraints:
             component = connected_components[var_to_cgpm[variable]]
-            blocks[component][2][variable] = evidence[variable]
+            blocks[component][2][variable] = constraints[variable]
         return blocks.values()
 
     # --------------------------------------------------------------------------

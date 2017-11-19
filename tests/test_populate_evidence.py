@@ -20,9 +20,9 @@ import pytest
 from cgpm.mixtures.view import View
 from cgpm.crosscat.state import State
 
-"""Test suite for View._populate_evidence.
+"""Test suite for View._populate_constraints.
 
-Ensures that View._populate_evidence correctly retrieves values from the
+Ensures that View._populate_constraints correctly retrieves values from the
 dataset.
 """
 
@@ -49,21 +49,21 @@ def test_view_hypothetical_unchanged():
     view = retrieve_view()
 
     rowid = -1
-    query1 = {3:-1}
-    evidence1 = {1:1, 2:2}
-    evidence2 = view._populate_evidence(rowid, query1, evidence1)
-    assert evidence1 == evidence2
+    targets1 = {3:-1}
+    constraints1 = {1:1, 2:2}
+    constraints2 = view._populate_constraints(rowid, targets1, constraints1)
+    assert constraints1 == constraints2
 
 
 def test_view_only_rowid_to_populate():
     view = retrieve_view()
 
-    # Can query X[2,0] for simulate.
+    # Can targets X[2,0] for simulate.
     rowid = 2
-    query1 = [0]
-    evidence1 = {}
-    evidence2 = view._populate_evidence(rowid, query1, evidence1)
-    assert evidence2 == {-1: view.Zr(rowid)}
+    targets1 = [0]
+    constraints1 = {}
+    constraints2 = view._populate_constraints(rowid, targets1, constraints1)
+    assert constraints2 == {-1: view.Zr(rowid)}
 
 
 def test_view_constrain_cluster():
@@ -71,26 +71,26 @@ def test_view_constrain_cluster():
 
     # Cannot constrain cluster assignment of observed rowid.
     rowid = 1
-    query1 = {-1: 2}
-    evidence1 = {}
+    targets1 = {-1: 2}
+    constraints1 = {}
     with pytest.raises(ValueError):
-        view._populate_evidence(rowid, query1, evidence1)
+        view._populate_constraints(rowid, targets1, constraints1)
 
 
 def test_view_values_to_populate():
     view = retrieve_view()
 
     rowid = 0
-    query1 = [1]
-    evidence1 = {4:2}
-    evidence2 = view._populate_evidence(rowid, query1, evidence1)
-    assert evidence2 == {0:1, 2:2, 3:-1, 4:2, -1: view.Zr(rowid)}
+    targets1 = [1]
+    constraints1 = {4:2}
+    constraints2 = view._populate_constraints(rowid, targets1, constraints1)
+    assert constraints2 == {0:1, 2:2, 3:-1, 4:2, -1: view.Zr(rowid)}
 
     rowid = 0
-    query1 = {1:1}
-    evidence1 = {4:2}
-    evidence2 = view._populate_evidence(rowid, query1, evidence1)
-    assert evidence2 == {2:2, 0:1, 3:-1, 4:2, -1: view.Zr(rowid)}
+    targets1 = {1:1}
+    constraints1 = {4:2}
+    constraints2 = view._populate_constraints(rowid, targets1, constraints1)
+    assert constraints2 == {2:2, 0:1, 3:-1, 4:2, -1: view.Zr(rowid)}
 
 
 # ------------------------------------------------------------------------------
@@ -113,30 +113,30 @@ def retrieve_state():
 
 def test_state_constrain_logpdf():
     state = retrieve_state()
-    # Cannot query X[2,0] for logpdf.
+    # Cannot targets X[2,0] for logpdf.
     rowid = 2
-    query1 = {0:2}
-    evidence1 = {}
+    targets1 = {0:2}
+    constraints1 = {}
     with pytest.raises(ValueError):
-        state._validate_query_evidence(rowid, query1, evidence1)
+        state._validate_cgpm_query(rowid, targets1, constraints1)
 
 def test_state_constrain_errors():
     state = retrieve_state()
 
     rowid = 1
-    query1 = {1:1, 4:1}
-    evidence1 = {}
+    targets1 = {1:1, 4:1}
+    constraints1 = {}
     with pytest.raises(ValueError):
-        state._validate_query_evidence(rowid, query1, evidence1)
+        state._validate_cgpm_query(rowid, targets1, constraints1)
 
     rowid = 1
-    query1 = {1:3}
-    evidence1 = {4:-5}
+    targets1 = {1:3}
+    constraints1 = {4:-5}
     with pytest.raises(ValueError):
-        state._validate_query_evidence(rowid, query1, evidence1)
+        state._validate_cgpm_query(rowid, targets1, constraints1)
 
     rowid = 1
-    query1 = {0:1, 1:3}
-    evidence1 = {}
+    targets1 = {0:1, 1:3}
+    constraints1 = {}
     with pytest.raises(ValueError):
-        state._validate_query_evidence(rowid, query1, evidence1)
+        state._validate_cgpm_query(rowid, targets1, constraints1)

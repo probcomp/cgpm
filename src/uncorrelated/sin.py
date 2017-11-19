@@ -44,12 +44,14 @@ class SinY(CGpm):
         self.noise = noise
         self.uniform = uniform(scale=self.noise)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert query == self.outputs
-        assert evidence.keys() == self.inputs
-        x = evidence[self.inputs[0]]
+            return [self.simulate(rowid, targets, constraints, inputs) for
+                _i in xrange(N)]
+        assert targets == self.outputs
+        assert inputs.keys() == self.inputs
+        assert not constraints
+        x = inputs[self.inputs[0]]
         noise = self.rng.uniform(high=self.noise)
         if np.cos(x) < 0:
             y = np.cos(x) + noise
@@ -57,11 +59,12 @@ class SinY(CGpm):
             y = np.cos(x) - noise
         return {self.outputs[0]: y}
 
-    def logpdf(self, rowid, query, evidence=None):
-        assert query.keys() == self.outputs
-        assert evidence.keys() == self.inputs
-        x = evidence[self.inputs[0]]
-        y = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        assert targets.keys() == self.outputs
+        assert inputs.keys() == self.inputs
+        assert not constraints
+        x = inputs[self.inputs[0]]
+        y = targets[self.outputs[0]]
         if np.cos(x) < 0:
             return self.uniform.logpdf(y-np.cos(x))
         else:

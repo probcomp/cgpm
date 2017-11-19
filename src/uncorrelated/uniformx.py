@@ -35,16 +35,18 @@ class UniformX(CGpm):
         self.inputs = []
         self.uniform = uniform(loc=self.low, scale=self.high-self.low)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        assert not evidence
-        assert query == self.outputs
+            return [self.simulate(rowid, targets, constraints, inputs) for
+                _i in xrange(N)]
+        assert not constraints
+        assert targets == self.outputs
         x = self.rng.uniform(low=self.low, high=self.high)
         return {self.outputs[0]: x}
 
-    def logpdf(self, rowid, query, evidence=None):
-        assert not evidence
-        assert query.keys() == self.outputs
-        x = query[self.outputs[0]]
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        assert not constraints
+        assert not inputs
+        assert targets.keys() == self.outputs
+        x = targets[self.outputs[0]]
         return self.uniform.logpdf(x)

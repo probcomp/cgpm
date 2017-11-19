@@ -202,7 +202,7 @@ def test_serialize_composite_cgpm():
     e.compose_cgpm([linreg, linreg], multiprocess=1)
     e.transition_foreign(N=1, cols=[forest.outputs[0], linreg.outputs[0]])
     e.dependence_probability(0,1)
-    e.simulate(-1, [0,1], {2:1})
+    e.simulate(-1, [0,1], {2:1}, multiprocess=0)
     e.logpdf(-1, {1:1}, {2:1, 0:0}, multiprocess=0)
 
     state3 = e.get_state(0)

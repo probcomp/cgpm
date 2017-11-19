@@ -33,17 +33,17 @@ class MultivariateKnn(CGpm):
     """Multivariate K-Nearest-Neighbors builds local statistical models on a
     per-query basis.
 
-    Algorithm for simulate(rowid, query, evidence) and
-    logpdf(rowid, query, evidence):
+    Algorithm for simulate(rowid, targets, constraints) and
+    logpdf(rowid, targets, constraints):
 
-        - Find K nearest neighbors to `rowid` based only on the `evidence`.
+        - Find K nearest neighbors to `rowid` based only on the `constraints`.
 
         - For each nearest neighbor k = 1,...,K
 
             - Find M nearest neighbors of k (called the locality of k) based
-            on both the `evidence` and `query` dimensions.
+            on both the `constraints` and `targets` dimensions.
 
-            - For each query varaible q \in query:
+            - For each target variable q \in target:
 
                 - Learn a primitive univariate CGPM,  using the dimension q of
                 the M neighbors in the locality of k.
@@ -54,9 +54,10 @@ class MultivariateKnn(CGpm):
         mixture of the product CGPM learned in each locality.
 
     This "locality-based" algorithm is designed to capture the dependence
-    between the query variables, rather than assume that all the query variables
-    are independent conditioned on the evidence. Github ticket #133 will support
-    selecting either the independent or locality-based versions of KNN.
+    between the target variables, rather than assume that all the target
+    variables are independent conditioned on the constraints. Github ticket #133
+    will support selecting either the independent or locality-based versions of
+    KNN.
     """
 
     def __init__(self, outputs, inputs, K=None, M=None, distargs=None,
@@ -104,55 +105,61 @@ class MultivariateKnn(CGpm):
         del self.data[rowid]
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence=None):
-        evidence = self._populate_evidence(rowid, query, evidence)
-        # XXX Disable logpdf queries without evidence.
-        if not evidence:
-            raise ValueError('Provide at least one evidence: %s.' % evidence)
-        self._validate_simulate_logpdf(rowid, query, evidence)
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        constraints = self.populate_constraints(rowid, targets, constraints)
+        # XXX Disable logpdf queries without constraints.
+        if inputs:
+            raise ValueError('Prohibited inputs: %s' % (inputs,))
+        if not constraints:
+            raise ValueError('Provide at least one constraint: %s'
+                % (constraints,))
+        self._validate_simulate_logpdf(rowid, targets, constraints)
         # Retrieve the dataset and neighborhoods.
-        dataset, neighborhoods = self._find_neighborhoods(query, evidence)
-        models = [self._create_local_model_joint(query, dataset[n])
+        dataset, neighborhoods = self._find_neighborhoods(targets, constraints)
+        models = [self._create_local_model_joint(targets, dataset[n])
             for n in neighborhoods]
         # Compute logpdf in each neighborhood and simple average.
-        lp = [m.logpdf(query) for m in models]
+        lp = [m.logpdf(targets) for m in models]
         return gu.logsumexp(lp) - np.log(len(models))
 
-    def simulate(self, rowid, query, evidence=None, N=None):
-        samples = 1 if N is None else N
-        evidence = self._populate_evidence(rowid, query, evidence)
-        self._validate_simulate_logpdf(rowid, query, evidence, samples)
-        if evidence:
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+        if inputs:
+            raise ValueError('Prohibited inputs: %s' % (inputs,))
+        N_sim = 1 if N is None else N
+        constraints = self.populate_constraints(rowid, targets, constraints)
+        self._validate_simulate_logpdf(rowid, targets, constraints, N_sim)
+        if constraints:
             # Retrieve the dataset and neighborhoods.
-            dataset, neighborhoods = self._find_neighborhoods(query, evidence)
-            models = [self._create_local_model_joint(query, dataset[n])
+            dataset, neighborhoods = self._find_neighborhoods(
+                targets, constraints)
+            models = [self._create_local_model_joint(targets, dataset[n])
                 for n in neighborhoods]
             # Sample the models.
-            indices = self.rng.choice(len(models), size=samples)
+            indices = self.rng.choice(len(models), size=N_sim)
             # Sample from each model.
             sampled_models = [models[i] for i in indices]
-            results = [m.simulate(query) for m in sampled_models]
+            results = [m.simulate(targets) for m in sampled_models]
         else:
-            results = self._simulate_recusrive(rowid, query, samples)
-            assert len(results) == samples
+            results = self._simulate_fallback(rowid, targets, N_sim)
+            assert len(results) == N_sim
         return results[0] if N is None else results
 
-    def _simulate_recusrive(self, rowid, query, samples):
-        # Fallback if there is no such evidence to resample from, resample
-        # the first query variable.
-        merged = (len(query) == len(self.outputs))
-        targets = [o for o in self.outputs if o not in query]
+    def _simulate_fallback(self, rowid, targets, N):
+        # Fallback: if there is no such constraints to resample from, then
+        # resample the first variable.
+        merged = len(targets) == len(self.outputs)
+        targets_dummy = [o for o in self.outputs if o not in targets]
         if merged:
-            assert not targets
-            targets = [query[0]]
-            query = query[1:]
-        dataset = self._dataset(targets)
-        indices = self.rng.choice(len(dataset), size=samples)
-        evidences = [zip(targets, dataset[i]) for i in indices]
-        results = [self.simulate(rowid, query, dict(e)) for e in evidences]
-        # Make sure to add back the resampled first query variable to results.
+            assert not targets_dummy
+            targets_dummy = [targets[0]]
+            targets = targets[1:]
+        dataset = self._dataset(targets_dummy)
+        indices = self.rng.choice(len(dataset), size=N)
+        constraints = [zip(targets_dummy, dataset[i]) for i in indices]
+        results = [self.simulate(rowid, targets, dict(e)) for e in constraints]
+        # Make sure to add back the resampled first target variable to results.
         if merged:
-            results = [gu.merged(s, e) for s, e in zip(results, evidences)]
+            results = [gu.merged(s, e) for s, e in zip(results, constraints)]
         return results
 
     def logpdf_score(self):
@@ -164,40 +171,43 @@ class MultivariateKnn(CGpm):
     # --------------------------------------------------------------------------
     # Internal.
 
-    def _find_neighborhoods(self, query, evidence):
-        if not evidence:
-            raise ValueError('No evidence in neighbor search: %s.' % evidence)
-        if any(np.isnan(v) for v in evidence.values()):
-            raise ValueError('Nan evidence in neighbor search: %s.' % evidence)
-        # Extract the query, evidence variables from the dataset.
-        lookup = list(query) + list(evidence)
+    def _find_neighborhoods(self, targets, constraints):
+        if not constraints:
+            raise ValueError('No constraints in neighbor search.')
+        if any(np.isnan(v) for v in constraints.values()):
+            raise ValueError('Nan constraints in neighbor search.')
+        # Extract the targets, constraints from the dataset.
+        lookup = list(targets) + list(constraints)
         D = self._dataset(lookup)
         # Not enough neighbors: crash for now. Workarounds include:
-        # (i) reduce  K, (ii) randomly drop evidences, or (iii) impute dataset.
+        # (i) reduce K, (ii) randomly drop constraints, (iii) impute dataset.
         if len(D) < self.K:
-            raise ValueError('Not enough neighbors: %s.' % ((query, evidence),))
+            raise ValueError('Not enough neighbors: %s'
+                % ((targets, constraints),))
         # Code the dataset with Euclidean embedding.
-        D_qr_code = self._dummy_code(D[:,:len(query)], lookup[:len(query)])
-        D_ev_code = self._dummy_code(D[:,len(query):], lookup[len(query):])
+        N = len(targets)
+        D_qr_code = self._dummy_code(D[:,:N], lookup[:N])
+        D_ev_code = self._dummy_code(D[:,N:], lookup[N:])
         D_code = np.column_stack((D_qr_code, D_ev_code))
-        # Run nearest neighbor search on the evidence only.
-        evidence_code = self._dummy_code([evidence.values()], evidence.keys())
-        dist, neighbors = KDTree(D_ev_code).query(evidence_code, k=len(D))
+        # Run nearest neighbor search on the constraints only.
+        constraints_code = self._dummy_code(
+            [constraints.values()], constraints.keys())
+        dist, neighbors = KDTree(D_ev_code).query(constraints_code, k=len(D))
         # Check for equidistant neighbors and possibly extend the search.
         valid = [i for i, d in enumerate(dist[0]) if d <= dist[0][self.K-1]]
         if self.K < len(valid):
-            neighbors = self.rng.choice(
-                neighbors[0][valid], replace=False, size=self.K)
+            neighbors = self.rng.choice(neighbors[0][valid],
+                replace=False, size=self.K)
         else:
             neighbors = neighbors[0][:self.K]
         # For each neighbor, find its nearest M on the full lookup set.
         _, ex = KDTree(D_code).query(D_code[neighbors], k=min(self.M, self.K))
         # Return the dataset and the list of neighborhoods.
-        return D[:,:len(query)], ex
+        return D[:,:len(targets)], ex
 
-    def _create_local_model_joint(self, query, dataset):
-        assert all(q in self.outputs for q in query)
-        assert dataset.shape[1] == len(query)
+    def _create_local_model_joint(self, targets, dataset):
+        assert all(q in self.outputs for q in targets)
+        assert dataset.shape[1] == len(targets)
         lookup = {
             'numerical': self._create_local_model_numerical,
             'categorical': self._create_local_model_categorical,
@@ -205,7 +215,7 @@ class MultivariateKnn(CGpm):
         }
         models = {
             q: lookup[self.stattypes[self.outputs.index(q)]](q, dataset[:,i])
-            for i, q in enumerate(query)}
+            for i, q in enumerate(targets)}
         simulate = lambda q, N=None: {c: models[c].simulate(N) for c in q}
         logpdf = lambda q: sum(models[c].logpdf(x) for c,x in q.iteritems())
         return LocalGpm(simulate, logpdf)
@@ -232,26 +242,30 @@ class MultivariateKnn(CGpm):
         return D if not levels\
             else np.asarray([du.dummy_code(r, levels) for r in D])
 
-    def _dataset(self, query):
-        indexes = [self.outputs.index(q) for q in query]
+    def _dataset(self, outputs):
+        indexes = [self.outputs.index(q) for q in outputs]
         X = np.asarray(self.data.values())[:,indexes]
         return X[~np.any(np.isnan(X), axis=1)]
 
-    def _stattypes(self, query):
-        indexes = [self.outputs.index(q) for q in query]
+    def _stattypes(self, outputs):
+        indexes = [self.outputs.index(q) for q in outputs]
         return [self.stattypes[i] for i in indexes]
 
-    def _populate_evidence(self, rowid, query, evidence):
-        if evidence is None:
-            evidence = {}
+    def populate_constraints(self, rowid, targets, constraints):
+        if constraints is None:
+            constraints = {}
         if rowid in self.data:
             values = self.data[rowid]
             assert len(values) == len(self.outputs)
-            evidence_obs = {e:v for e,v in zip(self.outputs, values)
-                if not np.isnan(v) and e not in query and e not in evidence
+            observations = {
+                output : value
+                for output, value in zip(self.outputs, values)
+                if not np.isnan(value)
+                    and output not in targets
+                    and output not in constraints
             }
-            evidence = gu.merged(evidence, evidence_obs)
-        return evidence
+            constraints = gu.merged(constraints, observations)
+        return constraints
 
     def get_params(self):
         return {}
@@ -305,40 +319,36 @@ class MultivariateKnn(CGpm):
                 if distargs['outputs']['stattypes'][i] != 'numerical'):
             raise ValueError('Missing number of categories k: %s' % distargs)
 
-    def _validate_simulate_logpdf(self, rowid, query, evidence, N=None):
+    def _validate_simulate_logpdf(self, rowid, targets, constraints, N=None):
         # No invalid number of samples.
         if N is not None and N <= 0:
             raise ValueError('Unknown number of samples: %s.' % N)
         # At least K observations before we can do K nearest neighbors.
         if self.N < self.K:
-            raise ValueError(
-                'MultivariateKnn needs at least %d observations: %d.'
+            raise ValueError('MultivariateKnn needs >= %d observations: %d'
                 % (self.K, self.N))
-        # Need a query set.,
-        if not query:
-            raise ValueError('No query specified: %s.' % query)
-        # No query variables not in outputs.
-        if any(q not in self.outputs for q in query):
-            raise ValueError(
-                'Unknown output variables in query: (%s,%s).'
-                % (self.outputs, query))
-        # No evidence variables not in outputs.
-        if any(e not in self.outputs for e in evidence):
-            raise ValueError(
-                'Unknown output variables in evidence: (%s,%s).'
-                % (self.outputs, evidence))
-        # No duplicate variables in query and evidence.
-        if any(q in evidence for q in query):
-            raise ValueError(
-                'Duplicate variable in query and evidence: (%s,%s).'
-                % (query, evidence))
-        # Check for a nan in evidence.
-        if any(np.isnan(v) for v in evidence.itervalues()):
-            raise ValueError('Nan value in evidence: %s.' % evidence)
-        # Check for a nan in query.,
-        if isinstance(query, dict)\
-                and any(np.isnan(v) for v in query.itervalues()):
-            raise ValueError('Nan value in query: %s.' % query)
+        # Need targets.
+        if not targets:
+            raise ValueError('No targets specified: %s.' % targets)
+        # All targets in outputs.
+        if any(q not in self.outputs for q in targets):
+            raise ValueError('Unknown variables in targets: %s, %s'
+                % (self.outputs, targets))
+        # All constraints in outputs.
+        if any(e not in self.outputs for e in constraints):
+            raise ValueError('Unknown variables in constraints: %s,%s'
+                % (self.outputs, constraints))
+        # No duplicate variables in targets and constraints.
+        if any(q in constraints for q in targets):
+            raise ValueError('Duplicate variable in targets/constraints: %s %s'
+                % (targets, constraints))
+        # Check for a nan in constraints.
+        if any(np.isnan(v) for v in constraints.itervalues()):
+            raise ValueError('Nan value in constraints: %s.' % constraints)
+        # Check for a nan in targets.,
+        if isinstance(targets, dict)\
+                and any(np.isnan(v) for v in targets.itervalues()):
+            raise ValueError('Nan value in targets: %s.' % targets)
 
     def _validate_incorporate(self, rowid, observation, inputs):
         # No duplicate observation.

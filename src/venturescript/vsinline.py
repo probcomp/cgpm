@@ -62,29 +62,37 @@ class InlineVsCGpm(CGpm):
     def unincorporate(self, rowid):
         return
 
-    def logpdf(self, rowid, query, evidence=None):
-        if evidence is None: evidence = {}
-        assert set(evidence.keys()) == set(self.inputs)
-        assert query.keys() == self.outputs
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
+        if inputs is None:
+            inputs = {}
+        assert set(inputs.keys()) == set(self.inputs)
+        assert targets.keys() == self.outputs
+        assert not constraints
         self.ripl.assume('expr', self.expression, label='expr_assume')
-        args = self._retrieve_args(evidence)
+        sp_args = self._retrieve_args(inputs)
         # Retrieve the conditional density.
         logp = self.ripl.observe(
-            'expr (%s)' % args, query[self.outputs[0]], label='expr_observe')
+            'expr (%s)' % (sp_args,),
+            targets[self.outputs[0]],
+            label='expr_observe',
+        )
         # Forget the label.
         self.ripl.forget('expr_observe')
         self.ripl.forget('expr_assume')
         return logp[0]
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints, inputs=None, N=None):
         if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
-        if evidence is None: evidence = {}
-        assert set(evidence.keys()) == set(self.inputs)
-        assert query == self.outputs
+            return [self.simulate(rowid, targets, constraints, inputs) for
+                _i in xrange(N)]
+        if inputs is None:
+            inputs = {}
+        assert set(inputs.keys()) == set(self.inputs)
+        assert targets == self.outputs
+        assert not constraints
         self.ripl.assume('expr', self.expression, label='expr')
-        args = self._retrieve_args(evidence)
-        sample = self.ripl.sample('expr(%s)' % (args,))
+        sp_args = self._retrieve_args(inputs)
+        sample = self.ripl.sample('expr(%s)' % (sp_args,))
         self.ripl.forget('expr')
         return {self.outputs[0]: sample}
 
@@ -94,8 +102,8 @@ class InlineVsCGpm(CGpm):
     def transition(self, program=None, N=None):
         return
 
-    def _retrieve_args(self, evidence):
-        return str.join(',', [str(evidence[i]) for i in self.inputs])
+    def _retrieve_args(self, inputs):
+        return str.join(',', [str(inputs[i]) for i in self.inputs])
 
     def _validate_expression_abstract(self, expression, inputs):
         # We are expecting an expression of the form (lambda (<args>) (exp))
@@ -141,5 +149,6 @@ class InlineVsCGpm(CGpm):
             outputs=metadata['outputs'],
             inputs=metadata['inputs'],
             expression=metadata['expression'],
-            rng=rng,)
+            rng=rng,
+        )
         return cgpm

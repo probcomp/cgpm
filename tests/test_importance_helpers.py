@@ -267,81 +267,81 @@ def test_retrieve_extraneous_inputs():
     assert set([0, -8, -9, -10, -11, -12]) == set(ext)
 
 
-def test_retrieve_missing_inputs():
+def test_retrieve_required_inputs():
     # No connections.
     network = ImportanceNetwork(build_cgpm_no_connection())
-    missing = network.retrieve_missing_inputs([2], {8: None})
+    missing = network.retrieve_required_inputs([2], {8: None})
     assert [] == missing
-    missing = network.retrieve_missing_inputs([2,8], {1: None})
+    missing = network.retrieve_required_inputs([2,8], {1: None})
     assert [] == missing
 
     # V structure.
     network = ImportanceNetwork(build_cgpms_v_structure())
-    missing = network.retrieve_missing_inputs([1], {})
+    missing = network.retrieve_required_inputs([1], {})
     assert [] == missing
-    missing = network.retrieve_missing_inputs([1, 2], {})
+    missing = network.retrieve_required_inputs([1, 2], {})
     assert [] == missing
-    missing = network.retrieve_missing_inputs([8], {1:None, 2:None})
+    missing = network.retrieve_required_inputs([8], {1:None, 2:None})
     assert [] == missing
-    missing = network.retrieve_missing_inputs([2, 8], {1:None})
+    missing = network.retrieve_required_inputs([2, 8], {1:None})
     assert [] == missing
-    missing = network.retrieve_missing_inputs([1], {8:None})
+    missing = network.retrieve_required_inputs([1], {8:None})
     assert [2] == missing
-    missing = network.retrieve_missing_inputs([2], {8:None})
+    missing = network.retrieve_required_inputs([2], {8:None})
     assert [1] == missing
-    missing = network.retrieve_missing_inputs([8], {})
+    missing = network.retrieve_required_inputs([8], {})
     assert set([1,2]) == set(missing)
 
     # Markov chain.
     network = ImportanceNetwork(build_cgpms_markov_chain())
-    missing = network.retrieve_missing_inputs([1,2,8], {})
+    missing = network.retrieve_required_inputs([1,2,8], {})
     assert missing == []
-    missing = network.retrieve_missing_inputs([2,8], {5:None})
+    missing = network.retrieve_required_inputs([2,8], {5:None})
     assert missing == []
-    missing = network.retrieve_missing_inputs([2], {})
+    missing = network.retrieve_required_inputs([2], {})
     assert missing == []
-    missing = network.retrieve_missing_inputs([8], {})
+    missing = network.retrieve_required_inputs([8], {})
     assert missing == [2]
-    missing = network.retrieve_missing_inputs([8], {2:None})
+    missing = network.retrieve_required_inputs([8], {2:None})
     assert missing == []
-    missing = network.retrieve_missing_inputs([1], {})
+    missing = network.retrieve_required_inputs([1], {})
     assert set(missing) == set([2,8])
-    missing = network.retrieve_missing_inputs([1,8], {2:None})
+    missing = network.retrieve_required_inputs([1,8], {2:None})
     assert missing == []
-    missing = network.retrieve_missing_inputs([1], {2:None})
+    missing = network.retrieve_required_inputs([1], {2:None})
     assert missing == [8]
-    missing = network.retrieve_missing_inputs([1,2], {})
+    missing = network.retrieve_required_inputs([1,2], {})
     assert missing == [8]
-    missing = network.retrieve_missing_inputs([1,8], {})
+    missing = network.retrieve_required_inputs([1,8], {})
     assert missing == [2]
-    missing = network.retrieve_missing_inputs([1], {8: None})
+    missing = network.retrieve_required_inputs([1], {8: None})
     assert missing == [2]
-    missing = network.retrieve_missing_inputs([1,2], {8:None})
+    missing = network.retrieve_required_inputs([1,2], {8:None})
     assert missing == []
 
     # Complex.
     network = ImportanceNetwork(build_cgpms_complex())
-    missing = network.retrieve_missing_inputs([5,4,3,2], {})
+    missing = network.retrieve_required_inputs([5,4,3,2], {})
     assert missing == []
-    missing = network.retrieve_missing_inputs([5,4,3], {2: None})
+    missing = network.retrieve_required_inputs([5,4,3], {2: None})
     assert missing == []
-    missing = network.retrieve_missing_inputs([3,2], {4:None, 5:None})
+    missing = network.retrieve_required_inputs([3,2], {4:None, 5:None})
     assert missing == []
-    missing = network.retrieve_missing_inputs([2, 15], {4:None, 5:None})
+    missing = network.retrieve_required_inputs([2, 15], {4:None, 5:None})
     assert missing == []
-    missing = network.retrieve_missing_inputs([2], {4:None})
+    missing = network.retrieve_required_inputs([2], {4:None})
     assert missing == [5]
-    missing = network.retrieve_missing_inputs([3, 4], {})
+    missing = network.retrieve_required_inputs([3, 4], {})
     assert missing == [5]
-    missing = network.retrieve_missing_inputs([2], {})
+    missing = network.retrieve_required_inputs([2], {})
     assert set(missing) == set([4, 5])
-    missing = network.retrieve_missing_inputs([3], {2:None})
+    missing = network.retrieve_required_inputs([3], {2:None})
     assert set(missing) == set([4, 5])
-    missing = network.retrieve_missing_inputs([15], {2:None})
+    missing = network.retrieve_required_inputs([15], {2:None})
     assert set(missing) == set([4, 5])
-    missing = network.retrieve_missing_inputs([2, 3], {})
+    missing = network.retrieve_required_inputs([2, 3], {})
     assert set(missing) == set([4, 5])
-    missing = network.retrieve_missing_inputs([15], {14: None})
+    missing = network.retrieve_required_inputs([15], {14: None})
     assert set(missing) == set([4, 5])
 
 

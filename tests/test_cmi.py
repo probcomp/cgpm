@@ -120,24 +120,20 @@ def test_cmi_different_views__ci_():
     assert np.allclose(mi12, 0)
 
     # CMI on variable in other view equal to MI.
-    assert np.allclose(
-        state.mutual_information([0], [1], evidence={2:10}), mi01)
-    assert np.allclose(
-        state.mutual_information([0], [2], evidence={1:0}), mi02)
-    assert np.allclose(
-        state.mutual_information([1], [2], evidence={0:-2}), mi12)
-    assert np.allclose(
-        state.mutual_information([1], [2], evidence={0:None}, T=5), mi12)
+    assert np.allclose(state.mutual_information([0], [1], {2:10}), mi01)
+    assert np.allclose(state.mutual_information([0], [2], {1:0}), mi02)
+    assert np.allclose(state.mutual_information([1], [2], {0:-2}), mi12)
+    assert np.allclose(state.mutual_information([1], [2], {0:None}, T=5), mi12)
 
 def test_cmi_marginal_crash():
     X = np.eye(5)
     cctypes = ['normal'] * 5
     s = State(X, Zv={0:0, 1:0, 2:0, 3:1, 4:1}, cctypes=cctypes)
-    # One marginalized evidence variable.
+    # One marginalized constraint variable.
     s.mutual_information([0], [1], {2:None}, T=10, N=10)
-    # Two marginalized evidence variables.
+    # Two marginalized constraint variables.
     s.mutual_information([0], [1], {2:None, 3:None}, T=10, N=10)
-    # Two marginalized evidence variables and one constrained variable.
+    # Two marginalized constraint variables and one constrained variable.
     s.mutual_information([0], [1], {2:None, 3:None, 4:0}, T=10, N=10)
 
 def test_cmi_multivariate_crash():
@@ -147,7 +143,7 @@ def test_cmi_multivariate_crash():
     s.mutual_information([0,1], [0,1], {2:1}, T=10, N=10)
     s.mutual_information([0,1], [0,1], {2:None}, T=10, N=10)
     s.mutual_information([2,4], [0,1,3], {}, T=10, N=10)
-    # Duplicate in 2 query and evidence.
+    # Duplicate in 2 query and constraint.
     with pytest.raises(ValueError):
         s.mutual_information([2,4], [1,3], {0:1, 2:None}, T=10, N=10)
     # Duplicate in 3 query.

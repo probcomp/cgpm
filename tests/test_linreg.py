@@ -96,8 +96,8 @@ def test_logpdf_score():
         rng=gu.gen_rng(0))
     for rowid, row in enumerate(D[:10]):
         observation = {0: row[0]}
-        query = {i:row[i] for i in linreg.inputs}
-        linreg.incorporate(rowid, observation, query)
+        inputs = {i:row[i] for i in linreg.inputs}
+        linreg.incorporate(rowid, observation, inputs)
     linreg.transition_hypers(N=10)
     assert linreg.logpdf_score() < 0
 
@@ -115,19 +115,25 @@ def test_logpdf_predictive():
         linreg.incorporate(i, {0: row[0]}, {i: row[i] for i in linreg.inputs})
     linreg.transition_hypers(N=10)
     # Ensure can compute predictive for seen class 0.
-    linreg.logpdf(-1, {0: Dx0[0,0]}, {i: Dx0[0,i] for i in linreg.inputs})
+    linreg.logpdf(None, {0: Dx0[0,0]},
+        inputs={i: Dx0[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 1.
-    linreg.logpdf(-1, {0: Dx1[0,0]}, {i: Dx1[0,i] for i in linreg.inputs})
+    linreg.logpdf(None, {0: Dx1[0,0]},
+        inputs={i: Dx1[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 2.
-    linreg.logpdf(-1, {0: Dx2[0,0]}, {i: Dx2[0,i] for i in linreg.inputs})
+    linreg.logpdf(None, {0: Dx2[0,0]},
+        inputs={i: Dx2[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for unseen class 3.
-    linreg.logpdf(-1, {0: Dx3[0,0]}, {i: Dx3[0,i] for i in linreg.inputs})
+    linreg.logpdf(None, {0: Dx3[0,0]},
+        inputs={i: Dx3[0,i] for i in linreg.inputs})
     # Ensure can compute predictive for nan.
     with pytest.raises(ValueError):
-        linreg.logpdf(-1, {0: np.nan}, {i: Dx0[0,i] for i in linreg.inputs})
-    # Ensure can compute predictive for missing query.
+        linreg.logpdf(None, {0: np.nan},
+            inputs={i: Dx0[0,i] for i in linreg.inputs})
+    # Ensure can compute predictive for missing targets.
     with pytest.raises(ValueError):
-        linreg.logpdf(-1, {7: 10}, {i: Dx0[0,i] for i in linreg.inputs})
+        linreg.logpdf(None, {7: 10},
+            inputs={i: Dx0[0,i] for i in linreg.inputs})
 
 def test_simulate():
     linreg = LinearRegression(
@@ -149,8 +155,9 @@ def test_simulate():
     xpred, xtrue = [], []
     for row in D[25:]:
         xtrue.append(row[0])
-        evidence = {i:row[i] for i in linreg.inputs}
-        samples = [linreg.simulate(-1, [0], evidence)[0] for i in xrange(100)]
+        inputs = {i: row[i] for i in linreg.inputs}
+        samples = [linreg.simulate(None, [0], None, inputs)[0]
+            for _i in xrange(100)]
         xpred.append(samples)
     xpred = np.asarray(xpred)
     xmeans = np.mean(xpred, axis=1)

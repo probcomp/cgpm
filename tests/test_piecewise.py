@@ -23,29 +23,29 @@ from cgpm.utils.general import logsumexp
 def test_piecewise_logpdf():
     pw = PieceWise([0,1], [2], sigma=1, flip=.8)
     # x,z
-    pw.simulate(-1, [0,1], {2:1})
-    pw.logpdf(-1, {0:1.5, 1:0}, {2:1})
+    pw.simulate(None, [0,1], None, {2:1})
+    pw.logpdf(None, {0:1.5, 1:0}, None, {2:1})
 
     # x
-    pw.simulate(-1, [0], {2:1})
-    pw.logpdf(-1, {0:1.5}, {2:1})
+    pw.simulate(None, [0], None, {2:1})
+    pw.logpdf(None, {0:1.5}, None, {2:1})
 
     # z
-    pw.simulate(-1, [1], {2:1})
+    pw.simulate(None, [1], None, {2:1})
     assert np.allclose(
         logsumexp([
-            pw.logpdf(-1, {1:0}, {2:1}),
-            pw.logpdf(-1, {1:1}, {2:1})]),
+            pw.logpdf(None, {1:0}, None, {2:1}),
+            pw.logpdf(None, {1:1}, None, {2:1})]),
         0)
 
     # z|x
-    pw.simulate(-1, [1], {0:1.5, 2:1})
+    pw.simulate(None, [1], {0:1.5}, {2:1})
     assert np.allclose(
         logsumexp([
-            pw.logpdf(-1, {1:0}, {0:1.5, 2:1}),
-            pw.logpdf(-1, {1:1}, {0:1.5, 2:1})]),
+            pw.logpdf(None, {1:0}, {0:1.5}, {2:1}),
+            pw.logpdf(None, {1:1}, {0:1.5}, {2:1})]),
         0)
 
     # x|z
-    pw.simulate(-1, [0], {1:0, 2:1})
-    pw.logpdf(-1, {0:1.5}, {1:0, 2:1})
+    pw.simulate(None, [0], {1:0}, {2:1})
+    pw.logpdf(None, {0:1.5}, {1:0}, {2:1})

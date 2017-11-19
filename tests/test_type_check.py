@@ -138,7 +138,7 @@ def assert_good(model, rowid, g):
     observation, inputs = get_observation_inputs(g)
     model.incorporate(rowid, observation, inputs)
     model.unincorporate(rowid)
-    assert model.logpdf(-1, observation, inputs) != -float('inf')
+    assert model.logpdf(-1, observation, None, inputs) != -float('inf')
 
 
 def assert_bad(model, rowid, b):
@@ -148,6 +148,6 @@ def assert_bad(model, rowid, b):
     with pytest.raises(Exception):
         model.unincorporate(rowid)
     try: # GPM return negative infinity for invalid input.
-        assert model.logpdf(-1, observation, inputs) == -float('inf')
+        assert model.logpdf(-1, observation, None, inputs) == -float('inf')
     except Exception: # Conditional GPM throws error on wrong input variables.
         assert True

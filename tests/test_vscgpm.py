@@ -166,7 +166,7 @@ def test_incorporate_unincorporate(case):
     # Optional evidence.
     cgpm.incorporate(rowid, {0:OBS[rowid][0]})
 
-    # Test obsevation stable after transition.
+    # Test observation stable after transition.
     def test_samples_match():
         # Check all samples match.
         sample = cgpm.simulate(0, [0,1])
@@ -183,8 +183,8 @@ def test_incorporate_unincorporate(case):
     test_samples_match()
 
     # Test that simulating a hypothetical twice is different.
-    first = cgpm.simulate(-100, [0, 1], {3:4})
-    second = cgpm.simulate(-100, [0, 1], {3:4})
+    first = cgpm.simulate(-100, [0, 1], None, {3:4})
+    second = cgpm.simulate(-100, [0, 1], None, {3:4})
     assert first != second
 
     # Test observations resampled after transition.
@@ -192,7 +192,7 @@ def test_incorporate_unincorporate(case):
     with pytest.raises(ValueError):
         cgpm.simulate(1, [0,1])
     cgpm.transition(N=10)
-    sample = cgpm.simulate(1, [0,1], {3:EV[rowid]})
+    sample = cgpm.simulate(1, [0,1], None, {3:EV[rowid]})
     assert not np.allclose(sample[0], OBS[rowid][0])
     assert not np.allclose(sample[1], OBS[rowid][1])
 

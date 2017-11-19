@@ -41,19 +41,21 @@ class TrollNormal(CGpm):
         assert rowid in self.rowids
         self.rowids.remove(rowid)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         if N is not None:
-            return [self.simulate(rowid, query, evidence) for i in xrange(N)]
+            return [self.simulate(rowid, targets, constraints, inputs)
+                for _i in xrange(N)]
         x = self.rng.normal(
-            self._retrieve_location(evidence),
-            self._retrieve_scale(evidence))
+            self._retrieve_location(inputs),
+            self._retrieve_scale(inputs),
+        )
         return {self.outputs[0]: x}
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         return self._gaussian_log_pdf(
-            query[self.outputs[0]],
-            self._retrieve_location(evidence),
-            self._retrieve_scale(evidence),
+            targets[self.outputs[0]],
+            self._retrieve_location(inputs),
+            self._retrieve_scale(inputs),
         )
 
     def _gaussian_log_pdf(self, x, mu, s):
@@ -63,11 +65,11 @@ class TrollNormal(CGpm):
     def transition(self, N=None, S=None):
         time.sleep(.1)
 
-    def _retrieve_location(self, evidence):
-        return evidence[self.inputs[0]]
+    def _retrieve_location(self, inputs):
+        return inputs[self.inputs[0]]
 
-    def _retrieve_scale(self, evidence):
-        return abs(evidence[self.inputs[1]]) + 1
+    def _retrieve_scale(self, inputs):
+        return abs(inputs[self.inputs[1]]) + 1
 
     def to_metadata(self):
         metadata = dict()

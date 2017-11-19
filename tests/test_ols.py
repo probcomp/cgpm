@@ -56,9 +56,11 @@ OLS_INPUTS = range(1, len(cctypes))
 
 def test_integration():
     ols = OrdinaryLeastSquares(
-        outputs=OLS_OUTPUTS, inputs=OLS_INPUTS,
-        distargs=OLS_DISTARGS, rng=gu.gen_rng(0))
-
+        outputs=OLS_OUTPUTS,
+        inputs=OLS_INPUTS,
+        distargs=OLS_DISTARGS,
+        rng=gu.gen_rng(0)
+    )
     # Incorporate first 20 rows.
     for rowid, row in enumerate(D[:20]):
         observation = {0: row[0]}
@@ -99,28 +101,28 @@ def test_integration():
     ols.transition()
     assert ols.noise > 0
 
-    # Invalid categorical evidence 5 for categorical(k=3).
-    query = {OLS_OUTPUTS[0]: 2}
-    evidence = dict(zip(OLS_INPUTS, [5, 5, 0, 1.4, 7, 4, 2, -2]))
+    # Invalid categorical inputs 5 for categorical(k=3).
+    targets = {OLS_OUTPUTS[0]: 2}
+    inputs = dict(zip(OLS_INPUTS, [5, 5, 0, 1.4, 7, 4, 2, -2]))
     with pytest.raises(ValueError):
-        ols.logpdf(-1, query, evidence)
+        ols.logpdf(-1, targets, None, inputs)
     with pytest.raises(ValueError):
-        ols.simulate(-1, OLS_OUTPUTS, evidence)
+        ols.simulate(-1, OLS_OUTPUTS, None, inputs)
 
-    # Invalid categorical evidence 2 for bernoulli.
-    query = {OLS_OUTPUTS[0]: 2}
-    evidence = dict(zip(OLS_INPUTS, [5, 5, 2, 1.4, 7, 4, 2, -2]))
+    # Invalid categorical inputs 2 for bernoulli.
+    targets = {OLS_OUTPUTS[0]: 2}
+    inputs = dict(zip(OLS_INPUTS, [5, 5, 2, 1.4, 7, 4, 2, -2]))
     with pytest.raises(ValueError):
-        ols.logpdf(-1, query, evidence)
+        ols.logpdf(-1, targets, None, inputs)
     with pytest.raises(ValueError):
-        ols.simulate(-1, OLS_OUTPUTS, evidence)
+        ols.simulate(-1, OLS_OUTPUTS, None, inputs)
 
     # Do a logpdf computation.
-    query = {OLS_OUTPUTS[0]: 2}
-    evidence = dict(zip(OLS_INPUTS, [2, 5, 0, 1.4, 7, 4, 2, -2]))
-    logp_old = ols.logpdf(-1, query, evidence)
+    targets = {OLS_OUTPUTS[0]: 2}
+    inputs = dict(zip(OLS_INPUTS, [2, 5, 0, 1.4, 7, 4, 2, -2]))
+    logp_old = ols.logpdf(-1, targets, None, inputs)
     assert logp_old < 0
-    ols.simulate(-1, OLS_OUTPUTS, evidence)
+    ols.simulate(-1, OLS_OUTPUTS, None, inputs)
 
     # Now serialize and deserialize, and check if logp_old is the same.
     metadata = ols.to_metadata()
@@ -130,6 +132,6 @@ def test_integration():
     ols2 = builder.from_metadata(metadata, rng=gu.gen_rng(1))
 
     assert ols2.noise == ols.noise
-    logp_new = ols2.logpdf(-1, query, evidence)
+    logp_new = ols2.logpdf(-1, targets, None, inputs)
     assert np.allclose(logp_new, logp_old)
-    ols2.simulate(-1, OLS_OUTPUTS, evidence)
+    ols2.simulate(-1, OLS_OUTPUTS, None, inputs)

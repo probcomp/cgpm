@@ -89,23 +89,6 @@ def load_docstrings(module):
             If unspecified, will be sampled.
         """
 
-    module.State.incorporate.__func__.__doc__ = """
-        Incorporate a new rowid.
-
-        Parameters
-        ----------
-        rowid : int
-            Only rowid = -1 is currently supported, pending Github #84 which
-            will support cell-level operations.
-        observation : dict{output:val}
-            Keys of the query must a subset of the State output, unspecified
-            outputs will be nan. At least one non-nan value must be specified.
-            To optionally specify the cluster assignment in a particular view v,
-            include a key in the query with state.views[v].outputs[0] whose
-            value is the desired cluster id.
-        """
-
-
     # --------------------------------------------------------------------------
     # Schema updates.
 
@@ -163,69 +146,13 @@ def load_docstrings(module):
             and Z is the entirety of the latent state in the CGPM.
         """
 
-
-    # --------------------------------------------------------------------------
-    # logpdf
-
-    module.State.logpdf.__func__.__doc__ = """
-        Compute density of query under the posterior predictive distirbution.
-
-        Parameters
-        ----------
-        rowid : int
-            The rowid of the member of the population to simulate from.
-            If 0 <= rowid < state.n_rows then the latent variables of member
-            rowid will be taken as conditioning variables.
-            Otherwise logpdf for a hypothetical member is computed,
-            marginalizing over latent variables.
-        query : dict{col:val}
-            Columns and values at which to query the logpdf.
-        evidence : dict{col:val}
-            Columns and values at which serve as conditioning values in the row.
-
-        Returns
-        -------
-        logpdf : float
-            The logpdf(query|rowid, evidence).
-        """
-
-    # --------------------------------------------------------------------------
-    # Simulate
-
-    module.State.simulate.__func__.__doc__ = """
-        Simulate from the posterior predictive distirbution.
-
-        Parameters
-        ----------
-        rowid : int
-            The rowid of the member of the population to simulate from.
-            If 0 <= rowid < state.n_rows then the latent variables of member
-            rowid will be taken as conditioning variables.
-            Otherwise a hypothetical member is simulated, marginalizing over
-            latent variables.
-        query : list<int>
-            A list of columns to simulate from.
-        evidence : dict{col:val}
-            Columns and values at which serve as conditioning values in the row.
-        N : int, optional.
-            Number of samples to return.
-
-        Returns
-        -------
-        samples : dict or list<dict>
-            If `N` is `None`, returns a scalar dictionary whose keys are the
-            queried columns, and values are the simulations. If `N` is an
-            integer, returns a list where each item is a dictionary representing
-            a single joint sample.
-        """
-
     # --------------------------------------------------------------------------
     # Mutual information
 
     module.State.mutual_information.__func__.__doc__ = """
-        Computes the mutual information MI(col0:col1|evidence).
+        Computes the mutual information MI(col0:col1|constraints).
 
-        Mutual information with evidence can be of the form:
+        Mutual information with constraints can be of the form:
             - MI(X:Y|Z=z): CMI at a fixed conditioning value.
             - MI(X:Y|Z): expected CMI E_Z[MI(X:Y|Z)] under Z.
             - MI(X:Y|Z, W=w): expected CMI E_Z[MI(X:Y|Z,W=w)] under Z.
@@ -239,7 +166,7 @@ def load_docstrings(module):
             Columns to comptue MI. If all columns in `col0` are equivalent
             to columns in `col` then entropy is returned, otherwise they must
             be disjoint and the CMI is returned
-        evidence : list(tuple), optional
+        constraints : list(tuple), optional
             A list of pairs (col, val) of observed values to condition on. If
             `val` is None, then `col` is marginalized over.
         T : int, optional.

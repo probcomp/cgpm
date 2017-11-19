@@ -106,7 +106,7 @@ def test_invalid_incorporate():
     # Missing query.
     with pytest.raises(ValueError):
         kde.incorporate(0, {})
-    # Disallow evidence.
+    # Disallow inputs.
     with pytest.raises(ValueError):
         kde.incorporate(0, {0:1}, {1:2})
     # Unknown output var.
@@ -496,7 +496,7 @@ def test_conditional_indicator(kde_xz):
         ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
         # Plot simulated data.
         samples_subpop = [s[0] for s in
-            kde_xz.simulate(-1, [0], evidence={1:t}, N=len(data_subpop))]
+            kde_xz.simulate(-1, [0], {1:t}, None, N=len(data_subpop))]
         ax.scatter(
             np.repeat(t, len(data_subpop)) + .25,
             samples_subpop, color=gu.colors[t])
@@ -521,7 +521,7 @@ def test_conditional_real(kde_xz):
     means = [np.mean(data[data[:,1]==t], axis=0)[0] for t in indicators]
     for mean, indicator, ax in zip(means, indicators, axes.ravel('F')):
         samples_subpop = [s[1] for s in
-            kde_xz.simulate(-1, [1], evidence={0:mean}, N=len(data))]
+            kde_xz.simulate(-1, [1], {0:mean}, None, N=len(data))]
         # Plot a histogram of the simulated indicator.
         ax.hist(samples_subpop, color='g', alpha=.4)
         ax.set_title('True Indicator Z %d' % indicator)

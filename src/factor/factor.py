@@ -35,15 +35,15 @@ class FactorAnalysis(CGpm):
 
     From standard results (Murphy Section 12.1)
 
-        z ~ Normal(0, I)                Prior.
+        z ~ Normal(0, I)                    Prior.
 
-        x|z ~ Normal(W.z + mux, Psi)     Likelihood.
+        x|z ~ Normal(W.z + mux, Psi)        Likelihood.
 
-        x ~ Normal(mux, W.W'+Psi)        Marginal.
+        x ~ Normal(mux, W.W'+Psi)           Marginal.
 
-        z|x ~ Normal(m, S)              Posterior.
-            S = inv(I + W'.inv(Psi).W)      (covariance)
-            m = S(W'.inv(Psi).(x-mux))       (mean)
+        z|x ~ Normal(m, S)                  Posterior.
+            S = inv(I + W'.inv(Psi).W)          (covariance)
+            m = S(W'.inv(Psi).(x-mux))          (mean)
 
     The full joint distribution over [z,x] is then
 
@@ -112,7 +112,7 @@ class FactorAnalysis(CGpm):
         # Dimensions.
         self.L = L
         self.D = D
-        # Varible indexes.
+        # Variable indexes.
         self.outputs = outputs
         self.latents = outputs[-self.L:]
         self.inputs = []
@@ -160,48 +160,60 @@ class FactorAnalysis(CGpm):
             raise ValueError('No such observation: %d.' % rowid)
         self.N -= 1
 
-    def logpdf(self, rowid, query, evidence=None):
+    def logpdf(self, rowid, targets, constraints=None, inputs=None):
         # XXX Deal with observed rowid.
-        evidence = self.populate_evidence(rowid, query, evidence)
-        if not query:
-            raise ValueError('No query: %s.' % query)
-        if any(q not in self.outputs for q in query):
-            raise ValueError('Unknown variables: (%s,%s).'
-                % (query, self.outputs))
-        if any(q in evidence for q in query):
-            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
+        constraints = self.populate_constraints(rowid, targets, constraints)
+        if inputs:
+            raise ValueError('Prohibited inputs: %s' % (inputs,))
+        if not targets:
+            raise ValueError('No targets: %s' % (targets,))
+        if any(q not in self.outputs for q in targets):
+            raise ValueError('Unknown targets: %s' % (targets,))
+        if any(q in constraints for q in targets):
+            raise ValueError('Duplicate variable: %s, %s'
+                % (targets, constraints,))
         # Reindex variables.
-        query_r = self.reindex(query)
-        evidence_r = self.reindex(evidence)
+        targets_r = self.reindex(targets)
+        constraints_r = self.reindex(constraints)
         # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
-            self.mu, self.cov, query_r.keys(), evidence_r)
+            self.mu, self.cov, targets_r.keys(), constraints_r)
         # Compute log density.
-        x = np.array(query_r.values())
+        x = np.array(targets_r.values())
         return multivariate_normal.logpdf(x, muG, covG)
 
-    def simulate(self, rowid, query, evidence=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         # XXX Deal with observed rowid.
-        evidence = self.populate_evidence(rowid, query, evidence)
-        if any(q in evidence for q in query):
-            raise ValueError('Duplicate variable: (%s,%s).' % (query, evidence))
+        constraints = self.populate_constraints(rowid, targets, constraints)
+        if inputs:
+            raise ValueError('Prohibited inputs: %s' % (inputs,))
+        if not targets:
+            raise ValueError('No targets: %s' % (targets,))
+        if any(q not in self.outputs for q in targets):
+            raise ValueError('Unknown targets: %s' % (targets,))
+        if any(q in constraints for q in targets):
+            raise ValueError('Duplicate variable: %s, %s'
+                % (targets, constraints,))
         # Reindex variables.
-        query_r = self.reindex(query)
-        evidence_r = self.reindex(evidence)
+        targets_r = self.reindex(targets)
+        constraints_r = self.reindex(constraints)
         # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
-            self.mu, self.cov, query_r, evidence_r)
+            self.mu, self.cov, targets_r, constraints_r)
         # Generate samples.
         sample = self.rng.multivariate_normal(mean=muG, cov=covG, size=N)
-        def get_sample(s):
-            return {query[0]:s} if isinstance(s, float) else dict(zip(query, s))
+        def get_sample(samp):
+            if isinstance(samp, float):
+                samp = [samp]
+            assert len(targets) == len(samp)
+            return dict(zip(targets, samp))
         return get_sample(sample) if N is None else map(get_sample, sample)
 
     def logpdf_score(self):
         def compute_logpdf(x):
             assert len(x) == self.D
-            query = {i:v for i,v in enumerate(x) if not np.isnan(v)}
-            return self.logpdf(-1, query, evidence=None)
+            targets = {i:v for i,v in enumerate(x) if not np.isnan(v)}
+            return self.logpdf(None, targets)
         return sum(compute_logpdf(x) for x in self.data)
 
     def transition(self, N=None):
@@ -216,17 +228,21 @@ class FactorAnalysis(CGpm):
         self.W = np.transpose(self.fa.components_)
         self.mu, self.cov = self.joint_parameters()
 
-    def populate_evidence(self, rowid, query, evidence):
-        if evidence is None:
-            evidence = {}
+    def populate_constraints(self, rowid, targets, constraints):
+        if constraints is None:
+            constraints = {}
         if rowid in self.data:
             values = self.data[rowid]
             assert len(values) == len(self.outputs[:self.D])
-            evidence_obs = {e:v for e,v in zip(self.outputs[:self.D], values)
-                if not np.isnan(v) and e not in query and e not in evidence
+            observations = {
+                output : value
+                for output, value in zip(self.outputs[:self.D], values)
+                if not np.isnan(value)
+                    and output not in targets
+                    and output not in constraints
             }
-            evidence = gu.merged(evidence, evidence_obs)
-        return evidence
+            constraints = gu.merged(constraints, observations)
+        return constraints
 
     # --------------------------------------------------------------------------
     # Internal.
@@ -257,7 +273,7 @@ class FactorAnalysis(CGpm):
     # --------------------------------------------------------------------------
     # Helper.
 
-    def reindex(self, query):
+    def reindex(self, variables):
         # Reindex an output variable to its index in self.mu
         # self.mu has as the first L items the last L items of self.outputs
         # and as the remaining D items the first D items of self.outputs.
@@ -266,15 +282,15 @@ class FactorAnalysis(CGpm):
         #                <---D=4--->|<--L=3-->
         # raw indices:   0  1  2  3 |  4  5  6
         # reindexed:     3  4  5  6 |  0  1  2
-        assert isinstance(query, (list, dict))
+        assert isinstance(variables, (list, dict))
         def convert(q):
             i = self.outputs.index(q)
             return i - self.D if q in self.latents else i + self.L
-        indexes = [convert(q) for q in query]
-        if isinstance(query, list):
+        indexes = [convert(q) for q in variables]
+        if isinstance(variables, list):
             return indexes
         else:
-            return dict(zip(indexes, query.values()))
+            return dict(zip(indexes, variables.values()))
 
     def joint_parameters(self):
         mean = np.concatenate((np.zeros(self.L), self.mux))

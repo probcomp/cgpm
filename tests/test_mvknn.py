@@ -23,10 +23,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scipy.stats import chisquare
 from scipy.stats import ks_2samp
 from sklearn.neighbors import KDTree
-from sklearn.neighbors import KNeighborsRegressor
 
 from cgpm.knn.mvknn import MultivariateKnn
 from cgpm.utils import general as gu
@@ -145,33 +143,33 @@ def test_find_neighborhoods():
 
     assert knn.N == len(X)
 
-    # Neighbor search need evidence.
+    # Neighbor search need constraints.
     with pytest.raises(ValueError):
-        knn._find_neighborhoods(query=[0,1], evidence=None)
+        knn._find_neighborhoods([0,1], None)
     with pytest.raises(ValueError):
-        knn._find_neighborhoods(query=[0,1], evidence={})
+        knn._find_neighborhoods([0,1], {})
 
     # Bad category 199.
     with pytest.raises(ValueError):
-        knn._find_neighborhoods(query=[0,1], evidence={2:199, 5:.8})
+        knn._find_neighborhoods([0,1], {2:199, 5:.8})
 
-    # Check the returned K and dimension are correct varying query/evidence.
-    for q, e in [
+    # Check returned K and dimension are correct varying targets/constraints.
+    for targets, constraints in [
             ([0,1], {5:.8}),
             ([0,1,7], {5:.8}),
             ([4], {5:.8, 7:0})
     ]:
-        d, nh = knn._find_neighborhoods(query=q, evidence=e)
+        d, nh = knn._find_neighborhoods(targets, constraints)
         assert len(nh) == K
         for n in nh:
             assert 1 <= len(n) <= K
-            assert d[n].shape[1] == len(q)
+            assert d[n].shape[1] == len(targets)
 
     # Dimension 10 has only 4 non-nan values, so K=5 will fail.
     with pytest.raises(ValueError):
-        knn._find_neighborhoods(query=[0,1], evidence={10:.8})
+        knn._find_neighborhoods([0,1], {10:.8})
     with pytest.raises(ValueError):
-        knn._find_neighborhoods(query=[10,1], evidence={5:.8})
+        knn._find_neighborhoods([10,1], {5:.8})
 
     # Now furnish dimension 10 with one additional non-nan value and ensure the
     # K=5 neighbors are the only possible ones i.e 0, 96, 97, 98, 99.
@@ -184,12 +182,12 @@ def test_find_neighborhoods():
                 match = match or any(np.allclose(dataset[i], e) for i in n)
             assert match
 
-    d_found, n_found = knn._find_neighborhoods(query=[0,1], evidence={10:.8})
+    d_found, n_found = knn._find_neighborhoods([0,1], {10:.8})
     expected = [np.asarray(knn.data[r])[[0,1]]
         for r in [0, 96, 97, 98, 99]]
     test_found_expected(d_found, n_found, expected)
 
-    d_found, n_found = knn._find_neighborhoods(query=[10,1], evidence={5:.8})
+    d_found, n_found = knn._find_neighborhoods([10,1], {5:.8})
     expected = [np.asarray(knn.data[r])[[10,1]]
         for r in [0, 96, 97, 98, 99]]
     test_found_expected(d_found, n_found, expected)
@@ -202,9 +200,9 @@ def test_find_neighborhoods():
         knn._find_neighborhoods([0,1], dict(zip(outputs[2:], z[2:])))
 
     # Now make sure that z is its own nearest neighbor.
-    z_query = [0,1]
-    z_evidence = {o:v for o,v in zip(outputs[2:], z[2:]) if not np.isnan(v)}
-    d_found, n_found = knn._find_neighborhoods(z_query, z_evidence)
+    z_targets = [0,1]
+    z_constraints = {o:v for o,v in zip(outputs[2:], z[2:]) if not np.isnan(v)}
+    d_found, n_found = knn._find_neighborhoods(z_targets, z_constraints)
     test_found_expected(d_found, n_found, [z[:2]])
 
 
@@ -251,7 +249,7 @@ def test_perigee_period_given_apogee():
     assert all(not np.isinf(l) for l in logpdfs)
 
     # Create an axis.
-    fig, ax = plt.subplots()
+    _fig, ax = plt.subplots()
 
     # Scatter the actual neighborhood.
     ax.scatter(perigees, periods, color='b', label='Actual Satellites')
@@ -279,7 +277,7 @@ def test_perigee_period_given_apogee():
     samples_joint = knn.simulate(-1, [0,2], N=100)
 
     # Create an axis.
-    fig, ax = plt.subplots()
+    _fig, ax = plt.subplots()
 
     # Scatter the actual data.
     ax.scatter(X[:,0], X[:,2], color='b', label='Actual Satellites')
@@ -442,7 +440,7 @@ def test_conditional_indicator(knn_xz):
         ax.scatter(data_subpop[:,1], data_subpop[:,0], color=gu.colors[t])
         # Plot simulated data.
         samples_subpop = [s[0] for s in
-            knn_xz.simulate(-1, [0], evidence={1:t}, N=len(data_subpop))]
+            knn_xz.simulate(-1, [0], constraints={1:t}, N=len(data_subpop))]
         ax.scatter(
             np.repeat(t, len(data_subpop)) + .25,
             samples_subpop, color=gu.colors[t])
@@ -467,7 +465,7 @@ def test_conditional_real(knn_xz):
     means = [np.mean(data[data[:,1]==t], axis=0)[0] for t in indicators]
     for mean, indicator, ax in zip(means, indicators, axes.ravel('F')):
         samples_subpop = [s[1] for s in
-            knn_xz.simulate(-1, [1], evidence={0:mean}, N=len(data))]
+            knn_xz.simulate(-1, [1], constraints={0:mean}, N=len(data))]
         # Plot a histogram of the simulated indicator.
         ax.hist(samples_subpop, color='g', alpha=.4)
         ax.set_title('True Indicator Z %d' % indicator)
