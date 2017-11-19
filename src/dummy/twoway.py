@@ -44,10 +44,8 @@ class TwoWay(CGpm):
     def unincorporate(self, rowid):
         return
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs)
-                for _i in xrange(N)]
         y = inputs[self.inputs[0]]
         assert int(y) == float(y)
         assert y in [0, 1]

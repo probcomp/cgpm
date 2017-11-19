@@ -83,10 +83,9 @@ class NormalTrunc(DistributionGpm):
             self.mu, self.sigma, self.l, self.h)
         return logpdf_unorm - logcdf_norm
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
-        if N is not None:
-            return [self.simulate(rowid, targets) for _i in xrange(N)]
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         max_iters = 1000

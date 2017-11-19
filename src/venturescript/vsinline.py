@@ -81,10 +81,8 @@ class InlineVsCGpm(CGpm):
         self.ripl.forget('expr_assume')
         return logp[0]
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs) for
-                _i in xrange(N)]
         if inputs is None:
             inputs = {}
         assert set(inputs.keys()) == set(self.inputs)

@@ -21,15 +21,15 @@ from scipy.stats import uniform
 
 from cgpm.cgpm import CGpm
 from cgpm.network.importance import ImportanceNetwork
-from cgpm.uncorrelated.uniformx import UniformX
 from cgpm.uncorrelated.directed import DirectedXyGpm
-from cgpm.utils.general import gen_rng
+from cgpm.uncorrelated.uniformx import UniformX
+from cgpm.utils import general as gu
 
 
 class ParabolaY(CGpm):
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
         if rng is None:
-            rng = gen_rng(1)
+            rng = gu.gen_rng(1)
         if outputs is None:
             outputs = [0]
         if inputs is None:
@@ -42,10 +42,8 @@ class ParabolaY(CGpm):
         self.noise = noise
         self.uniform = uniform(loc=-self.noise, scale=2*self.noise)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs)
-                for _i in xrange(N)]
         assert targets == self.outputs
         assert inputs.keys() == self.inputs
         assert not constraints

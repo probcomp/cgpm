@@ -117,10 +117,8 @@ class LinearRegression(CGpm):
             xt, yt, self.N, self.data.Y.values(), self.data.x.values(), self.a,
             self.b, self.mu, self.V)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs)
-                for _i in xrange(N)]
         assert targets == self.outputs
         assert not constraints
         if rowid in self.data.x:

@@ -66,10 +66,9 @@ class Geometric(DistributionGpm):
         return Geometric.calc_predictive_logp(
             x, self.N, self.sum_x, self.a, self.b)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
-        if N is not None:
-            return [self.simulate(rowid, targets) for _i in xrange(N)]
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         an, bn = Geometric.posterior_hypers(self.N, self.sum_x, self.a, self.b)

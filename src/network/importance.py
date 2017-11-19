@@ -36,10 +36,8 @@ class ImportanceNetwork(object):
         self.extraneous = hu.retrieve_extraneous_inputs(self.cgpms, self.v_to_c)
         self.topo = hu.topological_sort(self.adjacency)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs)
-                for _i in xrange(N)]
         if constraints is None:
             constraints = {}
         if inputs is None:

@@ -46,10 +46,8 @@ class FourWay(CGpm):
     def unincorporate(self, rowid):
         return
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs)
-                for _i in xrange(N)]
         regime = self.lookup_quadrant(
             inputs[self.inputs[0]],
             inputs[self.inputs[1]],

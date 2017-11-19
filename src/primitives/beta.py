@@ -19,8 +19,9 @@ from math import log
 import numpy as np
 import scipy
 
-from cgpm.utils import sampling as su
 from cgpm.primitives.distribution import DistributionGpm
+from cgpm.utils import general as gu
+from cgpm.utils import sampling as su
 
 
 class Beta(DistributionGpm):
@@ -82,10 +83,9 @@ class Beta(DistributionGpm):
             return -float('inf')
         return Beta.calc_predictive_logp(x, self.strength, self.balance)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
-        if N is not None:
-            return [self.simulate(rowid, targets) for _i in xrange(N)]
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         alpha = self.strength * self.balance

@@ -76,12 +76,11 @@ class Lognormal(DistributionGpm):
                 log(x), self.N, self.sum_log_x, self.sum_log_x_sq, self.m,
                 self.r, self.s, self.nu)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         # XXX This implementation is not verified but will be covered in
         # future univariate simulate tests, see Github issue #14.
         DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
-        if N is not None:
-            return [self.simulate(rowid, targets) for _i in xrange(N)]
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         # Simulate normal parameters.

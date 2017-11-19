@@ -41,10 +41,8 @@ class TrollNormal(CGpm):
         assert rowid in self.rowids
         self.rowids.remove(rowid)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs)
-                for _i in xrange(N)]
         x = self.rng.normal(
             self._retrieve_location(inputs),
             self._retrieve_scale(inputs),

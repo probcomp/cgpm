@@ -68,10 +68,9 @@ class Crp(DistributionGpm):
             return 0 if self.data[rowid] == x else -float('inf')
         return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
-        if N is not None:
-            return [self.simulate(rowid, targets) for _i in xrange(N)]
         if rowid in self.data:
             x = self.data[rowid]
         else:

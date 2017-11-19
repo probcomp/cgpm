@@ -17,7 +17,7 @@
 from scipy.stats import uniform
 
 from cgpm.cgpm import CGpm
-from cgpm.utils.general import gen_rng
+from cgpm.utils import general as gu
 
 
 class UniformX(CGpm):
@@ -25,7 +25,7 @@ class UniformX(CGpm):
     def __init__(self, outputs=None, inputs=None, low=0, high=1, rng=None):
         assert not inputs
         if rng is None:
-            rng = gen_rng(0)
+            rng = gu.gen_rng(0)
         if outputs is None:
             outputs = [0]
         self.rng = rng
@@ -35,10 +35,8 @@ class UniformX(CGpm):
         self.inputs = []
         self.uniform = uniform(loc=self.low, scale=self.high-self.low)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs) for
-                _i in xrange(N)]
         assert not constraints
         assert targets == self.outputs
         x = self.rng.uniform(low=self.low, high=self.high)

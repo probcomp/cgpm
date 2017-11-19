@@ -81,10 +81,9 @@ class Normal(DistributionGpm):
             x, self.N, self.sum_x, self.sum_x_sq, self.m, self.r,
             self.s, self.nu)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
-        if N is not None:
-            return [self.simulate(rowid, targets) for _i in xrange(N)]
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         mn, rn, sn, nun = Normal.posterior_hypers(

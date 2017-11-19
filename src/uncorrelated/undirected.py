@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from cgpm.cgpm import CGpm
-from cgpm.utils.general import gen_rng
+from cgpm.utils import general as gu
 
 
 class UnDirectedXyGpm(CGpm):
@@ -23,7 +23,7 @@ class UnDirectedXyGpm(CGpm):
 
     def __init__(self, outputs=None, inputs=None, noise=None, rng=None):
         if rng is None:
-            rng = gen_rng(0)
+            rng = gu.gen_rng(0)
         if outputs is None:
             outputs = [0, 1]
         if noise is None:
@@ -48,18 +48,15 @@ class UnDirectedXyGpm(CGpm):
             w = targets.values()[0]
             return self.logpdf_conditional(w, z)
 
+    @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         assert not inputs
-        if N is not None:
-            return [self.simulate(rowid, targets, constraints, inputs) for
-                _i in xrange(N)]
         if not constraints:
             sample = self.simulate_joint()
             return {q: sample[self.outputs.index(q)] for q in targets}
-        else:
-            assert len(constraints) == len(targets) == 1
-            z = constraints.values()[0]
-            return {targets[0]: self.simulate_conditional(z)}
+        assert len(constraints) == len(targets) == 1
+        z = constraints.values()[0]
+        return {targets[0]: self.simulate_conditional(z)}
 
     # Internal simulators and assesors.
 
