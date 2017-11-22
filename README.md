@@ -23,7 +23,7 @@ this repository and following these instructions. It is _highly recommended_ to
 install `cgpm` inside of a virtualenv which was created using the
 `--system-site-packages` flag.
 
-1. Install dependencies from `apt`, [listed here](https://github.com/probcomp/cgpm/blob/master/docker/ubuntu1404#L4-L14).
+1. Install dependencies from `apt`, [listed here](https://github.com/probcomp/cgpm/blob/71fe62790f466e9dd2149d0f527c584cce19e70f/docker/ubuntu1604#L4-L14).
 
 2. Retrieve and build the source.
 
