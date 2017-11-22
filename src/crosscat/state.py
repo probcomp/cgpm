@@ -406,7 +406,7 @@ class State(CGpm):
 
     def simulate(self, rowid, targets, constraints=None, inputs=None,
             N=None, accuracy=None):
-        assert isinstance(targets, list)
+        assert isinstance(targets, (list, tuple))
         assert inputs is None or isinstance(inputs, dict)
         self._validate_cgpm_query(rowid, targets, constraints)
         if not self._composite:
@@ -448,7 +448,7 @@ class State(CGpm):
         # Is the rowid fresh?
         fresh = self.hypothetical(rowid)
         # Is the query simulate or logpdf?
-        simulate = isinstance(targets, list)
+        simulate = isinstance(targets, (list, tuple))
         # Disallow duplicated target cols.
         if simulate and len(set(targets)) != len(targets):
             raise ValueError('Columns in targets must be unique.')

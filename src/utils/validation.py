@@ -106,10 +106,10 @@ def validate_crp_constrained_input(N, Cd, Ci, Rd, Ri):
 def partition_query_evidence(Z, query, evidence):
     """Returns queries[k], evidences[k] are queries, evidences for cluster k."""
     evidences = partition_dict(Z, evidence) if evidence is not None else dict()
-    if isinstance(query, list):
-        queries = partition_list(Z, query)
-    else:
+    if isinstance(query, dict):
         queries = partition_dict(Z, query)
+    else:
+        queries = partition_list(Z, query)
     return queries, evidences
 
 def partition_list(Z, L):
