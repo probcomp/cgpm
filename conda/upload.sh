@@ -20,7 +20,7 @@ elif [ ${TRAVIS_BRANCH} = "master" ]; then
     anaconda -t ${CONDA_UPLOAD_TOKEN} upload -u ${CONDA_USER} -l edge ~/miniconda/conda-bld/linux-64/cgpm-*.tar.bz2 --force
     # trigger a downstream bayeslite build using the edge package
     curl -LO https://raw.github.com/stephanmg/travis-dependent-builds/master/trigger.sh
-    bash trigger.sh probcomp bayeslite master $TRAVIS_ACCESS_TOKEN
+    bash trigger.sh probcomp bayeslite master $TRAVIS_ACCESS_TOKEN | grep -v TOKEN
   fi
 else
   exit 0
