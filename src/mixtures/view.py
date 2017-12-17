@@ -486,7 +486,7 @@ class View(CGpm):
 
     def _validate_cgpm_query(self, rowid, targets, constraints):
         # Is the query simulate or logpdf?
-        simulate = isinstance(targets, list)
+        simulate = isinstance(targets, (list, tuple))
         # Disallow duplicated target cols.
         if simulate and len(set(targets)) != len(targets):
             raise ValueError('Columns in targets must be unique.')
