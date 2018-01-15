@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import itertools
 import base64
 import copy
 import math
@@ -22,6 +23,8 @@ from collections import defaultdict
 from datetime import datetime
 
 import venture.shortcuts as vs
+
+from venture.exception import VentureException
 
 from cgpm.cgpm import CGpm
 from cgpm.utils import config as cu
@@ -71,7 +74,9 @@ class VsCGpm(CGpm):
             raise ValueError('source.inputs list disagrees with inputs.')
         self.inputs = inputs
         # Check overriden observers.
-        if len(self.outputs) != self.ripl.evaluate('(size observers)'):
+        num_observers = self._get_num_observers()
+        self.obs_override = num_observers is not None
+        if self.obs_override and len(self.outputs) != num_observers:
             raise ValueError('source.observers list disagrees with outputs.')
         # XXX Eliminate this nested defaultdict
         # Inputs and labels for incorporate/unincorporate.
@@ -174,12 +179,18 @@ class VsCGpm(CGpm):
             '((lookup outputs %i) %s)' % (i, sp_args), label=label)
 
     def _observe_cell(self, rowid, query, value, inputs):
+        output_idx = self.outputs.index(query)
         inputs_list = [inputs[i] for i in self.inputs]
-        label = '\''+self._gen_label()
-        sp_args = str.join(' ', map(str, [rowid] + inputs_list + [value, label]))
-        i = self.outputs.index(query)
-        self.ripl.evaluate('((lookup observers %i) %s)' % (i, sp_args))
-        self.obs[rowid]['labels'][query] = label[1:]
+        label = self._gen_label()
+        sp_args = '%d %s' % (rowid, ' '.join(map(str, inputs_list)))
+        if not self.obs_override:
+            self.ripl.observe('((lookup outputs %i) %s)'
+                % (output_idx, sp_args), value, label=label)
+        else:
+            obs_args = '%s %s (quote %s)' % (sp_args, value, label)
+            self.ripl.evaluate('((lookup observers %i) %s)'
+                % (output_idx, obs_args))
+        self.obs[rowid]['labels'][query] = label
 
     def _forget_cell(self, rowid, query):
         if query not in self.obs[rowid]['labels']:
@@ -254,6 +265,14 @@ class VsCGpm(CGpm):
         if exists and inputs != self.obs[rowid]['inputs']:
             raise ValueError('Given inputs contradicts dataset: %d, %s, %s' %
                 (rowid, inputs, self.obs[rowid]['inputs']))
+
+    def _get_num_observers(self):
+        # Return the length of the "observers" list defined by the client, or
+        # None if the client did not override the observers.
+        try:
+            return self.ripl.evaluate('(size observers)')
+        except VentureException:
+            return None
 
     @staticmethod
     def _obs_to_json(obs):

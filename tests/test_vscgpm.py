@@ -60,16 +60,13 @@ source_abstract = """
   (lambda (rowid w value label)
     (observe (simulate_y ,rowid ,w) value ,label))]
 
-[define observers (list observe_m
-                        observe_y)]
-
 [define inputs (list 'w)]
 
 [define transition
   (lambda (N)
     (mh default one N))]
-"""
 
+"""
 
 source_concrete = """
 define make_cgpm = () -> {
@@ -100,19 +97,42 @@ define observe_y = (rowid, w, value, label) -> {
     $label: observe simulate_y($rowid, $w) = value;
 };
 
-define observers = [observe_m, observe_y];
-
 define inputs = ["w"];
 
 define transition = (N) -> {
     mh(default, one, N)
 };
+
 """
 
+# Define source with client overriding observers.
+source_abstract_observers_good = source_abstract + \
+    '[define observers (list observe_m observe_y)]\n'
+source_abstract_observers_bad = source_abstract + \
+    '[define observers (list observe_m observe_y 2)]\n'
+
+source_concrete_observers_good = source_concrete + \
+    'define observers = [observe_m, observe_y];\n'
+source_concrete_observers_bad = source_concrete + \
+    'define observers = [observe_m, observe_y, 2];\n'
+
+# Define test cases.
 Case = namedtuple('Case', ['source', 'mode'])
 cases = [
-    Case(source_abstract, 'church_prime'),
-    Case(source_concrete, 'venture_script'),
+    Case(source_abstract,                   'church_prime'),
+    Case(source_concrete,                   'venture_script'),
+    Case(source_abstract_observers_good,    'church_prime'),
+    Case(source_concrete_observers_good,    'venture_script'),
+]
+
+CaseObs = namedtuple('Case', ['source', 'obsok', 'mode'])
+casesObs = [
+    CaseObs(source_abstract,                   True, 'church_prime'),
+    CaseObs(source_concrete,                   True, 'venture_script'),
+    CaseObs(source_abstract_observers_good,    True, 'church_prime'),
+    CaseObs(source_concrete_observers_good,    True, 'venture_script'),
+    CaseObs(source_abstract_observers_bad,     False, 'church_prime'),
+    CaseObs(source_concrete_observers_bad,     False, 'venture_script'),
 ]
 
 @pytest.mark.parametrize('case', cases)
@@ -132,6 +152,14 @@ def test_wrong_inputs(case):
         VsCGpm(outputs=[1,2], inputs=[], source=case.source, mode=case.mode)
     with pytest.raises(ValueError):
         VsCGpm(outputs=[1,2], inputs=[3,4], source=case.source, mode=case.mode)
+
+@pytest.mark.parametrize('case', casesObs)
+def test_wrong_observers(case):
+    try:
+        VsCGpm(outputs=[0,1], inputs=[2], source=case.source, mode=case.mode)
+        assert case.obsok
+    except ValueError:
+        assert not case.obsok
 
 @pytest.mark.parametrize('case', cases)
 def test_incorporate_unincorporate(case):
