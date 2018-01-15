@@ -50,8 +50,7 @@ source_abstract = """
       (mem (lambda (rowid w)
         (uniform_continuous (- w 10) (+ w 10)))))
 
-    (assume simulators (list simulate_m
-                             simulate_y))))]
+    (assume outputs (list simulate_m simulate_y))))]
 
 [define observe_m
   (lambda (rowid w value label)
@@ -90,7 +89,7 @@ define make_cgpm = () -> {
         uniform_continuous(w - 10, w + 10)
     });
 
-    assume simulators = [simulate_m, simulate_y];
+    assume outputs = [simulate_m, simulate_y];
 };
 
 define observe_m = (rowid, w, value, label) -> {

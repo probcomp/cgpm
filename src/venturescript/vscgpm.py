@@ -63,8 +63,8 @@ class VsCGpm(CGpm):
         if not kwargs.get('supress', None):
             self.ripl.evaluate('(%s)' % ('make_cgpm' if sp is None else sp,))
         # Check correct outputs.
-        if len(outputs) != len(self.ripl.sample('simulators')):
-            raise ValueError('source.simulators list disagrees with outputs.')
+        if len(outputs) != len(self.ripl.sample('outputs')):
+            raise ValueError('source.outputs list disagrees with outputs.')
         self.outputs = outputs
         # Check correct inputs.
         if len(inputs) != self.ripl.evaluate('(size inputs)'):
@@ -171,7 +171,7 @@ class VsCGpm(CGpm):
         sp_args = str.join(' ', map(str, [rowid] + inputs_list))
         i = self.outputs.index(target)
         return self.ripl.predict(
-            '((lookup simulators %i) %s)' % (i, sp_args), label=label)
+            '((lookup outputs %i) %s)' % (i, sp_args), label=label)
 
     def _observe_cell(self, rowid, query, value, inputs):
         inputs_list = [inputs[i] for i in self.inputs]
