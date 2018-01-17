@@ -169,51 +169,48 @@ def test_wrong_observers(case):
 def test_incorporate_unincorporate(case):
     cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
 
-    OBS = [[1.2, .2], [1, 4]]
-    EV = [0, 2]
-
-    rowid = 0
+    observations = [[1.2, .2], [1, 4]]
+    inputs = [0, 2]
+    rowid0 = 0
+    rowid1 = 1
 
     # Missing input will raise a lookup error in Venture.
     with pytest.raises(VentureException):
-        cgpm.incorporate(rowid, {1:OBS[rowid][1]}, {})
+        cgpm.incorporate(rowid0 , {1: observations[rowid0][1]}, {})
     # No query.
     with pytest.raises(ValueError):
-        cgpm.incorporate(rowid, {}, {3:EV[rowid]})
-
-    cgpm.incorporate(rowid, {0:OBS[rowid][0]}, {3:EV[rowid]})
-
+        cgpm.incorporate(rowid0, {}, {3: inputs[rowid0]})
+    cgpm.incorporate(rowid0, {0: observations[rowid0][0]}, {3: inputs[rowid0]})
     # Duplicate observation.
     with pytest.raises(ValueError):
-        cgpm.incorporate(rowid, {0:OBS[rowid][0]})
+        cgpm.incorporate(rowid0, {0: observations[rowid0][0]})
     # Incompatible evidence.
     with pytest.raises(ValueError):
-        cgpm.incorporate(rowid, {1:OBS[rowid][1]}, {3:EV[rowid]+1})
-    # Compatible evidence.
-    cgpm.incorporate(rowid, {1:OBS[rowid][1]}, {3:EV[rowid]})
+        cgpm.incorporate(rowid0, {1: observations[rowid0][1]},
+            {3: inputs[rowid0]+1})
 
-    rowid = 1
-    cgpm.incorporate(rowid, {1:OBS[rowid][1]}, {3:EV[rowid]})
-    # Optional evidence.
-    cgpm.incorporate(rowid, {0:OBS[rowid][0]})
+    cgpm.incorporate(rowid0, {1: observations[rowid0][1]}, {3: inputs[rowid0]})
+
+    cgpm.incorporate(rowid1, {0: observations[rowid1][0]})
+    cgpm.incorporate(rowid1, {1: observations[rowid1][1]}, {3: inputs[rowid1]})
 
     # Test observation stable after transition.
     def test_samples_match():
-        # Check all samples match.
-        sample = cgpm.simulate(0, [0,1])
-        assert sample[0] == OBS[0][0]
-        assert sample[1] == OBS[0][1]
-
-        sample = cgpm.simulate(1, [1])
-        assert sample[1] == OBS[rowid][1]
+        # Test rowid0.
+        sample = cgpm.simulate(rowid0, [0,1])
+        assert sample[0] == observations[rowid0][0]
+        assert sample[1] == observations[rowid0][1]
+        # Test rowid1.
+        sample = cgpm.simulate(rowid1, [1])
+        assert sample[1] == observations[rowid1][1]
         sample = cgpm.simulate(1, [0])
-        assert sample[0] == OBS[rowid][0]
+        assert sample[0] == observations[rowid1][0]
 
     test_samples_match()
     cgpm.transition(N=10)
     test_samples_match()
 
-    # Test that simulating a hypothetical twice is different.
+    # Test simulating hypothetical rowid twice gives different results.
     first = cgpm.simulate(-100, [0, 1], None, {3:4})
     second = cgpm.simulate(-100, [0, 1], None, {3:4})
     assert first != second
@@ -222,12 +219,12 @@ def test_incorporate_unincorporate(case):
     cgpm.unincorporate(1)
     cgpm.simulate(1, [0])
     with pytest.raises(VentureException):
-        # Missing inputs required for output 1.
+        # Missing inputs, w is required for output 1.
         cgpm.simulate(1, [1])
     cgpm.transition(N=10)
-    sample = cgpm.simulate(1, [0,1], None, {3:EV[rowid]})
-    assert not np.allclose(sample[0], OBS[rowid][0])
-    assert not np.allclose(sample[1], OBS[rowid][1])
+    sample = cgpm.simulate(1, [0,1], None, {3: inputs[rowid1]})
+    assert not np.allclose(sample[0], observations[rowid1][0])
+    assert not np.allclose(sample[1], observations[rowid1][1])
 
 
 @pytest.mark.parametrize('case', cases)
@@ -248,7 +245,6 @@ def test_serialize(case):
     # Load binary from JSON.
     cgpm3 = builder.from_metadata(json.loads(json.dumps(binary)))
 
-    print
     for cgpm_test in [cgpm2]:
         assert cgpm.outputs == cgpm_test.outputs
         assert cgpm.inputs == cgpm_test.inputs
@@ -262,7 +258,16 @@ def test_serialize(case):
         sample = cgpm_test.simulate(1, [1])
         assert sample[1] == 15
 
+        assert cgpm_test._get_input_cell_value(0, 3) == 0
+        assert cgpm_test._get_input_cell_value(1, 3) == 10
+
+        assert cgpm_test._is_observed_output_cell(0, 0)
+        assert cgpm_test._is_observed_output_cell(0, 1)
+        assert cgpm_test._is_observed_output_cell(1, 1)
+        assert not cgpm_test._is_observed_output_cell(1, 0)
+
         cgpm_test.incorporate(1, {0:10})
+        assert cgpm_test._is_observed_output_cell(1, 0)
 
 
 @pytest.mark.xfail(strict=True, reason='Github issue #215 (serialization).')
