@@ -235,8 +235,7 @@ class VsCGpm(CGpm):
 
     def _get_input_cell_name(self, rowid, cin):
         str_rowid = '%s%s' % ('' if 0 <= rowid else 'm', abs(rowid))
-        str_cin = '%s%s' % ('' if 0 <= cin else 'm', abs(cin))
-        return 'input_%s_%s' % (str_rowid, str_cin)
+        return '%s_%s' % (self.input_mapping[cin], str_rowid)
 
     def _gen_label(self):
         return 't%s%s' % (
