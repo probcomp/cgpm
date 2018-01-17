@@ -249,27 +249,27 @@ class VsCGpm(CGpm):
         if not set.issubset(set(observation), set(self.outputs)):
             raise ValueError('Unknown observation: %s,%s'
                 % (observation, self.outputs))
-        if any(math.isnan(inputs[i]) for i in inputs):
+        if any(math.isnan(value) for value in inputs.itervalues()):
             raise ValueError('Nan inputs: %s' % inputs)
-        if any(math.isnan(observation[i]) for i in observation):
+        if any(math.isnan(value) for value in observation.itervalues()):
             raise ValueError('Nan observation: %s' % (observation,))
         if rowid in self.labels \
-                and any(i in self.labels[rowid] for i in observation):
+                and any(cout in self.labels[rowid] for cout in observation):
             raise ValueError('Observation exists: %d %s' % (rowid, observation))
         return self._check_input_args(rowid, inputs)
 
     def _validate_simulate(self, rowid, targets, constraints, inputs):
         constraints = constraints or {}
         inputs = inputs or {}
-        if any(math.isnan(inputs[i]) for i in inputs):
+        if any(math.isnan(value) for value in inputs.itervalues()):
             raise ValueError('Nan inputs: %s' % (inputs,))
-        if any(math.isnan(constraints[i]) for i in constraints):
+        if any(math.isnan(value) for value in constraints.itervalues()):
             raise ValueError('Nan constraints: %s' % (constraints,))
-        if not all(i in self.inputs for i in inputs):
+        if not all(cin in self.inputs for cin in inputs):
             raise ValueError('Unknown inputs: %s' % (inputs,))
-        if not all(i in self.outputs for i in constraints):
+        if not all(cout in self.outputs for cout in constraints):
             raise ValueError('Unknown constraints: %s' % (constraints,))
-        if not all(i in self.outputs for i in targets):
+        if not all(cout in self.outputs for cout in targets):
             raise ValueError('Unknown targets: %s' % (targets,))
         if set.intersection(set(targets), set(constraints)):
             raise ValueError('Overlapping targets and constraints: %s, %s'
@@ -290,17 +290,17 @@ class VsCGpm(CGpm):
         # Return mapping from input integer index to string name.
         input_dict = self.ripl.sample('inputs')
         assert len(inputs) == len(input_dict)
-        return {i:e[0] for e, i in zip(input_dict, inputs)}
+        return {cin:e[0] for e, cin in zip(input_dict, inputs)}
 
     def _check_input_args(self, rowid, inputs):
-        inputs_obs = set(i for i in inputs if
-            self._is_observed_input_cell(rowid, i))
-        inputs_vals = [(self._get_input_cell_value(rowid, i), inputs[i])
-            for i in inputs_obs]
+        inputs_obs = set(cin for cin in inputs
+            if self._is_observed_input_cell(rowid, cin))
+        inputs_vals = [(self._get_input_cell_value(rowid, cin), inputs[cin])
+            for cin in inputs_obs]
         if any(gu.abserr(v1, v2) > 1e-6 for (v1, v2) in inputs_vals):
             raise ValueError('Given inputs contradict dataset: %d, %s, %s, %s'
                 % (rowid, inputs, inputs_obs, inputs_vals))
-        return {i : inputs[i] for i in inputs if i not in inputs_obs}
+        return {cin : inputs[cin] for cin in inputs if cin not in inputs_obs}
 
     def _check_constraints_args(self, rowid, constraints):
         constraints_obs = [cout for cout in constraints
