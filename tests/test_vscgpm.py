@@ -249,7 +249,7 @@ def test_serialize(case):
         assert cgpm.outputs == cgpm_test.outputs
         assert cgpm.inputs == cgpm_test.inputs
         assert cgpm.source == cgpm_test.source
-        assert cgpm.obs == cgpm_test.obs
+        assert cgpm.labels == cgpm_test.labels
 
         sample = cgpm_test.simulate(0, [0,1])
         assert sample[0] == 1
