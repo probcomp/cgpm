@@ -128,6 +128,14 @@ def logsumexp(array):
     # so a - m <= 0; hence exp(a - m) is guaranteed not to overflow.
     return m + math.log(sum(math.exp(a - m) for a in array))
 
+def relerr(expected, actual):
+    """Relative error between `expected` and `actual`: ``abs((a - e)/e)``."""
+    return abs((actual - expected)/expected)
+
+def abserr(expected, actual):
+    """Relative error between `expected` and `actual`: ``abs((a - e))``."""
+    return abs((actual - expected))
+
 def logmeanexp(array):
     # https://github.com/probcomp/bayeslite/blob/master/src/math_util.py
     inf = float('inf')

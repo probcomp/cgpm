@@ -14,10 +14,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import itertools
 import base64
 import copy
 import math
+import os
 
 from collections import defaultdict
 from datetime import datetime
@@ -27,7 +27,6 @@ import venture.shortcuts as vs
 from venture.exception import VentureException
 
 from cgpm.cgpm import CGpm
-from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 
 
@@ -50,12 +49,13 @@ class VsCGpm(CGpm):
         # Retrieve the ripl.
         self.ripl = kwargs.get('ripl', vs.make_lite_ripl(seed=seed))
         self.mode = kwargs.get('mode', 'church_prime')
+        self.ripl = VsCGpm._load_helpers(self.ripl)
         # Execute the program.
         self.source = kwargs.get('source', None)
         if self.source is not None:
             self.ripl.set_mode(self.mode)
             self.ripl.execute_program(self.source)
-        # Load any plugins.
+        # Load any additional plugins.
         self.plugins = kwargs.get('plugins', None)
         if self.plugins:
             for plugin in self.plugins.split(','):
@@ -70,9 +70,10 @@ class VsCGpm(CGpm):
             raise ValueError('source.outputs list disagrees with outputs.')
         self.outputs = outputs
         # Check correct inputs.
-        if len(inputs) != self.ripl.evaluate('(size inputs)'):
+        if len(inputs) != self.ripl.sample('(size inputs)'):
             raise ValueError('source.inputs list disagrees with inputs.')
         self.inputs = inputs
+        self.input_mapping = self._get_input_mapping(self.inputs)
         # Check overriden observers.
         num_observers = self._get_num_observers()
         self.obs_override = num_observers is not None
@@ -83,15 +84,19 @@ class VsCGpm(CGpm):
         self.obs = defaultdict(lambda: defaultdict(dict))
 
     def incorporate(self, rowid, observation, inputs=None):
-        inputs = self._validate_incorporate(rowid, observation, inputs)
-        for variable, value in observation.iteritems():
-            self._observe_cell(rowid, variable, value, inputs)
+        inputs2 = self._validate_incorporate(rowid, observation, inputs)
+        for i, value in inputs2.iteritems():
+            self._observe_input_cell(rowid, i, value)
+        for t, value in observation.iteritems():
+            self._observe_output_cell(rowid, t, value)
 
     def unincorporate(self, rowid):
         if rowid not in self.obs:
             raise ValueError('Never incorporated: %d' % rowid)
         for q in self.outputs:
-            self._forget_cell(rowid, q)
+            self._forget_output_cell(rowid, q)
+        for i in self.inputs:
+            self._forget_input_cell(rowid, i)
         assert len(self.obs[rowid]['labels']) == 0
         del self.obs[rowid]
 
@@ -99,28 +104,29 @@ class VsCGpm(CGpm):
         return 0
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        constraints_clean, inputs_clean = \
+        constraints2, inputs2 = \
             self._validate_simulate(rowid, targets, constraints, inputs)
-        # Handle constraints on the multivariate output.
-        if constraints_clean:
-            # Observe constrained outputs.
-            for variable, value in constraints_clean.iteritems():
-                self._observe_cell(rowid, variable, value, inputs_clean)
-            # Run local inference in rowid scope, with 15 steps of MH.
-            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
-        # Retrieve samples, with 5 steps of MH between predict.
-        def retrieve_sample(q, l):
-            # XXX Only run inference on the latent variables in the block.
-            # self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
-            return self._predict_cell(rowid, q, inputs_clean, l)
-        labels = [self._gen_label() for q in targets]
-        samples = {q: retrieve_sample(q, l) for q, l in zip(targets, labels)}
-        # Forget predicted targets variables.
+        # Observe any unseen inputs.
+        for i, value in inputs2.iteritems():
+            self._observe_input_cell(rowid, i, value)
+        # Observe any unobserved constrained outputs.
+        for c, value in constraints2.iteritems():
+            self._observe_output_cell(rowid, c, value)
+        # Run local inference in rowid scope, with 15 steps of MH.
+        self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
+        # Generate labels and predictions of outputs.
+        labels = [self._gen_label() for _t in targets]
+        samples = {t: self._predict_cell(rowid, t, label)
+            for t, label in zip(targets, labels)}
+        # Forget predicted targets.
         for label in labels:
             self.ripl.forget(label)
-        # Forget constrained outputs.
-        for q, _v in constraints_clean.iteritems():
-            self._forget_cell(rowid, q)
+        # Forget observed constraints.
+        for c in constraints2:
+            self._forget_output_cell(rowid, c)
+        # Forget observed inputs.
+        for i in inputs2:
+            self._forget_input_cell(rowid, i)
         return samples
 
     def logpdf_score(self):
@@ -148,7 +154,7 @@ class VsCGpm(CGpm):
 
     @classmethod
     def from_metadata(cls, metadata, rng=None):
-        ripl = vs.make_lite_ripl()
+        ripl = VsCGpm._load_helpers(vs.make_lite_ripl())
         ripl.loads(base64.b64decode(metadata['binary']))
         cgpm = VsCGpm(
             outputs=metadata['outputs'],
@@ -171,50 +177,79 @@ class VsCGpm(CGpm):
     # --------------------------------------------------------------------------
     # Internal helpers.
 
-    def _predict_cell(self, rowid, target, inputs, label):
+    def _predict_cell(self, rowid, target, label):
         output_idx = self.outputs.index(target)
-        sp_args = self._get_sp_args(rowid, inputs)
+        sp_rowid = '(atom %d)' % (rowid,)
         return self.ripl.predict('((lookup outputs %i) %s)'
-            % (output_idx, sp_args), label=label)
+            % (output_idx, sp_rowid), label=label)
 
-    def _observe_cell(self, rowid, query, value, inputs):
+    def _observe_output_cell(self, rowid, query, value):
         output_idx = self.outputs.index(query)
         label = self._gen_label()
-        sp_args = self._get_sp_args(rowid, inputs)
+        sp_rowid = '(atom %d)' % (rowid,)
         if not self.obs_override:
             self.ripl.observe('((lookup outputs %i) %s)'
-                % (output_idx, sp_args), value, label=label)
+                % (output_idx, sp_rowid), value, label=label)
         else:
-            obs_args = '%s %s (quote %s)' % (sp_args, value, label)
+            obs_args = '%s %s (quote %s)' % (sp_rowid, value, label)
             self.ripl.evaluate('((lookup observers %i) %s)'
                 % (output_idx, obs_args))
         self.obs[rowid]['labels'][query] = label
 
-    def _forget_cell(self, rowid, query):
-        if query not in self.obs[rowid]['labels']:
-            return
-        label = self.obs[rowid]['labels'][query]
-        self.ripl.forget(label)
-        del self.obs[rowid]['labels'][query]
+    def _observe_input_cell(self, rowid, idx, value):
+        input_name = self.input_mapping[idx]
+        sp_rowid = '(atom %d)' % (rowid,)
+        input_cell_name = self._get_input_cell_name(rowid, idx)
+        self.ripl.execute_program(
+            '(assume %s (dict_set (lookup inputs "%s") %s %s))'
+            % (input_cell_name, input_name, sp_rowid, value))
+
+    def _forget_output_cell(self, rowid, query):
+        if self._is_observed_output_cell(rowid, query):
+            label = self.obs[rowid]['labels'][query]
+            self.ripl.forget(label)
+            del self.obs[rowid]['labels'][query]
+
+    def _forget_input_cell(self, rowid, idx):
+        if self._is_observed_input_cell(rowid, idx):
+            # Pop from the dictionary.
+            input_name = self.input_mapping[idx]
+            sp_rowid = '(atom %d)' % (rowid,)
+            self.ripl.sample('(dict_pop (lookup inputs "%s") %s)'
+                % (input_name, sp_rowid))
+            # Forget the assume directive.
+            input_cell_name = self._get_input_cell_name(rowid, idx)
+            self.ripl.forget(input_cell_name)
+
+    def _is_observed_output_cell(self, rowid, query):
+        return query in self.obs[rowid]['labels']
+
+    def _is_observed_input_cell(self, rowid, idx):
+        input_name = self.input_mapping[idx]
+        sp_rowid = '(atom %d)' % (rowid,)
+        return self.ripl.sample('(contains (lookup inputs "%s") %s)'
+            % (input_name, sp_rowid))
+
+    def _get_input_cell_value(self, rowid, idx):
+        input_name = self.input_mapping[idx]
+        sp_rowid = '(atom %d)' % (rowid,)
+        return self.ripl.sample('(lookup (lookup inputs "%s") %s)'
+            % (input_name, sp_rowid))
+
+    def _get_input_cell_name(self, rowid, idx):
+        str_rowid = '%s%s' % ('' if 0 <= rowid else 'm', abs(rowid))
+        str_idx = '%s%s' % ('' if 0 <= idx else 'm', abs(idx))
+        return 'input_%s_%s' % (str_rowid, str_idx)
 
     def _gen_label(self):
         return 't%s%s' % (
             self.rng.randint(1,100),
             datetime.now().strftime('%Y%m%d%H%M%S%f'))
 
-    def _get_sp_args(self, rowid, inputs):
-        sp_rowid = '(atom %d)' % (rowid,)
-        sp_input = ' '.join(map(str, [inputs[i] for i in self.inputs]))
-        return '%s %s' % (sp_rowid, sp_input)
-
     def _validate_incorporate(self, rowid, observation, inputs=None):
         inputs = inputs or {}
         if not observation:
             raise ValueError('No observation: %s.' % observation)
-        # All inputs present, and no nan values.
-        if rowid not in self.obs and set(inputs) != set(self.inputs):
-            raise ValueError('Missing inputs: %s, %s'
-                % (inputs, self.inputs))
         if not set.issubset(set(observation), set(self.outputs)):
             raise ValueError('Unknown observation: %s,%s'
                 % (observation, self.outputs))
@@ -222,22 +257,14 @@ class VsCGpm(CGpm):
             raise ValueError('Nan inputs: %s' % inputs)
         if any(math.isnan(observation[i]) for i in observation):
             raise ValueError('Nan observation: %s' % (observation,))
-        # Inputs optional if (rowid,q) previously incorporated, or must match.
-        if rowid in self.obs:
-            if any(q in self.obs[rowid]['labels'] for q in observation):
-                raise ValueError('Observation exists: %d, %s'
-                    % (rowid, observation))
-            if inputs:
-                self._check_matched_inputs(rowid, inputs)
-        else:
-            self.obs[rowid]['inputs'] = dict(inputs)
-        return self.obs[rowid]['inputs']
+        if rowid in self.obs \
+                and any(q in self.obs[rowid]['labels'] for q in observation):
+            raise ValueError('Observation exists: %d %s' % (rowid, observation))
+        return self._check_input_args(rowid, inputs)
 
     def _validate_simulate(self, rowid, targets, constraints, inputs):
-        constraints = constraints or dict()
-        inputs = inputs or dict()
-        if rowid not in self.obs and set(inputs) != set(self.inputs):
-            raise ValueError('Missing inputs: %s, %s' % (inputs, self.inputs))
+        constraints = constraints or {}
+        inputs = inputs or {}
         if any(math.isnan(inputs[i]) for i in inputs):
             raise ValueError('Nan inputs: %s' % (inputs,))
         if any(math.isnan(constraints[i]) for i in constraints):
@@ -251,23 +278,9 @@ class VsCGpm(CGpm):
         if set.intersection(set(targets), set(constraints)):
             raise ValueError('Overlapping targets and constraints: %s, %s'
                 % (targets, constraints,))
-        if rowid in self.obs:
-            if any(q in self.obs[rowid]['labels'] for q in constraints):
-                raise ValueError('Constrained observation exists: %d, %s, %s'
-                    % (rowid, targets, constraints))
-            if inputs:
-                self._check_matched_inputs(rowid, inputs)
-            else:
-                inputs = self.obs[rowid]['inputs']
-        assert set(inputs) == set(self.inputs)
+        inputs = self._check_input_args(rowid, inputs)
+        self._check_constraints_args(rowid, constraints)
         return constraints, inputs
-
-    def _check_matched_inputs(self, rowid, inputs):
-        # Avoid creating 'inputs' by the defaultdict.
-        exists = (rowid in self.obs) and ('inputs' in self.obs[rowid])
-        if exists and inputs != self.obs[rowid]['inputs']:
-            raise ValueError('Given inputs contradicts dataset: %d, %s, %s' %
-                (rowid, inputs, self.obs[rowid]['inputs']))
 
     def _get_num_observers(self):
         # Return the length of the "observers" list defined by the client, or
@@ -277,6 +290,29 @@ class VsCGpm(CGpm):
         except VentureException:
             return None
 
+    def _get_input_mapping(self, inputs):
+        # Return mapping from input integer index to string name.
+        input_dict = self.ripl.sample('inputs')
+        assert len(inputs) == len(input_dict)
+        return {i:e[0] for e, i in zip(input_dict, inputs)}
+
+    def _check_input_args(self, rowid, inputs):
+        inputs_obs = set(i for i in inputs if
+            self._is_observed_input_cell(rowid, i))
+        inputs_vals = [(self._get_input_cell_value(rowid, i), inputs[i])
+            for i in inputs_obs]
+        if any(gu.abserr(v1, v2) > 1e-6 for (v1, v2) in inputs_vals):
+            raise ValueError('Given inputs contradict dataset: %d, %s, %s, %s'
+                % (rowid, inputs, inputs_obs, inputs_vals))
+        return {i : inputs[i] for i in inputs if i not in inputs_obs}
+
+    def _check_constraints_args(self, rowid, constraints):
+        constraints_obs = [q for q in constraints if rowid in self.obs and
+            self._is_observed_output_cell(rowid, q)]
+        if constraints_obs:
+            raise ValueError('Constrained observations exists: %d, %s, %s'
+                % (rowid, constraints, constraints_obs))
+
     @staticmethod
     def _obs_to_json(obs):
         def convert_key_int_to_str(d):
@@ -284,7 +320,6 @@ class VsCGpm(CGpm):
             return {str(c): v for c, v in d.iteritems()}
         obs2 = convert_key_int_to_str(obs)
         for r in obs2:
-            obs2[r]['inputs'] = convert_key_int_to_str(obs2[r]['inputs'])
             obs2[r]['labels'] = convert_key_int_to_str(obs2[r]['labels'])
         return obs2
 
@@ -295,6 +330,12 @@ class VsCGpm(CGpm):
             return {int(c): v for c, v in d.iteritems()}
         obs2 = convert_key_str_to_int(obs)
         for r in obs2:
-            obs2[r]['inputs'] = convert_key_str_to_int(obs2[r]['inputs'])
             obs2[r]['labels'] = convert_key_str_to_int(obs2[r]['labels'])
         return obs2
+
+    @staticmethod
+    def _load_helpers(ripl):
+        ripl._compute_search_paths(
+                [os.path.abspath(os.path.dirname(__file__))])
+        ripl.load_plugin('helpers.py')
+        return ripl

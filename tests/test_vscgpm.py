@@ -25,14 +25,17 @@ import json
 from collections import namedtuple
 
 import numpy as np
-import pytest
+
+from venture.exception import VentureException
 
 from cgpm.venturescript.vscgpm import VsCGpm
-
 
 source_abstract = """
 [define make_cgpm (lambda ()
   (do
+    ; Address space for inputs
+    (assume inputs (dict (list "w" (dict))))
+
     ; Population variables.
     (assume sigma (gamma 1 1))
 
@@ -43,24 +46,23 @@ source_abstract = """
 
     ; Output variables.
     (assume simulate_m
-      (mem (lambda (rowid w)
+      (mem (lambda (rowid)
         (normal (x rowid) sigma))))
 
     (assume simulate_y
-      (mem (lambda (rowid w)
-        (uniform_continuous (- w 10) (+ w 10)))))
+      (mem (lambda (rowid)
+        (let ((w (lookup (lookup inputs "w") rowid)))
+            (uniform_continuous (- w 10) (+ w 10))))))
 
     (assume outputs (list simulate_m simulate_y))))]
 
 [define observe_m
-  (lambda (rowid w value label)
-    (observe (simulate_m ,rowid ,w) value ,label))]
+  (lambda (rowid value label)
+    (observe (simulate_m ,rowid) value ,label))]
 
 [define observe_y
-  (lambda (rowid w value label)
-    (observe (simulate_y ,rowid ,w) value ,label))]
-
-[define inputs (list 'w)]
+  (lambda (rowid value label)
+    (observe (simulate_y ,rowid) value ,label))]
 
 [define transition
   (lambda (N)
@@ -70,6 +72,9 @@ source_abstract = """
 
 source_concrete = """
 define make_cgpm = () -> {
+    // Address space for inputs.
+    assume inputs = dict(["w", dict()]);
+
     // Population variables.
     assume sigma = gamma(1, 1);
 
@@ -78,26 +83,25 @@ define make_cgpm = () -> {
         normal(0, sigma)
     });
 
-    assume simulate_m = mem((rowid, w) ~> {
+    assume simulate_m = mem((rowid) ~> {
         normal(x(rowid), sigma)
     });
 
-    assume simulate_y = mem((rowid, w) ~> {
+    assume simulate_y = mem((rowid) ~> {
+        w = inputs["w"][rowid];
         uniform_continuous(w - 10, w + 10)
     });
 
     assume outputs = [simulate_m, simulate_y];
 };
 
-define observe_m = (rowid, w, value, label) -> {
-    $label: observe simulate_m($rowid, $w) = value;
+define observe_m = (rowid, value, label) -> {
+    $label: observe simulate_m($rowid) = value;
 };
 
-define observe_y = (rowid, w, value, label) -> {
-    $label: observe simulate_y($rowid, $w) = value;
+define observe_y = (rowid, value, label) -> {
+    $label: observe simulate_y($rowid) = value;
 };
-
-define inputs = ["w"];
 
 define transition = (N) -> {
     mh(default, one, N)
@@ -170,9 +174,9 @@ def test_incorporate_unincorporate(case):
 
     rowid = 0
 
-    # Missing evidence.
-    with pytest.raises(ValueError):
-        cgpm.incorporate(rowid, {0:OBS[rowid][0], 1:OBS[rowid][1]}, {})
+    # Missing input will raise a lookup error in Venture.
+    with pytest.raises(VentureException):
+        cgpm.incorporate(rowid, {1:OBS[rowid][1]}, {})
     # No query.
     with pytest.raises(ValueError):
         cgpm.incorporate(rowid, {}, {3:EV[rowid]})
@@ -216,8 +220,10 @@ def test_incorporate_unincorporate(case):
 
     # Test observations resampled after transition.
     cgpm.unincorporate(1)
-    with pytest.raises(ValueError):
-        cgpm.simulate(1, [0,1])
+    cgpm.simulate(1, [0])
+    with pytest.raises(VentureException):
+        # Missing inputs required for output 1.
+        cgpm.simulate(1, [1])
     cgpm.transition(N=10)
     sample = cgpm.simulate(1, [0,1], None, {3:EV[rowid]})
     assert not np.allclose(sample[0], OBS[rowid][0])
