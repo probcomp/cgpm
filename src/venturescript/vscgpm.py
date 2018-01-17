@@ -15,11 +15,9 @@
 #   limitations under the License.
 
 import base64
-import copy
 import math
 import os
 
-from collections import defaultdict
 from datetime import datetime
 
 import venture.shortcuts as vs
@@ -83,21 +81,21 @@ class VsCGpm(CGpm):
         self.labels = dict()
 
     def incorporate(self, rowid, observation, inputs=None):
-        inputs2 = self._validate_incorporate(rowid, observation, inputs)
+        inputs_new = self._validate_incorporate(rowid, observation, inputs)
         if rowid not in self.labels:
             self.labels[rowid] = dict()
-        for i, value in inputs2.iteritems():
-            self._observe_input_cell(rowid, i, value)
-        for t, value in observation.iteritems():
-            self._observe_output_cell(rowid, t, value)
+        for cin, value in inputs_new.iteritems():
+            self._observe_input_cell(rowid, cin, value)
+        for cout, value in observation.iteritems():
+            self._observe_output_cell(rowid, cout, value)
 
     def unincorporate(self, rowid):
         if rowid not in self.labels:
             raise ValueError('Never incorporated: %d' % rowid)
-        for q in self.outputs:
-            self._forget_output_cell(rowid, q)
-        for i in self.inputs:
-            self._forget_input_cell(rowid, i)
+        for cout in self.outputs:
+            self._forget_output_cell(rowid, cout)
+        for cin in self.inputs:
+            self._forget_input_cell(rowid, cin)
         assert len(self.labels[rowid]) == 0
         del self.labels[rowid]
 
@@ -105,29 +103,29 @@ class VsCGpm(CGpm):
         return 0
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        constraints2, inputs2 = \
+        constraints_new, inputs_new = \
             self._validate_simulate(rowid, targets, constraints, inputs)
         # Observe any unseen inputs.
-        for i, value in inputs2.iteritems():
-            self._observe_input_cell(rowid, i, value)
+        for cin, value in inputs_new.iteritems():
+            self._observe_input_cell(rowid, cin, value)
         # Observe any unobserved constrained outputs.
-        for c, value in constraints2.iteritems():
-            self._observe_output_cell(rowid, c, value)
+        for cout, value in constraints_new.iteritems():
+            self._observe_output_cell(rowid, cout, value)
         # Run local inference in rowid scope, with 15 steps of MH.
         self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
         # Generate labels and predictions of outputs.
-        labels = [self._gen_label() for _t in targets]
-        samples = {t: self._predict_cell(rowid, t, label)
-            for t, label in zip(targets, labels)}
+        labels = [self._gen_label() for _cout in targets]
+        samples = {cout: self._predict_cell(rowid, cout, label)
+            for cout, label in zip(targets, labels)}
         # Forget predicted targets.
         for label in labels:
             self.ripl.forget(label)
         # Forget observed constraints.
-        for c in constraints2:
-            self._forget_output_cell(rowid, c)
+        for cout in constraints_new:
+            self._forget_output_cell(rowid, cout)
         # Forget observed inputs.
-        for i in inputs2:
-            self._forget_input_cell(rowid, i)
+        for cin in inputs_new:
+            self._forget_input_cell(rowid, cin)
         return samples
 
     def logpdf_score(self):
@@ -176,14 +174,14 @@ class VsCGpm(CGpm):
     # --------------------------------------------------------------------------
     # Internal helpers.
 
-    def _predict_cell(self, rowid, target, label):
-        output_idx = self.outputs.index(target)
+    def _predict_cell(self, rowid, cout, label):
+        output_idx = self.outputs.index(cout)
         sp_rowid = '(atom %d)' % (rowid,)
         return self.ripl.predict('((lookup outputs %i) %s)'
             % (output_idx, sp_rowid), label=label)
 
-    def _observe_output_cell(self, rowid, query, value):
-        output_idx = self.outputs.index(query)
+    def _observe_output_cell(self, rowid, cout, value):
+        output_idx = self.outputs.index(cout)
         label = self._gen_label()
         sp_rowid = '(atom %d)' % (rowid,)
         if not self.observe_custom:
@@ -193,52 +191,52 @@ class VsCGpm(CGpm):
             obs_args = '%s %s (quote %s)' % (sp_rowid, value, label)
             self.ripl.evaluate('((lookup observers %i) %s)'
                 % (output_idx, obs_args))
-        self.labels[rowid][query] = label
+        self.labels[rowid][cout] = label
 
-    def _observe_input_cell(self, rowid, idx, value):
-        input_name = self.input_mapping[idx]
+    def _observe_input_cell(self, rowid, cin, value):
+        input_name = self.input_mapping[cin]
         sp_rowid = '(atom %d)' % (rowid,)
-        input_cell_name = self._get_input_cell_name(rowid, idx)
+        input_cell_name = self._get_input_cell_name(rowid, cin)
         self.ripl.execute_program(
             '(assume %s (dict_set (lookup inputs "%s") %s %s))'
             % (input_cell_name, input_name, sp_rowid, value))
 
-    def _forget_output_cell(self, rowid, query):
-        if self._is_observed_output_cell(rowid, query):
-            label = self.labels[rowid][query]
+    def _forget_output_cell(self, rowid, cout):
+        if self._is_observed_output_cell(rowid, cout):
+            label = self.labels[rowid][cout]
             self.ripl.forget(label)
-            del self.labels[rowid][query]
+            del self.labels[rowid][cout]
 
-    def _forget_input_cell(self, rowid, idx):
-        if self._is_observed_input_cell(rowid, idx):
+    def _forget_input_cell(self, rowid, cin):
+        if self._is_observed_input_cell(rowid, cin):
             # Pop from the dictionary.
-            input_name = self.input_mapping[idx]
+            input_name = self.input_mapping[cin]
             sp_rowid = '(atom %d)' % (rowid,)
             self.ripl.sample('(dict_pop (lookup inputs "%s") %s)'
                 % (input_name, sp_rowid))
             # Forget the assume directive.
-            input_cell_name = self._get_input_cell_name(rowid, idx)
+            input_cell_name = self._get_input_cell_name(rowid, cin)
             self.ripl.forget(input_cell_name)
 
-    def _is_observed_output_cell(self, rowid, query):
-        return rowid in self.labels and query in self.labels[rowid]
+    def _is_observed_output_cell(self, rowid, cout):
+        return rowid in self.labels and cout in self.labels[rowid]
 
-    def _is_observed_input_cell(self, rowid, idx):
-        input_name = self.input_mapping[idx]
+    def _is_observed_input_cell(self, rowid, cin):
+        input_name = self.input_mapping[cin]
         sp_rowid = '(atom %d)' % (rowid,)
         return self.ripl.sample('(contains (lookup inputs "%s") %s)'
             % (input_name, sp_rowid))
 
-    def _get_input_cell_value(self, rowid, idx):
-        input_name = self.input_mapping[idx]
+    def _get_input_cell_value(self, rowid, cin):
+        input_name = self.input_mapping[cin]
         sp_rowid = '(atom %d)' % (rowid,)
         return self.ripl.sample('(lookup (lookup inputs "%s") %s)'
             % (input_name, sp_rowid))
 
-    def _get_input_cell_name(self, rowid, idx):
+    def _get_input_cell_name(self, rowid, cin):
         str_rowid = '%s%s' % ('' if 0 <= rowid else 'm', abs(rowid))
-        str_idx = '%s%s' % ('' if 0 <= idx else 'm', abs(idx))
-        return 'input_%s_%s' % (str_rowid, str_idx)
+        str_cin = '%s%s' % ('' if 0 <= cin else 'm', abs(cin))
+        return 'input_%s_%s' % (str_rowid, str_cin)
 
     def _gen_label(self):
         return 't%s%s' % (
@@ -257,7 +255,7 @@ class VsCGpm(CGpm):
         if any(math.isnan(observation[i]) for i in observation):
             raise ValueError('Nan observation: %s' % (observation,))
         if rowid in self.labels \
-                and any(q in self.labels[rowid] for q in observation):
+                and any(i in self.labels[rowid] for i in observation):
             raise ValueError('Observation exists: %d %s' % (rowid, observation))
         return self._check_input_args(rowid, inputs)
 
@@ -306,8 +304,8 @@ class VsCGpm(CGpm):
         return {i : inputs[i] for i in inputs if i not in inputs_obs}
 
     def _check_constraints_args(self, rowid, constraints):
-        constraints_obs = [q for q in constraints if rowid in self.labels and
-            self._is_observed_output_cell(rowid, q)]
+        constraints_obs = [cout for cout in constraints
+            if self._is_observed_output_cell(rowid, cout)]
         if constraints_obs:
             raise ValueError('Constrained observations exists: %d, %s, %s'
                 % (rowid, constraints, constraints_obs))
