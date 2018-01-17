@@ -115,7 +115,7 @@ class VsCGpm(CGpm):
         self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
         # Generate labels and predictions of outputs.
         labels = [self._gen_label() for _cout in targets]
-        samples = {cout: self._predict_cell(rowid, cout, label)
+        samples = {cout: self._predict_output_cell(rowid, cout, label)
             for cout, label in zip(targets, labels)}
         # Forget predicted targets.
         for label in labels:
@@ -174,7 +174,7 @@ class VsCGpm(CGpm):
     # --------------------------------------------------------------------------
     # Internal helpers.
 
-    def _predict_cell(self, rowid, cout, label):
+    def _predict_output_cell(self, rowid, cout, label):
         output_idx = self.outputs.index(cout)
         sp_rowid = '(atom %d)' % (rowid,)
         return self.ripl.predict('((lookup outputs %i) %s)'
