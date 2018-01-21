@@ -215,6 +215,9 @@ def test_incorporate_unincorporate(case):
     second = cgpm.simulate(-100, [0, 1], None, {3:4})
     assert first != second
 
+    # Test simulating hypothetical rowid with conditions.
+    cgpm.simulate(-100, [0], {1:1}, {3:4})
+
     # Test observations resampled after transition.
     cgpm.unincorporate(1)
     cgpm.simulate(1, [0])

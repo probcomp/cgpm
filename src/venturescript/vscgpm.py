@@ -83,8 +83,6 @@ class VsCGpm(CGpm):
     def incorporate(self, rowid, observation, inputs=None):
         observation_clean = self._cleanse_observation(rowid, observation)
         inputs_clean = self._cleanse_inputs(rowid, inputs)
-        if rowid not in self.labels:
-            self.labels[rowid] = dict()
         for cin, value in inputs_clean.iteritems():
             self._observe_input_cell(rowid, cin, value)
         for cout, value in observation_clean.iteritems():
@@ -97,8 +95,7 @@ class VsCGpm(CGpm):
             self._forget_output_cell(rowid, cout)
         for cin in self.inputs:
             self._forget_input_cell(rowid, cin)
-        assert len(self.labels[rowid]) == 0
-        del self.labels[rowid]
+        assert rowid not in self.labels
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
         return 0
@@ -184,6 +181,8 @@ class VsCGpm(CGpm):
             % (output_idx, sp_rowid), label=label)
 
     def _observe_output_cell(self, rowid, cout, value):
+        if rowid not in self.labels:
+            self.labels[rowid] = dict()
         output_idx = self.outputs.index(cout)
         label = self._gen_label()
         sp_rowid = '(atom %d)' % (rowid,)
@@ -209,6 +208,8 @@ class VsCGpm(CGpm):
             label = self.labels[rowid][cout]
             self.ripl.forget(label)
             del self.labels[rowid][cout]
+        if len(self.labels[rowid]) == 0:
+            del self.labels[rowid]
 
     def _forget_input_cell(self, rowid, cin):
         if self._is_observed_input_cell(rowid, cin):
