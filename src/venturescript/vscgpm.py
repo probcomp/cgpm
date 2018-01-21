@@ -105,6 +105,7 @@ class VsCGpm(CGpm):
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         inputs_clean = self._cleanse_inputs(rowid, inputs)
+        targets_clean = self._cleanse_targets(rowid, targets)
         constraints_clean = self._cleanse_constraints(
             rowid, targets, constraints)
         # Observe any unseen inputs.
@@ -246,7 +247,6 @@ class VsCGpm(CGpm):
 
     # Validating observations, targets, and constraints.
 
-
     def _cleanse_constraints(self, rowid, targets, constraints):
         constraints = constraints or {}
         if any(math.isnan(value) for value in constraints.itervalues()):
@@ -256,12 +256,10 @@ class VsCGpm(CGpm):
         if set.intersection(set(targets), set(constraints)):
             raise ValueError('Overlapping targets and constraints: %s, %s'
                 % (targets, constraints,))
-        if not all(cout in self.outputs for cout in targets):
-            raise ValueError('Unknown targets: %s' % (targets,))
         constraints_obs = [cout for cout in constraints
             if self._is_observed_output_cell(rowid, cout)]
         if constraints_obs:
-            raise ValueError('Constrained observations exists: %d, %s, %s'
+            raise ValueError('Constrained output already observed: %d, %s, %s'
                 % (rowid, constraints, constraints_obs))
         return constraints
 
@@ -292,6 +290,21 @@ class VsCGpm(CGpm):
                 and any(cout in self.labels[rowid] for cout in observation):
             raise ValueError('Observation exists: %d %s' % (rowid, observation))
         return observation
+
+    def _cleanse_targets(self, rowid, targets):
+        if not targets:
+            raise ValueError('No targets: %s' % (targets,))
+        if not all(cout in self.outputs for cout in targets):
+            raise ValueError('Unknown targets: %s' % (targets,))
+        if isinstance(targets, dict):
+            if any(math.isnan(value) for value in targets.itervalues()):
+                raise ValueError('Nan targets: %s' % (targets,))
+            targets_obs = [cout for cout in targets
+                if self._is_observed_output_cell(rowid, cout)]
+            if targets_obs:
+                raise ValueError('Constrained output already observed: '
+                    '%d, %s, %s' % (rowid, targets, targets_obs))
+        return targets
 
     def _get_num_observers(self):
         # Return the length of the "observers" list defined by the client, or
