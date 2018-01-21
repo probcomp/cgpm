@@ -119,7 +119,7 @@ class VsCGpm(CGpm):
         # Generate labels and predictions of outputs.
         labels = [self._gen_label() for _cout in targets]
         samples = {cout: self._predict_output_cell(rowid, cout, label)
-            for cout, label in zip(targets, labels)}
+            for cout, label in zip(targets_clean, labels)}
         # Forget predicted targets.
         for label in labels:
             self.ripl.forget(label)
