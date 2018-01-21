@@ -81,12 +81,13 @@ class VsCGpm(CGpm):
         self.labels = dict()
 
     def incorporate(self, rowid, observation, inputs=None):
-        inputs_new = self._validate_incorporate(rowid, observation, inputs)
+        observation_clean = self._cleanse_observation(rowid, observation)
+        inputs_clean = self._cleanse_inputs(rowid, inputs)
         if rowid not in self.labels:
             self.labels[rowid] = dict()
-        for cin, value in inputs_new.iteritems():
+        for cin, value in inputs_clean.iteritems():
             self._observe_input_cell(rowid, cin, value)
-        for cout, value in observation.iteritems():
+        for cout, value in observation_clean.iteritems():
             self._observe_output_cell(rowid, cout, value)
 
     def unincorporate(self, rowid):
@@ -103,13 +104,14 @@ class VsCGpm(CGpm):
         return 0
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
-        constraints_new, inputs_new = \
-            self._validate_simulate(rowid, targets, constraints, inputs)
+        inputs_clean = self._cleanse_inputs(rowid, inputs)
+        constraints_clean = self._cleanse_constraints(
+            rowid, targets, constraints)
         # Observe any unseen inputs.
-        for cin, value in inputs_new.iteritems():
+        for cin, value in inputs_clean.iteritems():
             self._observe_input_cell(rowid, cin, value)
         # Observe any unobserved constrained outputs.
-        for cout, value in constraints_new.iteritems():
+        for cout, value in constraints_clean.iteritems():
             self._observe_output_cell(rowid, cout, value)
         # Run local inference in rowid scope, with 15 steps of MH.
         self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
@@ -121,10 +123,10 @@ class VsCGpm(CGpm):
         for label in labels:
             self.ripl.forget(label)
         # Forget observed constraints.
-        for cout in constraints_new:
+        for cout in constraints_clean:
             self._forget_output_cell(rowid, cout)
         # Forget observed inputs.
-        for cin in inputs_new:
+        for cin in inputs_clean:
             self._forget_input_cell(rowid, cin)
         return samples
 
@@ -242,41 +244,54 @@ class VsCGpm(CGpm):
             self.rng.randint(1,100),
             datetime.now().strftime('%Y%m%d%H%M%S%f'))
 
-    def _validate_incorporate(self, rowid, observation, inputs=None):
+    # Validating observations, targets, and constraints.
+
+
+    def _cleanse_constraints(self, rowid, targets, constraints):
+        constraints = constraints or {}
+        if any(math.isnan(value) for value in constraints.itervalues()):
+            raise ValueError('Nan constraints: %s' % (constraints,))
+        if not all(cout in self.outputs for cout in constraints):
+            raise ValueError('Unknown constraints: %s' % (constraints,))
+        if set.intersection(set(targets), set(constraints)):
+            raise ValueError('Overlapping targets and constraints: %s, %s'
+                % (targets, constraints,))
+        if not all(cout in self.outputs for cout in targets):
+            raise ValueError('Unknown targets: %s' % (targets,))
+        constraints_obs = [cout for cout in constraints
+            if self._is_observed_output_cell(rowid, cout)]
+        if constraints_obs:
+            raise ValueError('Constrained observations exists: %d, %s, %s'
+                % (rowid, constraints, constraints_obs))
+        return constraints
+
+    def _cleanse_inputs(self, rowid, inputs):
         inputs = inputs or {}
+        if any(math.isnan(value) for value in inputs.itervalues()):
+            raise ValueError('Nan inputs: %s' % inputs)
+        if not all(cin in self.inputs for cin in inputs):
+            raise ValueError('Unknown inputs: %s' % (inputs,))
+        inputs_obs = set(cin for cin in inputs
+            if self._is_observed_input_cell(rowid, cin))
+        inputs_vals = [(self._get_input_cell_value(rowid, cin), inputs[cin])
+            for cin in inputs_obs]
+        if any(gu.abserr(v1, v2) > 1e-6 for (v1, v2) in inputs_vals):
+            raise ValueError('Given inputs contradict dataset: %d, %s, %s, %s'
+                % (rowid, inputs, inputs_obs, inputs_vals))
+        return {cin : inputs[cin] for cin in inputs if cin not in inputs_obs}
+
+    def _cleanse_observation(self, rowid, observation):
         if not observation:
             raise ValueError('No observation: %s.' % observation)
         if not set.issubset(set(observation), set(self.outputs)):
             raise ValueError('Unknown observation: %s,%s'
                 % (observation, self.outputs))
-        if any(math.isnan(value) for value in inputs.itervalues()):
-            raise ValueError('Nan inputs: %s' % inputs)
         if any(math.isnan(value) for value in observation.itervalues()):
             raise ValueError('Nan observation: %s' % (observation,))
         if rowid in self.labels \
                 and any(cout in self.labels[rowid] for cout in observation):
             raise ValueError('Observation exists: %d %s' % (rowid, observation))
-        return self._check_input_args(rowid, inputs)
-
-    def _validate_simulate(self, rowid, targets, constraints, inputs):
-        constraints = constraints or {}
-        inputs = inputs or {}
-        if any(math.isnan(value) for value in inputs.itervalues()):
-            raise ValueError('Nan inputs: %s' % (inputs,))
-        if any(math.isnan(value) for value in constraints.itervalues()):
-            raise ValueError('Nan constraints: %s' % (constraints,))
-        if not all(cin in self.inputs for cin in inputs):
-            raise ValueError('Unknown inputs: %s' % (inputs,))
-        if not all(cout in self.outputs for cout in constraints):
-            raise ValueError('Unknown constraints: %s' % (constraints,))
-        if not all(cout in self.outputs for cout in targets):
-            raise ValueError('Unknown targets: %s' % (targets,))
-        if set.intersection(set(targets), set(constraints)):
-            raise ValueError('Overlapping targets and constraints: %s, %s'
-                % (targets, constraints,))
-        inputs = self._check_input_args(rowid, inputs)
-        self._check_constraints_args(rowid, constraints)
-        return constraints, inputs
+        return observation
 
     def _get_num_observers(self):
         # Return the length of the "observers" list defined by the client, or
@@ -301,13 +316,6 @@ class VsCGpm(CGpm):
             raise ValueError('Given inputs contradict dataset: %d, %s, %s, %s'
                 % (rowid, inputs, inputs_obs, inputs_vals))
         return {cin : inputs[cin] for cin in inputs if cin not in inputs_obs}
-
-    def _check_constraints_args(self, rowid, constraints):
-        constraints_obs = [cout for cout in constraints
-            if self._is_observed_output_cell(rowid, cout)]
-        if constraints_obs:
-            raise ValueError('Constrained observations exists: %d, %s, %s'
-                % (rowid, constraints, constraints_obs))
 
     @staticmethod
     def convert_key_int_to_str(d):
