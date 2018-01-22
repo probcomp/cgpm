@@ -92,9 +92,11 @@ class VsCGpm(CGpm):
         if rowid not in self.labels:
             raise ValueError('Never incorporated: %d' % rowid)
         for cout in self.outputs:
-            self._forget_output_cell(rowid, cout)
+            if self._is_observed_output_cell(rowid, cout):
+                self._forget_output_cell(rowid, cout)
         for cin in self.inputs:
-            self._forget_input_cell(rowid, cin)
+            if self._is_observed_input_cell(rowid, cin):
+                self._forget_input_cell(rowid, cin)
         assert rowid not in self.labels
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None,
@@ -250,23 +252,20 @@ class VsCGpm(CGpm):
             % (input_cell_name, input_name, sp_rowid, value))
 
     def _forget_output_cell(self, rowid, cout):
-        if self._is_observed_output_cell(rowid, cout):
-            label = self.labels[rowid][cout]
-            self.ripl.forget(label)
-            del self.labels[rowid][cout]
+        label = self.labels[rowid][cout]
+        self.ripl.forget(label)
+        del self.labels[rowid][cout]
         if len(self.labels[rowid]) == 0:
             del self.labels[rowid]
 
     def _forget_input_cell(self, rowid, cin):
-        if self._is_observed_input_cell(rowid, cin):
-            # Pop from the dictionary.
-            input_name = self.input_mapping[cin]
-            sp_rowid = '(atom %d)' % (rowid,)
-            self.ripl.sample('(dict_pop (lookup inputs "%s") %s)'
-                % (input_name, sp_rowid))
-            # Forget the assume directive.
-            input_cell_name = self._get_input_cell_name(rowid, cin)
-            self.ripl.forget(input_cell_name)
+        input_name = self.input_mapping[cin]
+        sp_rowid = '(atom %d)' % (rowid,)
+        self.ripl.sample('(dict_pop (lookup inputs "%s") %s)'
+            % (input_name, sp_rowid))
+        # Forget the assume directive.
+        input_cell_name = self._get_input_cell_name(rowid, cin)
+        self.ripl.forget(input_cell_name)
 
     def _is_observed_output_cell(self, rowid, cout):
         return rowid in self.labels and cout in self.labels[rowid]

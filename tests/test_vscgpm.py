@@ -173,6 +173,7 @@ def test_incorporate_unincorporate(case):
     inputs = [0, 2]
     rowid0 = 0
     rowid1 = 1
+    rowid2 = 2
 
     # Missing input will raise a lookup error in Venture.
     with pytest.raises(VentureException):
@@ -217,6 +218,10 @@ def test_incorporate_unincorporate(case):
 
     # Test simulating hypothetical rowid with conditions.
     cgpm.simulate(-100, [0], {1:1}, {3:4})
+
+    # Test can unincorporate partial observation.
+    cgpm.incorporate(rowid2, {0: 1})
+    cgpm.unincorporate(rowid2)
 
     # Test observations resampled after transition.
     cgpm.unincorporate(1)
