@@ -77,8 +77,8 @@ class VsCGpm(CGpm):
         self.observe_custom = num_observers is not None
         if self.observe_custom and len(self.outputs) != num_observers:
             raise ValueError('source.observers list disagrees with outputs.')
-        # Entry labels[rowid][query] is label used to observe output cell.
-        self.labels = dict()
+        # Map [rowid][cout] to label, for observe and predict directives.
+        self.labels = {'observe': dict(), 'predict': dict()}
 
     def incorporate(self, rowid, observation, inputs=None):
         observation_clean = self._cleanse_observation(rowid, observation)
@@ -89,7 +89,7 @@ class VsCGpm(CGpm):
             self._observe_output_cell(rowid, cout, value)
 
     def unincorporate(self, rowid):
-        if rowid not in self.labels:
+        if rowid not in self.labels['observe']:
             raise ValueError('Never incorporated: %d' % rowid)
         for cout in self.outputs:
             if self._is_observed_output_cell(rowid, cout):
@@ -97,7 +97,7 @@ class VsCGpm(CGpm):
         for cin in self.inputs:
             if self._is_observed_input_cell(rowid, cin):
                 self._forget_input_cell(rowid, cin)
-        assert rowid not in self.labels
+        assert rowid not in self.labels['observe']
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None,
             num_samples=10, num_steps=10):
@@ -145,12 +145,11 @@ class VsCGpm(CGpm):
         # Run local inference in rowid scope, with 15 steps of MH.
         self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
         # Generate labels and predictions of outputs.
-        labels = [self._gen_label() for _cout in targets]
-        samples = {cout: self._predict_output_cell(rowid, cout, label)
-            for cout, label in zip(targets_clean, labels)}
+        samples = {cout: self._predict_output_cell(rowid, cout)
+            for cout in targets_clean}
         # Forget predicted targets.
-        for label in labels:
-            self.ripl.forget(label)
+        for cout in targets_clean:
+            self._unpredict_output_cell(rowid, cout)
         # Forget observed constraints.
         for cout in constraints_clean:
             self._forget_output_cell(rowid, cout)
@@ -177,7 +176,7 @@ class VsCGpm(CGpm):
         metadata['mode'] = self.mode
         metadata['plugins'] = self.plugins
         # Save the observations. We need to convert integer keys to strings.
-        metadata['labels'] = VsCGpm.convert_key_int_to_str(self.labels)
+        metadata['labels'] = self.convert_key_int_to_str(self.labels['observe'])
         metadata['binary'] =  base64.b64encode(self.ripl.saves())
         metadata['factory'] = ('cgpm.venturescript.vscgpm', 'VsCGpm')
         return metadata
@@ -199,7 +198,7 @@ class VsCGpm(CGpm):
         # Restore the observations. We need to convert string keys to integers.
         labels = VsCGpm.convert_key_str_to_int(metadata['labels'])
         for rowid, mapping in labels.iteritems():
-            cgpm.labels[rowid] = mapping
+            cgpm.labels['observe'][rowid] = mapping
         return cgpm
 
     # --------------------------------------------------------------------------
@@ -222,15 +221,23 @@ class VsCGpm(CGpm):
             % (sp_rowid, output_idx))
         return lp_joint[0] - logp_likelihood[0]
 
-    def _predict_output_cell(self, rowid, cout, label):
+    def _predict_output_cell(self, rowid, cout):
+        if rowid not in self.labels['predict']:
+            self.labels['predict'][rowid] = dict()
+        label = self._gen_label()
         output_idx = self.outputs.index(cout)
         sp_rowid = '(atom %d)' % (rowid,)
+        self.labels['predict'][rowid][cout] = label
         return self.ripl.predict('((lookup outputs %i) %s)'
             % (output_idx, sp_rowid), label=label)
 
+    def _unpredict_output_cell(self, rowid, cout):
+        label = self.labels['predict'][rowid][cout]
+        self.ripl.forget(label)
+
     def _observe_output_cell(self, rowid, cout, value):
-        if rowid not in self.labels:
-            self.labels[rowid] = dict()
+        if rowid not in self.labels['observe']:
+            self.labels['observe'][rowid] = dict()
         output_idx = self.outputs.index(cout)
         label = self._gen_label()
         sp_rowid = '(atom %d)' % (rowid,)
@@ -241,7 +248,7 @@ class VsCGpm(CGpm):
             obs_args = '%s %s (quote %s)' % (sp_rowid, value, label)
             self.ripl.evaluate('((lookup observers %i) %s)'
                 % (output_idx, obs_args))
-        self.labels[rowid][cout] = label
+        self.labels['observe'][rowid][cout] = label
 
     def _observe_input_cell(self, rowid, cin, value):
         input_name = self.input_mapping[cin]
@@ -252,11 +259,11 @@ class VsCGpm(CGpm):
             % (input_cell_name, input_name, sp_rowid, value))
 
     def _forget_output_cell(self, rowid, cout):
-        label = self.labels[rowid][cout]
+        label = self.labels['observe'][rowid][cout]
         self.ripl.forget(label)
-        del self.labels[rowid][cout]
-        if len(self.labels[rowid]) == 0:
-            del self.labels[rowid]
+        del self.labels['observe'][rowid][cout]
+        if len(self.labels['observe'][rowid]) == 0:
+            del self.labels['observe'][rowid]
 
     def _forget_input_cell(self, rowid, cin):
         input_name = self.input_mapping[cin]
@@ -268,7 +275,8 @@ class VsCGpm(CGpm):
         self.ripl.forget(input_cell_name)
 
     def _is_observed_output_cell(self, rowid, cout):
-        return rowid in self.labels and cout in self.labels[rowid]
+        return rowid in self.labels['observe'] \
+            and cout in self.labels['observe'][rowid]
 
     def _is_observed_input_cell(self, rowid, cin):
         input_name = self.input_mapping[cin]
@@ -332,8 +340,9 @@ class VsCGpm(CGpm):
                 % (observation, self.outputs))
         if any(math.isnan(value) for value in observation.itervalues()):
             raise ValueError('Nan observation: %s' % (observation,))
-        if rowid in self.labels \
-                and any(cout in self.labels[rowid] for cout in observation):
+        if rowid in self.labels['observe'] \
+                and any(cout in self.labels['observe'][rowid]
+                    for cout in observation):
             raise ValueError('Observation exists: %d %s' % (rowid, observation))
         return observation
 
