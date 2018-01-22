@@ -54,7 +54,7 @@ source_abstract = """
         (let ((w (lookup (lookup inputs "w") rowid)))
             (tag rowid 1 (uniform_continuous (- w 10) (+ w 10)))))))
 
-    (assume outputs (list simulate_m simulate_y))))]
+    (assume outputs (list 'simulate_m 'simulate_y))))]
 
 [define observe_m
   (lambda (rowid value label)
@@ -92,7 +92,7 @@ define make_cgpm = () -> {
         uniform_continuous(w - 10, w + 10)
     });
 
-    assume outputs = [simulate_m, simulate_y];
+    assume outputs = [[|simulate_m|], [|simulate_y|]];
 };
 
 define observe_m = (rowid, value, label) -> {

@@ -67,6 +67,7 @@ class VsCGpm(CGpm):
         if len(outputs) != len(self.ripl.sample('outputs')):
             raise ValueError('source.outputs list disagrees with outputs.')
         self.outputs = outputs
+        self.output_mapping = self._get_output_mapping(self.outputs)
         # Check correct inputs.
         if len(inputs) != self.ripl.sample('(size inputs)'):
             raise ValueError('source.inputs list disagrees with inputs.')
@@ -225,11 +226,11 @@ class VsCGpm(CGpm):
         if rowid not in self.labels['predict']:
             self.labels['predict'][rowid] = dict()
         label = self._gen_label()
-        output_idx = self.outputs.index(cout)
+        output_name = self.output_mapping[cout]
         sp_rowid = '(atom %d)' % (rowid,)
         self.labels['predict'][rowid][cout] = label
-        return self.ripl.predict('((lookup outputs %i) %s)'
-            % (output_idx, sp_rowid), label=label)
+        return self.ripl.predict('(%s %s)'
+            % (output_name, sp_rowid), label=label)
 
     def _unpredict_output_cell(self, rowid, cout):
         label = self.labels['predict'][rowid][cout]
@@ -238,13 +239,14 @@ class VsCGpm(CGpm):
     def _observe_output_cell(self, rowid, cout, value):
         if rowid not in self.labels['observe']:
             self.labels['observe'][rowid] = dict()
-        output_idx = self.outputs.index(cout)
         label = self._gen_label()
         sp_rowid = '(atom %d)' % (rowid,)
         if not self.observe_custom:
-            self.ripl.observe('((lookup outputs %i) %s)'
-                % (output_idx, sp_rowid), value, label=label)
+            output_name = self.output_mapping[cout]
+            self.ripl.observe('(%s %s)'
+                % (output_name, sp_rowid), value, label=label)
         else:
+            output_idx = self.outputs.index(cout)
             obs_args = '%s %s (quote %s)' % (sp_rowid, value, label)
             self.ripl.evaluate('((lookup observers %i) %s)'
                 % (output_idx, obs_args))
@@ -374,6 +376,12 @@ class VsCGpm(CGpm):
         input_dict = self.ripl.sample('inputs')
         assert len(inputs) == len(input_dict)
         return {cin:e[0] for e, cin in zip(input_dict, inputs)}
+
+    def _get_output_mapping(self, outputs):
+        # Return mapping from output integer index to string name.
+        output_list = self.ripl.sample('outputs')
+        assert len(outputs) == len(output_list)
+        return {cout: cname for cout, cname in zip(outputs, output_list)}
 
     def _check_input_args(self, rowid, inputs):
         inputs_obs = set(cin for cin in inputs
