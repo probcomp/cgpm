@@ -97,8 +97,37 @@ class VsCGpm(CGpm):
             self._forget_input_cell(rowid, cin)
         assert rowid not in self.labels
 
-    def logpdf(self, rowid, targets, constraints=None, inputs=None):
-        return 0
+    def logpdf(self, rowid, targets, constraints=None, inputs=None,
+            num_samples=10, num_steps=10):
+        inputs_clean = self._cleanse_inputs(rowid, inputs)
+        targets_clean = self._cleanse_targets(rowid, targets)
+        constraints_clean = self._cleanse_constraints(
+            rowid, targets, constraints)
+        # Observe any unseen inputs.
+        for cin, value in inputs_clean.iteritems():
+            self._observe_input_cell(rowid, cin, value)
+        # Observe any unobserved constrained outputs.
+        for cout, value in constraints_clean.iteritems():
+            self._observe_output_cell(rowid, cout, value)
+        # Observe the targets.
+        for cout, value in targets_clean.iteritems():
+            self._observe_output_cell(rowid, cout, value)
+        # Compute probabilities of each target given its parents.]
+        logps = [None] * num_steps
+        for step in xrange(num_steps):
+            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, num_steps))
+            logps[step] = sum([self._logpdf_output_cell(rowid, cout)
+                for cout in targets_clean])
+        # Forget observed targets.
+        for cout in targets_clean:
+            self._forget_output_cell(rowid, cout)
+        # Forget observed constraints.
+        for cout in constraints_clean:
+            self._forget_output_cell(rowid, cout)
+        # Forget observed inputs.
+        for cin in inputs_clean:
+            self._forget_input_cell(rowid, cin)
+        return gu.logmeanexp(logps)
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         inputs_clean = self._cleanse_inputs(rowid, inputs)
@@ -173,6 +202,23 @@ class VsCGpm(CGpm):
 
     # --------------------------------------------------------------------------
     # Internal helpers.
+
+    def _logpdf_output_cell(self, rowid, cout):
+        # Assess density of node x (scope:rowid, block:cout) given parents.
+        # Let node y->x->z represent link structure in the dependency graph:
+        #   logp_joint          = p(x,z|y)
+        #   logp_likelihood     = p(z|x,y)
+        #   logp_at             = logp_joint - logp_likelihood
+        #                           = log(p(x,z|y)/p(z|x,y))
+        #                           = log(p(z|x,y)p(x|y)/p(z|x,y))
+        #                           = log(p(x|y))
+        output_idx = self.outputs.index(cout)
+        sp_rowid = '(atom %d)' % (rowid,)
+        lp_joint = self.ripl.evaluate('(log_joint_at %s %s)'
+            % (sp_rowid, output_idx))
+        logp_likelihood = self.ripl.evaluate('(log_likelihood_at %s %s)'
+            % (sp_rowid, output_idx))
+        return lp_joint[0] - logp_likelihood[0]
 
     def _predict_output_cell(self, rowid, cout, label):
         output_idx = self.outputs.index(cout)
