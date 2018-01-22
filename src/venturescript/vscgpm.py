@@ -85,7 +85,7 @@ class VsCGpm(CGpm):
         observation_clean = self._cleanse_observation(rowid, observation)
         inputs_clean = self._cleanse_inputs(rowid, inputs)
         for cin, value in inputs_clean.iteritems():
-            self._observe_input_cell(rowid, cin, value)
+            self._write_input_cell(rowid, cin, value)
         for cout, value in observation_clean.iteritems():
             self._observe_output_cell(rowid, cout, value)
 
@@ -94,10 +94,10 @@ class VsCGpm(CGpm):
             raise ValueError('Never incorporated: %d' % rowid)
         for cout in self.outputs:
             if self._is_observed_output_cell(rowid, cout):
-                self._forget_output_cell(rowid, cout)
+                self._unobserve_output_cell(rowid, cout)
         for cin in self.inputs:
-            if self._is_observed_input_cell(rowid, cin):
-                self._forget_input_cell(rowid, cin)
+            if self._is_written_input_cell(rowid, cin):
+                self._clear_input_cell(rowid, cin)
         assert rowid not in self.labels['observe']
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None,
@@ -108,7 +108,7 @@ class VsCGpm(CGpm):
             rowid, targets, constraints)
         # Observe any unseen inputs.
         for cin, value in inputs_clean.iteritems():
-            self._observe_input_cell(rowid, cin, value)
+            self._write_input_cell(rowid, cin, value)
         # Observe any unobserved constrained outputs.
         for cout, value in constraints_clean.iteritems():
             self._observe_output_cell(rowid, cout, value)
@@ -123,13 +123,13 @@ class VsCGpm(CGpm):
                 for cout in targets_clean])
         # Forget observed targets.
         for cout in targets_clean:
-            self._forget_output_cell(rowid, cout)
+            self._unobserve_output_cell(rowid, cout)
         # Forget observed constraints.
         for cout in constraints_clean:
-            self._forget_output_cell(rowid, cout)
+            self._unobserve_output_cell(rowid, cout)
         # Forget observed inputs.
         for cin in inputs_clean:
-            self._forget_input_cell(rowid, cin)
+            self._clear_input_cell(rowid, cin)
         return gu.logmeanexp(logps)
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -139,7 +139,7 @@ class VsCGpm(CGpm):
             rowid, targets, constraints)
         # Observe any unseen inputs.
         for cin, value in inputs_clean.iteritems():
-            self._observe_input_cell(rowid, cin, value)
+            self._write_input_cell(rowid, cin, value)
         # Observe any unobserved constrained outputs.
         for cout, value in constraints_clean.iteritems():
             self._observe_output_cell(rowid, cout, value)
@@ -153,10 +153,10 @@ class VsCGpm(CGpm):
             self._unpredict_output_cell(rowid, cout)
         # Forget observed constraints.
         for cout in constraints_clean:
-            self._forget_output_cell(rowid, cout)
+            self._unobserve_output_cell(rowid, cout)
         # Forget observed inputs.
         for cin in inputs_clean:
-            self._forget_input_cell(rowid, cin)
+            self._clear_input_cell(rowid, cin)
         return samples
 
     def logpdf_score(self):
@@ -203,7 +203,7 @@ class VsCGpm(CGpm):
         return cgpm
 
     # --------------------------------------------------------------------------
-    # Internal helpers.
+    # Internal methods.
 
     def _logpdf_output_cell(self, rowid, cout):
         # Assess density of node x (scope:rowid, block:cout) given parents.
@@ -222,6 +222,8 @@ class VsCGpm(CGpm):
             % (sp_rowid, output_idx))
         return lp_joint[0] - logp_likelihood[0]
 
+    # Predicting and unpredicting output cells.
+
     def _predict_output_cell(self, rowid, cout):
         if rowid not in self.labels['predict']:
             self.labels['predict'][rowid] = dict()
@@ -235,6 +237,8 @@ class VsCGpm(CGpm):
     def _unpredict_output_cell(self, rowid, cout):
         label = self.labels['predict'][rowid][cout]
         self.ripl.forget(label)
+
+    # Observing and unobserving output cells.
 
     def _observe_output_cell(self, rowid, cout, value):
         if rowid not in self.labels['observe']:
@@ -252,7 +256,20 @@ class VsCGpm(CGpm):
                 % (output_idx, obs_args))
         self.labels['observe'][rowid][cout] = label
 
-    def _observe_input_cell(self, rowid, cin, value):
+    def _unobserve_output_cell(self, rowid, cout):
+        label = self.labels['observe'][rowid][cout]
+        self.ripl.forget(label)
+        del self.labels['observe'][rowid][cout]
+        if len(self.labels['observe'][rowid]) == 0:
+            del self.labels['observe'][rowid]
+
+    def _is_observed_output_cell(self, rowid, cout):
+        return rowid in self.labels['observe'] \
+            and cout in self.labels['observe'][rowid]
+
+    # Writing and clearing cells in the input dictionaries.
+
+    def _write_input_cell(self, rowid, cin, value):
         input_name = self.input_mapping[cin]
         sp_rowid = '(atom %d)' % (rowid,)
         input_cell_name = self._get_input_cell_name(rowid, cin)
@@ -260,14 +277,7 @@ class VsCGpm(CGpm):
             '(assume %s (dict_set (lookup inputs "%s") %s %s))'
             % (input_cell_name, input_name, sp_rowid, value))
 
-    def _forget_output_cell(self, rowid, cout):
-        label = self.labels['observe'][rowid][cout]
-        self.ripl.forget(label)
-        del self.labels['observe'][rowid][cout]
-        if len(self.labels['observe'][rowid]) == 0:
-            del self.labels['observe'][rowid]
-
-    def _forget_input_cell(self, rowid, cin):
+    def _clear_input_cell(self, rowid, cin):
         input_name = self.input_mapping[cin]
         sp_rowid = '(atom %d)' % (rowid,)
         self.ripl.sample('(dict_pop (lookup inputs "%s") %s)'
@@ -276,11 +286,7 @@ class VsCGpm(CGpm):
         input_cell_name = self._get_input_cell_name(rowid, cin)
         self.ripl.forget(input_cell_name)
 
-    def _is_observed_output_cell(self, rowid, cout):
-        return rowid in self.labels['observe'] \
-            and cout in self.labels['observe'][rowid]
-
-    def _is_observed_input_cell(self, rowid, cin):
+    def _is_written_input_cell(self, rowid, cin):
         input_name = self.input_mapping[cin]
         sp_rowid = '(atom %d)' % (rowid,)
         return self.ripl.sample('(contains (lookup inputs "%s") %s)'
@@ -295,11 +301,6 @@ class VsCGpm(CGpm):
     def _get_input_cell_name(self, rowid, cin):
         str_rowid = '%s%s' % ('' if 0 <= rowid else 'm', abs(rowid))
         return '%s_%s' % (self.input_mapping[cin], str_rowid)
-
-    def _gen_label(self):
-        return 't%s%s' % (
-            self.rng.randint(1,100),
-            datetime.now().strftime('%Y%m%d%H%M%S%f'))
 
     # Validating observations, targets, and constraints.
 
@@ -326,7 +327,7 @@ class VsCGpm(CGpm):
         if not all(cin in self.inputs for cin in inputs):
             raise ValueError('Unknown inputs: %s' % (inputs,))
         inputs_obs = set(cin for cin in inputs
-            if self._is_observed_input_cell(rowid, cin))
+            if self._is_written_input_cell(rowid, cin))
         inputs_vals = [(self._get_input_cell_value(rowid, cin), inputs[cin])
             for cin in inputs_obs]
         if any(gu.abserr(v1, v2) > 1e-6 for (v1, v2) in inputs_vals):
@@ -363,6 +364,13 @@ class VsCGpm(CGpm):
                     '%d, %s, %s' % (rowid, targets, targets_obs))
         return targets
 
+    # Other utilities.
+
+    def _gen_label(self):
+        return 't%s%s' % (
+            self.rng.randint(1,100),
+            datetime.now().strftime('%Y%m%d%H%M%S%f'))
+
     def _get_num_observers(self):
         # Return the length of the "observers" list defined by the client, or
         # None if the client did not override the observers.
@@ -385,7 +393,7 @@ class VsCGpm(CGpm):
 
     def _check_input_args(self, rowid, inputs):
         inputs_obs = set(cin for cin in inputs
-            if self._is_observed_input_cell(rowid, cin))
+            if self._is_written_input_cell(rowid, cin))
         inputs_vals = [(self._get_input_cell_value(rowid, cin), inputs[cin])
             for cin in inputs_obs]
         if any(gu.abserr(v1, v2) > 1e-6 for (v1, v2) in inputs_vals):
