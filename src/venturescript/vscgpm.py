@@ -375,7 +375,7 @@ class VsCGpm(CGpm):
         # Return mapping from input integer index to string name.
         input_dict = self.ripl.sample('inputs')
         assert len(inputs) == len(input_dict)
-        return {cin:e[0] for e, cin in zip(input_dict, inputs)}
+        return {cin: cname[0] for cin, cname in zip(inputs, input_dict)}
 
     def _get_output_mapping(self, outputs):
         # Return mapping from output integer index to string name.
