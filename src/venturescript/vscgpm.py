@@ -115,18 +115,20 @@ class VsCGpm(CGpm):
             raise ValueError('Missing logpdf inputs: %s' % (missing_inputs,))
         for cin, value in inputs_clean.iteritems():
             self._write_input_cell(rowid, cin, value)
-        # Invoke weighted sample on the joint and constraints.
+        # Invoke weighted sample on the targets and constraints.
         logps_joint = [
             self._weighted_forward_sample(rowid, constraints_joint)
             for _i in xrange(num_samples)
         ]
+        # Invoke weighted sample on the constraints.
         logps_constraints = [
             self._weighted_forward_sample(rowid, constraints_clean)
             for _i in xrange(num_samples)
         ]
-        # Clear inputs.
+        # Clear written inputs.
         for cin in inputs_clean:
             self._clear_input_cell(rowid, cin)
+        # Ratio likelihood weighting.
         return gu.logmeanexp(logps_joint) - gu.logmeanexp(logps_constraints)
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -134,15 +136,15 @@ class VsCGpm(CGpm):
         targets_clean = self._cleanse_targets(rowid, targets)
         constraints_clean = self._cleanse_constraints(
             rowid, targets, constraints)
-        # Write any unseen inputs.
+        # Write inputs.
         for cin, value in inputs_clean.iteritems():
             self._write_input_cell(rowid, cin, value)
-        # Observe any unobserved constrained outputs.
+        # Observe constraints.
         for cout, value in constraints_clean.iteritems():
             self._observe_output_cell(rowid, cout, value)
         # Run local inference in rowid scope, with 15 steps of MH.
         self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
-        # Generate labels and predictions of outputs.
+        # Predict targets.
         samples = {cout: self._predict_output_cell(rowid, cout)
             for cout in targets_clean}
         # Forget predicted targets.
@@ -151,9 +153,10 @@ class VsCGpm(CGpm):
         # Forget observed constraints.
         for cout in constraints_clean:
             self._unobserve_output_cell(rowid, cout)
-        # Forget observed inputs.
+        # Clear written inputs.
         for cin in inputs_clean:
             self._clear_input_cell(rowid, cin)
+        # Overall samples.
         return samples
 
     def logpdf_score(self):
@@ -251,7 +254,7 @@ class VsCGpm(CGpm):
         # 2. Predict unconstrained nodes.
         for cout in unconstrained:
             self._predict_output_cell(rowid, cout)
-        # 3. Forget constrained nodes.
+        # 3. Forget observed constrained nodes.
         for cout in constraints:
             self._unobserve_output_cell(rowid, cout)
         # 4. Predict constrained nodes.
@@ -262,10 +265,10 @@ class VsCGpm(CGpm):
             self._set_value_at_output_cell(rowid, cout, value)
         # 6. Compute log density at constrained nodes.
         logps = [self._logpdf_output_cell(rowid, cout) for cout in constraints]
-        # 7. Forget constrained nodes.
+        # 7. Forget predicted constrained nodes.
         for cout in constraints:
             self._unpredict_output_cell(rowid, cout)
-        # 8. Forget unconstrained nodes.
+        # 8. Forget predicted unconstrained nodes.
         for cout in unconstrained:
             self._unpredict_output_cell(rowid, cout)
         # Return sum of log densities.
@@ -347,6 +350,7 @@ class VsCGpm(CGpm):
         input_name = self.input_mapping[cin]
         sp_rowid = '(atom %d)' % (rowid,)
         input_cell_name = self._get_input_cell_name(rowid, cin)
+        # Assume a thunk, for serialization.
         self.ripl.execute_program(
             '(assume %s (dict_set (lookup inputs "%s") %s %s))'
             % (input_cell_name, input_name, sp_rowid, value))
@@ -356,7 +360,7 @@ class VsCGpm(CGpm):
         sp_rowid = '(atom %d)' % (rowid,)
         self.ripl.sample('(dict_pop (lookup inputs "%s") %s)'
             % (input_name, sp_rowid))
-        # Forget the assume directive.
+        # Forget the assumed thunk.
         input_cell_name = self._get_input_cell_name(rowid, cin)
         self.ripl.forget(input_cell_name)
 
