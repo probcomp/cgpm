@@ -205,33 +205,67 @@ class VsCGpm(CGpm):
     # Likelihood weighting by sampling mutilated Bayes net.
 
     def _weighted_forward_sample(self, rowid, constraints):
+        """Sampling from mutilated Bayesian network for likelihood weighting.
+
+        Note that we need not know the topology of the Bayes Net.
+        1. observe values for all constrained nodes.
+        2. predict all unconstrained nodes
+        3. forget (unobserve) all constrained nodes.
+        4. predict all constrained nodes.
+        5. set_value_at values at all constrained nodes
+        6. Compute log_joint_at-log_likelihood_at at all constrained nodes
+        7. forget (unpredict) all constrained nodes
+        8. forget (unpredict) all unconstrained nodes
+
+        This algorithm correctly simulates from the proposal distribution and
+        computes the desired weights. It also leaves the trace unmutated Below
+        is an informal argument for the effects of each step:
+
+        1. Ensures all constrained nodes and their parents exist.
+          - Parents of constrained nodes are sampled from the prior.
+          - Children of constrained nodes are sampled from the conditional.
+        2. Ensures nodes which are not parents of constrained nodes exist.
+        3. Removes observation at constrained nodes
+                (otherwise log_joint_at returns 0).
+          - If constrained node is a leaf, it will no longer exist.
+          - If constrained node is internal, it still exists since its
+            children were predicted.
+        4. Ensures constrained nodes exist.
+          - If constrained node is a leaf, it will be recreated.
+          - If constrained node is internal, it will still exist
+            at the observed value.
+        5. Sets value at constrained nodes to query values.
+        6. Compute likelihood weights.
+        7. Clears temporary predict directives used for constrained nodes.
+        8. Clears temporary predict directives used for unconstrained nodes.
+        """
         # Find unconstrained and unobserved outputs.
         unconstrained = [
             cout for cout in self.outputs if
             cout not in constraints
                 and not self._is_observed_output_cell(rowid, cout)
         ]
-        # Observe constrained nodes.
+        # 1. Observe constrained nodes.
         for cout, value in constraints.iteritems():
             self._observe_output_cell(rowid, cout, value)
-        # Predict unconstrained nodes.
+        # 2. Predict unconstrained nodes.
         for cout in unconstrained:
             self._predict_output_cell(rowid, cout)
-        # Unobserve constrained nodes.
+        # 3. Forget constrained nodes.
         for cout in constraints:
             self._unobserve_output_cell(rowid, cout)
-        # Predict constrained nodes.
+        # 4. Predict constrained nodes.
         for cout in constraints:
             self._predict_output_cell(rowid, cout)
-        # Set value at constrained nodes.
+        # 5. Set value at constrained nodes.
         for cout, value in constraints.iteritems():
             self._set_value_at_output_cell(rowid, cout, value)
-        # Get log density values at constrained nodes.
+        # 6. Compute log density at constrained nodes.
         logps = [self._logpdf_output_cell(rowid, cout) for cout in constraints]
-        # Unpredict all constrained nodes.
+        # 7. Forget constrained nodes.
         for cout in constraints:
             self._unpredict_output_cell(rowid, cout)
-        # Unpredict all unconstrained nodes.
+        # 8. Forget unconstrained nodes.
         for cout in unconstrained:
             self._unpredict_output_cell(rowid, cout)
         # Return sum of log densities.
