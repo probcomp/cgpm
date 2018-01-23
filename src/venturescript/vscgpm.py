@@ -117,12 +117,12 @@ class VsCGpm(CGpm):
             self._write_input_cell(rowid, cin, value)
         # Invoke weighted sample on the targets and constraints.
         logps_joint = [
-            self._weighted_forward_sample(rowid, constraints_joint)
+            self._weighted_forward_sample(rowid, [], constraints_joint)[0]
             for _i in xrange(num_samples)
         ]
         # Invoke weighted sample on the constraints.
         logps_constraints = [
-            self._weighted_forward_sample(rowid, constraints_clean)
+            self._weighted_forward_sample(rowid, [], constraints_clean)[0]
             for _i in xrange(num_samples)
         ]
         # Clear written inputs.
@@ -207,8 +207,12 @@ class VsCGpm(CGpm):
 
     # Likelihood weighting by sampling mutilated Bayes net.
 
-    def _weighted_forward_sample(self, rowid, constraints):
+    def _weighted_forward_sample(self, rowid, targets, constraints):
         """Sampling from mutilated Bayesian network for likelihood weighting.
+
+        Returns likelihood weight of `constraints`, and simulated values of
+        `targets', from forward sampling the Bayes Net mutilated at
+        `constraints`.
 
         Note that we need not know the topology of the Bayes Net.
         1. observe values for all constrained nodes.
@@ -216,9 +220,10 @@ class VsCGpm(CGpm):
         3. forget (unobserve) all constrained nodes.
         4. predict all constrained nodes.
         5. set_value_at values at all constrained nodes
-        6. Compute log_joint_at-log_likelihood_at at all constrained nodes
-        7. forget (unpredict) all constrained nodes
-        8. forget (unpredict) all unconstrained nodes
+        6. predict values of all target nodes
+        7. compute log_joint_at-log_likelihood_at at all constrained nodes
+        8. forget (unpredict) all constrained nodes
+        9. forget (unpredict) all unconstrained nodes
 
         This algorithm correctly simulates from the proposal distribution and
         computes the desired weights. It also leaves the trace unmutated Below
@@ -238,9 +243,10 @@ class VsCGpm(CGpm):
           - If constrained node is internal, it will still exist
             at the observed value.
         5. Sets value at constrained nodes to query values.
-        6. Compute likelihood weights.
-        7. Clears temporary predict directives used for constrained nodes.
-        8. Clears temporary predict directives used for unconstrained nodes.
+        6. Fetches the forward simulated values of the target nodes.
+        7. Computes likelihood weights.
+        8. Clears temporary predict directives used for constrained nodes.
+        9. Clears temporary predict directives used for unconstrained nodes.
         """
         # Find unconstrained and unobserved outputs.
         unconstrained = [
@@ -263,16 +269,19 @@ class VsCGpm(CGpm):
         # 5. Set value at constrained nodes.
         for cout, value in constraints.iteritems():
             self._set_value_at_output_cell(rowid, cout, value)
-        # 6. Compute log density at constrained nodes.
+        # 6. Retrieve values of target nodes.
+        targets_simulated = [self._predict_output_cell(rowid, cout)
+            for cout in targets]
+        # 7. Compute log density at constrained nodes.
         logps = [self._logpdf_output_cell(rowid, cout) for cout in constraints]
-        # 7. Forget predicted constrained nodes.
+        # 8. Forget predicted constrained nodes.
         for cout in constraints:
             self._unpredict_output_cell(rowid, cout)
-        # 8. Forget predicted unconstrained nodes.
+        # 9. Forget predicted unconstrained nodes.
         for cout in unconstrained:
             self._unpredict_output_cell(rowid, cout)
-        # Return sum of log densities.
-        return sum(logps)
+        # Return sum of log densities, and simulated values of target nodes.
+        return sum(logps), targets_simulated
 
     def _logpdf_output_cell(self, rowid, cout):
         # Assess density of node x (scope:rowid, block:cout) given parents.
