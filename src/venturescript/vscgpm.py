@@ -101,43 +101,40 @@ class VsCGpm(CGpm):
         assert rowid not in self.labels['observe']
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None,
-            num_samples=10, num_steps=10):
+            accuracy=None):
         inputs_clean = self._cleanse_inputs(rowid, inputs)
         targets_clean = self._cleanse_targets(rowid, targets)
-        constraints_clean = self._cleanse_constraints(
-            rowid, targets, constraints)
-        # Observe any unseen inputs.
+        constraints_clean = self._cleanse_constraints(rowid, targets,
+            constraints)
+        constraints_joint = gu.merged(targets_clean, constraints_clean)
+        num_samples = accuracy or 1
+        # Write inputs.
+        missing_inputs = [cin for cin in self.inputs if cin not in inputs_clean
+            and not self._is_written_input_cell(rowid, cin)]
+        if len(missing_inputs) > 0:
+            raise ValueError('Missing logpdf inputs: %s' % (missing_inputs,))
         for cin, value in inputs_clean.iteritems():
             self._write_input_cell(rowid, cin, value)
-        # Observe any unobserved constrained outputs.
-        for cout, value in constraints_clean.iteritems():
-            self._observe_output_cell(rowid, cout, value)
-        # Observe the targets.
-        for cout, value in targets_clean.iteritems():
-            self._observe_output_cell(rowid, cout, value)
-        # Compute probabilities of each target given its parents.]
-        logps = [None] * num_steps
-        for step in xrange(num_steps):
-            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, num_steps))
-            logps[step] = sum([self._logpdf_output_cell(rowid, cout)
-                for cout in targets_clean])
-        # Forget observed targets.
-        for cout in targets_clean:
-            self._unobserve_output_cell(rowid, cout)
-        # Forget observed constraints.
-        for cout in constraints_clean:
-            self._unobserve_output_cell(rowid, cout)
-        # Forget observed inputs.
+        # Invoke weighted sample on the joint and constraints.
+        logps_joint = [
+            self._weighted_forward_sample(rowid, constraints_joint)
+            for _i in xrange(num_samples)
+        ]
+        logps_constraints = [
+            self._weighted_forward_sample(rowid, constraints_clean)
+            for _i in xrange(num_samples)
+        ]
+        # Clear inputs.
         for cin in inputs_clean:
             self._clear_input_cell(rowid, cin)
-        return gu.logmeanexp(logps)
+        return gu.logmeanexp(logps_joint) - gu.logmeanexp(logps_constraints)
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         inputs_clean = self._cleanse_inputs(rowid, inputs)
         targets_clean = self._cleanse_targets(rowid, targets)
         constraints_clean = self._cleanse_constraints(
             rowid, targets, constraints)
-        # Observe any unseen inputs.
+        # Write any unseen inputs.
         for cin, value in inputs_clean.iteritems():
             self._write_input_cell(rowid, cin, value)
         # Observe any unobserved constrained outputs.
@@ -205,6 +202,41 @@ class VsCGpm(CGpm):
     # --------------------------------------------------------------------------
     # Internal methods.
 
+    # Likelihood weighting by sampling mutilated Bayes net.
+
+    def _weighted_forward_sample(self, rowid, constraints):
+        # Find unconstrained and unobserved outputs.
+        unconstrained = [
+            cout for cout in self.outputs if
+            cout not in constraints
+                and not self._is_observed_output_cell(rowid, cout)
+        ]
+        # Observe constrained nodes.
+        for cout, value in constraints.iteritems():
+            self._observe_output_cell(rowid, cout, value)
+        # Predict unconstrained nodes.
+        for cout in unconstrained:
+            self._predict_output_cell(rowid, cout)
+        # Unobserve constrained nodes.
+        for cout in constraints:
+            self._unobserve_output_cell(rowid, cout)
+        # Predict constrained nodes.
+        for cout in constraints:
+            self._predict_output_cell(rowid, cout)
+        # Set value at constrained nodes.
+        for cout, value in constraints.iteritems():
+            self._set_value_at_output_cell(rowid, cout, value)
+        # Get log density values at constrained nodes.
+        logps = [self._logpdf_output_cell(rowid, cout) for cout in constraints]
+        # Unpredict all constrained nodes.
+        for cout in constraints:
+            self._unpredict_output_cell(rowid, cout)
+        # Unpredict all unconstrained nodes.
+        for cout in unconstrained:
+            self._unpredict_output_cell(rowid, cout)
+        # Return sum of log densities.
+        return sum(logps)
+
     def _logpdf_output_cell(self, rowid, cout):
         # Assess density of node x (scope:rowid, block:cout) given parents.
         # Let node y->x->z represent link structure in the dependency graph:
@@ -214,13 +246,21 @@ class VsCGpm(CGpm):
         #                           = log(p(x,z|y)/p(z|x,y))
         #                           = log(p(z|x,y)p(x|y)/p(z|x,y))
         #                           = log(p(x|y))
-        output_idx = self.outputs.index(cout)
+        assert not self._is_observed_output_cell(rowid, cout)
+        output_name = self.output_mapping[cout]
         sp_rowid = '(atom %d)' % (rowid,)
-        lp_joint = self.ripl.evaluate('(log_joint_at %s %s)'
-            % (sp_rowid, output_idx))
-        logp_likelihood = self.ripl.evaluate('(log_likelihood_at %s %s)'
-            % (sp_rowid, output_idx))
-        return lp_joint[0] - logp_likelihood[0]
+        logp_joint = self.ripl.evaluate('(log_joint_at %s "%s")'
+            % (sp_rowid, output_name))
+        logp_likelihood = self.ripl.evaluate('(log_likelihood_at %s "%s")'
+            % (sp_rowid, output_name))
+        return logp_joint[0] - logp_likelihood[0]
+
+    def _set_value_at_output_cell(self, rowid, cout, value):
+        assert not self._is_observed_output_cell(rowid, cout)
+        output_name = self.output_mapping[cout]
+        sp_rowid = '(atom %d)' % (rowid,)
+        self.ripl.evaluate('(set_value_at2 %s "%s" %s)' %
+            (sp_rowid, output_name, value))
 
     # Predicting and unpredicting output cells.
 

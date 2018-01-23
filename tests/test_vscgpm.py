@@ -47,12 +47,15 @@ source_abstract = """
     ; Output variables.
     (assume simulate_m
       (mem (lambda (rowid)
-        (tag rowid 0 (normal (x rowid) sigma)))))
+        (let ((mean (x rowid)))
+            (tag rowid "simulate_m" (normal mean sigma))))))
 
     (assume simulate_y
       (mem (lambda (rowid)
-        (let ((w (lookup (lookup inputs "w") rowid)))
-            (tag rowid 1 (uniform_continuous (- w 10) (+ w 10)))))))
+        (let ((w (lookup (lookup inputs "w") rowid))
+              (w_min (- w 10))
+              (w_max (+ w 10)))
+            (tag rowid "simulate_y" (uniform_continuous w_min w_max))))))
 
     (assume outputs (list 'simulate_m 'simulate_y))))]
 
@@ -84,12 +87,13 @@ define make_cgpm = () -> {
     });
 
     assume simulate_m = mem((rowid) ~> {
-        normal(x(rowid), sigma)
+        mean = x(rowid);
+        tag(rowid, "simulate_m", normal(mean, sigma))
     });
 
     assume simulate_y = mem((rowid) ~> {
         w = inputs["w"][rowid];
-        uniform_continuous(w - 10, w + 10)
+        tag(rowid, "simulate_y", uniform_continuous(w - 10, w + 10))
     });
 
     assume outputs = [[|simulate_m|], [|simulate_y|]];
@@ -235,25 +239,31 @@ def test_incorporate_unincorporate(case):
     assert not np.allclose(sample[1], observations[rowid1][1])
 
 
-@pytest.mark.parametrize('case', cases[:1])
-def test_logpdf(case):
+@pytest.mark.parametrize('case', cases)
+def test_logpdf_crash(case):
     cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
+
     # Test univariate logpdf.
-    cgpm.logpdf(-1, {0:1}, None, None)
+    cgpm.logpdf(-2, {0:1}, None, {3:2})
+    with pytest.raises(ValueError):
+        # Missing input.
+        cgpm.logpdf(-2, {0:1}, None, None)
+
+    # Test joint logpdf.
+    cgpm.logpdf(-1, {0:1, 1:2}, None, {3:2})
+    with pytest.raises(ValueError):
+        # Missing input.
+        cgpm.logpdf(-2, {0:1, 1:3}, None, None)
+
     # Test conditional logpdf.
-    with pytest.raises(VentureException):
-        # Conditioning on {1:1} requires value for input 3.
+    with pytest.raises(ValueError):
+        # Missing input
         cgpm.logpdf(-1, {0:1}, {1:1}, None)
     cgpm.logpdf(-1, {0:1}, {1:1}, {3:0})
-    # Test joint logpdf. output 1 should be uniform on [-10,10] so 100 should
-    # given infinite density. However, it appears that using observe to fix the
-    # targets/constraints causes their log_joint to become 0 (seems that nobody
-    # thought through the change of base measure that happens when conditioning
-    # on a continuous value, but this is besides the point since the bug will
-    # also manifest for discrete random variables). Therefore the solution is to
-    # set_value_at/set_value_at2 to fix the targets/constraints.
-    with pytest.raises(AssertionError):
-        assert cgpm.logpdf(-1, {0:1, 1:100}, None, {3:0}) == float('-inf')
+
+    # 1:100 impossible with input 3:0.
+    assert cgpm.logpdf(-1, {0:1, 1:100}, None, {3:0}) == float('-inf')
+
 
 @pytest.mark.parametrize('case', cases)
 def test_serialize(case):
