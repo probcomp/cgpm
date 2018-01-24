@@ -322,6 +322,9 @@ class VsCGpm(CGpm):
     def _unpredict_output_cell(self, rowid, cout):
         label = self.labels['predict'][rowid][cout]
         self.ripl.forget(label)
+        del self.labels['predict'][rowid][cout]
+        if len(self.labels['predict'][rowid]) == 0:
+            del self.labels['predict'][rowid]
 
     # Observing and unobserving output cells.
 
