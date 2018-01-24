@@ -269,7 +269,7 @@ class VsCGpm(CGpm):
         for cout, value in constraints.iteritems():
             self._set_value_at_output_cell(rowid, cout, value)
         # 6. Retrieve values of target nodes.
-        targets_simulated = {cout: self._predict_output_cell(rowid, cout)
+        targets_simulated = {cout: self._sample_output_cell(rowid, cout)
             for cout in targets}
         # 7. Compute log density at constrained nodes.
         logps = [self._logpdf_output_cell(rowid, cout) for cout in constraints]
@@ -307,11 +307,19 @@ class VsCGpm(CGpm):
         self.ripl.evaluate('(set_value_at2 %s "%s" %s)' %
             (sp_rowid, output_name, value))
 
+    # Sampling output cells.
+
+    def _sample_output_cell(self, rowid, cout):
+        output_name = self.output_mapping[cout]
+        sp_rowid = '(atom %d)' % (rowid,)
+        return self.ripl.sample('(%s %s)' % (output_name, sp_rowid))
+
     # Predicting and unpredicting output cells.
 
     def _predict_output_cell(self, rowid, cout):
         if rowid not in self.labels['predict']:
             self.labels['predict'][rowid] = dict()
+        assert cout not in self.labels['predict'][rowid]
         label = self._gen_label()
         output_name = self.output_mapping[cout]
         sp_rowid = '(atom %d)' % (rowid,)
