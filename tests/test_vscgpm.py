@@ -169,6 +169,31 @@ def test_wrong_observers(case):
     except ValueError:
         assert not case.obsok
 
+@pytest.mark.parametrize('func', [
+    lambda cgpm: cgpm.simulate,
+    lambda cgpm: cgpm.logpdf,
+    ])
+def test_misc_simulate_logpdf_arg_errors(func):
+    cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=source_abstract)
+    with pytest.raises(ValueError):
+        # Unknown targets.
+        func(cgpm)(0, [0,1,2], None, {3:1})
+    with pytest.raises(ValueError):
+        # Unknown constraints.
+        func(cgpm)(0, [0,1], {4:1}, {3:1})
+    with pytest.raises(ValueError):
+        # Invalid constraints.
+        func(cgpm)(0, [0,1], {3:1}, {3:1})
+    with pytest.raises(ValueError):
+        # Overlapping targets and constraints.
+        func(cgpm)(0, [0,1], {1:1}, {3:1})
+    with pytest.raises(ValueError):
+        # Unknown inputs.
+        func(cgpm)(0, [0,1], None, {4:1})
+    with pytest.raises(ValueError):
+        # Invalid inputs.
+        func(cgpm)(0, [1], None, {0:1})
+
 @pytest.mark.parametrize('case', cases)
 def test_incorporate_unincorporate(case):
     cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
@@ -229,12 +254,9 @@ def test_incorporate_unincorporate(case):
 
     # Test observations resampled after transition.
     cgpm.unincorporate(1)
-    cgpm.simulate(1, [0])
-    with pytest.raises(VentureException):
-        # Missing inputs, w is required for output 1.
-        cgpm.simulate(1, [1])
+    cgpm.simulate(rowid1, [0], None, {3: inputs[rowid1]})
     cgpm.transition(N=10)
-    sample = cgpm.simulate(1, [0,1], None, {3: inputs[rowid1]})
+    sample = cgpm.simulate(rowid1, [0,1], None, {3: inputs[rowid1]})
     assert not np.allclose(sample[0], observations[rowid1][0])
     assert not np.allclose(sample[1], observations[rowid1][1])
 

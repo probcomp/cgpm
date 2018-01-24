@@ -130,33 +130,30 @@ class VsCGpm(CGpm):
         # Ratio likelihood weighting.
         return gu.logmeanexp(logps_joint) - gu.logmeanexp(logps_constraints)
 
-    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
+    def simulate(self, rowid, targets, constraints=None, inputs=None, N=None,
+            accuracy=None):
         inputs2 = self._cleanse_inputs(rowid, inputs)
         targets2 = self._cleanse_targets(rowid, targets)
-        constraints2 = self._cleanse_constraints(
-            rowid, targets, constraints)
+        constraints2 = self._cleanse_constraints(rowid, targets, constraints)
+        num_samples = accuracy or 1
         # Write inputs.
+        missing_inputs = [cin for cin in self.inputs if cin not in inputs2
+            and not self._is_written_input_cell(rowid, cin)]
+        if len(missing_inputs) > 0:
+            raise ValueError('Missing simulate inputs: %s' % (missing_inputs,))
         for cin, value in inputs2.iteritems():
             self._write_input_cell(rowid, cin, value)
-        # Observe constraints.
-        for cout, value in constraints2.iteritems():
-            self._observe_output_cell(rowid, cout, value)
-        # Run local inference in rowid scope, with 15 steps of MH.
-        self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
-        # Predict targets.
-        samples = {cout: self._predict_output_cell(rowid, cout)
-            for cout in targets2}
-        # Forget predicted targets.
-        for cout in targets2:
-            self._unpredict_output_cell(rowid, cout)
-        # Forget observed constraints.
-        for cout in constraints2:
-            self._unobserve_output_cell(rowid, cout)
+        # Invoke weighted sample on the constraints, requesting targets.
+        weights, samples = zip(*[
+            self._weighted_forward_sample(rowid, targets2, constraints2)
+            for _i in xrange(num_samples)
+        ])
+        # Sample importance resample.
+        index = 0 if num_samples == 1 else gu.log_pflip(weights, rng=self.rng)
         # Clear written inputs.
         for cin in inputs2:
             self._clear_input_cell(rowid, cin)
-        # Overall samples.
-        return samples
+        return samples[index]
 
     def logpdf_score(self):
         raise NotImplementedError
