@@ -270,8 +270,8 @@ class VsCGpm(CGpm):
         for cout, value in constraints.iteritems():
             self._set_value_at_output_cell(rowid, cout, value)
         # 6. Retrieve values of target nodes.
-        targets_simulated = [self._predict_output_cell(rowid, cout)
-            for cout in targets]
+        targets_simulated = {cout: self._predict_output_cell(rowid, cout)
+            for cout in targets}
         # 7. Compute log density at constrained nodes.
         logps = [self._logpdf_output_cell(rowid, cout) for cout in constraints]
         # 8. Forget predicted constrained nodes.
