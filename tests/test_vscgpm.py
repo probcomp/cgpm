@@ -264,25 +264,12 @@ def test_incorporate_unincorporate(case):
 @pytest.mark.parametrize('case', cases)
 def test_logpdf_crash(case):
     cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
-
     # Test univariate logpdf.
     cgpm.logpdf(-2, {0:1}, None, {3:2})
-    with pytest.raises(ValueError):
-        # Missing input.
-        cgpm.logpdf(-2, {0:1}, None, None)
-
     # Test joint logpdf.
     cgpm.logpdf(-1, {0:1, 1:2}, None, {3:2})
-    with pytest.raises(ValueError):
-        # Missing input.
-        cgpm.logpdf(-2, {0:1, 1:3}, None, None)
-
     # Test conditional logpdf.
-    with pytest.raises(ValueError):
-        # Missing input
-        cgpm.logpdf(-1, {0:1}, {1:1}, None)
     cgpm.logpdf(-1, {0:1}, {1:1}, {3:0})
-
     # 1:100 impossible with input 3:0.
     assert cgpm.logpdf(-1, {0:1, 1:100}, None, {3:0}) == float('-inf')
 
