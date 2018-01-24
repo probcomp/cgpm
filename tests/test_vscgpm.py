@@ -275,6 +275,20 @@ def test_logpdf_crash(case):
 
 
 @pytest.mark.parametrize('case', cases)
+def test_simulate_crash(case):
+    cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
+    # Test univariate simulate.
+    cgpm.simulate(-2, [0], None, {3:2})
+    # Test joint simulate.
+    cgpm.simulate(-1, [0,1], None, {3:2})
+    # Test conditional simulate.
+    cgpm.simulate(-1, [0], {1:1}, {3:0})
+    # 1:100 impossible with input 3:0.
+    with pytest.raises(ValueError):
+        assert cgpm.simulate(-1, [0], {1:100}, {3:0}) == float('-inf')
+
+
+@pytest.mark.parametrize('case', cases)
 def test_serialize(case):
     cgpm = VsCGpm(outputs=[0,1], inputs=[3], source=case.source, mode=case.mode)
     cgpm.incorporate(0, {0:1, 1:2}, {3:0})

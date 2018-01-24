@@ -149,6 +149,8 @@ class VsCGpm(CGpm):
             for _i in xrange(num_samples)
         ])
         # Sample importance resample.
+        if all(math.isinf(weight) for weight in weights):
+            raise ValueError('Impossible constraints: %s' % (constraints,))
         index = 0 if num_samples == 1 else gu.log_pflip(weights, rng=self.rng)
         # Clear written inputs.
         for cin in inputs2:
