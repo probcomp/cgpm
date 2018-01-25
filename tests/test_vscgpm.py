@@ -57,7 +57,7 @@ source_abstract = """
               (w_max (+ w 10)))
             (tag rowid "simulate_y" (uniform_continuous w_min w_max))))))
 
-    (assume outputs (list 'simulate_m 'simulate_y))))]
+    (assume outputs (list "simulate_m" "simulate_y"))))]
 
 [define observe_m
   (lambda (rowid value label)
@@ -96,7 +96,7 @@ define make_cgpm = () -> {
         tag(rowid, "simulate_y", uniform_continuous(w - 10, w + 10))
     });
 
-    assume outputs = [[|simulate_m|], [|simulate_y|]];
+    assume outputs = ["simulate_m", "simulate_y"];
 };
 
 define observe_m = (rowid, value, label) -> {
