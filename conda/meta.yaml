@@ -32,6 +32,7 @@ test:
     - cgpm
   commands:
     - python -m pytest --pyargs cgpm -k "not __ci_"
+    - python -m pytest --pyargs cgpm -k __ci_
 
 about:
   home: https://github.com/probcomp/cgpm
