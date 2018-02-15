@@ -141,6 +141,14 @@ class Engine(object):
                 for s in statenos]
         self.states = mapper(_modify, args)
 
+    def incorporate_bulk(self, rowids, observations, inputs=None, multiprocess=1):
+        mapper = parallel_map if multiprocess else map
+        statenos = xrange(self.num_states())
+        args = [('incorporate_bulk', self.states[s],
+                (rowids, observations, inputs))
+                for s in statenos]
+        self.states = mapper(_modify, args)
+
     def unincorporate(self, rowid, multiprocess=1):
         mapper = parallel_map if multiprocess else map
         statenos = xrange(self.num_states())
