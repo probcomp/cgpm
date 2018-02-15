@@ -319,10 +319,6 @@ class State(CGpm):
             observation_v = {c: observation[c] for c in view_variables}
             self.views[view_id].force_cell(rowid, observation_v)
 
-    def force_cell_bulk(self, rowids, queries):
-        for rowid, query in zip(rowids, queries):
-            self.force_cell(rowid, query)
-
     # --------------------------------------------------------------------------
     # Schema updates.
 
@@ -476,7 +472,7 @@ class State(CGpm):
                 raise ValueError('Cannot use observed cell in constraints.')
 
     # --------------------------------------------------------------------------
-    # Bulk operations
+    # Bulk operations for multiprocessing performance.
 
     def simulate_bulk(self, rowids, targets_list, constraints_list=None,
             inputs_list=None, Ns=None):
@@ -526,6 +522,11 @@ class State(CGpm):
         """Incorporate multiple observations at once, used by Engine."""
         for rowid, observation in zip(rowids, observations):
             self.incorporate(rowid, observation, inputs)
+
+    def force_cell_bulk(self, rowids, queries):
+        """Force multiple cell values at once, used by Engine."""
+        for rowid, query in zip(rowids, queries):
+            self.force_cell(rowid, query)
 
     # --------------------------------------------------------------------------
     # Dependence probability.
