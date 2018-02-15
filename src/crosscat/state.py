@@ -522,6 +522,11 @@ class State(CGpm):
             )
         ]
 
+    def incorporate_bulk(self, rowids, observations, inputs=None):
+        """Incorporate multiple observations at once, used by Engine."""
+        for rowid, observation in zip(rowids, observations):
+            self.incorporate(rowid, observation, inputs)
+
     # --------------------------------------------------------------------------
     # Dependence probability.
 
