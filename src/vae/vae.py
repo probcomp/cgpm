@@ -107,18 +107,12 @@ class VariationalAutoEncoder(object):
         # Define optimization nodes.
         self.learn_rate = None
         self.train_op = None
-        # Define probe nodes.
-        self.z_probe = None
-        self.x_probe = None
         # Build the autoencoder nodes.
         self.built_autoencoder = None
         self.build_autoencoder()
         # Build the optimization nodes.
         self.built_optimizer = None
         self.build_optimizer()
-        # Build probe nodes.
-        self.built_probes = None
-        self.build_probes()
         # Initialize the global state.
         self.initialized = None
         self.initialize_graph()
@@ -161,20 +155,10 @@ class VariationalAutoEncoder(object):
         # Report the optimizer nodes are built.
         self.built_optimizer = True
 
-    def build_probes(self):
-        assert not self.built_probes
-        assert self.built_autoencoder
-        self.z_probe = tf.placeholder(tf.float32, shape=[None, self.dim_z])
-        self.x_probe = bernoulli_MLP_decoder(self.z_probe, self.n_hidden,
-            self.dim_x, 1.0, reuse=True)
-        # Report the probes nodes are built.
-        self.built_probes = True
-
     def initialize_graph(self):
         assert not self.initialized
         assert self.built_autoencoder
         assert self.built_optimizer
-        assert self.built_probes
         if not os.path.exists(self.save_dir):
             with tf.Session() as sess:
                 sess.run(tf.global_variables_initializer(),
@@ -254,8 +238,8 @@ class VariationalAutoEncoder(object):
             saver = tf.train.Saver()
             saver.restore(sess, self.save_path)
             print 'Model restored from %s' % (self.save_path,)
-            return sess.run(self.x_probe,
-                feed_dict={self.z_probe: z_probe, self.keep_prob: 1})
+            return sess.run(self.x_recon,
+                feed_dict={self.z: z_probe, self.keep_prob: 1})
 
     def to_metadata(self):
         metadata = dict()
