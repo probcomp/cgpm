@@ -28,8 +28,8 @@ from vae_runner_check import check_args
 
 
 IMAGE_SIZE_MNIST = 28
-RESULTS_DIR_DEFAULT = '/tmp/vae/%s.results.d/' % (timestamp())
-CKPT_DIR_DEFAULT = '/tmp/vae/%s.model.ckpt' % (timestamp())
+RESULTS_DIR_DEFAULT = './resources/%s.results.d/' % (timestamp())
+CKPT_DIR_DEFAULT = './resources/%s.model.ckpt' % (timestamp())
 
 def parse_args():
     """Parsing and configuration."""
@@ -113,12 +113,8 @@ def main(args):
     # Load MNIST data
     # ------------------
 
-    (train_data,
-        _train_labels,
-        _validation_data,
-        _validation_labels,
-        test_data,
-        test_labels) = prepare_MNIST_data(num_train, num_test)
+    (train_data, _train_labels, test_data, test_labels) = \
+        prepare_MNIST_data(num_train, num_test)
 
     # Build the VAE and incorporate the data
     # --------------------------------------
@@ -170,7 +166,18 @@ def main(args):
             min_total_loss = total_loss
             # Plot for reproduce performance.
             if PRR:
-                x_recon_PRR = vae.run_x_reconstruct(x_PRR)
+                z_recon_PRR = [
+                    vae.simulate(None, vae.outputs[1:], {vae.outputs[0]: x})
+                    for x in x_PRR
+                ]
+                x_recon_PRR_dict = [
+                    vae.simulate(None, [vae.outputs[0]], z)
+                    for z in z_recon_PRR
+                ]
+                x_recon_PRR = np.asarray([
+                    x[vae.outputs[0]] for x in x_recon_PRR_dict
+                ])
+                # vae.run_x_reconstruct(x_PRR)
                 x_recon_PRR_img = x_recon_PRR.reshape(
                     PRR.n_tot_imgs, IMAGE_SIZE_MNIST, IMAGE_SIZE_MNIST)
                 PRR.save_images(x_recon_PRR_img,
@@ -178,14 +185,31 @@ def main(args):
 
             # Plot for manifold learning result.
             if PMLR and dim_z == 2:
-                x_recon_PMLR = vae.run_x_decode(PMLR.z)
+                z_grid = (dict(zip(vae.outputs[1:], z)) for z in PMLR.z)
+
+                # x_recon_PMLR = vae.run_x_decode(PMLR.z)
+                x_recon_PMLR_dict = [
+                    vae.simulate(None, [vae.outputs[0]], z)
+                    for z in z_grid
+                ]
+                x_recon_PMLR = np.asarray([
+                    x[vae.outputs[0]] for x in x_recon_PMLR_dict
+                ])
                 x_recon_PMLR_img = x_recon_PMLR.reshape(
                     PMLR.n_tot_imgs, IMAGE_SIZE_MNIST, IMAGE_SIZE_MNIST)
                 PMLR.save_images(x_recon_PMLR_img,
                     'PMLR_epoch_%02d.jpg' % (epoch,))
 
                 # Scatter plot distribution of labeled images
-                z_PMLR = vae.run_z_encode(x_PMLR)
+                # z_PMLR = vae.run_z_encode(x_PMLR)
+                z_PMLR_dict = [
+                    vae.simulate(None, vae.outputs[1:], {vae.outputs[0]: x})
+                    for x in x_PMLR
+                ]
+                z_PMLR = np.asarray([
+                    [z[i] for i in vae.outputs[1:]]
+                    for z in z_PMLR_dict
+                ])
                 PMLR.save_scattered_image(z_PMLR, id_PMLR,
                     'PMLR_map_epoch_%02d.jpg' % (epoch,))
 

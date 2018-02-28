@@ -85,14 +85,22 @@ def bernoulli_MLP_decoder(z, n_hidden, n_output, keep_prob, reuse=None):
 
 class VariationalAutoEncoder(object):
 
-    def __init__(self, dim_x, dim_z, n_hidden, save_dir, rng):
+    def __init__(self, outputs, inputs, dim_x, dim_z, n_hidden, save_dir, rng):
         # Attributes from constructor.
+        self.outputs = outputs
+        self.inputs = inputs
         self.dim_x = dim_x
         self.dim_z = dim_z
         self.n_hidden = n_hidden
         self.save_dir = save_dir
         self.rng = rng
+        # Run assertions.
+        assert len(self.outputs) == 1 + self.dim_z
+        assert not inputs
         # Derived attributes.
+        self.id_x = self.outputs[0]
+        self.id_zs = self.outputs[1:]
+        self.id_zs_reverse = {c:i for i, c in enumerate(self.id_zs)}
         self.save_path = os.path.join(self.save_dir, 'model.ckpt')
         self.dataset = np.zeros((0, self.dim_x))
         # Define autoencoder nodes.
@@ -116,6 +124,8 @@ class VariationalAutoEncoder(object):
         # Initialize the global state.
         self.initialized = None
         self.initialize_graph()
+        # Cached session for querying.
+        self.query_session = None
 
     def build_autoencoder(self):
         assert not self.built_autoencoder
@@ -171,6 +181,7 @@ class VariationalAutoEncoder(object):
         self.initialized = True
 
     def incorporate(self, dataset):
+        # XXX Convert to CGPM interface.
         assert np.shape(dataset)[1] == self.dim_x
         self.dataset = np.concatenate((self.dataset, dataset), axis=0)
 
@@ -180,6 +191,7 @@ class VariationalAutoEncoder(object):
         num_batches = int(n_samples/batch_size)
         indexes = self.rng.permutation(n_samples)
         dataset = self.dataset[indexes]
+        self.close_query_session()
         with tf.Session() as sess:
             saver = tf.train.Saver()
             saver.restore(sess, self.save_path)
@@ -216,33 +228,82 @@ class VariationalAutoEncoder(object):
 
     def run_x_reconstruct(self, x_probe):
         assert self.initialized
-        with tf.Session() as sess:
-            saver = tf.train.Saver()
-            saver.restore(sess, self.save_path)
-            print 'Model restored from %s' % (self.save_path,)
-            return sess.run(self.x_recon,
-                feed_dict={self.x: x_probe, self.keep_prob: 1})
+        session = self.get_query_session()
+        x_probe2d = np.atleast_2d(x_probe)
+        return session.run(self.x_recon,
+            feed_dict={self.x: x_probe2d, self.keep_prob: 1})
 
     def run_z_encode(self, x_probe):
         assert self.initialized
-        with tf.Session() as sess:
-            saver = tf.train.Saver()
-            saver.restore(sess, self.save_path)
-            print 'Model restored from %s' % (self.save_path,)
-            return sess.run(self.z,
-                feed_dict={self.x: x_probe, self.keep_prob: 1})
+        session = self.get_query_session()
+        x_probe2d = np.atleast_2d(x_probe)
+        return session.run(self.z,
+            feed_dict={self.x: x_probe2d, self.keep_prob: 1})
 
     def run_x_decode(self, z_probe):
         assert self.initialized
-        with tf.Session() as sess:
+        session = self.get_query_session()
+        z_probe2d = np.atleast_2d(z_probe)
+        return session.run(self.x_recon,
+            feed_dict={self.z: z_probe2d, self.keep_prob: 1})
+
+    def logpdf(self, rowid, targets, constraints, inputs=None):
+        raise NotImplementedError()
+
+    def simulate(self, rowid, targets, constraints, inputs=None):
+        assert not inputs
+        # Simulate an observed rowid.
+        # XXX Handle non-contiguous rowid.
+        if rowid is not None and 0 <= rowid < len(self.dataset):
+            assert self.id_x not in constraints
+            assert not constraints
+            x_probe = self.dataset[rowid]
+            return self.simulate(None, targets, {self.id_x: x_probe}, inputs)
+        # Simulate latents Z given X from encoder.
+        if self.id_x in constraints:
+            assert self.id_x not in targets
+            # XXX TODO: Handle constrained Z using grid-search proposal.
+            assert len(constraints) == 1
+            x_probe = constraints[self.id_x]
+            zs = self.run_z_encode(x_probe)
+            assert np.shape(zs) == (1, len(self.id_zs))
+            return dict(zip(self.id_zs, zs[0]))
+        # Simulate X given (partially) constrained Z.
+        else:
+            assert self.id_x in targets
+            z_probe = np.zeros(len(self.outputs)-1)
+            id_z_observed = [self.id_zs_reverse[i] for i in constraints]
+            id_z_missing = [self.id_zs_reverse[i] for i in self.id_zs
+                if self.id_zs_reverse[i] not in id_z_observed]
+            z_probe[id_z_observed] = constraints.values()
+            z_probe[id_z_missing] = self.rng.normal(size=len(id_z_missing))
+            sample_x = {self.id_x: self.run_x_decode(z_probe)}
+            sample_z = {t: z_probe[self.id_zs_reverse[t]]
+                for t in targets if t!= self.id_x}
+            return {k:v for d in [sample_x, sample_z] for k,v in d.iteritems()}
+
+    def get_query_session(self, fresh=None):
+        if self.query_session is None:
+            self.query_session = tf.Session()
             saver = tf.train.Saver()
-            saver.restore(sess, self.save_path)
+            saver.restore(self.query_session, self.save_path)
             print 'Model restored from %s' % (self.save_path,)
-            return sess.run(self.x_recon,
-                feed_dict={self.z: z_probe, self.keep_prob: 1})
+            return self.query_session
+        elif fresh:
+            self.query_session.close()
+            self.query_session = None
+            return self.get_query_session()
+        return self.query_session
+
+    def close_query_session(self):
+        if self.query_session is not None:
+            self.query_session.close()
+            self.query_session = None
 
     def to_metadata(self):
         metadata = dict()
+        metadata['outputs'] = self.outputs
+        metadata['inputs'] = self.inputs
         metadata['dim_x'] = self.dim_x
         metadata['dim_z'] = self.dim_z
         metadata['n_hidden'] = self.n_hidden
@@ -254,6 +315,8 @@ class VariationalAutoEncoder(object):
     def from_metadata(cls, metadata, rng=None):
         rng = rng or np.random.RandomState(2)
         return cls(
+            metadata['outputs'],
+            metadata['inputs'],
             metadata['dim_x'],
             metadata['dim_z'],
             metadata['n_hidden'],

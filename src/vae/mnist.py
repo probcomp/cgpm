@@ -36,7 +36,6 @@ IMAGE_SIZE = 28
 NUM_CHANNELS = 1
 PIXEL_DEPTH = 255
 NUM_LABELS = 10
-VALIDATION_SIZE = 5000  # Size of the validation set.
 
 
 def maybe_download(filename):
@@ -127,13 +126,13 @@ def prepare_MNIST_data(num_train, num_test, norm_shift=False, norm_scale=True,
     test_data_filename = maybe_download('t10k-images-idx3-ubyte.gz')
     test_labels_filename = maybe_download('t10k-labels-idx1-ubyte.gz')
     # Extract training/validation datat into numpy arrays.
-    train_data_all = extract_data(train_data_filename, num_train,
+    train_data = extract_data(train_data_filename, num_train,
         norm_shift, norm_scale)
-    train_labels_all = extract_labels(train_labels_filename, num_train)
-    train_data = train_data_all[VALIDATION_SIZE:, :]
-    train_labels = train_labels_all[VALIDATION_SIZE:,:]
-    validation_data = train_data_all[:VALIDATION_SIZE, :]
-    validation_labels = train_labels_all[:VALIDATION_SIZE,:]
+    train_labels = extract_labels(train_labels_filename, num_train)
+    # train_data = train_data_all[VALIDATION_SIZE:, :]
+    # train_labels = train_labels_all[VALIDATION_SIZE:,:]
+    # validation_data = train_data_all[:VALIDATION_SIZE, :]
+    # validation_labels = train_labels_all[:VALIDATION_SIZE,:]
     # Extract test data.
     test_data = extract_data(test_data_filename, num_test,
         norm_shift, norm_scale)
@@ -150,7 +149,7 @@ def prepare_MNIST_data(num_train, num_test, norm_shift=False, norm_scale=True,
     return \
         train_data_return, \
         train_labels_return, \
-        validation_data, \
-        validation_labels, \
         test_data, \
         test_labels
+        # validation_data, \
+        # validation_labels, \
