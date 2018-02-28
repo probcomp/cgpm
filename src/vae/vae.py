@@ -226,13 +226,6 @@ class VariationalAutoEncoder(object):
     def get_num_samples(self):
         return np.shape(self.dataset)[0]
 
-    def run_x_reconstruct(self, x_probe):
-        assert self.initialized
-        session = self.get_query_session()
-        x_probe2d = np.atleast_2d(x_probe)
-        return session.run(self.x_recon,
-            feed_dict={self.x: x_probe2d, self.keep_prob: 1})
-
     def run_z_encode(self, x_probe):
         assert self.initialized
         session = self.get_query_session()
