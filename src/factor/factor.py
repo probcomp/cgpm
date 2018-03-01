@@ -114,8 +114,10 @@ class FactorAnalysis(CGpm):
         self.D = D
         # Variable indexes.
         self.outputs = outputs
-        self.latents = outputs[-self.L:]
+        self.observables = outputs[:-self.L]
+        self.latents = set(outputs[-self.L:])
         self.inputs = []
+        self.output_mapping = {c:i for i,c in enumerate(self.outputs)}
         # Dataset.
         self.data = OrderedDict()
         self.N = 0
@@ -141,14 +143,12 @@ class FactorAnalysis(CGpm):
         if any(q not in self.outputs for q in observation):
             raise ValueError('Unknown variables: (%s,%s).'
                 % (observation, self.outputs))
-        # No incorporation of latent variables.
+        # No latent variables.
         if any(q in self.latents for q in observation):
             raise ValueError('Cannot incorporate latent vars: (%s,%s,%s).'
                 % (observation, self.outputs, self.latents))
-        # Reindex the observation variables.
-        obs_r = {self.outputs.index(q): observation[q] for q in observation}
-        # Incorporate observed variables.
-        x = [obs_r.get(i, np.nan) for i in xrange(self.D)]
+        # Incorporate observed observable variables.
+        x = [observation.get(i, np.nan) for i in self.observables]
         # Update dataset and counts.
         self.data[rowid] = x
         self.N += 1
@@ -284,7 +284,7 @@ class FactorAnalysis(CGpm):
         # reindexed:     3  4  5  6 |  0  1  2
         assert isinstance(variables, (list, dict))
         def convert(q):
-            i = self.outputs.index(q)
+            i = self.output_mapping[q]
             return i - self.D if q in self.latents else i + self.L
         indexes = [convert(q) for q in variables]
         if isinstance(variables, list):
