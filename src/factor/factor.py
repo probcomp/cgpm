@@ -61,6 +61,7 @@ class FactorAnalysis(CGpm):
                 = cov(z, W.z) + cov(z, mux) + cov(z, e)
                 = cov(z, W.z)
                 = cov(z,z).W'
+                = I*W'
                 = W'
 
     Exercise: Confirm that expression for posterior z|x is consistent with
