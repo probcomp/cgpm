@@ -101,10 +101,10 @@ def test_incorporate():
     fa = FactorAnalysis([4,5,9,2], None, L=1)
     # Cannot incorporate a latent variable.
     with pytest.raises(ValueError):
-        fa.incorporate(0, {4:1, 5:1, 9:1, 0:0})
+        fa.incorporate(0, {4:1, 5:1, 9:1, 2:0})
     # Cannot incorporate with inputs.
     with pytest.raises(ValueError):
-        fa.incorporate(0, {4:1, 5:1, 9:1}, {0:0})
+        fa.incorporate(0, {4:1, 5:1, 9:1}, {2:0})
     # Need a query variable.
     with pytest.raises(ValueError):
         fa.incorporate(0, {})
