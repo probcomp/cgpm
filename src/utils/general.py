@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
+import itertools
 import math
 import warnings
 
@@ -37,6 +39,11 @@ def gen_rng(seed=None):
         seed = np.random.randint(low=1, high=2**31)
     return np.random.RandomState(seed)
 
+def get_prng(seed=None):
+    if seed is None:
+        seed = np.random.randint(low=1, high=2**31)
+    return np.random.RandomState(seed)
+
 def curve_color(k):
     return (colors[k], .7) if k < len(colors) else ('gray', .3)
 
@@ -46,8 +53,29 @@ def merged(*dicts):
         result.update(d)
     return result
 
+def mergedl(dicts):
+    return merged(*dicts)
+
+def lchain(*args):
+    return list(itertools.chain(*args))
+
+def flatten_cgpms(cgpms, tpe):
+    return list(itertools.chain.from_iterable(
+        cgpm.cgpms if isinstance(cgpm, tpe) else [cgpm] for cgpm in cgpms
+    ))
+
 def is_disjoint(*args):
     return not set.intersection(*(set(a) for a in args))
+
+def get_intersection(left, right):
+    if right is None:
+        return {} if isinstance(left, dict) else []
+    if isinstance(right, dict):
+        return {i: right[i] for i in right if i in left}
+    elif isinstance(right, list):
+        return [i for i in right if i in left]
+    else:
+        assert False, 'Unknown args type.'
 
 def log_normalize(logp):
     """Normalizes a np array of log probabilites."""
@@ -383,3 +411,10 @@ def simulate_many(simulate):
             return simulate(*args, **kwargs)
         return [simulate(*args, **kwargs) for _i in xrange(N)]
     return simulate_wrapper
+
+
+def build_cgpm(metadata, rng):
+    modname, attrname = metadata['factory']
+    module = importlib.import_module(modname)
+    builder = getattr(module, attrname)
+    return builder.from_metadata(metadata, rng)
