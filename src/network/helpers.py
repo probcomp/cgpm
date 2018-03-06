@@ -116,3 +116,17 @@ def topological_sort(graph):
         if cyclic:
             raise ValueError('Cyclic dependency occurred in topological_sort.')
     return graph_sorted
+
+
+def retrieve_required_inputs(cgpms, topo, targets, constraints, extraneous):
+    """Return list of input addresses required to answer query."""
+    required = set(targets)
+    for l in reversed(topo):
+        outputs_l = cgpms[l].outputs
+        inputs_l = cgpms[l].inputs
+        if any(i in required or i in constraints for i in outputs_l):
+            required.update(inputs_l)
+    return [
+        target for target in required if
+        all(target not in x for x in [targets, constraints, extraneous])
+    ]
