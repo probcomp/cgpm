@@ -218,6 +218,15 @@ class Engine(object):
         logpdf_scores = mapper(_evaluate, args)
         return logpdf_scores
 
+    def logpdf_likelihood(self, statenos=None, multiprocess=1):
+        mapper = parallel_map if multiprocess else map
+        statenos = statenos or xrange(self.num_states())
+        args = [('logpdf_likelihood', self.states[s],
+                ())
+                for s in statenos]
+        logpdf_likelihoods = mapper(_evaluate, args)
+        return logpdf_likelihoods
+
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None,
             accuracy=None, statenos=None, multiprocess=1):
         self._seed_states()

@@ -377,6 +377,10 @@ class State(CGpm):
         Zv, alpha = self.Zv(), self.alpha()
         return gu.logp_crp_constrained_dependent(Zv, alpha, self.Cd)
 
+    def logpdf_likelihood(self):
+        logp_views = sum(v.logpdf_likelihood() for v in self.views.itervalues())
+        return logp_views
+
     def logpdf_score(self):
         logp_crp = self.logpdf_score_crp()
         logp_views = sum(v.logpdf_score() for v in self.views.itervalues())

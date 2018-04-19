@@ -254,11 +254,20 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # logscore.
 
+    def logpdf_likelihood(self):
+        """Compute the logpdf of the observations only."""
+        logp_dims = [dim.logpdf_score() for dim in self.dims.itervalues()]
+        return sum(logp_dims)
+
+    def logpdf_prior(self):
+        logp_crp = self.crp.logpdf_score()
+        return logp_crp
+
     def logpdf_score(self):
         """Compute the marginal logpdf CRP assignment and data."""
-        logp_crp = self.crp.logpdf_score()
-        logp_dims = [dim.logpdf_score() for dim in self.dims.itervalues()]
-        return logp_crp + sum(logp_dims)
+        lp_prior = self.logpdf_prior()
+        lp_likelihood = self.logpdf_likelihood()
+        return lp_prior + lp_likelihood
 
     # --------------------------------------------------------------------------
     # logpdf
