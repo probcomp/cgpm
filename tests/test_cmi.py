@@ -90,8 +90,8 @@ def test_entropy_bernoulli_bivariate__ci_():
     entropy_mi = engine.mutual_information([0,1], [0,1], N=1000)
 
     # Punt CLT analysis and go for a small tolerance.
-    assert np.allclose(entropy_exact, entropy_logpdf, atol=.15)
-    assert np.allclose(entropy_exact, entropy_mi, atol=.15)
+    assert np.allclose(entropy_exact, entropy_logpdf, atol=.1)
+    assert np.allclose(entropy_exact, entropy_mi, atol=.1)
     assert np.allclose(entropy_logpdf, entropy_mi, atol=.1)
 
 def test_cmi_different_views__ci_():
