@@ -59,7 +59,7 @@ def test_entropy_bernoulli_bivariate__ci_():
     TX = rng.choice([0,1], p=PX, size=250)
     TY = np.zeros(shape=len(TX))
     TY[TX==0] = rng.choice([0,1], p=PY[0], size=len(TX[TX==0]))
-    TY[TX==1] = rng.choice([0,1], p=PY[0], size=len(TX[TX==1]))
+    TY[TX==1] = rng.choice([0,1], p=PY[1], size=len(TX[TX==1]))
     T = np.column_stack((TY,TX))
 
     engine = Engine(
