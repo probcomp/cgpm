@@ -102,11 +102,11 @@ class VsCGpm(CGpm):
             for variable, value in constraints_clean.iteritems():
                 self._observe_cell(rowid, variable, value, inputs_clean)
             # Run local inference in rowid scope, with 15 steps of MH.
-            self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 15))
+            self.ripl.infer('(resimulation_mh (atom %i) all %i)' % (rowid, 15))
         # Retrieve samples, with 5 steps of MH between predict.
         def retrieve_sample(q, l):
             # XXX Only run inference on the latent variables in the block.
-            # self.ripl.infer('(mh (atom %i) all %i)' % (rowid, 5))
+            # self.ripl.infer('(resimulation_mh (atom %i) all %i)' % (rowid, 5))
             return self._predict_cell(rowid, q, inputs_clean, l)
         labels = [self._gen_label() for q in targets]
         samples = {q: retrieve_sample(q, l) for q, l in zip(targets, labels)}
