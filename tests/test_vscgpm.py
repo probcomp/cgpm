@@ -68,7 +68,7 @@ source_abstract = """
 
 [define transition
   (lambda (N)
-    (mh default one N))]
+    (resimulation_mh default one N))]
 """
 
 
@@ -106,7 +106,7 @@ define observers = [observe_m, observe_y];
 define inputs = ["w"];
 
 define transition = (N) -> {
-    mh(default, one, N)
+    resimulation_mh(default, one, N)
 };
 """
 
