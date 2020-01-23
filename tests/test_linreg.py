@@ -165,7 +165,7 @@ def test_simulate():
     xlow = np.percentile(xpred, 25, axis=1)
     xhigh = np.percentile(xpred, 75, axis=1)
     ax.plot(list(range(len(xtrue))), xmeans, color='g')
-    ax.fill_between(list(range(len(xtrue))), xlow, xhigh, color='g', alpha='.3')
+    ax.fill_between(list(range(len(xtrue))), xlow, xhigh, color='g', alpha=.3)
     ax.scatter(list(range(len(xtrue))), xtrue, color='r')
     # plt.close('all')
 

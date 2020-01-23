@@ -1445,7 +1445,7 @@ class State(CGpm):
     @classmethod
     def from_pickle(cls, fileptr, rng=None):
         if isinstance(fileptr, str):
-            with open(fileptr, 'r') as f:
+            with open(fileptr, 'rb') as f:
                 metadata = pickle.load(f)
         else:
             metadata = pickle.load(fileptr)

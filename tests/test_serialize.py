@@ -53,9 +53,9 @@ def serialize_generic(Model, additional=None):
     model = builder.from_metadata(json.loads(json_metadata))
     # To pickle.
     with tempfile.NamedTemporaryFile(prefix='gpmcc-serialize') as temp:
-        with open(temp.name, 'w') as f:
+        with open(temp.name, 'wb') as f:
             model.to_pickle(f)
-        with open(temp.name, 'r') as f:
+        with open(temp.name, 'rb') as f:
             # Use the file itself
             model = Model.from_pickle(f, rng=gu.gen_rng(10))
             if additional:

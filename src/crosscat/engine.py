@@ -400,6 +400,7 @@ class Engine(object):
 
     def to_metadata(self):
         metadata = dict()
+        self.states = list(self.states)
         metadata['X'] = self.states[0].data_array().tolist()
         metadata['states'] = [s.to_metadata() for s in self.states]
         for m in metadata['states']:
@@ -424,9 +425,9 @@ class Engine(object):
             (state, seed) = xxx_todo_changeme
             return State.from_metadata(state, rng=gu.gen_rng(seed))
         mapper = parallel_map if multiprocess else map
-        engine.states = mapper(
+        engine.states = list(mapper(
             retrieve_state,
-            list(zip(metadata['states'], engine._get_seeds(num_states))))
+            list(zip(metadata['states'], engine._get_seeds(num_states)))))
         return engine
 
     def to_pickle(self, fileptr):
@@ -436,7 +437,7 @@ class Engine(object):
     @classmethod
     def from_pickle(cls, fileptr, rng=None):
         if isinstance(fileptr, str):
-            with open(fileptr, 'r') as f:
+            with open(fileptr, 'rb') as f:
                 metadata = pickle.load(f)
         else:
             metadata = pickle.load(fileptr)
