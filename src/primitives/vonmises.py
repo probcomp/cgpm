@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 from math import atan2
 from math import cos
 from math import isinf
@@ -135,7 +138,7 @@ class Vonmises(DistributionGpm):
         scx = np.sum(np.cos(X))
         k = Vonmises.estimate_kappa(N, ssx, scx)
         grids['a'] = gu.log_linspace(1./N, N, n_grid)
-        grids['b'] = np.linspace(2*pi/n_grid, 2*pi, n_grid)
+        grids['b'] = np.linspace(old_div(2*pi,n_grid), 2*pi, n_grid)
         grids['k'] = np.linspace(k, N*k, n_grid)
         return grids
 
@@ -198,7 +201,7 @@ class Vonmises(DistributionGpm):
         p_cos = k * sum_cos_x + a * cos(b)
         p_sin = k * sum_sin_x + a * sin(b)
         an = (p_cos**2.0 + p_sin**2.0)**.5
-        bn = - atan2(p_cos, p_sin) + pi/2
+        bn = - atan2(p_cos, p_sin) + old_div(pi,2)
         return an, bn
 
     @staticmethod
@@ -213,20 +216,20 @@ class Vonmises(DistributionGpm):
         elif N == 1:
             return 10*pi
         else:
-            rbar2 = (ssx / N) ** 2. + (scx / N) ** 2.
+            rbar2 = (old_div(ssx, N)) ** 2. + (old_div(scx, N)) ** 2.
             rbar = rbar2 ** .5
-            kappa = rbar*(2. - rbar2) / (1. - rbar2)
+            kappa = old_div(rbar*(2. - rbar2), (1. - rbar2))
 
-        A_p = lambda k : bessel_1(k) / bessel_0(k)
+        A_p = lambda k : old_div(bessel_1(k), bessel_0(k))
 
         Apk = A_p(kappa)
-        kappa_1 = kappa - (Apk - rbar)/(1. - Apk**2 - (1. / kappa) * Apk)
+        kappa_1 = kappa - old_div((Apk - rbar),(1. - Apk**2 - (1. / kappa) * Apk))
         Apk = A_p(kappa_1)
-        kappa = kappa_1 - (Apk - rbar)/(1. - Apk**2 - (1. / kappa_1) * Apk)
+        kappa = kappa_1 - old_div((Apk - rbar),(1. - Apk**2 - (1. / kappa_1) * Apk))
         Apk = A_p(kappa)
-        kappa_1 = kappa - (Apk - rbar)/(1. - Apk**2 - (1. / kappa) * Apk)
+        kappa_1 = kappa - old_div((Apk - rbar),(1. - Apk**2 - (1. / kappa) * Apk))
         Apk = A_p(kappa_1)
-        kappa = kappa_1 - (Apk - rbar)/(1. - Apk**2 - (1. / kappa_1) * Apk)
+        kappa = kappa_1 - old_div((Apk - rbar),(1. - Apk**2 - (1. / kappa_1) * Apk))
 
         if isnan(kappa):
             return 10.**-6

@@ -16,6 +16,7 @@
 
 """Test suite targeting cgpm.crosscat.engine.add_state."""
 
+from builtins import range
 import pytest
 
 from cgpm.crosscat.engine import Engine
@@ -86,7 +87,7 @@ def test_engine_add_state_composite_errors():
     # the composite cgpms to match the count of initialized models.
     engine = get_engine()
     engine.compose_cgpm([
-        TwoWay(outputs=[4], inputs=[7]) for _i in xrange(engine.num_states())
+        TwoWay(outputs=[4], inputs=[7]) for _i in range(engine.num_states())
     ])
     with pytest.raises(ValueError):
         engine.add_state()

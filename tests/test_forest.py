@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import division
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import importlib
 import pytest
 
@@ -30,7 +35,7 @@ from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
 
-from stochastic import stochastic
+from .stochastic import stochastic
 
 
 cctypes, distargs = cu.parse_distargs([
@@ -50,7 +55,7 @@ T, Zv, Zc = tu.gen_data_table(
 D = T.T
 RF_DISTARGS = {'inputs': {'stattypes': cctypes[1:]}, 'k': distargs[0]['k']}
 RF_OUTPUTS = [0]
-RF_INPUTS = range(1, len(cctypes))
+RF_INPUTS = list(range(1, len(cctypes)))
 NUM_CLASSES = 3
 
 
@@ -67,7 +72,7 @@ def test_incorporate():
     with pytest.raises(ValueError):
         forest.unincorporate(20)
     # Unincorporate all rows.
-    for rowid in xrange(20):
+    for rowid in range(20):
         forest.unincorporate(rowid)
     # Unincorporating row 0 should raise.
     with pytest.raises(ValueError):
@@ -86,7 +91,7 @@ def test_incorporate():
     with pytest.raises(ValueError):
         observation = {0: 100}
         inputs = {i: D[0,i] for i in forest.inputs}
-        inputs[inputs.keys()[0]] = np.nan
+        inputs[list(inputs.keys())[0]] = np.nan
         forest.incorporate(0, observation, inputs)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):
@@ -101,7 +106,7 @@ def test_logpdf_uniform():
         outputs=RF_OUTPUTS, inputs=RF_INPUTS,
         distargs=RF_DISTARGS, rng=gu.gen_rng(0))
     forest.transition_params()
-    for x in xrange(NUM_CLASSES):
+    for x in range(NUM_CLASSES):
         targets = {0: x}
         inputs = {i: D[0,i] for i in forest.inputs}
         assert np.allclose(
@@ -127,7 +132,7 @@ def test_logpdf_normalized():
         D_sub = [(i, row) for (i, row) in enumerate(D) if row[0] not in c]
         for rowid, row in D_sub:
             inputs = {i: row[i] for i in forest.inputs}
-            targets =[{0: x} for x in xrange(NUM_CLASSES)]
+            targets =[{0: x} for x in range(NUM_CLASSES)]
             lps = [forest.logpdf(rowid, q, None, inputs) for q in targets]
             assert np.allclose(gu.logsumexp(lps), 0)
 
@@ -175,7 +180,7 @@ def test_transition_hypers():
 
     # Create two clusters.
     Zr = np.zeros(len(D), dtype=int)
-    Zr[len(D)/2:] = 1
+    Zr[old_div(len(D),2):] = 1
     for rowid, row in enumerate(D[:25]):
         observation = {0: row[0]}
         inputs = gu.merged(
@@ -197,7 +202,7 @@ def test_simulate(seed):
     X_test = iris.target[~indices]
 
     forest = Dim(
-        outputs=[5], inputs=[-1]+range(4), cctype='random_forest',
+        outputs=[5], inputs=[-1]+list(range(4)), cctype='random_forest',
         distargs={
             'inputs': {'stattypes': ['normal']*4},
             'k': len(iris.target_names)},
@@ -210,11 +215,11 @@ def test_simulate(seed):
         observation = {5: x}
         inputs = gu.merged(
             {-1: 0},
-            {i: t for (i,t) in zip(range(4), y)})
+            {i: t for (i,t) in zip(list(range(4)), y)})
         forest.incorporate(rowid, observation, inputs)
 
     # Transitions.
-    for _i in xrange(2):
+    for _i in range(2):
         forest.transition_hypers()
         forest.transition_params()
 
@@ -222,11 +227,11 @@ def test_simulate(seed):
     for rowid, (x, y) in enumerate(zip(X_test, Y_test)):
         inputs = gu.merged(
             {-1: 0},
-            {i: t for (i,t) in zip(range(4), y)})
+            {i: t for (i,t) in zip(list(range(4)), y)})
         samples = forest.simulate(None, [5], None, inputs, 10)
         prediction = np.argmax(np.bincount([s[5] for s in samples]))
         correct += (prediction==x)
         total += 1.
 
     # Classification should be better than random.
-    assert correct/total > 1./ forest.distargs['k']
+    assert old_div(correct,total) > 1./ forest.distargs['k']

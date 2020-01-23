@@ -17,7 +17,10 @@
 """This tests the simulate methods of all the unconditional GPMs by observing
 data from a mixture, learning, and comparing the posterior predictives.
 """
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -125,7 +128,7 @@ def _plot_simulations_discrete(D_train, D_test, D_posterior):
 
     def histogram_axis(ax, D, c, l):
         freq = D / float(np.sum(D))
-        ax.bar(xrange(len(D)), freq, color=c, label=l)
+        ax.bar(range(len(D)), freq, color=c, label=l)
         ax.grid()
         ax.legend(framealpha=0)
 
@@ -147,7 +150,7 @@ def launch_2samp_sanity_same(cctype, distargs):
     D = simulate_synthetic(NUM_TRAIN+NUM_TEST, cctype, distargs)
     D_train, D_test = np.ravel(D[:NUM_TRAIN]), np.ravel(D[NUM_TRAIN:])
     pval = two_sample_test(cctype, D_test, D_train)
-    print 'cctype, pval: {}, {}'.format(cctype, pval)
+    print('cctype, pval: {}, {}'.format(cctype, pval))
     assert pval > 0.05
 
 
@@ -160,7 +163,7 @@ def launch_2samp_sanity_diff(cctype, distargs):
         cctype, distargs, D_train, None, 0.01)
     pvals = [two_sample_test(cctype, np.ravel(D_train), np.ravel(Dp))
         for Dp in D_posteriors]
-    print 'cctype, pvals: {}, {}'.format(cctype, pvals)
+    print('cctype, pvals: {}, {}'.format(cctype, pvals))
     assert all(p < 0.01 for p in pvals)
 
 
@@ -177,7 +180,7 @@ def launch_2samp_inference_quality(cctype, distargs):
             np.ravel(Dp))
     pvals = [two_sample_test(cctype, np.ravel(D_test), np.ravel(Dp))
         for Dp in D_posteriors]
-    print 'cctype, pvals: {}, {}'.format(cctype, pvals)
+    print('cctype, pvals: {}, {}'.format(cctype, pvals))
     assert any([p > 0.05 for p in pvals])
 
 
@@ -214,16 +217,16 @@ cctypes_distargs = {
 }
 
 
-@pytest.mark.parametrize('cctype', cctypes_distargs.keys())
+@pytest.mark.parametrize('cctype', list(cctypes_distargs.keys()))
 def disabled_test_2samp_sanity_same(cctype):
     launch_2samp_sanity_same(cctype, cctypes_distargs[cctype])
 
 
-@pytest.mark.parametrize('cctype', cctypes_distargs.keys())
+@pytest.mark.parametrize('cctype', list(cctypes_distargs.keys()))
 def disabled_test_2samp_sanity_diff(cctype):
     launch_2samp_sanity_diff(cctype, cctypes_distargs[cctype])
 
 
-@pytest.mark.parametrize('cctype', cctypes_distargs.keys())
+@pytest.mark.parametrize('cctype', list(cctypes_distargs.keys()))
 def disabled_test_2samp_inference_quality__ci_(cctype):
     launch_2samp_inference_quality(cctype, cctypes_distargs[cctype])

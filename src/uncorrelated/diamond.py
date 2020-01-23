@@ -39,7 +39,7 @@ class DiamondY(CGpm):
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         assert targets == self.outputs
-        assert inputs.keys() == self.inputs
+        assert list(inputs.keys()) == self.inputs
         x = inputs[self.inputs[0]]
         slope = self.rng.rand()
         noise = self.rng.uniform(high=self.noise)

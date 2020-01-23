@@ -52,7 +52,12 @@ The estimate runtime for the whole script with the current configuration is
     30 min per dist, (10 min per noise, 64/16=4 in parallel, 12/4=3 chunks)
     7 total dists = 210 min
 """
+from __future__ import print_function
+from __future__ import division
 
+from builtins import next
+from builtins import range
+from past.utils import old_div
 import argparse
 import itertools
 import os
@@ -89,9 +94,9 @@ NUM_SECONDS = 600
 NOISES = [.95, .85, .75, .65, .55, .45, .35, .25, .15, .10, .05, .01]
 
 NUM_PROCESSORS = 64
-NUM_PARALLEL = NUM_PROCESSORS/NUM_STATES
-SLICES = range(0, len(NOISES), NUM_PARALLEL) + [None]
-CKPTS = [NOISES[SLICES[i-1]:SLICES[i]] for i in xrange(1, len(SLICES))]
+NUM_PARALLEL = old_div(NUM_PROCESSORS,NUM_STATES)
+SLICES = list(range(0, len(NOISES), NUM_PARALLEL)) + [None]
+CKPTS = [NOISES[SLICES[i-1]:SLICES[i]] for i in range(1, len(SLICES))]
 
 
 def get_latest_timestamp():
@@ -160,29 +165,29 @@ def filename_mi_figure(dist, timestamp):
 def simulate_dataset(dist, noise, size=200):
     rng = gen_rng(100)
     cgpm = simulators[dist](outputs=[0,1], noise=noise, rng=rng)
-    samples = [cgpm.simulate(-1, [0, 1]) for i in xrange(size)]
+    samples = [cgpm.simulate(-1, [0, 1]) for i in range(size)]
     D = [(s[0], s[1]) for s in samples]
     return np.asarray(D)
 
 def create_engine(dist, noise, num_samples, num_states, timestamp):
     T = simulate_dataset(dist, noise, num_samples)
-    print 'Creating engine (%s %1.2f) ...' % (dist, noise)
+    print('Creating engine (%s %1.2f) ...' % (dist, noise))
     engine = Engine(T, cctypes=['normal','normal'], num_states=num_states)
     engine.to_pickle(file(filename_engine(dist, noise, timestamp), 'w'))
 
 def load_engine(dist, noise, timestamp):
-    print 'Loading %s %f' % (dist, noise)
+    print('Loading %s %f' % (dist, noise))
     return Engine.from_pickle(file(filename_engine(dist, noise, timestamp),'r'))
 
 def train_engine(dist, noise, seconds, timestamp):
-    print 'Transitioning (%s %1.2f) ...' % (dist, noise)
+    print('Transitioning (%s %1.2f) ...' % (dist, noise))
     engine = load_engine(dist, noise, timestamp)
     engine.transition(S=seconds)
     engine.to_pickle(file(filename_engine(dist, noise, timestamp), 'w'))
 
 def load_engine_states(engine, top=None):
     """Load the top states from the engine by log score."""
-    print 'Loading states'
+    print('Loading states')
     marginals = engine.logpdf_score()
     states = np.argsort(marginals)[::-1]
     states = [engine.get_state(i) for i in states[:top]]
@@ -190,20 +195,20 @@ def load_engine_states(engine, top=None):
 
 def retrieve_nice_state(states, transitions=10):
     """Heuristic for selecting nice state to plot."""
-    print 'Retrieving nice state from engine to plot'
+    print('Retrieving nice state from engine to plot')
     for s in states:
         if len(s.views) == 1:
             state = s
             break
     else:
         state = states[0]
-    for _ in xrange(transitions):
+    for _ in range(transitions):
         state.transition_dim_hypers()
     return state
 
 def plot_samples(samples, dist, noise, modelno, num_samples, timestamp):
     """Plot the observed samples and posterior samples side-by-side."""
-    print 'Plotting samples %s %f' % (dist, noise)
+    print('Plotting samples %s %f' % (dist, noise))
     fig, ax = plt.subplots(nrows=1, ncols=2)
     fig.suptitle(
         '%s (noise %1.2f, sample %d)' % (dist, noise, modelno),
@@ -244,7 +249,7 @@ def plot_samples(samples, dist, noise, modelno, num_samples, timestamp):
 
 def plot_mi(mis, dist, noises, timestamp):
     """Plot estimates of the mutual information by noise level."""
-    print 'Plotting mi %s' % (dist)
+    print('Plotting mi %s' % (dist))
     fig, ax = plt.subplots()
     ax.set_title('Mutual Information (%s) ' % dist, fontweight='bold')
     ax.set_xlabel('Noise', fontweight='bold')
@@ -268,12 +273,12 @@ def generate_engine(dist, noise, num_samples, num_states, num_seconds, timestamp
     train_engine(dist, noise, num_seconds, timestamp)
 
 def generate_samples(dist, noise, num_samples, timestamp):
-    print 'Generating samples %s %f' % (dist, noise)
+    print('Generating samples %s %f' % (dist, noise))
     engine = load_engine(dist, noise, timestamp)
-    for modelno in xrange(NUM_STATES):
+    for modelno in range(NUM_STATES):
         state = engine.get_state(modelno)
         if len(state.views) == 1:
-            for _ in xrange(10):
+            for _ in range(10):
                 state.transition_dim_hypers()
             view = state.view_for(0)
             sims = view.simulate(-1, [0, 1, view.outputs[0]], N=num_samples)
@@ -287,7 +292,7 @@ def generate_samples(dist, noise, num_samples, timestamp):
             delimiter=',')
 
 def generate_mi(dist, noise, timestamp):
-    print 'Generating mi %s %f' % (dist, noise)
+    print('Generating mi %s %f' % (dist, noise))
     engine = load_engine(dist, noise, timestamp)
     mi = engine.mutual_information([0], [1])
     np.savetxt(filename_mi(dist, noise, timestamp), [mi], delimiter=',')
@@ -358,5 +363,5 @@ if __name__ == '__main__':
         create_directories(tstamp)
         for d in simulators:
             run_dist(d, tstamp)
-            plot_samples_all(d, NOISES, range(NUM_STATES), NUM_SAMPLES, tstamp)
+            plot_samples_all(d, NOISES, list(range(NUM_STATES)), NUM_SAMPLES, tstamp)
             plot_mi_all(d, NOISES, tstamp)

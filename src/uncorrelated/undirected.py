@@ -37,15 +37,15 @@ class UnDirectedXyGpm(CGpm):
         assert not inputs
         if not constraints:
             if len(targets) == 2:
-                x, y = targets.values()
+                x, y = list(targets.values())
                 return self.logpdf_joint(x, y)
             else:
-                z = targets.values()[0]
+                z = list(targets.values())[0]
                 return self.logpdf_maringal(z)
         else:
             assert len(constraints) == len(targets) == 1
-            z = constraints.values()[0]
-            w = targets.values()[0]
+            z = list(constraints.values())[0]
+            w = list(targets.values())[0]
             return self.logpdf_conditional(w, z)
 
     @gu.simulate_many
@@ -55,7 +55,7 @@ class UnDirectedXyGpm(CGpm):
             sample = self.simulate_joint()
             return {q: sample[self.outputs.index(q)] for q in targets}
         assert len(constraints) == len(targets) == 1
-        z = constraints.values()[0]
+        z = list(constraints.values())[0]
         return {targets[0]: self.simulate_conditional(z)}
 
     # Internal simulators and assesors.

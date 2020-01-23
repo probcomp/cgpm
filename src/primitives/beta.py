@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import str
 from math import log
 
 import numpy as np

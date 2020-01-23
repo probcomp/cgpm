@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from builtins import zip
+from builtins import range
 import itertools
 
 from math import isnan
@@ -95,10 +98,10 @@ class View(CGpm):
             hypers=None if alpha is None else {'alpha': alpha},
             rng=self.rng
         )
-        n_rows = len(self.X[self.X.keys()[0]])
+        n_rows = len(self.X[list(self.X.keys())[0]])
         self.crp.transition_hyper_grids([1]*n_rows)
         if Zr is None:
-            for i in xrange(n_rows):
+            for i in range(n_rows):
                 s = self.crp.simulate(i, [self.outputs[0]], None, {-1:0})
                 self.crp.incorporate(i, s, {-1:0})
         else:
@@ -137,13 +140,13 @@ class View(CGpm):
         if reassign:
             self._bulk_incorporate(dim)
         self.dims[dim.index] = dim
-        self.outputs = self.outputs[:1] + self.dims.keys()
+        self.outputs = self.outputs[:1] + list(self.dims.keys())
         return dim.logpdf_score()
 
     def unincorporate_dim(self, dim):
         """Remove dim from this View (does not modify)."""
         del self.dims[dim.index]
-        self.outputs = self.outputs[:1] + self.dims.keys()
+        self.outputs = self.outputs[:1] + list(self.dims.keys())
         return dim.logpdf_score()
 
     def incorporate(self, rowid, observation, inputs=None):
@@ -173,13 +176,13 @@ class View(CGpm):
 
     def unincorporate(self, rowid):
         # Unincorporate from dims.
-        for dim in self.dims.itervalues():
+        for dim in self.dims.values():
             dim.unincorporate(rowid)
         # Account.
         k = self.Zr(rowid)
         self.crp.unincorporate(rowid)
         if k not in self.Nk():
-            for dim in self.dims.itervalues():
+            for dim in self.dims.values():
                 del dim.clusters[k]     # XXX Abstract me!
 
     # XXX Major hack to force values of NaN cells in incorporated rowids.
@@ -223,7 +226,7 @@ class View(CGpm):
     # Inference
 
     def transition(self, N):
-        for _ in xrange(N):
+        for _ in range(N):
             self.transition_rows()
             self.transition_crp_alpha()
             self.transition_dim_hypers()
@@ -234,19 +237,19 @@ class View(CGpm):
 
     def transition_dim_hypers(self, cols=None):
         if cols is None:
-            cols = self.dims.keys()
+            cols = list(self.dims.keys())
         for c in cols:
             self.dims[c].transition_hypers()
 
     def transition_dim_grids(self, cols=None):
         if cols is None:
-            cols = self.dims.keys()
+            cols = list(self.dims.keys())
         for c in cols:
             self.dims[c].transition_hyper_grids(self.X[c])
 
     def transition_rows(self, rows=None):
         if rows is None:
-            rows = self.Zr().keys()
+            rows = list(self.Zr().keys())
         rows = self.rng.permutation(rows)
         for rowid in rows:
             self._gibbs_transition_row(rowid)
@@ -256,7 +259,7 @@ class View(CGpm):
 
     def logpdf_likelihood(self):
         """Compute the logpdf of the observations only."""
-        logp_dims = [dim.logpdf_score() for dim in self.dims.itervalues()]
+        logp_dims = [dim.logpdf_score() for dim in self.dims.values()]
         return sum(logp_dims)
 
     def logpdf_prior(self):
@@ -375,7 +378,7 @@ class View(CGpm):
         """Compute probability of rows in same cluster."""
         if col not in self.outputs:
             raise ValueError('Unknown column: %s' % (col,))
-        from relevance import relevance_probability
+        from .relevance import relevance_probability
         return relevance_probability(self, rowid_target, rowid_query)
 
     # --------------------------------------------------------------------------
@@ -383,7 +386,7 @@ class View(CGpm):
 
     def build_network(self):
         return ImportanceNetwork(
-            cgpms=[self.crp.clusters[0]] + self.dims.values(),
+            cgpms=[self.crp.clusters[0]] + list(self.dims.values()),
             accuracy=1,
             rng=self.rng)
 
@@ -407,7 +410,7 @@ class View(CGpm):
 
     def _logpdf_row_gibbs(self, rowid, K):
         return [sum([self._logpdf_cell_gibbs(rowid, dim, k)
-            for dim in self.dims.itervalues()]) for k in K]
+            for dim in self.dims.values()]) for k in K]
 
     def _logpdf_cell_gibbs(self, rowid, dim, k):
         targets = {dim.index: self.X[dim.index][rowid]}
@@ -450,7 +453,9 @@ class View(CGpm):
         return len(self.Zr())
 
     def hypothetical(self, rowid):
-        return not (0 <= rowid < len(self.Zr()))
+        if (rowid is not None):
+            return not (0 <= rowid < len(self.Zr()))
+        return True
 
     def _populate_constraints(self, rowid, targets, constraints):
         """Loads constraints from the dataset."""
@@ -486,7 +491,7 @@ class View(CGpm):
         dim.Zr = {}         # Mapping of non-nan rowids to cluster k.
         dim.Zi = {}         # Mapping of nan rowids to cluster k.
         dim.aux_model = dim.create_aux_model()
-        for rowid, k in self.Zr().iteritems():
+        for rowid, k in self.Zr().items():
             observation = {dim.index: self.X[dim.index][rowid]}
             inputs = self._get_input_values(rowid, dim, k)
             dim.incorporate(rowid, observation, inputs)
@@ -534,10 +539,10 @@ class View(CGpm):
         # matches the count in Nv.
         Zr = self.Zr()
         Nk = self.Nk()
-        rowids = range(self.n_rows())
+        rowids = list(range(self.n_rows()))
         assert set(Zr.keys()) == set(rowids)
         assert set(Zr.values()) == set(Nk)
-        for i, dim in self.dims.iteritems():
+        for i, dim in self.dims.items():
             # Assert first output is first input of the Dim.
             assert self.outputs[0] == dim.inputs[0]
             # Assert length of dataset is the same as rowids.
@@ -547,7 +552,7 @@ class View(CGpm):
             assignments = merged(dim.Zr, dim.Zi)
             assert assignments == Zr
             assert set(assignments.values()) == set(Nk.keys())
-            all_ks = dim.clusters.keys() + dim.Zi.values()
+            all_ks = list(dim.clusters.keys()) + list(dim.Zi.values())
             assert set(all_ks) == set(Nk.keys())
             for k in dim.clusters:
                 # Law of conservation of rowids.

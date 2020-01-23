@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from past.utils import old_div
 import pytest
 
 import numpy as np
@@ -46,9 +48,9 @@ def test_crp_prior_logpdf():
     view = retrieve_view()
     crp_normalizer = view.alpha() + 5.
     cluster_logps = np.log(np.asarray([
-        3 / crp_normalizer,
-        2 / crp_normalizer,
-        view.alpha() / crp_normalizer
+        old_div(3, crp_normalizer),
+        old_div(2, crp_normalizer),
+        old_div(view.alpha(), crp_normalizer)
     ]))
     # Test the crp probabilities agree for a hypothetical row.
     for k in [0,1,2]:

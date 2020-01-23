@@ -15,6 +15,9 @@
 # limitations under the License.
 
 
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import pytest
 
@@ -74,7 +77,7 @@ def gen_view_cgpm(get_data):
         rng=gu.gen_rng(1)
     )
 
-    for i in xrange(10):
+    for i in range(10):
         view.transition_dim_hypers()
     return view
 
@@ -91,7 +94,7 @@ def gen_state_cgpm(get_data):
         rng=gu.gen_rng(1)
     )
 
-    for i in xrange(10):
+    for i in range(10):
         state.transition_dim_hypers()
     return state
 
@@ -123,7 +126,7 @@ def test_hypothetical_no_mutation():
     """Ensure using hypothetical rows does not modify state."""
     state = gen_state_cgpm(get_data_separated)
 
-    for i in xrange(10):
+    for i in range(10):
         state.transition_dim_hypers()
 
     # Run a query with two hypothetical rows.
@@ -235,10 +238,10 @@ def test_relevance_analytically():
     #   Pr[t,Q|zT=zQ=0] * Pr[zT=zQ=0] + Pr[t,Q|zT=zQ=1] * Pr[zT=zQ=1]
     #   analytically for t_rowid=0, Q_rowid=[1]
     p_same_table = (
-        (n-2+b1)/(b1+b0+n-2) * (n-1+b1)/(b1+b0+n-1) *
-        (n-2)/(n-2+a) * (n-1)/(n-1+a) +
-        b1/(b1+b0) * (b1+1)/(b1+b0+1) *
-        a/(n-2+a) * 1/(n-1+a))
+        old_div(old_div(old_div(old_div((n-2+b1),(b1+b0+n-2)) * (n-1+b1),(b1+b0+n-1)) *
+        (n-2),(n-2+a)) * (n-1),(n-1+a)) +
+        old_div(old_div(old_div(old_div(b1,(b1+b0)) * (b1+1),(b1+b0+1)) *
+        a,(n-2+a)) * 1,(n-1+a)))
 
     # Compute Pr[zT \ne zQ, xT, xQ, S] =
     #   Pr[t,Q|zT=0, zQ=1] * Pr[zT=0, zQ=1] +
@@ -246,13 +249,13 @@ def test_relevance_analytically():
     #     Pr[t,Q|zT=1, zQ=2] * Pr[zT=1, zQ=2]
     #   analytically for t_rowid=0, Q_rowid=[1]
     p_diff_table = (
-        (n-2+b1)/(b1+b0+n-2) * b1/(b1+b0) * (n-2)/(n-2+a) * a/(n-1+a) +
-        b1/(b1+b0) * (n-2+b1)/(b1+b0+n-2) * a/(n-1+a) * (n-2)/(n-2+a) +
-        b1/(b1+b0) * b1/(b1+b0) * a/(n-1+a) * a/(n-2+a))
+        old_div(old_div(old_div(old_div((n-2+b1),(b1+b0+n-2)) * b1,(b1+b0)) * (n-2),(n-2+a)) * a,(n-1+a)) +
+        old_div(old_div(old_div(old_div(b1,(b1+b0)) * (n-2+b1),(b1+b0+n-2)) * a,(n-1+a)) * (n-2),(n-2+a)) +
+        old_div(old_div(old_div(old_div(b1,(b1+b0)) * b1,(b1+b0)) * a,(n-1+a)) * a,(n-2+a)))
 
     # rp(t, Q) = Pr[zT = zQ, xT, xQ, S] /
     #    (Pr[zT = zQ, xT, xQ, S] +  Pr[zT \ne zQ, xT, xQ, S])
-    rp_analytical = p_same_table / (p_same_table + p_diff_table)
+    rp_analytical = old_div(p_same_table, (p_same_table + p_diff_table))
 
     assert np.allclose(rp_analytical, rp_computational)
 
@@ -279,16 +282,16 @@ def test_missing_analytical():
     #   Pr[Q|zT=zQ=0] * Pr[zT=zQ=0] + Pr[Q|zT=zQ=1] * Pr[zT=zQ=1]
     #   analytically for t_rowid=0, Q_rowid=[1].
     p_numerator = (
-        (n-2+b1)/(b1+b0+n-2) * (n-2)/(n-2+a) * (n-1)/(n-1+a) +
-        b1/(b1+b0) * a/(n-2+a) * 1/(n-1+a))
+        old_div(old_div(old_div((n-2+b1),(b1+b0+n-2)) * (n-2),(n-2+a)) * (n-1),(n-1+a)) +
+        old_div(old_div(old_div(b1,(b1+b0)) * a,(n-2+a)) * 1,(n-1+a)))
 
     # Compute Pr[xQ] =
     #   Pr[Q|zQ=0] * Pr[zQ=0] + Pr[Q|zQ=1] * Pr[zQ=1]
     #   analytically for Q_rowid=[1].
     p_denominator = (
-        (n-2+b1)/(b1+b0+n-2) * (n-2)/(n-2+a) +
-        b1/(b1+b0) * a/(n-2+a))
+        old_div(old_div((n-2+b1),(b1+b0+n-2)) * (n-2),(n-2+a)) +
+        old_div(old_div(b1,(b1+b0)) * a,(n-2+a)))
 
-    rp_analytical = p_numerator / p_denominator
+    rp_analytical = old_div(p_numerator, p_denominator)
 
     assert np.allclose(rp_computational, rp_analytical)

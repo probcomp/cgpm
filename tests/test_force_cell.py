@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 import pytest
 
 import numpy as np
@@ -32,7 +33,7 @@ X = [[1,     np.nan,     2,         -1,         np.nan  ],
 def get_state():
     return State(
         X,
-        outputs=range(5),
+        outputs=list(range(5)),
         cctypes=['normal']*5,
         Zv={0:0, 1:0, 2:0, 3:1, 4:1},
         rng=gu.gen_rng(0),

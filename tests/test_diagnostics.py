@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
 import time
 
 from cgpm.crosscat.engine import Engine
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
 
-from markers import integration
+from .markers import integration
 
 
 def retrieve_normal_dataset():
@@ -39,7 +40,7 @@ def retrieve_normal_dataset():
 @integration
 def test_simple_diagnostics():
     def diagnostics_without_iters(diagnostics):
-        return (v for k, v in diagnostics.iteritems() if k != 'iterations')
+        return (v for k, v in diagnostics.items() if k != 'iterations')
     D = retrieve_normal_dataset()
     engine = Engine(
             D.T, cctypes=['normal']*len(D),  num_states=4, rng=gu.gen_rng(12),)

@@ -86,7 +86,7 @@ def valid_cctype(dist):
 
 def all_cctypes():
     """Returns a list of all known DistributionGpm."""
-    return cctype_class_lookup.keys()
+    return list(cctype_class_lookup.keys())
 
 def parse_distargs(dists):
     """Parses a list of cctypes, where distargs are in parenthesis.

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import zip
+from builtins import range
 import importlib
 import os
 
@@ -123,7 +125,7 @@ def test_find_neighborhoods():
     # Generate a high dimensional dataset with mixed numerical/categorical.
     rng = gu.gen_rng(1)
 
-    outputs = range(11)
+    outputs = list(range(11))
     inputs = None
     K = 5
     stattypes = [N, N, C, N, N, N, C, N, N, C, N]
@@ -131,15 +133,15 @@ def test_find_neighborhoods():
     distargs = {'outputs': {'stattypes': stattypes, 'statargs': statargs}}
 
     X = rng.rand(100, 11)
-    X[:,2] = rng.choice(range(statargs[2]['k']), size=100)
-    X[:,6] = rng.choice(range(statargs[6]['k']), size=100)
-    X[:,9] = rng.choice(range(statargs[9]['k']), size=100)
+    X[:,2] = rng.choice(list(range(statargs[2]['k'])), size=100)
+    X[:,6] = rng.choice(list(range(statargs[6]['k'])), size=100)
+    X[:,9] = rng.choice(list(range(statargs[9]['k'])), size=100)
     X[:96,10] = np.nan
 
     knn = MultivariateKnn(outputs, inputs, K=K, distargs=distargs)
 
     for i, x in enumerate(X):
-        knn.incorporate(i, dict(zip(outputs, x)))
+        knn.incorporate(i, dict(list(zip(outputs, x))))
 
     assert knn.N == len(X)
 
@@ -197,7 +199,7 @@ def test_find_neighborhoods():
 
     # # First crash since z contains a nan.
     with pytest.raises(ValueError):
-        knn._find_neighborhoods([0,1], dict(zip(outputs[2:], z[2:])))
+        knn._find_neighborhoods([0,1], dict(list(zip(outputs[2:], z[2:]))))
 
     # Now make sure that z is its own nearest neighbor.
     z_targets = [0,1]
@@ -241,7 +243,7 @@ def test_perigee_period_given_apogee():
     }}
     knn = MultivariateKnn([0,1,2], None, distargs=distargs, K=30, rng=rng)
     for i, row in enumerate(X):
-        knn.incorporate(i, dict(zip([0,1,2], row)))
+        knn.incorporate(i, dict(list(zip([0,1,2], row))))
 
     # Sample from the dependent KNN.
     samples_dep = knn.simulate(-1, [1,2], {0: 500}, N=20)
@@ -309,7 +311,7 @@ def test_serialize():
     data[10:,-1] = 1
 
     knn = MultivariateKnn(
-        range(5),
+        list(range(5)),
         None,
         K=10,
         distargs={
@@ -331,7 +333,7 @@ def test_serialize():
         rng=rng)
 
     for rowid, x in enumerate(data):
-        knn.incorporate(rowid, dict(zip(range(5), x)))
+        knn.incorporate(rowid, dict(list(zip(list(range(5)), x))))
 
     knn.transition()
 
@@ -372,7 +374,7 @@ def generate_real_nominal_data(N, rng=None):
     data[:,0] = T[0]
     indicators = [0, 1, 2, 3, 4, 5]
     counts = {0:0, 1:0, 2:0}
-    for i in xrange(N):
+    for i in range(N):
         k = Zc[0][i]
         data[i,1] = 2*indicators[k] + counts[k] % 2
         counts[k] += 1
@@ -403,7 +405,7 @@ def test_joint(knn_xz):
     # generate_real_nominal_data) and perform a KS tests at each of the
     # subpopulations at the six levels of z.
 
-    data = np.asarray(knn_xz.data.values())
+    data = np.asarray(list(knn_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     joint_samples = knn_xz.simulate(-1, [0,1], N=len(data))
     _, ax = plt.subplots()
@@ -430,7 +432,7 @@ def test_conditional_indicator(knn_xz):
     # generate_real_nominal_data) and perfrom a KS tests at each of the
     # subpopulations at the six levels of z.
 
-    data = np.asarray(knn_xz.data.values())
+    data = np.asarray(list(knn_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     _, ax = plt.subplots()
     ax.set_title('Conditional Simulation Of X Given Indicator Z')
@@ -457,7 +459,7 @@ def test_conditional_real(knn_xz):
     # generate_real_nominal_data) and plot the frequencies of the simulated
     # values.
 
-    data = np.asarray(knn_xz.data.values())
+    data = np.asarray(list(knn_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     fig, axes = plt.subplots(2,3)
     fig.suptitle('Conditional Simulation Of Indicator Z Given X', size=20)

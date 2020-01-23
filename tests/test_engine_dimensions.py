@@ -33,6 +33,7 @@ method, where we use
 This test suite is slow because many simulate/logpdf queries are invoked.
 """
 
+from builtins import range
 import numpy as np
 import pytest
 
@@ -206,5 +207,5 @@ def test_relevance_probability__ci_(engine):
     assert len(results) == engine.num_states()
 
     results = engine.relevance_probability(
-        0, [2, 14], 0, statenos=range(engine.num_states()))
+        0, [2, 14], 0, statenos=list(range(engine.num_states())))
     assert len(results) == engine.num_states()

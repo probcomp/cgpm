@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 import importlib
 import pytest
 
@@ -43,7 +44,7 @@ D, Zv, Zc = tu.gen_data_table(
 CCTYPES = CCTYPES[1:]
 CCARGS = DISTARGS[1:]
 OUTPUTS = [0]
-INPUTS = range(1, len(CCTYPES)+1)
+INPUTS = list(range(1, len(CCTYPES)+1))
 CCARGS[CCTYPES.index('bernoulli')] = {'k':2}
 D = D.T
 
@@ -62,7 +63,7 @@ def test_incorporate():
     with pytest.raises(ValueError):
         linreg.unincorporate(20)
     # Unincorporate all rows.
-    for rowid in xrange(20):
+    for rowid in range(20):
         linreg.unincorporate(rowid)
     # Unincorporating row 0 should raise.
     with pytest.raises(ValueError):
@@ -157,15 +158,15 @@ def test_simulate():
         xtrue.append(row[0])
         inputs = {i: row[i] for i in linreg.inputs}
         samples = [linreg.simulate(None, [0], None, inputs)[0]
-            for _i in xrange(100)]
+            for _i in range(100)]
         xpred.append(samples)
     xpred = np.asarray(xpred)
     xmeans = np.mean(xpred, axis=1)
     xlow = np.percentile(xpred, 25, axis=1)
     xhigh = np.percentile(xpred, 75, axis=1)
-    ax.plot(range(len(xtrue)), xmeans, color='g')
-    ax.fill_between(range(len(xtrue)), xlow, xhigh, color='g', alpha='.3')
-    ax.scatter(range(len(xtrue)), xtrue, color='r')
+    ax.plot(list(range(len(xtrue))), xmeans, color='g')
+    ax.fill_between(list(range(len(xtrue))), xlow, xhigh, color='g', alpha='.3')
+    ax.scatter(list(range(len(xtrue))), xtrue, color='r')
     # plt.close('all')
 
 

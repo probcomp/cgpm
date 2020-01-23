@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import zip
+from builtins import range
 import itertools
 import numpy as np
 import pytest
@@ -51,7 +53,7 @@ def test_dependence_probability():
         [.95]*len(cctypes), rng=gu.gen_rng(100))
 
     T = T.T
-    outputs = range(0, 12, 2)
+    outputs = list(range(0, 12, 2))
 
     # Test for direct dependence for state and engine.
     s = State(

@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import zip
+from builtins import range
+from builtins import object
 import itertools
 
 from math import isinf
@@ -42,10 +45,10 @@ class ImportanceNetwork(object):
             constraints = {}
         if inputs is None:
             inputs = {}
-        samples, weights = zip(*[
+        samples, weights = list(zip(*[
             self.weighted_sample(rowid, targets, constraints, inputs)
-            for _i in xrange(self.accuracy)
-        ])
+            for _i in range(self.accuracy)
+        ]))
         if all(isinf(l) for l in weights):
             raise ValueError('Zero density constraints: %s' % (constraints,))
         # Skip an expensive random choice if there is only one option.
@@ -59,17 +62,17 @@ class ImportanceNetwork(object):
         if inputs is None:
             inputs = {}
         # Compute joint probability.
-        samples_joint, weights_joint = zip(*[
+        samples_joint, weights_joint = list(zip(*[
             self.weighted_sample(
                 rowid, [], gu.merged(targets, constraints), inputs)
-            for _i in xrange(self.accuracy)
-        ])
+            for _i in range(self.accuracy)
+        ]))
         logp_joint = gu.logmeanexp(weights_joint)
         # Compute marginal probability.
-        samples_marginal, weights_marginal = zip(*[
+        samples_marginal, weights_marginal = list(zip(*[
             self.weighted_sample(rowid, [], constraints, inputs)
-            for _i in xrange(self.accuracy)
-        ]) if constraints else ({}, [0.])
+            for _i in range(self.accuracy)
+        ])) if constraints else ({}, [0.])
         if all(isinf(l) for l in weights_marginal):
             raise ValueError('Zero density constraints: %s' % (constraints,))
         logp_constraints = gu.logmeanexp(weights_marginal)
@@ -92,11 +95,11 @@ class ImportanceNetwork(object):
     def invoke_cgpm(self, rowid, cgpm, targets, constraints, inputs):
         cgpm_inputs = {
             e : x for e, x in
-                itertools.chain(inputs.iteritems(), constraints.iteritems())
+                itertools.chain(iter(inputs.items()), iter(constraints.items()))
             if e in cgpm.inputs
         }
         cgpm_constraints = {
-            e:x for e, x in constraints.iteritems()
+            e:x for e, x in constraints.items()
             if e in cgpm.outputs
         }
         # ev_all = gu.merged(ev_in, ev_out)

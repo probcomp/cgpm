@@ -27,6 +27,8 @@ The three simulations are:
 Simulations are compared to synthetic data at indicator subpopulations.
 """
 
+from builtins import zip
+from builtins import range
 import pytest
 
 import matplotlib.pyplot as plt
@@ -51,7 +53,7 @@ DATA[:,0] = T[0]
 INDICATORS = [0, 1, 2, 3, 4, 5]
 
 counts = {0:0, 1:0, 2:0}
-for i in xrange(N_SAMPLES):
+for i in range(N_SAMPLES):
     k = Zc[0][i]
     DATA[i,1] = 2*INDICATORS[k] + counts[k] % 2
     counts[k] += 1

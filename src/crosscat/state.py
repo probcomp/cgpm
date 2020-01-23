@@ -14,7 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cPickle as pickle
+from __future__ import print_function
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import zip
+from builtins import range
+from past.utils import old_div
+import pickle as pickle
 import copy
 import importlib
 import itertools
@@ -49,6 +57,54 @@ class State(CGpm):
             distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, diagnostics=None,
             loom_path=None, rng=None):
+        """ Construct a State.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data matrix, each row is an observation and each column a variable.
+        outputs : list<int>, optional
+            Unique non-negative ID for each column in X, and used to refer to
+            the column for all future queries. Defaults to range(0, X.shape[1])
+        inputs : list<int>, optional
+            Currently unsupported.
+        cctypes : list<str>
+            Data type of each column, see `utils.config` for valid cctypes.
+        distargs : list<dict>, optional
+            See the documentation for each DistributionGpm for its distargs.
+        Zv : dict(int:int), optional
+            Assignment of output columns to views, where Zv[k] is the
+            view assignment for column k. Defaults to sampling from CRP.
+        Zrv : dict(int:list<int>), optional
+            Assignment of rows to clusters in each view, where Zrv[k] is
+            the Zr for View k. If specified, then Zv must also be specified.
+            Defaults to sampling from CRP.
+        Cd : list(list<int>), optional
+            List of marginal dependence constraints for columns. Each element in
+            the list is a list of columns which are to be in the same view. Each
+            column can only be in one such list i.e. [[1,2,5],[1,5]] is not
+            allowed.
+        Ci : list(tuple<int>), optional
+            List of marginal independence constraints for columns.
+            Each element in the list is a 2-tuple of columns that must be
+            independent, i.e. [(1,2),(1,3)].
+        Rd : dict(int:Cd), optional
+            Dictionary of dependence constraints for rows, wrt.
+            Each entry is (col: Cd), where col is a column number and Cd is a
+            list of dependence constraints for the rows with respect to that
+            column (see doc for Cd).
+        Ri : dict(int:Cid), optional
+            Dictionary of independence constraints for rows, wrt.
+            Each entry is (col: Ci), where col is a column number and Ci is a
+            list of independence constraints for the rows with respect to that
+            column (see doc for Ci).
+        iterations : dict(str:int), optional
+            Metadata holding the number of iters each kernel has been run.
+        loom_path: str, optional
+            Path to a loom project compatible with this State.
+        rng : np.random.RandomState, optional.
+            Source of entropy.
+        """
         # -- Seed --------------------------------------------------------------
         self.rng = gu.gen_rng() if rng is None else rng
 
@@ -60,7 +116,7 @@ class State(CGpm):
         # -- Dataset and outputs -----------------------------------------------
         X = np.asarray(X)
         if not outputs:
-            outputs = range(X.shape[1])
+            outputs = list(range(X.shape[1]))
         else:
             assert len(outputs) == X.shape[1]
             assert all(o >= 0 for o in outputs)
@@ -96,7 +152,7 @@ class State(CGpm):
             if self.Ci or self.Cd:
                 # Require outputs are zero-based for now, rather than worry
                 # about maintaining a zero-based map.
-                if self.outputs != range(self.n_cols()):
+                if self.outputs != list(range(self.n_cols())):
                     raise ValueError('Use zero-based outputs with constraints.')
                 if self.Ci:
                     # Independence constraints are specified; simulate
@@ -119,7 +175,7 @@ class State(CGpm):
                     self.crp.incorporate(c, z, {-1:0})
         # Load the provided Zv without simulation.
         else:
-            for c, z in Zv.iteritems():
+            for c, z in Zv.items():
                 self.crp.incorporate(c, {self.crp_id: z}, {-1:0})
 
         assert len(self.Zv()) == len(self.outputs)
@@ -186,7 +242,24 @@ class State(CGpm):
 
     def incorporate_dim(
             self, T, outputs, inputs=None, cctype=None, distargs=None, v=None):
-        """Incorporate a new Dim into this State with data T."""
+        """Incorporate a new Dim into this State with data T.
+
+        Parameters
+        ----------
+        T : list
+            Data with length self.n_rows().
+        outputs : list[int]
+            Identity of the variable modeled by this dim, must be non-negative
+            and cannot collide with State.outputs. Only univariate outputs
+            currently supported, so the list be a singleton.
+        cctype, distargs:
+            refer to State.__init__
+        v : int, optional
+            Index of the view to assign the data. If 0 <= v < len(state.views)
+            then insert into an existing View. If v = len(state.views) then
+            singleton view will be created with a partition from the CRP prior.
+            If unspecified, will be sampled.
+        """
         if len(T) != self.n_rows():
             raise ValueError(
                 '%d rows are required, received: %d.'
@@ -270,7 +343,7 @@ class State(CGpm):
         query_outputs = [q for q in observation if q not in query_clusters]
         if not all(q in self.outputs for q in query_outputs):
             raise ValueError('Invalid observation: %s' % observation)
-        if any(isnan(v) for v in observation.values()):
+        if any(isnan(v) for v in list(observation.values())):
             raise ValueError('Cannot incorporate nan: %s.' % observation)
         # Append the observation to dataset.
         for c in self.outputs:
@@ -307,15 +380,17 @@ class State(CGpm):
 
     # XXX Major hack to force values of NaN cells in incorporated rowids.
     def force_cell(self, rowid, observation):
+        if (rowid is None):
+            raise ValueError('Force observation requires existing rowid.')
         if not 0 <= rowid < self.n_rows():
             raise ValueError('Force observation requires existing rowid.')
         if not all(np.isnan(self.X[c][rowid]) for c in observation):
             raise ValueError('Force observations requires NaN cells.')
-        for col, value in observation.iteritems():
+        for col, value in observation.items():
             self.X[col][rowid] = value
         queries = vu.partition_list(
             {c: self.Zv(c) for c in observation}, observation)
-        for view_id, view_variables in queries.iteritems():
+        for view_id, view_variables in queries.items():
             observation_v = {c: observation[c] for c in view_variables}
             self.views[view_id].force_cell(rowid, observation_v)
 
@@ -323,7 +398,15 @@ class State(CGpm):
     # Schema updates.
 
     def update_cctype(self, col, cctype, distargs=None):
-        """Update the distribution type of self.dims[col] to cctype."""
+        """Update the distribution type of self.dims[col] to cctype.
+
+        Parameters
+        ----------
+        col : int
+            Index of column to update.
+        cctype, distargs:
+            refer to State.__init__
+        """
         assert col in self.outputs
         self.view_for(col).update_cctype(col, cctype, distargs=distargs)
         self.transition_dim_grids(cols=[col])
@@ -338,7 +421,20 @@ class State(CGpm):
     # Compositions.
 
     def compose_cgpm(self, cgpm):
-        """Returns `token` to be used in the call to decompose_cgpm."""
+        """Compose a CGPM with this object. Returns `token` to be used in the
+        call to decompose_cgpm.
+
+        Parameters
+        ----------
+        cgpm : cgpm.cgpm.CGpm object
+            The `CGpm` object to compose.
+
+        Returns
+        -------
+        token : int
+            A unique token representing the composed cgpm, to be used
+            by `State.decompose_cgpm`.
+        """
         token = next(self.token_generator)
         self.hooked_cgpms[token] = cgpm
         try:
@@ -350,7 +446,14 @@ class State(CGpm):
         return token
 
     def decompose_cgpm(self, token):
-        """Remove the composed cgpm with identifier `token`."""
+        """Decompose a previously composed CGPM with identifier `token`.
+
+        Parameters
+        ----------
+        token : int
+            The unique token representing the composed cgpm, returned from
+            `State.compose_cgpm`.
+        """
         del self.hooked_cgpms[token]
         self._update_is_composite()
         self.build_network()
@@ -378,12 +481,20 @@ class State(CGpm):
         return gu.logp_crp_constrained_dependent(Zv, alpha, self.Cd)
 
     def logpdf_likelihood(self):
-        logp_views = sum(v.logpdf_likelihood() for v in self.views.itervalues())
+        logp_views = sum(v.logpdf_likelihood() for v in self.views.values())
         return logp_views
 
     def logpdf_score(self):
+        """Compute joint density of all latents and the incorporated data.
+
+        Returns
+        -------
+        logpdf_score : float
+            The log score is P(X,Z) = P(X|Z)P(Z) where X is the observed data
+            and Z is the entirety of the latent state in the CGPM.
+        """
         logp_crp = self.logpdf_score_crp()
-        logp_views = sum(v.logpdf_score() for v in self.views.itervalues())
+        logp_views = sum(v.logpdf_score() for v in self.views.values())
         return logp_crp + logp_views
 
     # --------------------------------------------------------------------------
@@ -424,7 +535,7 @@ class State(CGpm):
         return ImportanceNetwork(self.build_cgpms(), accuracy, rng=self.rng)
 
     def build_cgpms(self):
-        return [self.views[v] for v in self.views] + self.hooked_cgpms.values()
+        return [self.views[v] for v in self.views] + list(self.hooked_cgpms.values())
 
     def _populate_constraints(self, rowid, targets, constraints):
         """Loads constraints from the dataset."""
@@ -482,11 +593,11 @@ class State(CGpm):
             inputs_list=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
         if constraints_list is None:
-            constraints_list = [{} for i in xrange(len(rowids))]
+            constraints_list = [{} for i in range(len(rowids))]
         if inputs_list is None:
-            inputs_list = [{} for i in xrange(len(rowids))]
+            inputs_list = [{} for i in range(len(rowids))]
         if Ns is None:
-            Ns = [1 for i in xrange(len(rowids))]
+            Ns = [1 for i in range(len(rowids))]
         assert len(rowids) == len(targets_list)
         assert len(rowids) == len(constraints_list)
         assert len(rowids) == len(inputs_list)
@@ -506,9 +617,9 @@ class State(CGpm):
             inputs_list=None):
         """Evaluate multiple queries at once, used by Engine."""
         if constraints_list is None:
-            constraints_list = [{} for i in xrange(len(rowids))]
+            constraints_list = [{} for i in range(len(rowids))]
         if inputs_list is None:
-            inputs_list = [{} for i in xrange(len(rowids))]
+            inputs_list = [{} for i in range(len(rowids))]
         assert len(rowids) == len(targets_list)
         assert len(rowids) == len(constraints_list)
         assert len(rowids) == len(inputs_list)
@@ -586,7 +697,7 @@ class State(CGpm):
     def row_similarity_pairwise(self, cols=None):
         if cols is None:
             cols = self.outputs
-        rowids = range(self.n_rows())
+        rowids = list(range(self.n_rows()))
         S = np.eye(len(rowids))
         for row0, row1 in itertools.combinations(rowids, 2):
             s = self.row_similarity(row0, row1, cols=cols)
@@ -603,13 +714,10 @@ class State(CGpm):
         # Retrieve the relevant view.
         view = self.view_for(col)
         # Select the hypothetical rows which are compatible with the view.
-        hypotheticals = filter(
-            lambda r: not all(np.isnan(r.values())),
-            [{d: h.get(d, np.nan) for d in view.dims} for h in hypotheticals]
-        ) if hypotheticals else []
+        hypotheticals = [r for r in [{d: h.get(d, np.nan) for d in view.dims} for h in hypotheticals] if not all(np.isnan(list(r.values())))] if hypotheticals else []
         # Produce hypothetical rowids.
-        rowid_hypothetical = range(
-            self.n_rows(), self.n_rows() + len(hypotheticals))
+        rowid_hypothetical = list(range(
+            self.n_rows(), self.n_rows() + len(hypotheticals)))
         # Incorporate hypothetical rows.
         for rowid, query in zip(rowid_hypothetical, hypotheticals):
             for d in view.dims:
@@ -633,6 +741,46 @@ class State(CGpm):
 
     def mutual_information(self, col0, col1, constraints=None, T=None, N=None,
             progress=None):
+        """Computes the mutual information MI(col0:col1|constraints).
+
+        Mutual information with constraints can be of the form:
+            - MI(X:Y|Z=z): CMI at a fixed conditioning value.
+            - MI(X:Y|Z): expected CMI E_Z[MI(X:Y|Z)] under Z.
+            - MI(X:Y|Z, W=w): expected CMI E_Z[MI(X:Y|Z,W=w)] under Z.
+
+        This function supports all three forms. The CMI is computed under the
+        posterior predictive joint distributions.
+
+        Parameters
+        ----------
+        col0, col1 : list<int>
+            Columns to comptue MI. If all columns in `col0` are equivalent
+            to columns in `col` then entropy is returned, otherwise they must
+            be disjoint and the CMI is returned
+        constraints : list(tuple), optional
+            A list of pairs (col, val) of observed values to condition on. If
+            `val` is None, then `col` is marginalized over.
+        T : int, optional.
+            Number of samples to use in the outer (marginalization) estimator.
+        N : int, optional.
+            Number of samples to use in the inner Monte Carlo estimator.
+
+        Returns
+        -------
+        mi : float
+            A point estimate of the mutual information.
+
+        Examples
+        -------
+        # Compute MI(X:Y)
+        >>> State.mutual_information(col_x, col_y)
+        # Compute MI(X:Y|Z=1)
+        >>> State.mutual_information(col_x, col_y, {col_z: 1})
+        # Compute MI(X:Y|W)
+        >>> State.mutual_information(col_x, col_y, {col_w:None})
+        # Compute MI(X:Y|Z=1, W)
+        >>> State.mutual_information(col_x, col_y, {col_z: 1, col_w:None})
+        """
         if constraints is None:
             constraints = dict()
         # Disallow duplicated variables in constraints and targets.
@@ -655,8 +803,8 @@ class State(CGpm):
         N = N or 100
         T = T or 100
         # Partition constraints into equality (e) and marginalization (m) forms.
-        e_constraints = {e:x for e,x in constraints.iteritems() if x is not None}
-        m_constraints = [e for e,x in constraints.iteritems() if x is None]
+        e_constraints = {e:x for e,x in constraints.items() if x is not None}
+        m_constraints = [e for e,x in constraints.items() if x is None]
         # Determine the estimator to use.
         estimator = self._compute_mi if set(col0) != set(col1) \
             else self._compute_entropy
@@ -693,7 +841,7 @@ class State(CGpm):
             targets_list=[{c1: s[c1] for c1 in col1} for s in samples],
             constraints_list=[constraints]*N,
         )
-        return (np.sum(PXY) - np.sum(PX) - np.sum(PY)) / N
+        return old_div((np.sum(PXY) - np.sum(PX) - np.sum(PY)), N)
 
     def _compute_entropy(self, col0, col1, constraints, N):
         assert set(col0) == set(col1)
@@ -703,7 +851,7 @@ class State(CGpm):
             targets_list=[{c0: s[c0] for c0 in col0} for s in samples],
             constraints_list=[constraints]*N,
         )
-        return -np.sum(PX) / N
+        return old_div(-np.sum(PX), N)
 
     def _partition_mutual_information_query(self, col0, col1, constraints):
         cgpms = self.build_cgpms()
@@ -719,7 +867,7 @@ class State(CGpm):
         for variable in constraints:
             component = connected_components[var_to_cgpm[variable]]
             blocks[component][2][variable] = constraints[variable]
-        return blocks.values()
+        return list(blocks.values())
 
     # --------------------------------------------------------------------------
     # Inference
@@ -727,6 +875,26 @@ class State(CGpm):
     def transition(
             self, N=None, S=None, kernels=None, rowids=None,
             cols=None, views=None, progress=True, checkpoint=None):
+        """Run targeted inference kernels.
+
+        Parameters
+        ----------
+        N : int, optional
+            Number of iterations to transition. Default 1.
+        S : float, optional
+            Number of seconds to transition. If both N and S set then min used.
+        kernels : list<{'alpha', 'view_alphas', 'column_params', 'column_hypers'
+            'rows', 'columns'}>, optional
+            List of inference kernels to run in this transition. Default all.
+        views, rows, cols : list<int>, optional
+            View, row and column numbers to apply the kernels. Default all.
+        checkpoint : int, optional
+            Number of transitions between recording inference diagnostics
+            from the latent state (such as logscore and row/column partitions).
+            Defaults to no checkpointing.
+        progress : boolean, optional
+            Show a progress bar for number of target iterations or elapsed time.
+        """
         # XXX Many combinations of the above kwargs will cause havoc.
 
         # Check columns exist, silently ignore non-existent columns.
@@ -752,7 +920,7 @@ class State(CGpm):
 
         # Run all kernels by default.
         if kernels is None:
-            kernels = _kernel_lookup.keys()
+            kernels = list(_kernel_lookup.keys())
 
         kernel_funcs = [_kernel_lookup[k] for k in kernels]
         assert kernel_funcs
@@ -848,7 +1016,7 @@ class State(CGpm):
         # Build foreign kernels.
         if cols is None:
             cols = list(itertools.chain.from_iterable(
-                c.outputs for c in self.hooked_cgpms.values()))
+                c.outputs for c in list(self.hooked_cgpms.values())))
         if any(c in self.outputs for c in cols):
             raise ValueError('Only foreign variables allowed: %s' % (cols,))
         def build_transition(token):
@@ -870,7 +1038,7 @@ class State(CGpm):
             if S is None:
                 p_seconds = 0
             else:
-                p_seconds = (time.time() - start) / S
+                p_seconds = old_div((time.time() - start), S)
             if N is None:
                 p_iters = 0
             else:
@@ -901,8 +1069,8 @@ class State(CGpm):
             break
 
         if progress:
-            print '\rCompleted: %d iterations in %f seconds.' % \
-                (iters, time.time()-start)
+            print('\rCompleted: %d iterations in %f seconds.' % \
+                (iters, time.time()-start))
 
     def _increment_iterations(self, kernel, N=1):
         previous = self.diagnostics['iterations'].get(kernel, 0)
@@ -911,7 +1079,7 @@ class State(CGpm):
     def _increment_diagnostics(self):
         self.diagnostics['logscore'].append(self.logpdf_score())
         self.diagnostics['column_crp_alpha'].append(self.alpha())
-        self.diagnostics['column_partition'].append(self.Zv().items())
+        self.diagnostics['column_partition'].append(list(self.Zv().items()))
 
     def _progress(self, percentage):
         tu.progress(percentage, sys.stdout)
@@ -922,7 +1090,7 @@ class State(CGpm):
 
     def data_array(self):
         """Return dataset as a numpy array."""
-        return np.asarray(self.X.values()).T
+        return np.asarray(list(self.X.values())).T
 
     def n_rows(self):
         """Number of incorporated rows."""
@@ -1098,7 +1266,7 @@ class State(CGpm):
         # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
         for a in avoid:
-            index = self.views.keys().index(self.Zv(a))
+            index = list(self.views.keys()).index(self.Zv(a))
             logp_views[index] = float('-inf')
 
         # Draw a new view.
@@ -1154,7 +1322,9 @@ class State(CGpm):
         self.views[identity] = view
 
     def hypothetical(self, rowid):
-        return not 0 <= rowid < self.n_rows()
+        if rowid is not None:
+            return not 0 <= rowid < self.n_rows()
+        return True
 
     # --------------------------------------------------------------------------
     # Data structure invariants.
@@ -1166,7 +1336,7 @@ class State(CGpm):
         assert all(len(self.views[v].dims) == self.crp.clusters[0].counts[v]
                 for v in self.views)
         # All outputs should be in the dataset keys.
-        assert all([c in self.X.keys() for c in self.outputs])
+        assert all([c in list(self.X.keys()) for c in self.outputs])
         # Zv and dims should match n_cols.
         assert sorted(self.Zv().keys()) == sorted(self.outputs)
         assert len(self.Zv()) == self.n_cols()
@@ -1195,7 +1365,7 @@ class State(CGpm):
 
         # View partition data.
         metadata['alpha'] = self.alpha()
-        metadata['Zv'] = self.Zv().items()
+        metadata['Zv'] = list(self.Zv().items())
 
         # Column data.
         metadata['cctypes'] = []
@@ -1216,7 +1386,7 @@ class State(CGpm):
         # View data.
         metadata['Zrv'] = []
         metadata['view_alphas'] = []
-        for v, view in self.views.iteritems():
+        for v, view in self.views.items():
             rowids = sorted(view.Zr())
             metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
             metadata['view_alphas'].append((v, view.alpha()))
@@ -1226,7 +1396,7 @@ class State(CGpm):
 
         # Hooked CGPMs.
         metadata['hooked_cgpms'] = dict()
-        for token, cgpm in self.hooked_cgpms.iteritems():
+        for token, cgpm in self.hooked_cgpms.items():
             metadata['hooked_cgpms'][token] = cgpm.to_metadata()
 
         # Path of a Loom project.
@@ -1264,7 +1434,7 @@ class State(CGpm):
             rng=rng,
         )
         # Hook up the composed CGPMs.
-        for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():
+        for token, cgpm_metadata in metadata['hooked_cgpms'].items():
             builder = getattr(
                 importlib.import_module(cgpm_metadata['factory'][0]),
                 cgpm_metadata['factory'][1])
@@ -1281,6 +1451,3 @@ class State(CGpm):
             metadata = pickle.load(fileptr)
         return cls.from_metadata(metadata, rng=rng)
 
-
-from cgpm.crosscat import statedoc
-statedoc.load_docstrings(sys.modules[__name__])

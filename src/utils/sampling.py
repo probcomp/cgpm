@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 from math import fabs
 from math import log
 
@@ -91,7 +94,7 @@ def mh_sample(
     else:
         def jumpfun(x, jstd):
             MAX_TRIALS = 1000
-            for _ in xrange(MAX_TRIALS):
+            for _ in range(MAX_TRIALS):
                 x_prime = rng.normal(x, jstd)
                 if D[0] < x_prime < D[1]:
                     return x_prime
@@ -101,8 +104,8 @@ def mh_sample(
             from scipy.stats import norm
             if D[0] == float('inf') and D[1] == float('inf'):
                 return 0
-            return norm.logcdf((D[1]-x)/jump_std-(D[0]-x)/jump_std) \
-                - norm.logcdf((D[1]-x_prime)/jump_std-(D[0]-x_prime)/jump_std)
+            return norm.logcdf(old_div((D[1]-x),jump_std)-old_div((D[0]-x),jump_std)) \
+                - norm.logcdf(old_div((D[1]-x_prime),jump_std)-old_div((D[0]-x_prime),jump_std))
 
     logp = logpdf_target(x)
     while num_collected < num_samples:
@@ -118,7 +121,7 @@ def mh_sample(
             x = x_prime
             logp = logp_prime
             accepted += 1.0
-            acceptance_rate = accepted/aiters
+            acceptance_rate = old_div(accepted,aiters)
 
         if iters > burn and iters % lag == 0:
             num_collected += 1

@@ -29,8 +29,10 @@
 """
 Minimal test suite targeting cgpm.crosscat.loomcat.
 """
+from __future__ import absolute_import
 
-import hacks
+from builtins import range
+from . import hacks
 import pytest
 if not pytest.config.getoption('--integration'):
     hacks.skip('specify --integration to run integration tests')
@@ -63,7 +65,7 @@ def test_errors():
 
     state = State(
         D.T,
-        outputs=range(10, 16),
+        outputs=list(range(10, 16)),
         cctypes=['normal']*len(D),
         distargs=[None]*6,
         rng=gu.gen_rng(122),
@@ -71,7 +73,7 @@ def test_errors():
 
     engine = Engine(
         D.T,
-        outputs=range(10, 16),
+        outputs=list(range(10, 16)),
         cctypes=['normal']*len(D),
         distargs=[None]*6,
         rng=gu.gen_rng(122),

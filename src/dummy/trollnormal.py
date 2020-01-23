@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from past.utils import old_div
 import time
 
 import numpy as np
@@ -57,8 +59,8 @@ class TrollNormal(CGpm):
         )
 
     def _gaussian_log_pdf(self, x, mu, s):
-        normalizing_constant = -(np.log(2 * np.pi) / 2) - np.log(s)
-        return normalizing_constant - ((x - mu)**2 / (2 * s**2))
+        normalizing_constant = -(old_div(np.log(2 * np.pi), 2)) - np.log(s)
+        return normalizing_constant - (old_div((x - mu)**2, (2 * s**2)))
 
     def transition(self, N=None, S=None):
         time.sleep(.1)

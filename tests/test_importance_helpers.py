@@ -99,7 +99,7 @@ def test_retrieve_variable_to_cgpm():
     ]
     for order in itertools.permutations(cgpms):
         variable_to_cgpm = helpers.retrieve_variable_to_cgpm(order)
-        for v, c in variable_to_cgpm.iteritems():
+        for v, c in variable_to_cgpm.items():
             assert v in order[c].outputs
 
 def test_retrieve_adjacency_list():

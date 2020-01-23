@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from past.utils import old_div
 from math import lgamma
 from math import log
 from math import pi
@@ -183,7 +185,7 @@ class Normal(DistributionGpm):
     def posterior_hypers(N, sum_x, sum_x_sq, m, r, s, nu):
         rn = r + float(N)
         nun = nu + float(N)
-        mn = (r*m + sum_x)/rn
+        mn = old_div((r*m + sum_x),rn)
         sn = s + sum_x_sq + r*m*m - rn*mn*mn
         if sn == 0:
             sn = s

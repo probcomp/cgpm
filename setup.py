@@ -16,6 +16,7 @@
 
 # If some modules are not found, we use others, so no need to warn:
 # pylint: disable=import-error
+from __future__ import print_function
 try:
     from setuptools import setup
     from setuptools.command.build_py import build_py
@@ -51,14 +52,14 @@ def get_version():
     desc = subprocess.check_output([
         'git', 'describe', '--dirty', '--long', '--match', 'v*',
     ])
-    match = re.match(r'^v([^-]*)-([0-9]+)-(.*)$', desc)
+    match = re.match(b'^v([^-]*)-([0-9]+)-(.*)$', desc)
     assert match is not None
     verpart, revpart, localpart = match.groups()
     # Create a post version.
-    if revpart > '0' or 'dirty' in localpart:
+    if revpart > b'0' or b'dirty' in localpart:
         # Local part may be g0123abcd or g0123abcd-dirty.
         # Hyphens not kosher here, so replace by dots.
-        localpart = localpart.replace('-', '.')
+        localpart = localpart.replace(b'-', b'.')
         full_version = '%s.post%s+%s' % (verpart, revpart, localpart)
     # Create a release version.
     else:
@@ -87,9 +88,9 @@ def write_version_py(path):
             version_old = f.read()
     except IOError:
         version_old = None
-    version_new = '__version__ = %r\n' % (full_version,)
+    version_new = b'__version__ = %r\n' % (full_version,)
     if version_old != version_new:
-        print 'writing %s' % (path,)
+        print('writing %s' % (path,))
         with open(path, 'wb') as f:
             f.write(version_new)
 
@@ -99,7 +100,7 @@ def readme_contents():
         os.path.abspath(os.path.dirname(__file__)),
         'README.md')
     with open(readme_path) as readme_file:
-        return unicode(readme_file.read(), 'UTF-8')
+        return readme_file.read() + 'UTF-8'
 
 class local_build_py(build_py):
     def run(self):

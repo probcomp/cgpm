@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import zip
+from builtins import range
 import importlib
 import pytest
 
@@ -51,7 +53,7 @@ OLS_DISTARGS = {
     }
 }
 OLS_OUTPUTS = [0]
-OLS_INPUTS = range(1, len(cctypes))
+OLS_INPUTS = list(range(1, len(cctypes)))
 
 
 def test_integration():
@@ -70,7 +72,7 @@ def test_integration():
     with pytest.raises(ValueError):
         ols.unincorporate(20)
     # Unincorporate all rows.
-    for rowid in xrange(20):
+    for rowid in range(20):
         ols.unincorporate(rowid)
     # Unincorporating row 0 should raise.
     with pytest.raises(ValueError):
@@ -89,7 +91,7 @@ def test_integration():
     with pytest.raises(ValueError):
         observation = {0: 100}
         inputs = {i: D[0,i] for i in ols.inputs}
-        inputs[inputs.keys()[0]] = np.nan
+        inputs[list(inputs.keys())[0]] = np.nan
         ols.incorporate(0, observation, inputs)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):
@@ -103,7 +105,7 @@ def test_integration():
 
     # Invalid categorical inputs 5 for categorical(k=3).
     targets = {OLS_OUTPUTS[0]: 2}
-    inputs = dict(zip(OLS_INPUTS, [5, 5, 0, 1.4, 7, 4, 2, -2]))
+    inputs = dict(list(zip(OLS_INPUTS, [5, 5, 0, 1.4, 7, 4, 2, -2])))
     with pytest.raises(ValueError):
         ols.logpdf(-1, targets, None, inputs)
     with pytest.raises(ValueError):
@@ -111,7 +113,7 @@ def test_integration():
 
     # Invalid categorical inputs 2 for bernoulli.
     targets = {OLS_OUTPUTS[0]: 2}
-    inputs = dict(zip(OLS_INPUTS, [5, 5, 2, 1.4, 7, 4, 2, -2]))
+    inputs = dict(list(zip(OLS_INPUTS, [5, 5, 2, 1.4, 7, 4, 2, -2])))
     with pytest.raises(ValueError):
         ols.logpdf(-1, targets, None, inputs)
     with pytest.raises(ValueError):
@@ -119,7 +121,7 @@ def test_integration():
 
     # Do a logpdf computation.
     targets = {OLS_OUTPUTS[0]: 2}
-    inputs = dict(zip(OLS_INPUTS, [2, 5, 0, 1.4, 7, 4, 2, -2]))
+    inputs = dict(list(zip(OLS_INPUTS, [2, 5, 0, 1.4, 7, 4, 2, -2])))
     logp_old = ols.logpdf(-1, targets, None, inputs)
     assert logp_old < 0
     ols.simulate(-1, OLS_OUTPUTS, None, inputs)

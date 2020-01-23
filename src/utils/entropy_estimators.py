@@ -3,6 +3,12 @@
 # See readme.pdf for documentation
 # Or go to http://www.isi.edu/~gregv/npeet.html
 
+from __future__ import print_function
+from __future__ import division
+from builtins import zip
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import numpy.random as nr
 import random
@@ -26,7 +32,7 @@ def entropy(x, k=3, base=2):
   tree = ss.cKDTree(x)
   nn = [tree.query(point, k+1, p=float('inf'))[0][k] for point in x]
   const = digamma(N) - digamma(k) + d*log(2)
-  return (const + d*np.mean(map(log, nn))) / log(base)
+  return old_div((const + d*np.mean(list(map(log, nn)))), log(base))
 
 def mi(x, y, k=3, base=2):
   """Mutual information of x and y.
@@ -46,7 +52,7 @@ def mi(x, y, k=3, base=2):
   b = avgdigamma(y,dvec)
   c = digamma(k)
   d = digamma(len(x))
-  return (-a-b+c+d) / log(base)
+  return old_div((-a-b+c+d), log(base))
 
 def cmi(x, y, z, k=3, base=2):
   """Mutual information of x and y, conditioned on z
@@ -67,7 +73,7 @@ def cmi(x, y, z, k=3, base=2):
   b = avgdigamma(zip2(y,z), dvec)
   c = avgdigamma(z,dvec)
   d = digamma(k)
-  return (-a-b+c+d) / log(base)
+  return old_div((-a-b+c+d), log(base))
 
 def kldiv(x, xp, k=3, base=2):
   """KL Divergence between p and q for x~p(x),xp~q(x).
@@ -85,8 +91,8 @@ def kldiv(x, xp, k=3, base=2):
   treep = ss.cKDTree(xp)
   nn = [tree.query(point, k+1, p=float('inf'))[0][k] for point in x]
   nnp = [treep.query(point, k, p=float('inf'))[0][k-1] for point in x]
-  return (const + d * np.mean(map(log, nnp)) \
-    - d * np.mean(map(log, nn))) / log(base)
+  return old_div((const + d * np.mean(list(map(log, nnp))) \
+    - d * np.mean(list(map(log, nn)))), log(base))
 
 # DISCRETE ESTIMATORS
 def entropyd(sx, base=2):
@@ -99,26 +105,26 @@ def midd(x, y, base=2):
   """Discrete mutual information estimator.
   Given a list of samples which can be any hashable object
   """
-  return -entropyd(zip(x,y), base=base) + entropyd(x, base=base) \
+  return -entropyd(list(zip(x,y)), base=base) + entropyd(x, base=base) \
     + entropyd(y, base=base)
 
 def cmidd(x, y, z, base=2):
   """Discrete mutual information estimator.
   Given a list of samples which can be any hashable object.
   """
-  return entropyd(zip(y,z), base=base) + entropyd(zip(x,z), base=base) \
-    - entropyd(zip(x,y,z), base=base) - entropyd(z, base=base)
+  return entropyd(list(zip(y,z)), base=base) + entropyd(list(zip(x,z)), base=base) \
+    - entropyd(list(zip(x,y,z)), base=base) - entropyd(z, base=base)
 
 def hist(sx):
   """Histogram from list of samples."""
   d = dict()
   for s in sx:
     d[s] = d.get(s,0) + 1
-  return map(lambda z: float(z)/len(sx), d.values())
+  return [float(z)/len(sx) for z in list(d.values())]
 
 def entropyfromprobs(probs, base=2):
   # Turn a normalized list of probabilities of discrete outcomes into entropy.
-  return -sum(map(elog, probs)) / log(base)
+  return old_div(-sum(map(elog, probs)), log(base))
 
 def elog(x):
   # For entropy, 0 log 0 = 0. but we get an error for putting log 0.
@@ -145,7 +151,7 @@ def micd(x, y, k=3, base=2, warning=True):
       mi -= word_dict[yval] * entropy(xgiveny, k, base)
     else:
       if warning:
-        print "Warning, after conditioning, on y=",yval," insufficient data. Assuming maximal entropy in this case."
+        print("Warning, after conditioning, on y=",yval," insufficient data. Assuming maximal entropy in this case.")
       mi -= word_dict[yval] * overallentropy
   return mi # Units already applied.
 
@@ -162,7 +168,7 @@ def shuffle_test(measure,x,y,z=False,ns=60,ci=0.95,**kwargs):
   """
   xp = x[:] # A copy that we can shuffle.
   outputs = []
-  for i in xrange(ns):
+  for i in range(ns):
     random.shuffle(xp)
     if z:
       outputs.append(measure(xp, y, z, **kwargs))
@@ -181,13 +187,13 @@ def avgdigamma(points, dvec):
   N = len(points)
   tree = ss.cKDTree(points)
   avg = 0.
-  for i in xrange(N):
+  for i in range(N):
     dist = dvec[i]
     # Subtlety, we don't include the boundary point,
     # but we are implicitly adding 1 to kraskov def bc center point is included.
     num_points = len(tree.query_ball_point(points[i], dist-1e-15,
       p=float('inf')))
-    avg += digamma(num_points) / N
+    avg += old_div(digamma(num_points), N)
   return avg
 
 def zip2(*args):
@@ -196,4 +202,4 @@ def zip2(*args):
   return [sum(sublist,[]) for sublist in zip(*args)]
 
 if __name__ == "__main__":
-  print "NPEET: Non-parametric entropy estimation toolbox. See readme.pdf for details on usage."
+  print("NPEET: Non-parametric entropy estimation toolbox. See readme.pdf for details on usage.")

@@ -151,7 +151,7 @@ class Dim(CGpm):
 
     def transition_hypers(self):
         """Transitions the hyperparameters of each cluster."""
-        hypers = self.hypers.keys()
+        hypers = list(self.hypers.keys())
         self.rng.shuffle(hypers)
         # For each hyper.
         for hyper in hypers:
@@ -206,7 +206,7 @@ class Dim(CGpm):
 
     def set_hypers(self, hypers):
         self.hypers = hypers
-        for model in self.clusters.values():
+        for model in list(self.clusters.values()):
             model.set_hypers(hypers)
 
     # --------------------------------------------------------------------------
@@ -241,8 +241,8 @@ class Dim(CGpm):
         if isinstance(targets, dict):
             valid_targets = not math.isnan(targets[self.index])
         if constraints:
-            valid_constraints = not any(np.isnan(constraints.values()))
+            valid_constraints = not any(np.isnan(list(constraints.values())))
         if inputs:
-            valid_inputs = not any(np.isnan(inputs2.values()))
+            valid_inputs = not any(np.isnan(list(inputs2.values())))
         assert valid_constraints
         return k, inputs2, valid_targets and valid_inputs

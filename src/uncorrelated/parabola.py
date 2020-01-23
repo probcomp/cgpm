@@ -45,7 +45,7 @@ class ParabolaY(CGpm):
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         assert targets == self.outputs
-        assert inputs.keys() == self.inputs
+        assert list(inputs.keys()) == self.inputs
         assert not constraints
         x = inputs[self.inputs[0]]
         u = self.rng.rand()
@@ -57,8 +57,8 @@ class ParabolaY(CGpm):
         return {self.outputs[0]: y}
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
-        assert targets.keys() == self.outputs
-        assert inputs.keys() == self.inputs
+        assert list(targets.keys()) == self.outputs
+        assert list(inputs.keys()) == self.inputs
         assert not constraints
         x = inputs[self.inputs[0]]
         y = targets[self.outputs[0]]

@@ -14,6 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import map
+from builtins import next
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import importlib
 import itertools
 import math
@@ -28,7 +34,7 @@ import numpy as np
 from cgpm.utils import validation as vu
 
 from cgpm.cgpm import CGpm
-CGPM_SIMULATE_NARGS = CGpm.simulate.func_code.co_argcount
+CGPM_SIMULATE_NARGS = CGpm.simulate.__code__.co_argcount
 
 
 colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
@@ -83,7 +89,7 @@ def log_normalize(logp):
 
 def normalize(p):
     """Normalizes a np array of probabilites."""
-    return np.asarray(p, dtype=float) / sum(p)
+    return old_div(np.asarray(p, dtype=float), sum(p))
 
 def logp_crp(N, Nk, alpha):
     """Returns the log normalized P(N,K|alpha), where N is the number of
@@ -104,7 +110,7 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
     """Compute the CRP probabilities for a Gibbs transition of customer i,
     with table counts Nk, table assignments Z, and m auxiliary tables."""
     # XXX F ME
-    K = sorted(Nk) if isinstance(Nk, dict) else xrange(len(Nk))
+    K = sorted(Nk) if isinstance(Nk, dict) else range(len(Nk))
     singleton = Nk[Z[i]] == 1
     m_aux = m-1 if singleton else m
     p_table_aux = alpha/float(m)
@@ -116,7 +122,7 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
 def logp_crp_fresh(N, Nk, alpha, m=1):
     """Compute the CRP probabilities for a fresh customer i=N+1, with
     table counts Nk, total customers N=sum(Nk), and m auxiliary tables."""
-    log_crp_numer = np.log(Nk + [alpha/m]*m)
+    log_crp_numer = np.log(Nk + [old_div(alpha,m)]*m)
     logp_crp_denom = log(N + alpha)
     return log_crp_numer - logp_crp_denom
 
@@ -128,7 +134,7 @@ def log_pflip(logp, array=None, size=None, rng=None):
 def pflip(p, array=None, size=None, rng=None):
     """Categorical draw from a vector p of probabilities."""
     if array is None:
-        array = range(len(p))
+        array = list(range(len(p)))
     if len(p) == 1:
         return array[0] if size is None else [array[0]] * size
     if rng is None:
@@ -220,10 +226,10 @@ def simulate_crp(N, alpha, rng=None):
 
     partition = [0]*N
     Nk = [1]
-    for i in xrange(1,N):
+    for i in range(1,N):
         K = len(Nk)
         ps = np.zeros(K+1)
-        for k in xrange(K):
+        for k in range(K):
             ps[k] = float(Nk[k])
         ps[K] = alpha
         ps /= (float(i) - 1 + alpha)
@@ -262,14 +268,14 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     friends = {col: block for block in Cd for col in block}
 
     # Assign customers.
-    for cust in xrange(N):
+    for cust in range(N):
         # If the customer has been assigned, skip.
         if Z[cust] > -1:
             continue
         # Find valid tables for cust and friends.
         assert all(Z[f] == -1 for f in friends.get(cust, [cust]))
         prob_table = [0] * (max(Z)+1)
-        for t in xrange(max(Z)+1):
+        for t in range(max(Z)+1):
             # Current customers at table t.
             t_custs = [i for i,z in enumerate(Z) if z==t]
             prob_table[t] = len(t_custs)
@@ -349,7 +355,7 @@ def logp_crp_constrained_dependent(Z, alpha, Cd):
 
     # Get the effective counts.
     counts = get_crp_constrained_partition_counts(Z, Cd)
-    Nk = counts.values()
+    Nk = list(counts.values())
     assert sum(Nk) == num_simulate
 
     return logp_crp(num_simulate, Nk, alpha)
@@ -396,7 +402,7 @@ def get_crp_constrained_partition_counts(Z, Cd):
 
 def build_rowid_blocks(Zvr):
     A = np.asarray(Zvr).T
-    U = map(tuple, A)
+    U = list(map(tuple, A))
     return {u:np.where(np.all(A==u, axis=1))[0] for u in U}
 
 
@@ -409,7 +415,7 @@ def simulate_many(simulate):
             N = kwargs.get('N', None)
         if N is None:
             return simulate(*args, **kwargs)
-        return [simulate(*args, **kwargs) for _i in xrange(N)]
+        return [simulate(*args, **kwargs) for _i in range(N)]
     return simulate_wrapper
 
 

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 from cgpm.cgpm import CGpm
 from cgpm.mixtures.dim import Dim
 from cgpm.utils import general as gu
@@ -50,13 +51,13 @@ class DistributionGpm(CGpm):
     def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data
         assert not inputs
-        assert observation.keys() == self.outputs
+        assert list(observation.keys()) == self.outputs
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert rowid not in self.data
         assert not inputs
         assert not constraints
-        assert targets.keys() == self.outputs
+        assert list(targets.keys()) == self.outputs
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         assert not constraints
@@ -75,8 +76,8 @@ class DistributionGpm(CGpm):
             hypers=self.get_hypers(), distargs=self.get_distargs(),
             rng=self.rng)
         dim.clusters[0] = self
-        dim.transition_hyper_grids(X=self.data.values())
-        for i in xrange(N):
+        dim.transition_hyper_grids(X=list(self.data.values()))
+        for i in range(N):
             dim.transition_hypers()
 
 

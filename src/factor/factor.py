@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import map
+from builtins import zip
 from collections import OrderedDict
 
 import numpy as np
@@ -178,9 +180,9 @@ class FactorAnalysis(CGpm):
         constraints_r = self.reindex(constraints)
         # Retrieve conditional distribution.
         muG, covG = FactorAnalysis.mvn_condition(
-            self.mu, self.cov, targets_r.keys(), constraints_r)
+            self.mu, self.cov, list(targets_r.keys()), constraints_r)
         # Compute log density.
-        x = np.array(targets_r.values())
+        x = np.array(list(targets_r.values()))
         return multivariate_normal.logpdf(x, muG, covG)
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -207,8 +209,8 @@ class FactorAnalysis(CGpm):
             if isinstance(samp, float):
                 samp = [samp]
             assert len(targets) == len(samp)
-            return dict(zip(targets, samp))
-        return get_sample(sample) if N is None else map(get_sample, sample)
+            return dict(list(zip(targets, samp)))
+        return get_sample(sample) if N is None else list(map(get_sample, sample))
 
     def logpdf_score(self):
         def compute_logpdf(x):
@@ -218,7 +220,7 @@ class FactorAnalysis(CGpm):
         return sum(compute_logpdf(x) for x in self.data)
 
     def transition(self, N=None):
-        X = np.asarray(self.data.values())
+        X = np.asarray(list(self.data.values()))
         # Only run inference on observations without missing entries.
         self.fa = sklearn.decomposition.FactorAnalysis(n_components=self.L)
         self.fa.fit(X[~np.any(np.isnan(X), axis=1)])
@@ -291,7 +293,7 @@ class FactorAnalysis(CGpm):
         if isinstance(variables, list):
             return indexes
         else:
-            return dict(zip(indexes, variables.values()))
+            return dict(list(zip(indexes, list(variables.values()))))
 
     def joint_parameters(self):
         mean = np.concatenate((np.zeros(self.L), self.mux))
@@ -325,7 +327,7 @@ class FactorAnalysis(CGpm):
         assert len(mu) == cov.shape[0] == cov.shape[1]
         assert len(query) + len(evidence) <= len(mu)
         # Extract indexes and values from evidence.
-        Ei, Ev = evidence.keys(), evidence.values()
+        Ei, Ev = list(evidence.keys()), list(evidence.values())
         muQ, muE, covQ, covE, covJ = \
             FactorAnalysis.mvn_marginalize(mu, cov, query, Ei)
         # Invoke Fact 4 from, where G means given.
@@ -344,7 +346,7 @@ class FactorAnalysis(CGpm):
         metadata['inputs'] = self.inputs
         metadata['N'] = self.N
         metadata['L'] = self.L
-        metadata['data'] = self.data.items()
+        metadata['data'] = list(self.data.items())
 
         # Store paramters as list for JSON.
         metadata['params'] = dict()

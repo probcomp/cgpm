@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 import pytest
 
 from cgpm.crosscat.engine import Engine
@@ -69,7 +70,7 @@ def test_incorporate_state():
         T[:,:2], cctypes=CCTYPES[:2], distargs=DISTARGS[:2], rng=gu.gen_rng(0))
     state.transition(N=5)
 
-    target = state.views.keys()[0]
+    target = list(state.views.keys())[0]
 
     # Incorporate a new dim into view[0].
     state.incorporate_dim(
@@ -158,7 +159,7 @@ def test_incorporate_state():
     state.transition(N=1)
 
     # Incorporate the rest of the dims in the default way.
-    for i in xrange(6, len(CCTYPES)):
+    for i in range(6, len(CCTYPES)):
         state.incorporate_dim(
             T[:,i], outputs=[max(state.outputs)+1],
             cctype=CCTYPES[i], distargs=DISTARGS[i])

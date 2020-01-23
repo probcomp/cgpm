@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 import pytest
 
 import numpy as np
@@ -32,7 +33,7 @@ X = [[1,     np.nan,     2,         -1,         np.nan  ],
 def get_state():
     return State(
         X,
-        outputs=range(5),
+        outputs=list(range(5)),
         cctypes=['normal']*5,
         Zv={0:0, 1:0, 2:0, 3:1, 4:1},
         rng=gu.gen_rng(0),
@@ -95,7 +96,7 @@ def test_incorporate_valid():
     assert state.views[1].Nk(0) == previous+1
     state.transition(N=2)
     # Hypothetical cluster 100.
-    view = state.views[state.views.keys()[0]]
+    view = state.views[list(state.views.keys())[0]]
     state.incorporate(
         state.n_rows(),
         {0:0, 1:1, 2:2, 3:3, 4:4, view.outputs[0]:100})
@@ -105,7 +106,7 @@ def test_unincorporate():
     state = get_state()
     # Unincorporate all the rows except for the last one.
     # XXX Must remove the last rowid only at each invocation.
-    rowids = range(0, state.n_rows())
+    rowids = list(range(0, state.n_rows()))
     for rowid in rowids[:-1]:
         with pytest.raises(ValueError):
             state.unincorporate(rowid)
@@ -125,7 +126,7 @@ def test_incorporate_session():
         X, cctypes=['normal']*5, Zv={0:0, 1:0, 2:1, 3:1, 4:2}, rng=rng)
     # Incorporate row into a singleton cluster for all views.
     previous = [len(state.views[v].Nk()) for v in [0,1,2]]
-    data = {i: rng.normal() for i in xrange(5)}
+    data = {i: rng.normal() for i in range(5)}
     clusters = {
         state.views[0].outputs[0]: previous[0],
         state.views[1].outputs[0]: previous[1],
@@ -135,7 +136,7 @@ def test_incorporate_session():
     assert [len(state.views[v].Nk()) for v in [0,1,2]] == \
         [p+1 for p in previous]
     # Incorporate row without specifying clusters, and some missing values
-    data = {i: rng.normal() for i in xrange(2)}
+    data = {i: rng.normal() for i in range(2)}
     state.incorporate(state.n_rows(), data)
     state.transition(N=3)
     # Remove the incorporated rowid.

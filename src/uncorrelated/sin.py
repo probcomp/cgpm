@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+from __future__ import division
+from past.utils import old_div
 import numpy as np
 
 from scipy.integrate import dblquad
@@ -47,7 +50,7 @@ class SinY(CGpm):
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         assert targets == self.outputs
-        assert inputs.keys() == self.inputs
+        assert list(inputs.keys()) == self.inputs
         assert not constraints
         x = inputs[self.inputs[0]]
         noise = self.rng.uniform(high=self.noise)
@@ -58,8 +61,8 @@ class SinY(CGpm):
         return {self.outputs[0]: y}
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
-        assert targets.keys() == self.outputs
-        assert inputs.keys() == self.inputs
+        assert list(targets.keys()) == self.outputs
+        assert list(inputs.keys()) == self.inputs
         assert not constraints
         x = inputs[self.inputs[0]]
         y = targets[self.outputs[0]]
@@ -135,7 +138,7 @@ class Sin(DirectedXyGpm):
         # compute overflow
         overflow = 0
         if y < self.noise:
-            overflow = np.arccos(y-self.noise) - np.pi / 2
+            overflow = np.arccos(y-self.noise) - old_div(np.pi, 2)
         return x_max - x_min, overflow
 
     def _lower_y(self, x):
@@ -152,12 +155,12 @@ class Sin(DirectedXyGpm):
 
     def _sanity_test(self):
         # Marginal of x integrates to one.
-        print quad(lambda x: np.exp(self.logpdf_x(x)), self.D[0], self.D[1])
+        print(quad(lambda x: np.exp(self.logpdf_x(x)), self.D[0], self.D[1]))
 
         # Marginal of y integrates to one.
-        print quad(lambda y: np.exp(self.logpdf_y(y)), -1 ,1)
+        print(quad(lambda y: np.exp(self.logpdf_y(y)), -1 ,1))
 
         # Joint of x,y integrates to one; quadrature will fail for small noise.
-        print dblquad(
+        print(dblquad(
             lambda y,x: np.exp(self.logpdf_xy(x,y)), self.D[0], self.D[1],
-            lambda x: -1, lambda x: 1)
+            lambda x: -1, lambda x: 1))

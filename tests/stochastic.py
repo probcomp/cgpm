@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from future.utils import raise_
 import os
 import sys
 
@@ -40,7 +41,7 @@ def stochastic(max_runs, min_passes):
             npasses = 0
             last_seed = None
             last_exc_info = None
-            for i in xrange(max_runs):
+            for i in range(max_runs):
                 seed = os.urandom(32)
                 try:
                     value = f(seed)
@@ -52,6 +53,6 @@ def stochastic(max_runs, min_passes):
                     if min_passes <= npasses:
                         return value
             t, v, tb = last_exc_info
-            raise StochasticError, StochasticError(last_seed, t, v), tb
+            raise_(StochasticError, StochasticError(last_seed, t, v), tb)
         return f_
     return wrap

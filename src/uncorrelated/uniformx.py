@@ -45,6 +45,6 @@ class UniformX(CGpm):
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert not constraints
         assert not inputs
-        assert targets.keys() == self.outputs
+        assert list(targets.keys()) == self.outputs
         x = targets[self.outputs[0]]
         return self.uniform.logpdf(x)

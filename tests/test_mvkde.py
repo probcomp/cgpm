@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import importlib
 
 import json
@@ -179,7 +183,7 @@ SAMPLES = [
     bi_normal_5,
 ]
 
-@pytest.mark.parametrize('i', xrange(len(SAMPLES)))
+@pytest.mark.parametrize('i', range(len(SAMPLES)))
 def test_univariate_two_sample(i):
     # This test ensures posterior sampling of uni/bimodal dists on R. When the
     # plot is shown, a density curve overlays the samples which is useful for
@@ -209,7 +213,7 @@ def test_univariate_two_sample(i):
     pdfs = [kde.logpdf(-1, {3: x}) for x in xs]
     # Convert the pdfs from the range to 1 to 1.5 by rescaling.
     pdfs_plot = np.exp(pdfs)+1
-    pdfs_plot = (pdfs_plot/max(pdfs_plot)) * 1.5
+    pdfs_plot = (old_div(pdfs_plot,max(pdfs_plot))) * 1.5
     ax.plot(xs, pdfs_plot, color='k')
     # Clear up some labels.
     ax.set_title('Univariate KDE Posterior versus Generator')
@@ -248,8 +252,8 @@ def test_bivariate_conditional_two_sample(noise):
         [[s[0],s[1]] for s in kde.simulate(-1, [0,1], N=N_SAMPLES)])
     # Plot comparisons of the joint.
     fig, ax = plt.subplots(nrows=1, ncols=2)
-    plot_data = zip(
-        ax, ['b', 'r'], ['Train', 'KDE'], [samples_train, samples_gen])
+    plot_data = list(zip(
+        ax, ['b', 'r'], ['Train', 'KDE'], [samples_train, samples_gen]))
     for (a, c, l, s) in plot_data:
         a.scatter(s[:,0], s[:,1], color=c, label=l)
         a.grid()
@@ -283,7 +287,7 @@ def test_univariate_categorical():
     rng = gu.gen_rng(2)
     N_SAMPLES = 1000
     p_theory = [.3, .1, .2, .15, .15, .1]
-    samples_test = rng.choice(range(6), p=p_theory, size=N_SAMPLES)
+    samples_test = rng.choice(list(range(6)), p=p_theory, size=N_SAMPLES)
     kde = MultivariateKde(
         [7], None, distargs={O: {ST: [C], SA:[{'k': 6}]}}, rng=rng)
     # Incorporate observations.
@@ -319,7 +323,7 @@ def test_noisy_permutation_categorical():
 
     # Corrupt 10% of the samples.
     corruption = rng.choice(
-        range(N_SAMPLES), replace=False, size=int(.1*N_SAMPLES))
+        list(range(N_SAMPLES)), replace=False, size=int(.1*N_SAMPLES))
     for c in corruption:
         Y[c] = rng.choice([i for i in f_permutation if i!=Y[c]])
 
@@ -352,7 +356,7 @@ def test_noisy_permutation_categorical():
     def test_logps_match(s, ps):
         f_obs = np.bincount(s)
         n = float(sum(f_obs))
-        p_obs = f_obs / n
+        p_obs = old_div(f_obs, n)
         _, pval = chisquare(p_obs*n, ps*n)
         assert 0.05 < pval
 
@@ -387,10 +391,10 @@ def test_serialize():
     data[10:,-1] = 1
 
     kde = MultivariateKde(
-        range(5), None,
+        list(range(5)), None,
         distargs={O: {ST: [N, N, N, N, C], SA: [{},{},{},{},{'k':1}]}}, rng=rng)
     for rowid, x in enumerate(data):
-        kde.incorporate(rowid, dict(zip(range(5), x)))
+        kde.incorporate(rowid, dict(list(zip(list(range(5)), x))))
     kde.transition()
 
     metadata_s = json.dumps(kde.to_metadata())
@@ -430,7 +434,7 @@ def generate_real_nominal_data(N, rng=None):
     data[:,0] = T[0]
     indicators = [0, 1, 2, 3, 4, 5]
     counts = {0:0, 1:0, 2:0}
-    for i in xrange(N):
+    for i in range(N):
         k = Zc[0][i]
         data[i,1] = 2*indicators[k] + counts[k] % 2
         counts[k] += 1
@@ -459,7 +463,7 @@ def test_joint(kde_xz):
     # generate_real_nominal_data) and perform a KS tests at each of the
     # subpopulations at the six levels of z.
 
-    data = np.asarray(kde_xz.data.values())
+    data = np.asarray(list(kde_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     joint_samples = kde_xz.simulate(-1, [0,1], N=len(data))
     _, ax = plt.subplots()
@@ -486,7 +490,7 @@ def test_conditional_indicator(kde_xz):
     # generate_real_nominal_data) and perfrom a KS tests at each of the
     # subpopulations at the six levels of z.
 
-    data = np.asarray(kde_xz.data.values())
+    data = np.asarray(list(kde_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     _, ax = plt.subplots()
     ax.set_title('Conditional Simulation Of X Given Indicator Z')
@@ -513,7 +517,7 @@ def test_conditional_real(kde_xz):
     # generate_real_nominal_data) and plot the frequencies of the simulated
     # values.
 
-    data = np.asarray(kde_xz.data.values())
+    data = np.asarray(list(kde_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     fig, axes = plt.subplots(2,3)
     fig.suptitle('Conditional Simulation Of Indicator Z Given X', size=20)

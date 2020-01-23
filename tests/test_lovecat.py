@@ -17,14 +17,18 @@
 """
 This test suite targets cgpm.crosscat.lovecat
 """
+from __future__ import absolute_import
 
-import hacks
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from . import hacks
 import pytest
 if not pytest.config.getoption('--integration'):
     hacks.skip('specify --integration to run integration tests')
 
 
-import StringIO
+import io
 import contextlib
 import itertools
 import time
@@ -42,7 +46,7 @@ from cgpm.utils import test as tu
 # -- Global variables shared by all module functions.
 rng = gu.gen_rng(2)
 
-outputs = range(8)
+outputs = list(range(8))
 cctypes, distargs = cu.parse_distargs([
     'normal',
     'poisson',
@@ -61,7 +65,7 @@ def generate_dataset():
         [.95]*len(cctypes), rng=gu.gen_rng(2))
 
     # Generate some missing entries in D.
-    missing = rng.choice(range(D.shape[1]), size=(D.shape[0], 4), replace=True)
+    missing = rng.choice(list(range(D.shape[1])), size=(D.shape[0], 4), replace=True)
     for i, m in enumerate(missing):
         D[i,m] = np.nan
 
@@ -229,7 +233,7 @@ def test_lovecat_transition_rows():
     ]
 
     # Transition some rowids 0, 1, 2, 3 only.
-    rowids = range(10)
+    rowids = list(range(10))
     engine.transition_lovecat(
         N=10,
         rowids=rowids,
@@ -255,20 +259,14 @@ def test_lovecat_transition_rows():
         all_rowids_match_s = True
 
         for var in s.outputs:
-            Zr_new = filter(
-                lambda (r,c): r not in rowids,
-                s.view_for(var).Zr().iteritems()
-            )
-            Zr_old = filter(
-                lambda (r,c): r not in rowids,
-                Zr_saved[i][var]
-            )
+            Zr_new = [r_c for r_c in iter(s.view_for(var).Zr().items()) if r_c[0] not in rowids]
+            Zr_old = [r_c1 for r_c1 in Zr_saved[i][var] if r_c1[0] not in rowids]
             assert check_partitions_match(Zr_new, Zr_old)
 
             all_rowids_match_s = (
                 all_rowids_match_s and
                 check_partitions_match(
-                    s.view_for(var).Zr().iteritems(),
+                    iter(s.view_for(var).Zr().items()),
                     Zr_saved[i][var],
                 ))
         all_rowids_match = \

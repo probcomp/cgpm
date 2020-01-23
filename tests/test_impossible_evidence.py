@@ -17,6 +17,7 @@
 """This test suite ensures that simulate and logpdf with zero-density evidence
 raises a ValueError."""
 
+from builtins import range
 import pytest
 
 from cgpm.crosscat.engine import State
@@ -43,7 +44,7 @@ def state():
         T,
         cctypes=cctypes,
         distargs=distargs,
-        Zv={i: 0 for i in xrange(len(cctypes))},
+        Zv={i: 0 for i in range(len(cctypes))},
         rng=gu.gen_rng(0)
     )
     return s

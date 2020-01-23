@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+from builtins import range
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -44,7 +46,7 @@ def run_test(args):
     axes = axes.ravel()
     k = 0
     for shape in shapes:
-        print "Shape: %s" % shape
+        print("Shape: %s" % shape)
         T_o = np.asarray(gen_function[shape](n_rows))
         T_i = []
 
@@ -52,9 +54,9 @@ def run_test(args):
             T_o.T, cctypes=cctypes, distargs=distargs, num_states=n_chains)
         engine.transition(N=n_iters)
 
-        for chain in xrange(n_chains):
+        for chain in range(n_chains):
             state = engine.get_state(chain)
-            print "chain %i of %i" % (chain+1, n_chains)
+            print("chain %i of %i" % (chain+1, n_chains))
             T_i.extend(state.simulate(-1, [0,1], N=n_per_chain))
 
         T_i = np.array(T_i)
@@ -75,7 +77,7 @@ def run_test(args):
 
         k += 1
 
-    print "Done."
+    print("Done.")
     return fig
 
 if __name__ == "__main__":

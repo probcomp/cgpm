@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 import numpy as np
 import pytest
 
@@ -76,7 +77,7 @@ def test_simple_alterations():
     out_expected[out_f] *= 13
     out_expected[out_g] *= 12
 
-    for s in xrange(engine.num_states()):
+    for s in range(engine.num_states()):
         if s in statenos:
             assert engine.states[s].outputs == out_expected
         else:

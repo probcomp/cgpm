@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from builtins import range
 import itertools
 import pytest
 
@@ -23,14 +25,14 @@ from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
 from cgpm.utils import validation as vu
 
-from markers import integration
+from .markers import integration
 
 
 def test_naive_bayes_independence():
     rng = gu.gen_rng(1)
     D = rng.normal(size=(10,1))
     T = np.repeat(D, 10, axis=1)
-    Ci = list(itertools.combinations(range(10), 2))
+    Ci = list(itertools.combinations(list(range(10)), 2))
     state = State(T, cctypes=['normal']*10, Ci=Ci, rng=rng)
     state.transition(N=10, progress=0)
     vu.validate_crp_constrained_partition(state.Zv(), [], Ci, {}, {})
@@ -69,12 +71,12 @@ def test_zero_based_outputs():
     rng = gu.gen_rng(1)
     D = rng.normal(size=(10,1))
     T = np.repeat(D, 10, axis=1)
-    outputs = range(10, 20)
+    outputs = list(range(10, 20))
     with pytest.raises(ValueError):
-        State(T, outputs=range(10,20), cctypes=['normal']*10,
+        State(T, outputs=list(range(10,20)), cctypes=['normal']*10,
             Cd=[(2,0)], rng=rng)
     with pytest.raises(ValueError):
-        State(T, outputs=range(10,20), cctypes=['normal']*10,
+        State(T, outputs=list(range(10,20)), cctypes=['normal']*10,
             Ci=[(2,0)], rng=gu.gen_rng(0))
 
 @integration
@@ -82,7 +84,7 @@ def test_naive_bayes_independence_lovecat():
     rng = gu.gen_rng(1)
     D = rng.normal(size=(10,1))
     T = np.repeat(D, 10, axis=1)
-    Ci = list(itertools.combinations(range(10), 2))
+    Ci = list(itertools.combinations(list(range(10)), 2))
     state = State(T, cctypes=['normal']*10, Ci=Ci, rng=gu.gen_rng(0))
     state.transition(N=10, progress=0)
     vu.validate_crp_constrained_partition(state.Zv(), [], Ci, {}, {})
@@ -115,7 +117,7 @@ def test_independence_inference_quality_lovecat():
     data_view_2 = np.repeat(column_view_2, 4, axis=1)
     data = np.column_stack((data_view_1, data_view_2))
 
-    Zv0 = {i: 0 for i in xrange(8)}
+    Zv0 = {i: 0 for i in range(8)}
     state = State(data, Zv=Zv0, cctypes=['normal']*8, rng=gu.gen_rng(10))
     state.transition_lovecat(N=100, progress=1)
     for col in [0, 1, 2, 3,]:

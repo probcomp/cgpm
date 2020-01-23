@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+from builtins import range
 import os
 
 import matplotlib.pyplot as plt
@@ -55,7 +57,7 @@ def launch_analysis():
 def render_states_to_disk(filepath, prefix):
     engine = Engine.from_pickle(filepath)
     for i in range(engine.num_states()):
-        print '\r%d' % (i,)
+        print('\r%d' % (i,))
         savefile = '%s-%d' % (prefix, i)
         state = engine.get_state(i)
         ru.viz_state(

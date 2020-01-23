@@ -24,6 +24,7 @@ This test suite targets the following functions for simulating CRPs:
 Refer to the docstrings to understand how these priors differ.
 """
 
+from builtins import range
 import itertools
 
 from collections import defaultdict
@@ -117,7 +118,7 @@ def test_no_constraints():
 
 def test_all_friends():
     N, alpha = 10, 1.4
-    Cd = [range(N)]
+    Cd = [list(range(N))]
     Ci = []
     Rd = Ri = {}
 
@@ -132,7 +133,7 @@ def test_all_friends():
 def test_all_enemies():
     N, alpha = 13, 1.4
     Cd = []
-    Ci = list(itertools.combinations(range(N), 2))
+    Ci = list(itertools.combinations(list(range(N)), 2))
     Rd = Ri = {}
     Z = gu.simulate_crp_constrained(
         N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
@@ -165,7 +166,7 @@ def get_partition_counts(Z):
     for customer in Z:
         table = Z[customer]
         counts[table] += 1
-    return counts.values()
+    return list(counts.values())
 
 def test_logp_no_dependence_constraints():
     Z = {0:0, 1:0, 2:0, 3:1}

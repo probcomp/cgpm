@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import map
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 from collections import OrderedDict
 
 import numpy as np
@@ -69,7 +74,7 @@ class MultivariateKde(CGpm):
             raise ValueError('Wrong number of statargs: %s.' % distargs)
         # Ensure number of categories provided as k.
         if any('k' not in distargs['outputs']['statargs'][i]
-                for i in xrange(len(outputs))
+                for i in range(len(outputs))
                 if distargs['outputs']['stattypes'][i] != 'numerical'):
             raise ValueError('Missing number of categories k: %s' % distargs)
         # Build the object.
@@ -125,7 +130,7 @@ class MultivariateKde(CGpm):
             raise ValueError('Prohibited inputs: %s' % (inputs,))
         if not targets:
             raise ValueError('No targets: %s' % (targets,))
-        if any(np.isnan(v) for v in targets.values()):
+        if any(np.isnan(v) for v in list(targets.values())):
             raise ValueError('Invalid nan values in targets: %s' % (targets,))
         if any(q not in self.outputs for q in targets):
             raise ValueError('Unknown targets: %s' % (targets,))
@@ -138,9 +143,9 @@ class MultivariateKde(CGpm):
                 self._stattypes(targets),
                 bw=self._bw(targets),
             )
-            pdf = model.pdf(targets.values())
+            pdf = model.pdf(list(targets.values()))
         else:
-            full_members = self._dataset(targets.keys() + constraints.keys())
+            full_members = self._dataset(list(targets.keys()) + list(constraints.keys()))
             model = kernel_density.KDEMultivariateConditional(
                 full_members[:,:len(targets)],
                 full_members[:,len(targets):],
@@ -148,7 +153,7 @@ class MultivariateKde(CGpm):
                 self._stattypes(constraints),
                 bw=np.concatenate((self._bw(targets), self._bw(constraints))),
             )
-            pdf = model.pdf(targets.values(), constraints.values())
+            pdf = model.pdf(list(targets.values()), list(constraints.values()))
         return np.log(pdf)
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -165,11 +170,11 @@ class MultivariateKde(CGpm):
                 % (targets, constraints,))
         constraints = self.populate_constraints(rowid, targets, constraints)
         if constraints:
-            full_members = self._dataset(targets + constraints.keys())
+            full_members = self._dataset(targets + list(constraints.keys()))
             weights = _kernel_base.gpke(
                 self._bw(constraints),
                 full_members[:,len(targets):],
-                constraints.values(),
+                list(constraints.values()),
                 self._stattypes(constraints),
                 tosum=False,
             )
@@ -202,10 +207,10 @@ class MultivariateKde(CGpm):
         assert self.stattypes[idx] in ['categorical', 'nominal']
         c = self.levels[q]
         def _compute_probabilities(s):
-            return 1 - self.bw[idx] if s == Xi else self.bw[idx] / (c - 1)
-        probs = map(_compute_probabilities, range(c))
+            return 1 - self.bw[idx] if s == Xi else old_div(self.bw[idx], (c - 1))
+        probs = list(map(_compute_probabilities, list(range(c))))
         assert np.allclose(sum(probs), 1)
-        return self.rng.choice(range(c), p=probs)
+        return self.rng.choice(list(range(c)), p=probs)
 
     def logpdf_score(self):
         def compute_logpdf(rowid, x):
@@ -213,7 +218,7 @@ class MultivariateKde(CGpm):
             targets = {self.outputs[i]: v
                 for i, v in enumerate(x) if not np.isnan(v)}
             return self.logpdf(rowid, targets)
-        return sum(compute_logpdf(rowid, x) for rowid, x in self.data.items())
+        return sum(compute_logpdf(rowid, x) for rowid, x in list(self.data.items()))
 
     def transition(self, N=None):
         if self.N > 0:
@@ -229,7 +234,7 @@ class MultivariateKde(CGpm):
 
     def _dataset(self, outputs):
         indexes = [self.outputs.index(q) for q in outputs]
-        X = np.asarray(self.data.values())[:,indexes]
+        X = np.asarray(list(self.data.values()))[:,indexes]
         return X[~np.any(np.isnan(X), axis=1)]
 
     def _default_bw(self, q):
@@ -291,7 +296,7 @@ class MultivariateKde(CGpm):
         metadata['inputs'] = self.inputs
         metadata['distargs'] = self.get_distargs()
         metadata['N'] = self.N
-        metadata['data'] = self.data.items()
+        metadata['data'] = list(self.data.items())
 
         metadata['params'] = dict()
         metadata['params']['bw'] = self.bw

@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import zip
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import sys
 
 import numpy as np
@@ -35,25 +42,25 @@ def _crosscat_M_c(state):
 
     def create_metadata_numerical():
         return {
-            unicode('modeltype'): unicode('normal_inverse_gamma'),
-            unicode('value_to_code'): {},
-            unicode('code_to_value'): {},
+            str('modeltype'): str('normal_inverse_gamma'),
+            str('value_to_code'): {},
+            str('code_to_value'): {},
         }
     def create_metadata_categorical(col, k):
         categories = [v for v in sorted(set(T[col])) if not np.isnan(v)]
         assert all(0 <= c < k for c in categories)
-        codes = [unicode('%d') % (c,) for c in categories]
-        ncodes = range(len(codes))
+        codes = [str('%d') % (c,) for c in categories]
+        ncodes = list(range(len(codes)))
         return {
-            unicode('modeltype'):
-                unicode('symmetric_dirichlet_discrete'),
-            unicode('value_to_code'):
-                dict(zip(map(unicode, ncodes), codes)),
-            unicode('code_to_value'):
-                dict(zip(codes, ncodes)),
+            str('modeltype'):
+                str('symmetric_dirichlet_discrete'),
+            str('value_to_code'):
+                dict(list(zip(list(map(str, ncodes)), codes))),
+            str('code_to_value'):
+                dict(list(zip(codes, ncodes))),
         }
 
-    column_names = [unicode('c%d') % (i,) for i in outputs]
+    column_names = [str('c%d') % (i,) for i in outputs]
     # Convert all numerical datatypes to normal for lovecat.
     column_metadata = [
         create_metadata_numerical() if cctype != 'categorical' else\
@@ -62,11 +69,11 @@ def _crosscat_M_c(state):
     ]
 
     return {
-        unicode('name_to_idx'):
-            dict(zip(column_names, range(ncols))),
-        unicode('idx_to_name'):
-            dict(zip(map(unicode, range(ncols)), column_names)),
-        unicode('column_metadata'):
+        str('name_to_idx'):
+            dict(list(zip(column_names, list(range(ncols))))),
+        str('idx_to_name'):
+            dict(list(zip(list(map(str, list(range(ncols)))), column_names))),
+        str('column_metadata'):
             column_metadata,
     }
 
@@ -81,12 +88,12 @@ def _crosscat_T(state, M_c):
         # need to do code->value.
         lookup = M_c['column_metadata'][col]['code_to_value']
         if lookup:
-            assert unicode(int(val)) in lookup
-            return float(lookup[unicode(int(val))])
+            assert str(int(val)) in lookup
+            return float(lookup[str(int(val))])
         else:
             return val
     ordering = state.outputs
-    rows = range(len(T[ordering[0]]))
+    rows = list(range(len(T[ordering[0]])))
     return [
         [crosscat_value_to_code(T[col][row], i)
             for (i, col) in enumerate(ordering)]
@@ -96,11 +103,11 @@ def _crosscat_T(state, M_c):
 
 def _crosscat_X_D(state, M_c):
     """Create X_D from cgpm.state.State"""
-    view_assignments = state.Zv().values()
+    view_assignments = list(state.Zv().values())
     views_unique = sorted(set(view_assignments))
 
     cluster_assignments = [
-        state.views[v].Zr().values()
+        list(state.views[v].Zr().values())
         for v in views_unique
     ]
     cluster_assignments_unique = [
@@ -127,11 +134,11 @@ def _crosscat_X_L(state, M_c, X_D):
     def column_hypers_numerical(index, hypers):
         assert state.cctypes()[index] != 'categorical'
         return {
-            unicode('fixed'): 0.0,
-            unicode('mu'): hypers['m'],
-            unicode('nu'): hypers['nu'],
-            unicode('r'): hypers['r'],
-            unicode('s'): hypers['s'],
+            str('fixed'): 0.0,
+            str('mu'): hypers['m'],
+            str('nu'): hypers['nu'],
+            str('r'): hypers['r'],
+            str('s'): hypers['s'],
         }
 
     def column_hypers_categorical(index, hypers):
@@ -139,9 +146,9 @@ def _crosscat_X_L(state, M_c, X_D):
         K = len(M_c['column_metadata'][index]['code_to_value'])
         assert K > 0
         return {
-            unicode('fixed'): 0.0,
-            unicode('dirichlet_alpha'): hypers['alpha'],
-            unicode('K'): K
+            str('fixed'): 0.0,
+            str('dirichlet_alpha'): hypers['alpha'],
+            str('K'): K
         }
 
     # Retrieve the column_hypers.
@@ -153,7 +160,7 @@ def _crosscat_X_L(state, M_c, X_D):
     ]
 
     # -- Generates X_L['column_partition'] --
-    view_assignments = state.Zv().values()
+    view_assignments = list(state.Zv().values())
     views_unique = sorted(set(view_assignments))
     views_to_code = {v:i for (i,v) in enumerate(views_unique)}
     # views_remapped[i] contains the zero-based view index for
@@ -162,9 +169,9 @@ def _crosscat_X_L(state, M_c, X_D):
     counts = list(np.bincount(views_remapped))
     assert 0 not in counts
     column_partition = {
-        unicode('assignments'): views_remapped,
-        unicode('counts'): counts,
-        unicode('hypers'): {unicode('alpha'): state.alpha()}
+        str('assignments'): views_remapped,
+        str('counts'): counts,
+        str('hypers'): {str('alpha'): state.alpha()}
     }
 
     # -- Generates X_L['view_state'] --
@@ -174,25 +181,25 @@ def _crosscat_X_L(state, M_c, X_D):
         # Generate X_L['view_state'][v]['column_component_suffstats']
         numcategories = len(set(row_partition))
         column_component_suffstats = [
-            [{} for c in xrange(numcategories)]
+            [{} for c in range(numcategories)]
             for d in view.dims]
 
         # Generate X_L['view_state'][v]['column_names']
         column_names = \
-            [unicode('c%d' % (o,)) for o in view.outputs[1:]]
+            [str('c%d' % (o,)) for o in view.outputs[1:]]
 
         # Generate X_L['view_state'][v]['row_partition_model']
         counts = list(np.bincount(row_partition))
         assert 0 not in counts
 
         return {
-            unicode('column_component_suffstats'):
+            str('column_component_suffstats'):
                 column_component_suffstats,
-            unicode('column_names'):
+            str('column_names'):
                 column_names,
-            unicode('row_partition_model'): {
-                unicode('counts'): counts,
-                unicode('hypers'): {unicode('alpha'): view.alpha()}
+            str('row_partition_model'): {
+                str('counts'): counts,
+                str('hypers'): {str('alpha'): view.alpha()}
             }
         }
 
@@ -212,14 +219,14 @@ def _crosscat_X_L(state, M_c, X_D):
         from crosscat.utils.general_utils import get_scc_from_tuples
         col_ensure['independent'] = {
             str(column) : list(block) for
-            column, block in get_scc_from_tuples(state.Ci).iteritems()
+            column, block in get_scc_from_tuples(state.Ci).items()
         }
 
     return {
-        unicode('column_hypers'): column_hypers,
-        unicode('column_partition'): column_partition,
-        unicode('view_state'): view_states,
-        unicode('col_ensure'): col_ensure
+        str('column_hypers'): column_hypers,
+        str('column_partition'): column_partition,
+        str('view_state'): view_states,
+        str('col_ensure'): col_ensure
     }
 
 
@@ -231,7 +238,7 @@ def _update_state(state, M_c, X_L, X_D):
         reference = 'normal_inverse_gamma' if state.cctypes()[i] == 'normal'\
             else 'symmetric_dirichlet_discrete'
         return M_c['column_metadata'][i]['modeltype'] == reference
-    assert all(_check_model_type(i) for i in xrange(len(state.cctypes())))
+    assert all(_check_model_type(i) for i in range(len(state.cctypes())))
     # Perform checking on X_D.
     assert all(len(partition)==state.n_rows() for partition in X_D)
     assert len(X_D) == len(X_L['view_state'])
@@ -250,7 +257,7 @@ def _update_state(state, M_c, X_L, X_D):
     # Create the new views.
     offset = max(state.views) + 1
     new_views = []
-    for v in xrange(len(X_D)):
+    for v in range(len(X_D)):
         alpha = X_L['view_state'][v]['row_partition_model']['hypers']['alpha']
         index = v + offset
 
@@ -293,12 +300,12 @@ def _update_state(state, M_c, X_L, X_D):
 def _update_diagnostics(state, diagnostics):
     # Update logscore.
     cc_logscore = diagnostics.get('logscore', np.array([]))
-    new_logscore = map(float, np.ravel(cc_logscore).tolist())
+    new_logscore = list(map(float, np.ravel(cc_logscore).tolist()))
     state.diagnostics['logscore'].extend(new_logscore)
 
     # Update column_crp_alpha.
     cc_column_crp_alpha = diagnostics.get('column_crp_alpha', [])
-    new_column_crp_alpha = map(float, np.ravel(cc_column_crp_alpha).tolist())
+    new_column_crp_alpha = list(map(float, np.ravel(cc_column_crp_alpha).tolist()))
     state.diagnostics['column_crp_alpha'].extend(list(new_column_crp_alpha))
 
     # Update column_partition.
@@ -312,15 +319,15 @@ def _update_diagnostics(state, diagnostics):
         assert len(new_column_partition) == len(state.outputs)
         trajectories = np.transpose(new_column_partition)[0].tolist()
         state.diagnostics['column_partition'].extend(
-            map(convert_column_partition, trajectories))
+            list(map(convert_column_partition, trajectories)))
 
 
 def _progress(n_steps, max_time, step_idx, elapsed_secs, end=None):
     if end:
-        print '\rCompleted: %d iterations in %f seconds.' %\
-            (step_idx, elapsed_secs)
+        print('\rCompleted: %d iterations in %f seconds.' %\
+            (step_idx, elapsed_secs))
     else:
-        p_seconds = elapsed_secs / max_time if max_time != -1 else 0
+        p_seconds = old_div(elapsed_secs, max_time) if max_time != -1 else 0
         p_iters = float(step_idx) / n_steps
         percentage = max(p_iters, p_seconds)
         tu.progress(percentage, sys.stdout)

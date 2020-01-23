@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 from math import log
 
 import numpy as np
@@ -151,5 +152,5 @@ class Categorical(DistributionGpm):
     def calc_logpdf_marginal(N, counts, alpha):
         K = len(counts)
         A = K * alpha
-        lg = sum(gammaln(counts[k] + alpha) for k in xrange(K))
+        lg = sum(gammaln(counts[k] + alpha) for k in range(K))
         return gammaln(A) - gammaln(A+N) + lg - K * gammaln(alpha)

@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import object
 from cgpm.utils import general as gu
 
-class DummyCgpm():
+class DummyCgpm(object):
 
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):

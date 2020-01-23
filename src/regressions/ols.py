@@ -14,8 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from past.utils import old_div
 import base64
-import cPickle
+import pickle
 import math
 
 from collections import OrderedDict
@@ -52,9 +57,9 @@ class OrdinaryLeastSquares(CGpm):
         self.input_ccargs = distargs['inputs']['statargs']
         # Determine number of covariates (with 1 bias term) and number of
         # categories for categorical covariates.
-        p, counts = zip(*[
+        p, counts = list(zip(*[
             self._predictor_count(cctype, ccarg) for cctype, ccarg
-            in zip(self.input_cctypes, self.input_ccargs)])
+            in zip(self.input_cctypes, self.input_ccargs)]))
         self.p = sum(p)+1
         self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
         # Dataset.
@@ -114,11 +119,10 @@ class OrdinaryLeastSquares(CGpm):
     def transition(self, N=None):
         # Transition forest.
         if len(self.data.Y) > 0:
-            self.regressor.fit(self.data.Y.values(), self.data.x.values())
-            predictions = self.regressor.predict(self.data.Y.values())
+            self.regressor.fit(list(self.data.Y.values()), list(self.data.x.values()))
+            predictions = self.regressor.predict(list(self.data.Y.values()))
             self.noise = \
-                np.linalg.norm(self.data.x.values() - predictions)\
-                / np.sqrt(self.N)
+                old_div(np.linalg.norm(list(self.data.x.values()) - predictions), np.sqrt(self.N))
 
     def transition_params(self):
         return
@@ -189,7 +193,7 @@ class OrdinaryLeastSquares(CGpm):
         # Retrieve the value x of the target variable.
         if self.outputs[0] in inputs:
             raise ValueError('Cannot condition on output %s: %s'
-                % (self.outputs, inputs.keys()))
+                % (self.outputs, list(inputs.keys())))
         if targets:
             x = targets.get(self.outputs[0], None)
             if x is None or np.isnan(x):
@@ -199,7 +203,7 @@ class OrdinaryLeastSquares(CGpm):
         # Retrieve the input values and dummy code them.
         if set(inputs.keys()) != set(self.inputs):
             raise ValueError('OLS requires inputs %s: %s'
-                % (self.inputs, inputs.keys()))
+                % (self.inputs, list(inputs.keys())))
         y = [inputs[c] for c in self.inputs]
         if any(np.isnan(v) for v in y):
             raise ValueError('OLS cannot accept nan inputs: %s.' % (inputs,))
@@ -224,7 +228,7 @@ class OrdinaryLeastSquares(CGpm):
 
         # Pickle the sklearn regressor.
         regressor = metadata['params']['regressor']
-        regressor_binary = base64.b64encode(cPickle.dumps(regressor))
+        regressor_binary = base64.b64encode(pickle.dumps(regressor))
         metadata['params']['regressor_binary'] = regressor_binary
         del metadata['params']['regressor']
 
@@ -234,7 +238,7 @@ class OrdinaryLeastSquares(CGpm):
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
         # Unpickle the sklearn ols.
-        skl_ols = cPickle.loads(
+        skl_ols = pickle.loads(
             base64.b64decode(metadata['params']['regressor_binary']))
         metadata['params']['regressor'] = skl_ols
         ols = cls(
@@ -244,8 +248,8 @@ class OrdinaryLeastSquares(CGpm):
             distargs=metadata['distargs'],
             rng=rng)
         # json keys are strings -- convert back to integers.
-        x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
-        Y = ((int(k), v) for k, v in metadata['data']['Y'].iteritems())
+        x = ((int(k), v) for k, v in metadata['data']['x'].items())
+        Y = ((int(k), v) for k, v in metadata['data']['Y'].items())
         ols.data = Data(x=OrderedDict(x), Y=OrderedDict(Y))
         ols.N = metadata['N']
         return ols
@@ -254,4 +258,4 @@ HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
 def logpdf_gaussian(x, mu, sigma):
     deviation = x - mu
     return - math.log(sigma) - HALF_LOG2PI \
-        - (0.5 * deviation * deviation / (sigma * sigma))
+        - (old_div(0.5 * deviation * deviation, (sigma * sigma)))

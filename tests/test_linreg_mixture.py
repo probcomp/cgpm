@@ -15,6 +15,9 @@
 # limitations under the License.
 
 
+from builtins import map
+from builtins import zip
+from builtins import next
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,7 +35,7 @@ def _compute_y(x):
 
 rng = gu.gen_rng(1)
 X = rng.uniform(low=0, high=10, size=50)
-Y = map(_compute_y, X)
+Y = list(map(_compute_y, X))
 D = np.column_stack((X,Y))
 
 
@@ -69,7 +72,7 @@ def plot_samples(samples, title):
     ax.scatter(D[:,0], D[:,1], color='k', label='Data')
     for i, c in enumerate(clusters):
         sc = [(j[0], j[1]) for j in samples if j[-1] == c]
-        xs, ys = zip(*sc)
+        xs, ys = list(zip(*sc))
         ax.scatter(
             xs, ys, alpha=.5, color=next(colors),
             label='Simulated (cluster %d)' %i)

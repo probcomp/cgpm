@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import zip
+from builtins import range
 import importlib
 import json
 
@@ -49,7 +51,7 @@ def fillna(X, p, rng):
     a, b = X.shape
     n_entries = a*b
     n_missing = int(a*b*p)
-    i_missing_flat = rng.choice(range(n_entries), size=n_missing, replace=False)
+    i_missing_flat = rng.choice(list(range(n_entries)), size=n_missing, replace=False)
     i_missing_cell = np.unravel_index(i_missing_flat, (a,b))
     for i, j in zip(*i_missing_cell):
         X[i,j] = np.nan
@@ -87,7 +89,7 @@ def test_valid_initialize():
     assert fa.L == 1
 
     # Four latent dimensions.
-    fa = FactorAnalysis(range(12), None, L=4)
+    fa = FactorAnalysis(list(range(12)), None, L=4)
     assert fa.D == 8
     assert fa.L == 4
 
@@ -141,7 +143,7 @@ outputs = [
 L = [1,2,3,4]
 
 
-@pytest.mark.parametrize('outputs, L', zip(outputs, L))
+@pytest.mark.parametrize('outputs, L', list(zip(outputs, L)))
 def test_logpdf_simulate_rigorous(outputs, L):
     # Direct factor anaysis
     rng = gu.gen_rng(12)

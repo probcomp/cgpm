@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import map
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import itertools
 import sys
 
@@ -45,9 +50,9 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
     if isinstance(data, list):
         data = np.array(data)
     if row_names is None:
-        row_names = map(str, range(data.shape[0]))
+        row_names = list(map(str, list(range(data.shape[0]))))
     if col_names is None:
-        col_names = map(str, range(data.shape[1]))
+        col_names = list(map(str, list(range(data.shape[1]))))
 
     height, width = compute_axis_size_viz_data(data)
 
@@ -67,7 +72,7 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
 
     size = np.sqrt(width**2 + height**2)
     if row_names is not None:
-        ax.set_yticks(range(data_normed.shape[0]))
+        ax.set_yticks(list(range(data_normed.shape[0])))
         ax.set_yticklabels(
             row_names,
             ha='right',
@@ -76,7 +81,7 @@ def viz_data_raw(data, ax=None, row_names=None, col_names=None, **kwargs):
         )
 
     if col_names is not None:
-        ax.set_xticks(range(data_normed.shape[1]))
+        ax.set_xticks(list(range(data_normed.shape[1])))
         ax.set_xticklabels(
             col_names,
             rotation=45,
@@ -100,9 +105,9 @@ def viz_data(data, ax=None, row_names=None, col_names=None, **kwargs):
     Standardizes data across columns. Ignores nan values (plotted white).
     """
     if row_names is None:
-        row_names = map(str, range(data.shape[0]))
+        row_names = list(map(str, list(range(data.shape[0]))))
     if col_names is None:
-        col_names = map(str, range(data.shape[1]))
+        col_names = list(map(str, list(range(data.shape[1]))))
 
     fig, ax = viz_data_raw(np.array(data), ax, row_names, col_names, **kwargs)
 
@@ -118,13 +123,13 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     Visualize using imshow with two colors only.
     """
     if isinstance(row_names, list):
-        row_names = np.array(map(str, row_names))
+        row_names = np.array(list(map(str, row_names)))
     if isinstance(col_names, list):
-        col_names = np.array(map(str, col_names))
+        col_names = np.array(list(map(str, col_names)))
 
     # Retrieve the dataset restricted to this view's outputs.
     data_dict = get_view_data(view)
-    data_arr = np.array(data_dict.values()).T
+    data_arr = np.array(list(data_dict.values())).T
 
 
     # Construct rowid -> table mapping.
@@ -136,7 +141,7 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
     if subsample and subsample < len(data_arr):
         rng = gu.gen_rng(seed)
         rowids_subsample = rng.choice(
-            range(len(data_arr)),
+            list(range(len(data_arr))),
             replace=False,
             size=subsample,
         )
@@ -191,7 +196,7 @@ def viz_view_raw(view, ax=None, row_names=None, col_names=None, **kwargs):
         view.dims[dim].clusters[table].logpdf_score()
         for table in crp_tables_all
     ]
-    scores = map(get_dim_score, data_dict.iterkeys())
+    scores = list(map(get_dim_score, iter(data_dict.keys())))
     dim_scores = np.sum(scores, axis=1)
     dim_ordering = np.argsort(dim_scores)
 
@@ -228,12 +233,12 @@ def viz_view(view, ax=None, row_names=None, col_names=None, **kwargs):
     """
     # Get data restricted to current view's outputs
     data_dict = get_view_data(view)
-    data_arr = np.array(data_dict.values()).T
+    data_arr = np.array(list(data_dict.values())).T
 
     if row_names is None:
-        row_names = map(str, range(data_arr.shape[0]))
+        row_names = list(map(str, list(range(data_arr.shape[0]))))
     if col_names is None:
-        col_names = map(str, range(data_arr.shape[1]))
+        col_names = list(map(str, list(range(data_arr.shape[1]))))
 
     if isinstance(row_names, list):
         row_names = np.array(row_names)
@@ -252,31 +257,31 @@ def viz_state(state, row_names=None, col_names=None, progress=None, **kwargs):
 
     Plot views next to one another.
     """
-    data_arr = np.array(state.X.values()).T
+    data_arr = np.array(list(state.X.values())).T
 
     if row_names is None:
-        row_names = map(str, range(data_arr.shape[0]))
+        row_names = list(map(str, list(range(data_arr.shape[0]))))
     if col_names is None:
-        col_names = map(str, range(data_arr.shape[1]))
+        col_names = list(map(str, list(range(data_arr.shape[1]))))
 
     fig = plt.figure()
     fig.set_size_inches(32, 18)
 
-    views = state.views.keys()
+    views = list(state.views.keys())
     views = sorted(views, key=lambda v: len(state.views[v].outputs))[::-1]
 
     # Retrieve the subplot widths.
     view_widths = []
     view_heights = []
     for view in views:
-        data_view = np.array(get_view_data(state.views[view]).values()).T
+        data_view = np.array(list(get_view_data(state.views[view]).values())).T
         _height, width = compute_axis_size_viz_data(data_view, **kwargs)
         view_widths.append(width)
         view_heights.append(1)
 
     # Create grid for subplots and axes.
     gs = gridspec.GridSpec(1, len(views), width_ratios=view_widths, wspace=1)
-    axes = [fig.add_subplot(gs[i]) for i in xrange(len(views))]
+    axes = [fig.add_subplot(gs[i]) for i in range(len(views))]
 
     # Plot data for each view
     row_names_trim = [row_name[:8] for row_name in row_names]
@@ -289,7 +294,7 @@ def viz_state(state, row_names=None, col_names=None, progress=None, **kwargs):
         row_names_v = row_names if i == 0 else row_names_trim
         viz_view_raw(state.views[v], ax, row_names_v, col_names_v, **kwargs)
         if progress:
-            tu.progress((float(i)+1)/len(views), sys.stdout)
+            tu.progress(old_div((float(i)+1),len(views)), sys.stdout)
     if progress:
         sys.stdout.write('\n')
 
@@ -307,7 +312,7 @@ def nanptp(array, axis=0):
 
 def nannormalize(data):
     """Normalizes data across the columns, ignoring nan values."""
-    return (data - np.nanmin(data, axis=0)) / nanptp(data, axis=0)
+    return old_div((data - np.nanmin(data, axis=0)), nanptp(data, axis=0))
 
 
 def get_view_data(view):

@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from builtins import str
 import base64
 from datetime import datetime
 import string
@@ -66,7 +67,7 @@ class InlineVsCGpm(CGpm):
         if inputs is None:
             inputs = {}
         assert set(inputs.keys()) == set(self.inputs)
-        assert targets.keys() == self.outputs
+        assert list(targets.keys()) == self.outputs
         assert not constraints
         self.ripl.assume('expr', self.expression, label='expr_assume')
         sp_args = self._retrieve_args(inputs)

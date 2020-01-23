@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -21,7 +22,7 @@ def observe_datum(x):
     global state
     state.incorporate(rowid=-1, query={0:x})
     state.transition_dim_grids()
-    print 'Observation %f: %f' % (state.n_rows(), x)
+    print('Observation %f: %f' % (state.n_rows(), x))
     while True:
         state.transition_view_rows()
         state.transition_dim_hypers()

@@ -26,7 +26,11 @@ numerical results between the two sources.
 In particular, truncating the Normal requires computing the logcdf to normalize
 the probability, which is a Student T derived in Murphy but not Teh.
 """
+from __future__ import division
 
+from builtins import map
+from builtins import zip
+from past.utils import old_div
 import itertools as it
 
 import numpy as np
@@ -53,8 +57,8 @@ def murphy_posterior(a, b, k, mu, x):
     xbar = np.mean(x)
     kn = k + n
     an = a + n/2.
-    mun = (k*mu+n*xbar)/(k+n)
-    bn = b + .5*np.sum((x-xbar)**2) + k*n*(xbar-mu)**2 / (2*(k+n))
+    mun = old_div((k*mu+n*xbar),(k+n))
+    bn = b + .5*np.sum((x-xbar)**2) + old_div(k*n*(xbar-mu)**2, (2*(k+n)))
     return an, bn, kn, mun
 
 
@@ -68,10 +72,10 @@ def murphy_posterior_predictive(an1, an, bn1, bn, kn1, kn):
 
 def test_agreement():
     # Hyperparmaeters in Teh notation.
-    all_m = map(float, (1., 7., .43, 1.2))
-    all_r = map(float, (2., 18., 3., 11.))
-    all_s = map(float, (2., 6., 15., 55.))
-    all_nu = map(float, (4., .6, 14., 8.))
+    all_m = list(map(float, (1., 7., .43, 1.2)))
+    all_r = list(map(float, (2., 18., 3., 11.)))
+    all_s = list(map(float, (2., 6., 15., 55.)))
+    all_nu = list(map(float, (4., .6, 14., 8.)))
 
     # Dataset
     rng = gen_rng(0)
@@ -79,7 +83,7 @@ def test_agreement():
     x2 = rng.normal(-3, 7, size=100)
 
     for (m, r, s, nu), x in \
-            it.product(zip(all_m, all_r, all_s, all_nu), [x1,x2]):
+            it.product(list(zip(all_m, all_r, all_s, all_nu)), [x1,x2]):
         # Murphy hypers in terms of Teh.
         a = nu/2.
         b = s/2.
@@ -89,8 +93,8 @@ def test_agreement():
         # Test equality of posterior hypers.
         mn, rn, sn, nun = teh_posterior(m, r, s, nu, x)
         an, bn, kn, mun = murphy_posterior(a, b, k, mu, x)
-        assert np.allclose(an, nun/2, atol=1e-5)
-        assert np.allclose(bn, sn/2, atol=1e-5)
+        assert np.allclose(an, old_div(nun,2), atol=1e-5)
+        assert np.allclose(bn, old_div(sn,2), atol=1e-5)
         assert np.allclose(kn, rn, atol=1e-5)
         assert np.allclose(mun, mn, atol=1e-5)
 
@@ -103,7 +107,7 @@ def test_agreement():
                 an1, an, bn1, bn, kn1, kn)
 
             # Student T Murphy, Eq 100.
-            scalesq = bn*(kn+1)/(an*kn)
+            scalesq = old_div(bn*(kn+1),(an*kn))
             logprob_t_murphy = t.logpdf(
                 xtest, 2*an, loc=mun, scale=sqrt(scalesq))
 
@@ -111,14 +115,14 @@ def test_agreement():
             mn1, rn1, sn1, nun1 = teh_posterior(
                 m, r, s, nu, np.append(x, xtest))
             logprob_teh = murphy_posterior_predictive(
-                nun1/2., nun/2, sn1/2., sn/2, rn1, rn)
+                nun1/2., old_div(nun,2), sn1/2., old_div(sn,2), rn1, rn)
 
             # Posterior predictive from Normal DistributionGpm.
             logprob_nignormal = Normal.calc_predictive_logp(
                 xtest, len(x), sum(x), np.sum(x**2), m, r, s, nu)
 
             # Student T Teh using Murphy Eq 100.
-            scalesq = sn/2.*(rn+1)/(nun/2.*rn)
+            scalesq = old_div(sn/2.*(rn+1),(nun/2.*rn))
             logprob_t_teh = t.logpdf(
                 xtest, 2*nun/2., loc=mn, scale=sqrt(scalesq))
 

@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy as np
 
 from scipy.stats import gamma
@@ -89,7 +93,7 @@ class NormalTrunc(DistributionGpm):
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
         max_iters = 1000
-        for i in xrange(max_iters):
+        for i in range(max_iters):
             x = self.rng.normal(loc=self.mu, scale=self.sigma)
             if self.l <= x <= self.h:
                 return {self.outputs[0]: x}
@@ -187,7 +191,7 @@ class NormalTrunc(DistributionGpm):
         return (
             - N/2. * np.log(2*np.pi)
             - N * np.log(sigma)
-            - 1 / (2 * sigma * sigma)
+            - old_div(1, (2 * sigma * sigma))
             * (N*mu**2 - 2*mu*sum_x + sum_x_sq))
 
     @staticmethod

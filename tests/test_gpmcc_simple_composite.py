@@ -16,7 +16,10 @@
 
 """Inference quality tests for the conditional GPM  (aka foreign predictor)
 features of State."""
+from __future__ import division
 
+from builtins import next
+from past.utils import old_div
 import pytest
 
 import matplotlib.pyplot as plt
@@ -33,10 +36,10 @@ from cgpm.utils import test as tu
 
 
 def generate_quadrants(rows, rng):
-    Q0 = rng.multivariate_normal([2,2], cov=[[.5,0],[0,.5]], size=rows/4)
-    Q1 = rng.multivariate_normal([-2,2], cov=[[.5,0],[0,.5]], size=rows/4)
-    Q2 = rng.multivariate_normal([-2,-2], cov=[[.5,0],[0,.5]], size=rows/4)
-    Q3 = rng.multivariate_normal([2,-2], cov=[[.5,0],[0,.5]], size=rows/4)
+    Q0 = rng.multivariate_normal([2,2], cov=[[.5,0],[0,.5]], size=old_div(rows,4))
+    Q1 = rng.multivariate_normal([-2,2], cov=[[.5,0],[0,.5]], size=old_div(rows,4))
+    Q2 = rng.multivariate_normal([-2,-2], cov=[[.5,0],[0,.5]], size=old_div(rows,4))
+    Q3 = rng.multivariate_normal([2,-2], cov=[[.5,0],[0,.5]], size=old_div(rows,4))
     colors = iter(cm.gist_rainbow(np.linspace(0, 1, 4)))
     for q in [Q0, Q1, Q2, Q3]:
         plt.scatter(q[:,0], q[:,1], color=next(colors))

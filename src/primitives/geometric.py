@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import str
 from scipy.special import betaln
 
 from cgpm.primitives.distribution import DistributionGpm

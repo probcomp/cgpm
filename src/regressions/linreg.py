@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import zip
+from builtins import range
 from math import log
 from math import pi
 from math import sqrt
@@ -74,9 +76,9 @@ class LinearRegression(CGpm):
         self.input_ccargs = distargs['inputs']['statargs']
         # Determine number of covariates (with 1 bias term) and number of
         # categories for categorical covariates.
-        p, counts = zip(*[
+        p, counts = list(zip(*[
             self._predictor_count(cctype, ccarg) for cctype, ccarg
-            in zip(self.input_cctypes, self.input_ccargs)])
+            in zip(self.input_cctypes, self.input_ccargs)]))
         self.p = sum(p)+1
         self.inputs_discrete = {i:c for i, c in enumerate(counts) if c}
         # For numerical covariates, map index in inputs to index in code.
@@ -114,7 +116,7 @@ class LinearRegression(CGpm):
         assert not constraints
         xt, yt = self.preprocess(targets, inputs)
         return LinearRegression.calc_predictive_logp(
-            xt, yt, self.N, self.data.Y.values(), self.data.x.values(), self.a,
+            xt, yt, self.N, list(self.data.Y.values()), list(self.data.x.values()), self.a,
             self.b, self.mu, self.V)
 
     @gu.simulate_many
@@ -130,12 +132,12 @@ class LinearRegression(CGpm):
 
     def logpdf_score(self):
         return LinearRegression.calc_logpdf_marginal(
-            self.N, self.data.Y.values(), self.data.x.values(),
+            self.N, list(self.data.Y.values()), list(self.data.x.values()),
             self.a, self.b, self.mu, self.V)
 
     def simulate_params(self):
         an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
-            self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
+            self.N, list(self.data.Y.values()), list(self.data.x.values()), self.a, self.b,
             self.mu, self.V)
         return LinearRegression.sample_parameters(
             an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
@@ -155,8 +157,8 @@ class LinearRegression(CGpm):
             cctype=self.name(), hypers=self.get_hypers(),
             distargs=self.get_distargs(), rng=self.rng)
         dim.clusters[0] = self
-        dim.transition_hyper_grids(X=self.data.x.values())
-        for i in xrange(N):
+        dim.transition_hyper_grids(X=list(self.data.x.values()))
+        for i in range(N):
             dim.transition_hypers()
 
     def transition_params(self):
@@ -240,7 +242,7 @@ class LinearRegression(CGpm):
         # Retrieve the value x of the target variable.
         if self.outputs[0] in inputs:
             raise ValueError('Cannot specify output as input %s: %s'
-                % (self.outputs, inputs.keys()))
+                % (self.outputs, list(inputs.keys())))
         if targets:
             x = targets.get(self.outputs[0], 'missing')
             if x == 'missing':
@@ -357,8 +359,8 @@ class LinearRegression(CGpm):
             distargs=metadata['distargs'],
             rng=rng)
         # json keys are strings -- convert back to integers.
-        x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
-        Y = ((int(k), v) for k, v in metadata['data']['Y'].iteritems())
+        x = ((int(k), v) for k, v in metadata['data']['x'].items())
+        Y = ((int(k), v) for k, v in metadata['data']['Y'].items())
         linreg.data = Data(x=OrderedDict(x), Y=OrderedDict(Y))
         linreg.N = metadata['N']
         return linreg

@@ -14,6 +14,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from builtins import zip
+from builtins import str
+from builtins import map
 import base64
 import copy
 import math
@@ -79,7 +82,7 @@ class VsCGpm(CGpm):
 
     def incorporate(self, rowid, observation, inputs=None):
         inputs = self._validate_incorporate(rowid, observation, inputs)
-        for variable, value in observation.iteritems():
+        for variable, value in observation.items():
             self._observe_cell(rowid, variable, value, inputs)
 
     def unincorporate(self, rowid):
@@ -99,7 +102,7 @@ class VsCGpm(CGpm):
         # Handle constraints on the multivariate output.
         if constraints_clean:
             # Observe constrained outputs.
-            for variable, value in constraints_clean.iteritems():
+            for variable, value in constraints_clean.items():
                 self._observe_cell(rowid, variable, value, inputs_clean)
             # Run local inference in rowid scope, with 15 steps of MH.
             self.ripl.infer('(resimulation_mh (atom %i) all %i)' % (rowid, 15))
@@ -114,7 +117,7 @@ class VsCGpm(CGpm):
         for label in labels:
             self.ripl.forget(label)
         # Forget constrained outputs.
-        for q, _v in constraints_clean.iteritems():
+        for q, _v in constraints_clean.items():
             self._forget_cell(rowid, q)
         return samples
 
@@ -159,7 +162,7 @@ class VsCGpm(CGpm):
         # XXX Eliminate this terrible defaultdict hack. See Github #187.
         obs_converted = VsCGpm._obs_from_json(metadata['obs'])
         cgpm.obs = defaultdict(lambda: defaultdict(dict))
-        for key, value in obs_converted.iteritems():
+        for key, value in obs_converted.items():
             cgpm.obs[key] = defaultdict(dict, value)
         return cgpm
 
@@ -168,7 +171,7 @@ class VsCGpm(CGpm):
 
     def _predict_cell(self, rowid, target, inputs, label):
         inputs_list = [inputs[i] for i in self.inputs]
-        sp_args = str.join(' ', map(str, [rowid] + inputs_list))
+        sp_args = str.join(' ', list(map(str, [rowid] + inputs_list)))
         i = self.outputs.index(target)
         return self.ripl.predict(
             '((lookup simulators %i) %s)' % (i, sp_args), label=label)
@@ -176,7 +179,7 @@ class VsCGpm(CGpm):
     def _observe_cell(self, rowid, query, value, inputs):
         inputs_list = [inputs[i] for i in self.inputs]
         label = '\''+self._gen_label()
-        sp_args = str.join(' ', map(str, [rowid] + inputs_list + [value, label]))
+        sp_args = str.join(' ', list(map(str, [rowid] + inputs_list + [value, label])))
         i = self.outputs.index(query)
         self.ripl.evaluate('((lookup observers %i) %s)' % (i, sp_args))
         self.obs[rowid]['labels'][query] = label[1:]
@@ -259,7 +262,7 @@ class VsCGpm(CGpm):
     def _obs_to_json(obs):
         def convert_key_int_to_str(d):
             assert all(isinstance(c, int) for c in d)
-            return {str(c): v for c, v in d.iteritems()}
+            return {str(c): v for c, v in d.items()}
         obs2 = convert_key_int_to_str(obs)
         for r in obs2:
             obs2[r]['inputs'] = convert_key_int_to_str(obs2[r]['inputs'])
@@ -269,8 +272,8 @@ class VsCGpm(CGpm):
     @staticmethod
     def _obs_from_json(obs):
         def convert_key_str_to_int(d):
-            assert all(isinstance(c, (str, unicode)) for c in d)
-            return {int(c): v for c, v in d.iteritems()}
+            assert all(isinstance(c, (str, str)) for c in d)
+            return {int(c): v for c, v in d.items()}
         obs2 = convert_key_str_to_int(obs)
         for r in obs2:
             obs2[r]['inputs'] = convert_key_str_to_int(obs2[r]['inputs'])

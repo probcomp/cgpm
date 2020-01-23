@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hacks
+from __future__ import print_function
+from __future__ import absolute_import
+from . import hacks
 import pytest
 if not pytest.config.getoption('--integration'):
     hacks.skip('specify --integration to run integration tests')
@@ -215,7 +217,7 @@ def test_serialize(case):
     # Load binary from JSON.
     cgpm3 = builder.from_metadata(json.loads(json.dumps(binary)))
 
-    print
+    print()
     for cgpm_test in [cgpm2]:
         assert cgpm.outputs == cgpm_test.outputs
         assert cgpm.inputs == cgpm_test.inputs

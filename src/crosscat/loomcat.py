@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import str
+from builtins import zip
+from builtins import range
 import csv
 import itertools
 import os
@@ -40,7 +43,7 @@ DEFAULT_RESULTS_DIR = 'results'
 
 def _generate_column_names(state):
     """Returns list of dummy names for the outputs of `state`."""
-    return [unicode('c%05d') % (i,) for i in state.outputs]
+    return [str('c%05d') % (i,) for i in state.outputs]
 
 
 def _generate_loom_stattypes(state):
@@ -64,7 +67,7 @@ def _generate_project_paths(name=None):
         'results'   : os.path.join(project_root, DEFAULT_RESULTS_DIR)
 
     }
-    for path in paths.values():
+    for path in list(paths.values()):
         if not os.path.exists(path):
             os.makedirs(path)
     return paths
@@ -126,13 +129,13 @@ def _retrieve_row_partitions(path, sample):
     assign_in = os.path.join(
         path, 'samples', 'sample.%d' % (sample,), 'assign.pbs.gz')
     assignments = {
-        a.rowid: [a.groupids(k) for k in xrange(num_kinds)]
+        a.rowid: [a.groupids(k) for k in range(num_kinds)]
         for a in assignment_stream_load(assign_in)
     }
     rowids = sorted(assignments)
     return {
         k: [assignments[rowid][k] for rowid in rowids]
-        for k in xrange(num_kinds)
+        for k in range(num_kinds)
     }
 
 
@@ -148,7 +151,7 @@ def _update_state(state, path, sample):
 
     # Retrieve the new column partition from loom.
     Zv_new_raw = _retrieve_column_partition(path, sample)
-    assert sorted(Zv_new_raw.keys()) == range(len(state.outputs))
+    assert sorted(Zv_new_raw.keys()) == list(range(len(state.outputs)))
 
     # The keys of Zv are contiguous
     # from [0..len(outputs)], while state.outputs are arbitrary integers, so we
@@ -227,7 +230,7 @@ def _write_schema(state, path):
         writer = csv.writer(
             schema_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['Feature Name', 'Type'])
-        writer.writerows(zip(column_names, loom_stattypes))
+        writer.writerows(list(zip(column_names, loom_stattypes)))
 
 
 # --- End of helper methods ----------------------------------------------------
@@ -328,7 +331,7 @@ def transition_engine(
     # Update the engine and save the engine.
     args = [
         (engine.states[i], engine.states[i]._loom_path['results'], i)
-        for i in xrange(engine.num_states())
+        for i in range(engine.num_states())
     ]
     engine.states = parallel_map(_update_state_mp, args)
 

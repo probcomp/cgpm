@@ -15,6 +15,7 @@
 # limitations under the License.
 
 
+from builtins import zip
 import numpy as np
 
 from cgpm.utils.general import logsumexp
@@ -294,7 +295,7 @@ def get_tables_different(tables):
     tables_target = tables + [singleton]
     auxiliary_table = lambda t: [] if t < singleton else [singleton+1]
     tables_query = [
-        filter(lambda x: x != t, tables_target) + auxiliary_table(t)
+        [x for x in tables_target if x != t] + auxiliary_table(t)
         for t in tables_target
     ]
     return tables_target, tables_query
@@ -312,5 +313,5 @@ def get_view_logpdf_score(view, table_target, table_query):
 def get_cluster_logpdf_score(view, k):
     """Return marginal likelihood of cluster k in View (0 for fresh cluster)."""
     return sum([
-        d.clusters[k].logpdf_score() for d in view.dims.itervalues()
+        d.clusters[k].logpdf_score() for d in view.dims.values()
     ]) if k in view.crp.clusters[0].counts else 0

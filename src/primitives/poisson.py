@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 from math import log
 
 import numpy as np
@@ -77,7 +80,7 @@ class Poisson(DistributionGpm):
             return {self.outputs[0]: self.data[rowid]}
         an, bn = Poisson.posterior_hypers(
             self.N, self.sum_x, self.a, self.b)
-        x = self.rng.negative_binomial(an, bn/(bn+1.))
+        x = self.rng.negative_binomial(an, old_div(bn,(bn+1.)))
         return {self.outputs[0]: x}
 
     def logpdf_score(self):

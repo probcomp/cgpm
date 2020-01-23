@@ -14,8 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
 import base64
-import cPickle
+import pickle
 
 from collections import OrderedDict
 from collections import namedtuple
@@ -82,7 +86,7 @@ class RandomForest(CGpm):
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert not constraints
-        assert targets.keys() == self.outputs
+        assert list(targets.keys()) == self.outputs
         assert rowid not in self.data.x
         try:
             x, y = self.preprocess(targets, inputs)
@@ -98,14 +102,14 @@ class RandomForest(CGpm):
         if rowid in self.data.x:
             return {self.outputs[0]: self.data.x[rowid]}
         logps = [self.logpdf(rowid, {targets[0]: x}, None, inputs)
-            for x in xrange(self.k)
+            for x in range(self.k)
         ]
         x = gu.log_pflip(logps, rng=self.rng)
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
         return RandomForest.calc_log_likelihood(
-            self.data.x.values(), self.data.Y.values(), self.regressor,
+            list(self.data.x.values()), list(self.data.Y.values()), self.regressor,
             self.counts, self.alpha)
 
     ##################
@@ -118,19 +122,19 @@ class RandomForest(CGpm):
 
     def transition_params(self, N=None):
         num_transitions = N if N is not None else 1
-        for i in xrange(num_transitions):
+        for i in range(num_transitions):
             # Transition noise parameter.
             alphas = np.linspace(0.01, 0.99, 30)
             alpha_logps = [
                 RandomForest.calc_log_likelihood(
-                    self.data.x.values(), self.data.Y.values(),
+                    list(self.data.x.values()), list(self.data.Y.values()),
                     self.regressor, self.counts, a)
                 for a in alphas
             ]
             self.alpha = gu.log_pflip(alpha_logps, array=alphas, rng=self.rng)
             # Transition forest.
             if len(self.data.Y) > 0:
-                self.regressor.fit(self.data.Y.values(), self.data.x.values())
+                self.regressor.fit(list(self.data.Y.values()), list(self.data.x.values()))
 
     def set_hypers(self, hypers):
         return
@@ -242,7 +246,7 @@ class RandomForest(CGpm):
 
         # Pickle the sklearn forest.
         forest = metadata['params']['forest']
-        forest_binary = base64.b64encode(cPickle.dumps(forest))
+        forest_binary = base64.b64encode(pickle.dumps(forest))
         metadata['params']['forest_binary'] = forest_binary
         del metadata['params']['forest']
 
@@ -252,7 +256,7 @@ class RandomForest(CGpm):
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
         # Unpickle the sklearn forest.
-        forest = cPickle.loads(
+        forest = pickle.loads(
             base64.b64decode(metadata['params']['forest_binary']))
         metadata['params']['forest'] = forest
         forest = cls(
@@ -263,8 +267,8 @@ class RandomForest(CGpm):
             distargs=metadata['distargs'],
             rng=rng)
         # json keys are strings -- convert back to integers.
-        x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
-        Y = ((int(k), v) for k, v in metadata['data']['Y'].iteritems())
+        x = ((int(k), v) for k, v in metadata['data']['x'].items())
+        Y = ((int(k), v) for k, v in metadata['data']['Y'].items())
         forest.data = Data(x=OrderedDict(x), Y=OrderedDict(Y))
         forest.N = metadata['N']
         forest.counts = metadata['counts']

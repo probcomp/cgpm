@@ -119,7 +119,7 @@ def get_observation_inputs(t):
     return ({0: t[0]}, t[1]) if isinstance(t, tuple) else ({0: t}, None)
 
 
-@pytest.mark.parametrize('cctype', cases.keys())
+@pytest.mark.parametrize('cctype', list(cases.keys()))
 def test_distributions(cctype):
     case = cases[cctype]
     assert_distribution(

@@ -16,6 +16,7 @@
 
 """Graphical test suite providing coverage for cgpm.utils.render."""
 
+from builtins import range
 import os
 
 from string import ascii_uppercase
@@ -89,7 +90,7 @@ def init_view_state(data, iters, cctypes):
     if isinstance(data, list):
         data = np.array(data)
     D = len(data[0])
-    outputs = range(D)
+    outputs = list(range(D))
     X = {c: data[:, i].tolist() for i, c in enumerate(outputs)}
     view = View(X, cctypes=cctypes, outputs=[1000] + outputs, rng=RNG)
     state = State(data[:, 0:D], outputs=outputs, cctypes=cctypes, rng=RNG)
@@ -103,8 +104,8 @@ def init_view_state(data, iters, cctypes):
 def string_generator(N=1, length=10):
     from random import choice
     return [
-        (''.join(choice(ascii_uppercase) for _ in xrange(length)))
-        for _ in xrange(N)
+        (''.join(choice(ascii_uppercase) for _ in range(length)))
+        for _ in range(N)
     ]
 
 def get_filename(name):

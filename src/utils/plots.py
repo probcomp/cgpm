@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import range
 from math import log
 
 import matplotlib.pyplot as plt
@@ -67,7 +68,7 @@ def plot_dist_continuous(X, output, clusters, ax=None, Y=None, hist=True):
         for x in X:
             ax.vlines(x, 0, y_max/10., linewidth=1)
     # Title.
-    ax.set_title(clusters.values()[0].name())
+    ax.set_title(list(clusters.values())[0].name())
     return ax
 
 def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
@@ -77,7 +78,7 @@ def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
     # Set up x axis.
     X = np.asarray(X, dtype=int)
     x_max = max(X)
-    Y = range(int(x_max)+1)
+    Y = list(range(int(x_max)+1))
     X_hist = np.bincount(X) / float(len(X))
     ax.bar(Y, X_hist, color='gray', edgecolor='none')
     # Compute weighted pdfs
@@ -93,13 +94,13 @@ def plot_dist_discrete(X, output, clusters, ax=None, Y=None, hist=True):
         Y, np.sum(pdf, axis=0), color='none', edgecolor='black', linewidth=3)
     ax.set_xlim([0, x_max+1])
     # Title.
-    ax.set_title(clusters.values()[0].name())
+    ax.set_title(list(clusters.values())[0].name())
     return ax
 
 def plot_clustermap(D, xticklabels=None, yticklabels=None):
     import seaborn as sns
-    if xticklabels is None: xticklabels = range(D.shape[0])
-    if yticklabels is None: yticklabels = range(D.shape[1])
+    if xticklabels is None: xticklabels = list(range(D.shape[0]))
+    if yticklabels is None: yticklabels = list(range(D.shape[1]))
     zmat = sns.clustermap(
         D, yticklabels=yticklabels, xticklabels=xticklabels,
         linewidths=0.2, cmap='BuGn')
@@ -159,7 +160,7 @@ def partition_to_zmatrix(Zv, ordering=None):
     views = set(Zv.values())
     block_vectors = {view: np.zeros(len(Zv)) for view in views}
     for view in views:
-        cols = [column_to_index[c] for c, v in Zv.iteritems() if v == view]
+        cols = [column_to_index[c] for c, v in Zv.items() if v == view]
         block_vectors[view][cols] = 1
 
     D = np.zeros((len(Zv), len(Zv)))
@@ -181,7 +182,7 @@ def plot_logscore(logscores, ax=None):
         fig, ax = plt.subplots()
 
     for logscore in logscores:
-        ax.plot(range(len(logscores[0])), logscore)
+        ax.plot(list(range(len(logscores[0]))), logscore)
 
     ax.set_xlabel('Number of Full Gibbs Sweeps')
     ax.set_ylabel('Log Score')
@@ -192,7 +193,7 @@ def plot_logscore(logscores, ax=None):
 def engine_to_zmatrix_history(engine, ordering=None):
     num_transitions = len(engine.states[0].diagnostics['column_partition'])
     Zvs = [[dict(state.diagnostics['column_partition'][i])
-        for state in engine.states] for i in xrange(num_transitions)]
+        for state in engine.states] for i in range(num_transitions)]
 
     # Find the ordering at the final step.
     if ordering is None:

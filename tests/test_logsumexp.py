@@ -14,6 +14,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from __future__ import division
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import math
 import pytest
 
@@ -21,14 +25,14 @@ from cgpm.utils import general as gu
 
 def relerr(expected, actual):
     """Relative error between `expected` and `actual`: ``abs((a - e)/e)``."""
-    return abs((actual - expected)/expected)
+    return abs(old_div((actual - expected),expected))
 
 def test_logsumexp():
     inf = float('inf')
     nan = float('nan')
     with pytest.raises(OverflowError):
-        math.log(sum(map(math.exp, range(1000))))
-    assert relerr(999.4586751453871, gu.logsumexp(range(1000))) < 1e-15
+        math.log(sum(map(math.exp, list(range(1000)))))
+    assert relerr(999.4586751453871, gu.logsumexp(list(range(1000)))) < 1e-15
     assert gu.logsumexp([]) == -inf
     assert gu.logsumexp([-1000.]) == -1000.
     assert gu.logsumexp([-1000., -1000.]) == -1000. + math.log(2.)
@@ -44,7 +48,7 @@ def test_logmeanexp():
     inf = float('inf')
     nan = float('nan')
     assert gu.logmeanexp([]) == -inf
-    assert relerr(992.550919866405, gu.logmeanexp(range(1000))) < 1e-15
+    assert relerr(992.550919866405, gu.logmeanexp(list(range(1000)))) < 1e-15
     assert gu.logmeanexp([-1000., -1000.]) == -1000.
     assert relerr(math.log(0.5 * (1 + math.exp(-1.))),
             gu.logmeanexp([0., -1.])) \

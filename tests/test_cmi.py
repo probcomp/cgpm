@@ -15,6 +15,7 @@
 # limitations under the License.
 
 
+from __future__ import absolute_import
 import numpy as np
 import pytest
 
@@ -22,7 +23,7 @@ from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 from cgpm.utils.general import gen_rng
 
-from markers import integration
+from .markers import integration
 
 
 def test_entropy_bernoulli_univariate__ci_():
