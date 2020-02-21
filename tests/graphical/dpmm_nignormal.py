@@ -19,13 +19,13 @@ from cgpm.crosscat.state import State
 
 def observe_datum(x):
     global state
-    state.incorporate(rowid=-1, query={0:x})
+    state.incorporate(rowid=state.n_rows(), observation={0:x})
     state.transition_dim_grids()
-    print 'Observation %f: %f' % (state.n_rows(), x)
+    print 'Observation %d: %f' % (state.n_rows(), x)
     while True:
         state.transition_view_rows()
         state.transition_dim_hypers()
-        # state.transition_view_alphas()
+        state.transition_view_alphas()
         ax.clear()
         state.dim_for(0).plot_dist(
             state.X[0], Y=np.linspace(0.01,0.99,200), ax=ax)
