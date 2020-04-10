@@ -1201,6 +1201,7 @@ class State(CGpm):
         metadata['cctypes'] = []
         metadata['hypers'] = []
         metadata['distargs'] = []
+        metadata['suffstats'] = []
         for dim in self.dims():
             metadata['cctypes'].append(dim.cctype)
             metadata['hypers'].append(dim.hypers)
@@ -1208,6 +1209,7 @@ class State(CGpm):
             # distargs['inputs']['indexes']; instead create a separate metadata
             # entry for the dimension inputs.
             metadata['distargs'].append(dim.distargs)
+            metadata['suffstats'].append(dim.get_suffstats().items())
 
         # Dependence constraints.
         metadata['Cd'] = self.Cd

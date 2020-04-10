@@ -578,10 +578,12 @@ class View(CGpm):
         metadata['cctypes'] = []
         metadata['hypers'] = []
         metadata['distargs'] = []
+        metadata['suffstats'] = []
         for c in self.outputs[1:]:
             metadata['cctypes'].append(self.dims[c].cctype)
             metadata['hypers'].append(self.dims[c].hypers)
             metadata['distargs'].append(self.dims[c].distargs)
+            metadata['suffstats'].append(self.dims[c].get_suffstats().items())
 
         # Factory data.
         metadata['factory'] = ('cgpm.mixtures.view', 'View')

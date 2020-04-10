@@ -209,6 +209,13 @@ class Dim(CGpm):
         for model in self.clusters.values():
             model.set_hypers(hypers)
 
+    def get_suffstats(self):
+        if len(self.clusters) == 0:
+            return {0 : self.aux_model.get_suffstats()}
+        stats = [(k, self.clusters[k].get_suffstats()) for k in self.clusters]
+        stats_aux = [(max(self.clusters) + 1, self.aux_model.get_suffstats())]
+        return dict(stats + stats_aux)
+
     # --------------------------------------------------------------------------
     # Plotter
 
