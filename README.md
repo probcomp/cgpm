@@ -18,6 +18,14 @@ using the Bayesian Query Language.
 
 ## Installing
 
+### Conda
+
+The easiest way to install cgpm is to use the
+[package](https://anaconda.org/probcomp/cgpm) on Anaconda Cloud.
+Please follow [these instructions](https://github.com/probcomp/iventure/blob/master/docs/conda.md).
+
+### Manual Build
+
 `cgpm` targets Ubuntu 14.04 and 16.04. The package can be installed by cloning
 this repository and following these instructions. It is _highly recommended_ to
 install `cgpm` inside of a virtualenv which was created using the
