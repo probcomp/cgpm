@@ -101,16 +101,20 @@ def _retrieve_column_partition(path, sample):
     ]))
 
 
-def _retrieve_featureid_to_cgpm(path):
+def _retrieve_featureid_to_cgpm(path, colname_colno_mapping=None):
     """Returns a dict mapping loom's 0-based featureid to cgpm.outputs."""
     # Loom orders features alphabetically based on statistical types:
     # i.e. 'bb' < 'dd' < 'nich'. The ordering is stored in
     # `ingest/encoding.json.gz`.
     encoding_in = os.path.join(path, 'ingest', 'encoding.json.gz')
     features = json_load(encoding_in)
-    def colname_to_output(cname):
-        # Convert dummy column name from 'c00012' to the integer 12.
-        return int(cname.replace('c', ''))
+    if  colname_colno_mapping is not None:
+        def colname_to_output(cname):
+            return colname_colno_mapping[cname]
+    else:
+        def colname_to_output(cname):
+            # Convert dummy column name from 'c00012' to the integer 12.
+            return int(cname.replace('c', ''))
     return {
         i: colname_to_output(f['name']) for i, f in enumerate(features)
     }
@@ -136,7 +140,7 @@ def _retrieve_row_partitions(path, sample):
     }
 
 
-def _update_state(state, path, sample):
+def _update_state(state, path, sample, colname_colno_mapping=None):
     """Updates `state` to match the CrossCat `sample` at `path`.
 
     Only the row and column partitions are updated; parameter inference
@@ -145,15 +149,14 @@ def _update_state(state, path, sample):
 
     Wild errors will occur if the Loom object is incompatible with `state`.
     """
-
     # Retrieve the new column partition from loom.
     Zv_new_raw = _retrieve_column_partition(path, sample)
     assert sorted(Zv_new_raw.keys()) == range(len(state.outputs))
-
     # The keys of Zv are contiguous
     # from [0..len(outputs)], while state.outputs are arbitrary integers, so we
     # need to map the loom feature ids correctly.
-    output_mapping = _retrieve_featureid_to_cgpm(path)
+    output_mapping = _retrieve_featureid_to_cgpm(path, colname_colno_mapping)
+
     assert sorted(output_mapping.values()) == sorted(state.outputs)
     Zv_new = {output_mapping[f]: Zv_new_raw[f] for f in Zv_new_raw}
 
