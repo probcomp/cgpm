@@ -39,9 +39,10 @@ class Normal(DistributionGpm):
     mu ~ Normal(m, r*rho)
     x ~ Normal(mu, rho)
 
-    http://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
-    Note that Teh uses Normal-InverseGamma to the **variance** has an inverse
-    gamma distribution.
+    http://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf Teh
+    titles the document "Normal Inverse-Gamma Prior". In the description of the
+    prior (Eq (3)) a Gamma distribution is used for precision \rho. Thus, if
+    "\rho ~ Gamma" then "var = 1 / \rho ~ Inverse-Gamma".
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None,

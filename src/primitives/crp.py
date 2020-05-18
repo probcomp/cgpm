@@ -102,7 +102,7 @@ class Crp(DistributionGpm):
         return {}
 
     def get_suffstats(self):
-        return {'N': self.N, 'counts': list(self.counts)}
+        return {'N': self.N, 'counts': self.counts.items()}
 
     def get_distargs(self):
         return {}
