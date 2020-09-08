@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 from builtins import range
 import numpy as np
 import pytest
@@ -56,7 +57,7 @@ def test_simple_alterations():
     engine = get_engine()
 
     # Initial state outputs.
-    out_initial = engine.states[0].outputs
+    out_initial = copy.deepcopy(engine.states[0].outputs)
 
     # Indexes of outputs to alter.
     out_f = 0
