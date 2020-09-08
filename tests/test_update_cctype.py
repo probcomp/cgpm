@@ -128,7 +128,7 @@ def test_categorical_forest():
 
 def test_categorical_forest_manual_inputs_errors():
     state = State(
-        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(1))
+        T, cctypes=CCTYPES, distargs=DISTARGS, rng=gu.gen_rng(42))
     state.transition(N=1, progress=False)
     cat_id = CCTYPES.index('categorical')
 
