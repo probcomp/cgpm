@@ -99,7 +99,7 @@ def test_agreement():
         assert np.allclose(mun, mn, atol=1e-5)
 
         # Test posterior predictive agree with each other, and Student T.
-        for xtest in np.linspace(1.1, 80.8, 14.1):
+        for xtest in np.linspace(1.1, 80.8, 14):
             # Murphy exact, Eq 99.
             an1, bn1, kn1, mun1 = murphy_posterior(
                 a, b, k, mu, np.append(x, xtest))
