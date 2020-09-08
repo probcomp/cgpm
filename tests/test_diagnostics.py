@@ -21,8 +21,6 @@ from cgpm.crosscat.engine import Engine
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
 
-from .markers import integration
-
 
 def retrieve_normal_dataset():
     D, Zv, Zc = tu.gen_data_table(
@@ -37,8 +35,7 @@ def retrieve_normal_dataset():
     return D
 
 
-@integration
-def test_simple_diagnostics():
+def test_simple_diagnostics__ci_():
     def diagnostics_without_iters(diagnostics):
         return (v for k, v in diagnostics.items() if k != 'iterations')
     D = retrieve_normal_dataset()
