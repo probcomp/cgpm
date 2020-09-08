@@ -97,7 +97,10 @@ def test_categorical_forest():
         state.incorporate_dim(
             T[:,cat_id], outputs=[cat_id], cctype='categorical',
             distargs=distargs, v=0)
-    state.update_cctype(cat_id, 'random_forest', distargs=distargs)
+    # XXX: set distargs={'k':2} was distargs=distargs but got "UnboundLocalError:
+    # local variable 'distargs' referenced before assignment" -- which kinda
+    # makes sense.
+    state.update_cctype(cat_id, 'random_forest', distargs={'k':2})
 
     bernoulli_id = CCTYPES.index('bernoulli')
     state.incorporate_dim(
