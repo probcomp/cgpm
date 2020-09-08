@@ -60,8 +60,8 @@ def test_simple_alterations():
     out_initial = copy.deepcopy(engine.states[0].outputs)
 
     # Indexes of outputs to alter.
-    out_f = 0
-    out_g = 3
+    out_f = 4
+    out_g = 5
 
     def alteration_f(state):
         state.outputs[out_f] *= 13
@@ -72,7 +72,7 @@ def test_simple_alterations():
         return state
 
     statenos = [0,3]
-    engine.alter((alteration_f, alteration_g), [0,3])
+    engine.alter((alteration_f, alteration_g), statenos)
 
     out_expected = list(out_initial)
     out_expected[out_f] *= 13
