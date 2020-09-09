@@ -51,7 +51,7 @@ def test_simple_diagnostics__ci_():
         all(len(v) == 13 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
     )
-    engine.transition_lovecat(N=7, checkpoint=3)
+    engine.transition(N=7, checkpoint=3)
     assert all(
         all(len(v) == 15 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
@@ -66,8 +66,3 @@ def test_simple_diagnostics__ci_():
         all(len(v) > 15 for v in diagnostics_without_iters(state.diagnostics))
         for state in engine.states
     )
-    # Add a timed analysis with diagnostic overrides large iterations, due
-    # to oddness of diagnostic tracing in lovecat.
-    start = time.time()
-    engine.transition_lovecat(N=20000, S=1, checkpoint=1)
-    assert 1 < time.time() - start < 3

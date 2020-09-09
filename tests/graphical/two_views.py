@@ -23,6 +23,9 @@ from cgpm.utils import general as gu
 from cgpm.utils import plots as pu
 from cgpm.utils import test as tu
 
+# Setting this here as plot seen to never get saved.
+N_TRANSITIONS = 2
+N_STATES = 2
 
 # -------------------- Normal Component Models ------------------------------- #
 
@@ -36,55 +39,41 @@ def retrieve_normal_dataset():
         separation=[0.95]*6,
         view_partition=[0,0,0,1,1,1],
         rng=gu.gen_rng(12))
+
     return D
 
 
-@pytest.mark.parametrize('lovecat', [True, False])
-def test_two_views_row_partition_normal__ci_(lovecat):
+def test_two_views_row_partition_normal__ci_():
     D = retrieve_normal_dataset()
 
     engine = Engine(
         D.T, cctypes=['normal']*len(D),
         Zv={0:0, 1:0, 2:0, 3:1, 4:1, 5:1},
-        rng=gu.gen_rng(12), num_states=64)
+        rng=gu.gen_rng(12), num_states=N_STATES)
 
-    if lovecat:
-        engine.transition_lovecat(
-            N=100,
-            kernels=[
-                'row_partition_assignments',
-                'row_partition_hyperparameters',
-                'column_hyperparameters',
-        ])
-    else:
-        engine.transition(
-            N=100,
-            kernels=[
-                'view_alphas',
-                'rows',
-                'column_hypers',
-        ])
+    engine.transition(
+        N=N_TRANSITIONS,
+        kernels=[
+            'view_alphas',
+            'rows',
+            'column_hypers',
+    ])
 
     R1 = engine.row_similarity_pairwise(cols=[0,1,2])
     R2 = engine.row_similarity_pairwise(cols=[3,4,5])
-
     pu.plot_clustermap(R1)
     pu.plot_clustermap(R2)
     return engine
 
 
-@pytest.mark.parametrize('lovecat', [True, False])
-def test_two_views_column_partition_normal__ci_(lovecat):
+def test_two_views_column_partition_normal__ci_():
     D = retrieve_normal_dataset()
 
     engine = Engine(
         D.T, outputs=[5,0,1,2,3,4],
-        cctypes=['normal']*len(D), rng=gu.gen_rng(12), num_states=64)
+        cctypes=['normal']*len(D), rng=gu.gen_rng(12), num_states=N_STATES)
 
-    if lovecat:
-        engine.transition_lovecat(N=200)
-    else:
-        engine.transition(N=200)
+    engine.transition(N=N_TRANSITIONS)
 
     P = engine.dependence_probability_pairwise()
     R1 = engine.row_similarity_pairwise(cols=[5,0,1])
@@ -119,37 +108,21 @@ def retrieve_bernoulli_dataset():
     return D
 
 
-@pytest.mark.parametrize('lovecat', [True, False])
-def test_two_views_row_partition_bernoulli__ci_(lovecat):
+def test_two_views_row_partition_bernoulli__ci_():
     D = retrieve_bernoulli_dataset()
 
-    if lovecat:
-        engine = Engine(
-            D.T,
-            cctypes=['categorical']*len(D),
-            distargs=[{'k':2}]*len(D),
-            Zv={0:0, 1:0, 2:1, 3:1},
-            rng=gu.gen_rng(12), num_states=64)
-        engine.transition_lovecat(
-            N=100,
-            kernels=[
-                'row_partition_assignments',
-                'row_partition_hyperparameters',
-                'column_hyperparameters',
-        ])
-    else:
-        engine = Engine(
-            D.T,
-            cctypes=['bernoulli']*len(D),
-            Zv={0:0, 1:0, 2:1, 3:1},
-            rng=gu.gen_rng(12), num_states=64)
-        engine.transition(
-            N=100,
-            kernels=[
-                'view_alphas',
-                'rows',
-                'column_hypers',
-        ])
+    engine = Engine(
+        D.T,
+        cctypes=['bernoulli']*len(D),
+        Zv={0:0, 1:0, 2:1, 3:1},
+        rng=gu.gen_rng(12), num_states=N_STATES)
+    engine.transition(
+        N=N_TRANSITIONS,
+        kernels=[
+            'view_alphas',
+            'rows',
+            'column_hypers',
+    ])
 
     R1 = engine.row_similarity_pairwise(cols=[0,1])
     R2 = engine.row_similarity_pairwise(cols=[2,3])
@@ -159,8 +132,7 @@ def test_two_views_row_partition_bernoulli__ci_(lovecat):
     return engine
 
 
-@pytest.mark.parametrize('lovecat', [True, False])
-def test_two_views_column_partition_bernoulli__ci_(lovecat):
+def test_two_views_column_partition_bernoulli__ci_():
     D = retrieve_bernoulli_dataset()
 
     engine = Engine(
@@ -168,16 +140,13 @@ def test_two_views_column_partition_bernoulli__ci_(lovecat):
         cctypes=['categorical']*len(D),
         distargs=[{'k':2}]*len(D),
         rng=gu.gen_rng(12),
-        num_states=64)
-    if lovecat:
-        engine.transition_lovecat(N=200)
-    else:
-        # engine = Engine(
-        #     D.T,
-        #     cctypes=['bernoulli']*len(D),
-        #     rng=gu.gen_rng(12),
-        #     num_states=64)
-        engine.transition(N=200)
+        num_states=N_STATES)
+    # engine = Engine(
+    #     D.T,
+    #     cctypes=['bernoulli']*len(D),
+    #     rng=gu.gen_rng(12),
+    #     num_states=64)
+    engine.transition(N=N_TRANSITIONS)
 
     P = engine.dependence_probability_pairwise()
     R1 = engine.row_similarity_pairwise(cols=[0,1])

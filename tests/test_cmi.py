@@ -30,7 +30,7 @@ def test_entropy_bernoulli_univariate__ci_():
     # Generate a univariate Bernoulli dataset.
     T = rng.choice([0,1], p=[.3,.7], size=250).reshape(-1,1)
 
-    engine = Engine(T, cctypes=['bernoulli'], rng=rng, num_states=16)
+    engine = Engine(T, cctypes=['bernoulli'], rng=rng, num_states=4)
     engine.transition(S=15)
 
     # exact computation.
@@ -64,11 +64,11 @@ def test_entropy_bernoulli_bivariate__ci_():
         T,
         cctypes=['categorical', 'categorical'],
         distargs=[{'k':2}, {'k':2}],
-        num_states=64,
+        num_states=1,
         rng=rng,
     )
 
-    engine.transition_lovecat(N=200)
+    engine.transition(N=10)
 
     # exact computation
     entropy_exact = (
