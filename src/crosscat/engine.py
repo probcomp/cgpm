@@ -285,7 +285,7 @@ class Engine(object):
                 (colnos,))
                 for s in statenos]
         Ds = list(mapper(_evaluate, args))
-        return Ds
+        return np.mean(np.asarray(Ds), axis=0)
 
     def row_similarity(self, row0, row1, cols=None, statenos=None,
             multiprocess=0):
@@ -303,7 +303,7 @@ class Engine(object):
                 (cols,))
                 for s in statenos]
         Ss = list(mapper(_evaluate, args))
-        return Ss
+        return np.mean(np.asarray(Ss), axis=0)
 
     def relevance_probability(
             self, rowid_target, rowid_query, col, hypotheticals=None,
