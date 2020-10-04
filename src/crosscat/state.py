@@ -1379,7 +1379,7 @@ class State(CGpm):
             # distargs['inputs']['indexes']; instead create a separate metadata
             # entry for the dimension inputs.
             metadata['distargs'].append(dim.distargs)
-            metadata['suffstats'].append(dim.get_suffstats().items())
+            metadata['suffstats'].append(dim.get_suffstats())
 
         # Dependence constraints.
         metadata['Cd'] = self.Cd
