@@ -211,9 +211,9 @@ class Dim(CGpm):
 
     def get_suffstats(self):
         if len(self.clusters) == 0:
-            return {0 : self.aux_model.get_suffstats()}
-        stats = [(k, self.clusters[k].get_suffstats()) for k in self.clusters]
-        stats_aux = [(max(self.clusters) + 1, self.aux_model.get_suffstats())]
+            return {'0' : self.aux_model.get_suffstats()}
+        stats = [(str(k), self.clusters[k].get_suffstats()) for k in self.clusters]
+        stats_aux = [(str(max(self.clusters) + 1), self.aux_model.get_suffstats())]
         return dict(stats + stats_aux)
 
     # --------------------------------------------------------------------------
