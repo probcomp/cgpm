@@ -130,8 +130,6 @@ class local_sdist(sdist):
 # doesn't pass them through when it doesn't know about them a priori.
 version_py = 'src/version.py'
 
-print(pkg_version)
-
 setup(
     name='cgpm',
     version=pkg_version,
