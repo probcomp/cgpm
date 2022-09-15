@@ -393,7 +393,7 @@ def knn_xz():
         K=20,
         M=5,
         distargs={'outputs': {ST: [N, C], SA:[{}, {'k': len(indicators)}]}},
-        rng=gu.gen_rng(0))
+        rng=gu.gen_rng(42))
     for rowid, x in enumerate(data):
         K.incorporate(rowid, {0:x[0], 1:x[1]})
     K.transition()
