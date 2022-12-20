@@ -51,15 +51,15 @@ def get_version():
     # - localpart   gb92bef6[-dirty]
     desc = subprocess.check_output([
         'git', 'describe', '--dirty', '--long', '--match', 'v*',
-    ])
-    match = re.match(b'^v([^-]*)-([0-9]+)-(.*)$', desc)
+    ]).decode('ascii')
+    match = re.match('^v([^-]*)-([0-9]+)-(.*)$', desc)
     assert match is not None
     verpart, revpart, localpart = match.groups()
     # Create a post version.
-    if revpart > b'0' or b'dirty' in localpart:
+    if int(revpart) > 0 or 'dirty' in localpart:
         # Local part may be g0123abcd or g0123abcd-dirty.
         # Hyphens not kosher here, so replace by dots.
-        localpart = localpart.replace(b'-', b'.')
+        localpart = localpart.replace('-', '.')
         full_version = '%s.post%s+%s' % (verpart, revpart, localpart)
     # Create a release version.
     else:
