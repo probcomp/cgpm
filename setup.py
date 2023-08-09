@@ -146,6 +146,9 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Topic :: Scientific/Engineering :: Information Analysis',
     ],
+    install_requires=[
+        'future'
+    ],
     packages=[
         'cgpm',
         'cgpm.crosscat',
