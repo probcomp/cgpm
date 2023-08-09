@@ -80,7 +80,7 @@ def get_version():
 
     return pkg_version, full_version
 
-pkg_version, full_version = get_version()
+pkg_version, full_version = ("0.1.3", "0.1.3")
 
 def write_version_py(path):
     try:
