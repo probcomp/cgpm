@@ -17,6 +17,7 @@
 from builtins import range
 from collections import OrderedDict
 from math import log
+import numpy as np
 
 from scipy.special import gammaln
 
@@ -157,7 +158,7 @@ class Crp(DistributionGpm):
         # note: this will lead to invalid alpha, discount pairs
         # no way around it except to grid directly over the joint,
         # see https://github.com/probcomp/loom/blob/825188eae76e7106a6959f6a18312b0aa3338f83/loom/gridding.py
-        grids['discount'] = gu.linspace(0., .5, n_grid)
+        grids['discount'] = np.linspace(0., .5, n_grid)
         return grids
 
     @staticmethod
