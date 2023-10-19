@@ -187,7 +187,7 @@ class Crp(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, counts, alpha, discount):
-        if x in counts.keys:
+        if x in counts.keys():
             numerator = counts.get(x, alpha) - discount
         else:
             numerator = len(counts.keys()) * discount + alpha

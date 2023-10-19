@@ -89,7 +89,7 @@ def view_simulate(view, rowid, targets, constraints, N):
     Nk = view.Nk()
     N_rows = len(view.Zr())
     K = view.crp.clusters[0].gibbs_tables(-1)
-    lp_crp = [Crp.calc_predictive_logp(k, N_rows, Nk, view.alpha()) for k in K]
+    lp_crp = [Crp.calc_predictive_logp(k, N_rows, Nk, view.alpha(), view.discount()) for k in K]
     lp_constraints = [_logpdf_row(view, constraints, k) for k in K]
     if all(np.isinf(lp_constraints)):
         raise ValueError('Zero density constraints: %s' % (constraints,))

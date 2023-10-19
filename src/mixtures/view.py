@@ -437,6 +437,9 @@ class View(CGpm):
     def alpha(self):
         return self.crp.hypers['alpha']
 
+    def discount(self):
+        return self.crp.hypers['discount']
+
     def Nk(self, k=None):
         Nk = self.crp.clusters[0].counts
         return Nk[k] if k is not None else Nk
