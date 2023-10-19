@@ -42,6 +42,7 @@ class Crp(DistributionGpm):
         # Hyperparameters.
         if hypers is None: hypers = {}
         self.alpha = hypers.get('alpha', 1.)
+        self.discount = hypers.get('discount', 0.)
 
     def incorporate(self, rowid, observation, inputs=None):
         DistributionGpm.incorporate(self, rowid, observation, inputs)
@@ -67,7 +68,7 @@ class Crp(DistributionGpm):
         x = int(targets[self.outputs[0]])
         if rowid in self.data:
             return 0 if self.data[rowid] == x else -float('inf')
-        return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha)
+        return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha, self.discount)
 
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -92,11 +93,14 @@ class Crp(DistributionGpm):
         return
 
     def set_hypers(self, hypers):
-        assert hypers['alpha'] > 0
+        assert hypers['discount'] >= 0
+        assert hypers['discount'] < 1
+        assert hypers['alpha'] > -hypers["discount"]
         self.alpha = hypers['alpha']
+        self.discount = hypers['discount']
 
     def get_hypers(self):
-        return {'alpha': self.alpha}
+        return {'alpha': self.alpha, 'discount': self.discount}
 
     def get_params(self):
         return {}
@@ -150,6 +154,10 @@ class Crp(DistributionGpm):
     def construct_hyper_grids(X, n_grid=30):
         grids = dict()
         grids['alpha'] = gu.log_linspace(1./len(X), len(X), n_grid)
+        # note: this will lead to invalid alpha, discount pairs
+        # no way around it except to grid directly over the joint,
+        # see https://github.com/probcomp/loom/blob/825188eae76e7106a6959f6a18312b0aa3338f83/loom/gridding.py
+        grids['discount'] = gu.linspace(0., .5, n_grid)
         return grids
 
     @staticmethod
@@ -177,13 +185,18 @@ class Crp(DistributionGpm):
     ##################
 
     @staticmethod
-    def calc_predictive_logp(x, N, counts, alpha):
-        numerator = counts.get(x, alpha)
+    def calc_predictive_logp(x, N, counts, alpha, discount):
+        if x in counts.keys:
+            numerator = counts.get(x, alpha) - discount
+        else:
+            numerator = len(counts.keys()) * discount + alpha
+
         denominator = N + alpha
         return log(numerator) - log(denominator)
 
     @staticmethod
     def calc_logpdf_marginal(N, counts, alpha):
+        # TODO change this
         # http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
         return len(counts) * log(alpha) + sum(gammaln(list(counts.values()))) \
             + gammaln(alpha) - gammaln(N + alpha)
