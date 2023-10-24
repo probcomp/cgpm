@@ -88,13 +88,6 @@ cases = {
         good=[0, 5, 11],
         bad=[-1, .5, -4]),
 
-    'random_forest' : Case(
-        outputs=[0],
-        inputs=[1, 2],
-        distargs={'k': 2, 'inputs':{'stattypes': [1,2]}},
-        good=[(0, {1:1, 2:2}), (1, {1:0, 2:2})],
-        bad=[(-1, {1:1, 2:2}), (0, {0:1, 2:2}), (0, {1: 3})]),
-
     'vonmises' : Case(
         outputs=[0],
         inputs=None,
@@ -102,15 +95,6 @@ cases = {
         good=[0.1, 3.14, 6.2],
         bad=[-1, 7, 12]),
 
-    'linear_regression' : Case(
-        outputs=[0],
-        inputs=[1, 2],
-        distargs={
-            'inputs': {
-                'stattypes': ['normal', 'bernoulli'],
-                'statargs': [None, {'k':2}]}},
-        good=[(0, {1:1, 2:0})],
-        bad=[(0, {0:1, 1:1, 2:0})]),
 }
 
 

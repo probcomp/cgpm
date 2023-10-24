@@ -70,7 +70,7 @@ def gen_view_cgpm(get_data):
     view = View(
         outputs=[1000]+outputs,
         X={output: data[:, i] for i, output in enumerate(outputs)},
-        alpha=1.5,
+        structure_hypers={'alpha': 1.5, 'discount': 0.},
         cctypes=cctypes,
         distargs=distargs,
         Zr=assignments,

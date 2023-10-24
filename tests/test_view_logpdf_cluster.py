@@ -38,7 +38,7 @@ def retrieve_view():
     return View(
         {c: data[:,i].tolist() for i, c in enumerate(outputs)},
         outputs=[1000] + outputs,
-        alpha=2.,
+        structure_hypers={'alpha':2, 'discount': 0.},
         cctypes=['normal'] * len(outputs),
         Zr=[0,0,0,1,1,]
     )

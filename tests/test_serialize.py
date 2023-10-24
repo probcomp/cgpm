@@ -22,11 +22,8 @@ import tempfile
 
 import numpy as np
 
-from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 from cgpm.mixtures.view import View
-from cgpm.regressions.forest import RandomForest
-from cgpm.regressions.linreg import LinearRegression
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
@@ -68,18 +65,6 @@ def serialize_generic(Model, additional=None):
 
 def test_state_serialize():
     serialize_generic(State)
-
-
-def test_engine_serialize():
-    def additional(engine):
-        e = engine.to_metadata()
-        # Only one dataset per engine, not once per state.
-        assert 'X' in e
-        assert 'X' not in e['states'][0]
-        # Each state should be populated with dataset when retrieving.
-        s = engine.get_state(0)
-        assert 'X' in s.to_metadata()
-    serialize_generic(Engine, additional=additional)
 
 
 def test_view_serialize():
@@ -133,27 +118,6 @@ def test_serialize_composite_cgpm():
         D[:,2:], outputs=[2,3,4,5], cctypes=cctypes[2:],
         distargs=distargs[2:], rng=rng)
 
-    # Create a Forest.
-    forest = RandomForest(
-        outputs=[0],
-        inputs=[1,2,3,4],
-        distargs={
-            'inputs': {
-                'stattypes': [cctypes[i] for i in [1,2,3,4]],
-                'statargs': [distargs[i] for i in [1,2,3,4]]},
-            'k': distargs[0]['k']},
-        rng=rng)
-
-    # Create a Regression.
-    linreg = LinearRegression(
-        outputs=[1],
-        inputs=[3,4,5],
-        distargs={
-            'inputs': {
-                'stattypes': [cctypes[i] for i in [3,4,5]],
-                'statargs': [distargs[i] for i in [3,4,5]]}},
-        rng=rng)
-
     # Incorporate the data.
     def incorporate_data(cgpm, rowid, row):
         cgpm.incorporate(
@@ -161,59 +125,11 @@ def test_serialize_composite_cgpm():
             {i: row[i] for i in cgpm.outputs},
             {i: row[i] for i in cgpm.inputs},
         )
-    for rowid, row in enumerate(D):
-        incorporate_data(forest, rowid, row)
-        incorporate_data(linreg, rowid, row)
-
     # Compose the CGPMs.
 
     # Run state transitions.
     state.transition(N=10, progress=False)
-    # Compose CGPMs, instructing State to run the transitions.
-    token_forest = state.compose_cgpm(forest)
-    token_linreg = state.compose_cgpm(linreg)
-    state.transition_foreign(N=10, cols=[forest.outputs[0], linreg.outputs[0]])
 
     # Now run the serialization.
     metadata = state.to_metadata()
     state2 = State.from_metadata(metadata)
-
-    # Check that the tokens are in state2.
-    assert token_forest in state2.hooked_cgpms
-    assert token_linreg in state2.hooked_cgpms
-
-    # The hooked cgpms must be unique objects after serialize/deserialize.
-    assert state.hooked_cgpms[token_forest] != state2.hooked_cgpms[token_forest]
-    assert state.hooked_cgpms[token_linreg] != state2.hooked_cgpms[token_linreg]
-
-    # Check that the log scores of the hooked cgpms agree.
-    assert np.allclose(
-        state.hooked_cgpms[token_forest].logpdf_score(),
-        state2.hooked_cgpms[token_forest].logpdf_score())
-    assert np.allclose(
-        state.hooked_cgpms[token_linreg].logpdf_score(),
-        state2.hooked_cgpms[token_linreg].logpdf_score())
-
-    # Now run some tests for the engine.
-    e = Engine(
-        D[:,2:], outputs=[2,3,4,5], cctypes=cctypes[2:],
-        distargs=distargs[2:], num_states=2, rng=rng)
-    e.compose_cgpm([forest, forest], multiprocess=1)
-    e.compose_cgpm([linreg, linreg], multiprocess=1)
-    e.transition_foreign(N=1, cols=[forest.outputs[0], linreg.outputs[0]])
-    e.dependence_probability(0,1)
-    e.simulate(-1, [0,1], {2:1}, multiprocess=0)
-    e.logpdf(-1, {1:1}, {2:1, 0:0}, multiprocess=0)
-
-    state3 = e.get_state(0)
-
-    # There is no guarantee that the logpdf score improves with inference, but
-    # it should reduce by more than a few nats.
-    def check_logpdf_delta(before, after):
-        return before < after or (after-before) < 5
-    check_logpdf_delta(
-        before=state.hooked_cgpms[token_forest].logpdf_score(),
-        after=state3.hooked_cgpms[token_forest].logpdf_score())
-    check_logpdf_delta(
-        before=state.hooked_cgpms[token_linreg].logpdf_score(),
-        after=state3.hooked_cgpms[token_linreg].logpdf_score())

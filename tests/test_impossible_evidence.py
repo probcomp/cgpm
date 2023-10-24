@@ -20,7 +20,7 @@ raises a ValueError."""
 from builtins import range
 import pytest
 
-from cgpm.crosscat.engine import State
+from cgpm.crosscat.state import State
 from cgpm.utils import config as cu
 from cgpm.utils import general as gu
 from cgpm.utils import test as tu
