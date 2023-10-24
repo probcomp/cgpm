@@ -373,24 +373,3 @@ def transition(
     T = _crosscat_T(state, M_c)
     X_D = _crosscat_X_D(state, M_c)
     X_L = _crosscat_X_L(state, M_c, X_D)
-
-    from crosscat.LocalEngine import LocalEngine
-    LE = LocalEngine(seed=seed)
-
-    if checkpoint is None:
-        X_L_new, X_D_new = LE.analyze(
-            M_c, T, X_L, X_D, seed,
-            kernel_list=kernels, n_steps=n_steps, max_time=max_time,
-            c=cols, r=rowids, progress=progress)
-        diagnostics_new = dict()
-    else:
-        X_L_new, X_D_new, diagnostics_new = LE.analyze(
-            M_c, T, X_L, X_D, seed,
-            kernel_list=kernels, n_steps=n_steps, max_time=max_time,
-            c=cols, r=rowids, do_diagnostics=True,
-            diagnostics_every_N=checkpoint, progress=progress)
-
-    _update_state(state, M_c, X_L_new, X_D_new)
-
-    if diagnostics_new:
-        _update_diagnostics(state, diagnostics_new)
