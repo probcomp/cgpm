@@ -53,7 +53,7 @@ class Normal(DistributionGpm):
         self.sum_x = 0
         self.sum_x_sq = 0
         # Hyper parameters.
-        if hypers is None: 
+        if not hypers:
             self.m = 0.
             self.r = 1.
             self.s = 1.

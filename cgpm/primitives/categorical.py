@@ -49,7 +49,7 @@ class Categorical(DistributionGpm):
         self.N = 0
         self.counts = np.zeros(self.k)
         # Hyperparameters.
-        if hypers is None: 
+        if not hypers:
             hypers = {}
             self.alpha = np.ones(self.k)
         else:
