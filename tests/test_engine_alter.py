@@ -55,7 +55,7 @@ def test_simple_alterations():
     engine = get_engine()
 
     # Initial state outputs.
-    out_initial = engine.states[0].outputs
+    out_initial = engine.states[0].outputs.copy()
 
     # Indexes of outputs to alter.
     out_f = 0
@@ -76,7 +76,7 @@ def test_simple_alterations():
     out_expected[out_f] *= 13
     out_expected[out_g] *= 12
 
-    for s in xrange(engine.num_states()):
+    for s in range(engine.num_states()):
         if s in statenos:
             assert engine.states[s].outputs == out_expected
         else:

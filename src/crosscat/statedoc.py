@@ -15,7 +15,7 @@
 # limitations under the License.
 
 def load_docstrings(module):
-    module.State.__init__.__func__.__doc__ = """
+    module.State.__init__.__doc__ = """
         Construct a State.
 
         Parameters
@@ -69,7 +69,7 @@ def load_docstrings(module):
     # --------------------------------------------------------------------------
     # Observe
 
-    module.State.incorporate_dim.__func__.__doc__ = """
+    module.State.incorporate_dim.__doc__ = """
         Incorporate a new Dim into this State.
 
         Parameters
@@ -92,7 +92,7 @@ def load_docstrings(module):
     # --------------------------------------------------------------------------
     # Schema updates.
 
-    module.State.update_cctype.__func__.__doc__ = """
+    module.State.update_cctype.__doc__ = """
         Update the distribution type of self.dims[col] to cctype.
 
         Parameters
@@ -107,7 +107,7 @@ def load_docstrings(module):
     # --------------------------------------------------------------------------
     # Compositions
 
-    module.State.compose_cgpm.__func__.__doc__ = """
+    module.State.compose_cgpm.__doc__ = """
         Compose a CGPM with this object.
 
         Parameters
@@ -122,7 +122,7 @@ def load_docstrings(module):
             by `State.decompose_cgpm`.
     """
 
-    module.State.decompose_cgpm.__func__.__doc__ = """
+    module.State.decompose_cgpm.__doc__ = """
         Decompose a previously composed CGPM.
 
         Parameters
@@ -136,7 +136,7 @@ def load_docstrings(module):
     # --------------------------------------------------------------------------
     # logpdf_score
 
-    module.State.logpdf_score.__func__.__doc__ = """
+    module.State.logpdf_score.__doc__ = """
         Compute joint density of all latents and the incorporated data.
 
         Returns
@@ -149,7 +149,7 @@ def load_docstrings(module):
     # --------------------------------------------------------------------------
     # Mutual information
 
-    module.State.mutual_information.__func__.__doc__ = """
+    module.State.mutual_information.__doc__ = """
         Computes the mutual information MI(col0:col1|constraints).
 
         Mutual information with constraints can be of the form:
@@ -194,7 +194,7 @@ def load_docstrings(module):
     # --------------------------------------------------------------------------
     # Inference
 
-    module.State.transition.__func__.__doc__ = """
+    module.State.transition.__doc__ = """
         Run targeted inference kernels.
 
         Parameters

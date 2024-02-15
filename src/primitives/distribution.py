@@ -50,13 +50,13 @@ class DistributionGpm(CGpm):
     def incorporate(self, rowid, observation, inputs=None):
         assert rowid not in self.data
         assert not inputs
-        assert observation.keys() == self.outputs
+        assert list(observation.keys()) == self.outputs
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert rowid not in self.data
         assert not inputs
         assert not constraints
-        assert targets.keys() == self.outputs
+        assert list(targets.keys()) == self.outputs
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         assert not constraints
@@ -76,7 +76,7 @@ class DistributionGpm(CGpm):
             rng=self.rng)
         dim.clusters[0] = self
         dim.transition_hyper_grids(X=self.data.values())
-        for i in xrange(N):
+        for i in range(N):
             dim.transition_hypers()
 
 

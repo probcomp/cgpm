@@ -103,7 +103,7 @@ def _logpdf_row(view, targets, cluster):
     """Return joint density of the targets in a fixed cluster."""
     return sum(
         view.dims[c].logpdf(None, {c:x}, None, {view.outputs[0]: cluster})
-        for c, x in targets.iteritems()
+        for c, x in targets.items()
     )
 
 

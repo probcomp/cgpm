@@ -179,7 +179,7 @@ SAMPLES = [
     bi_normal_5,
 ]
 
-@pytest.mark.parametrize('i', xrange(len(SAMPLES)))
+@pytest.mark.parametrize('i', range(len(SAMPLES)))
 def test_univariate_two_sample(i):
     # This test ensures posterior sampling of uni/bimodal dists on R. When the
     # plot is shown, a density curve overlays the samples which is useful for
@@ -387,7 +387,7 @@ def test_serialize():
     data[10:,-1] = 1
 
     kde = MultivariateKde(
-        range(5), None,
+        list(range(5)), None,
         distargs={O: {ST: [N, N, N, N, C], SA: [{},{},{},{},{'k':1}]}}, rng=rng)
     for rowid, x in enumerate(data):
         kde.incorporate(rowid, dict(zip(range(5), x)))
@@ -430,7 +430,7 @@ def generate_real_nominal_data(N, rng=None):
     data[:,0] = T[0]
     indicators = [0, 1, 2, 3, 4, 5]
     counts = {0:0, 1:0, 2:0}
-    for i in xrange(N):
+    for i in range(N):
         k = Zc[0][i]
         data[i,1] = 2*indicators[k] + counts[k] % 2
         counts[k] += 1
@@ -459,7 +459,7 @@ def test_joint(kde_xz):
     # generate_real_nominal_data) and perform a KS tests at each of the
     # subpopulations at the six levels of z.
 
-    data = np.asarray(kde_xz.data.values())
+    data = np.asarray(list(kde_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     joint_samples = kde_xz.simulate(-1, [0,1], N=len(data))
     _, ax = plt.subplots()
@@ -486,7 +486,7 @@ def test_conditional_indicator(kde_xz):
     # generate_real_nominal_data) and perfrom a KS tests at each of the
     # subpopulations at the six levels of z.
 
-    data = np.asarray(kde_xz.data.values())
+    data = np.asarray(list(kde_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     _, ax = plt.subplots()
     ax.set_title('Conditional Simulation Of X Given Indicator Z')
@@ -513,7 +513,7 @@ def test_conditional_real(kde_xz):
     # generate_real_nominal_data) and plot the frequencies of the simulated
     # values.
 
-    data = np.asarray(kde_xz.data.values())
+    data = np.asarray(list(kde_xz.data.values()))
     indicators = sorted(set(data[:,1].astype(int)))
     fig, axes = plt.subplots(2,3)
     fig.suptitle('Conditional Simulation Of Indicator Z Given X', size=20)

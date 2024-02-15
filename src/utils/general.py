@@ -28,7 +28,7 @@ import numpy as np
 from cgpm.utils import validation as vu
 
 from cgpm.cgpm import CGpm
-CGPM_SIMULATE_NARGS = CGpm.simulate.func_code.co_argcount
+CGPM_SIMULATE_NARGS = CGpm.simulate.__code__.co_argcount
 
 
 colors = ['red', 'blue', 'green', 'magenta', 'orange', 'purple', 'brown',
@@ -51,7 +51,7 @@ def merged(*dicts):
     result = {}
     for d in dicts:
         result.update(d)
-    return result
+    return result.copy()
 
 def mergedl(dicts):
     return merged(*dicts)
@@ -104,7 +104,7 @@ def logp_crp_gibbs(Nk, Z, i, alpha, m):
     """Compute the CRP probabilities for a Gibbs transition of customer i,
     with table counts Nk, table assignments Z, and m auxiliary tables."""
     # XXX F ME
-    K = sorted(Nk) if isinstance(Nk, dict) else xrange(len(Nk))
+    K = sorted(Nk) if isinstance(Nk, dict) else range(len(Nk))
     singleton = Nk[Z[i]] == 1
     m_aux = m-1 if singleton else m
     p_table_aux = alpha/float(m)
@@ -220,10 +220,10 @@ def simulate_crp(N, alpha, rng=None):
 
     partition = [0]*N
     Nk = [1]
-    for i in xrange(1,N):
+    for i in range(1,N):
         K = len(Nk)
         ps = np.zeros(K+1)
-        for k in xrange(K):
+        for k in range(K):
             ps[k] = float(Nk[k])
         ps[K] = alpha
         ps /= (float(i) - 1 + alpha)
@@ -262,14 +262,14 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     friends = {col: block for block in Cd for col in block}
 
     # Assign customers.
-    for cust in xrange(N):
+    for cust in range(N):
         # If the customer has been assigned, skip.
         if Z[cust] > -1:
             continue
         # Find valid tables for cust and friends.
         assert all(Z[f] == -1 for f in friends.get(cust, [cust]))
         prob_table = [0] * (max(Z)+1)
-        for t in xrange(max(Z)+1):
+        for t in range(max(Z)+1):
             # Current customers at table t.
             t_custs = [i for i,z in enumerate(Z) if z==t]
             prob_table[t] = len(t_custs)
@@ -409,7 +409,7 @@ def simulate_many(simulate):
             N = kwargs.get('N', None)
         if N is None:
             return simulate(*args, **kwargs)
-        return [simulate(*args, **kwargs) for _i in xrange(N)]
+        return [simulate(*args, **kwargs) for _i in range(N)]
     return simulate_wrapper
 
 

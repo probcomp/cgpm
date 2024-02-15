@@ -56,7 +56,7 @@ class PieceWise(CGpm):
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
         assert targets
-        assert inputs.keys() == self.inputs
+        assert list(inputs.keys()) == self.inputs
         y = inputs[self.inputs[0]]
         # Case 1: No constraints on outputs.
         if not constraints:
@@ -68,13 +68,13 @@ class PieceWise(CGpm):
             if self.outputs[1] in targets:
                 sample[self.outputs[1]] = z
         # Case 2: Simulating x given the z.
-        elif constraints.keys() == [self.outputs[1]]:
+        elif list(constraints.keys()) == [self.outputs[1]]:
             assert targets == [self.outputs[0]]
             z = constraints[self.outputs[1]]
             x = y + (2*z - 1) + self.rng.normal(0, self.sigma)
             sample = {self.outputs[0]: x}
         # Case 3: Simulating z given the x.
-        elif constraints.keys() == [self.outputs[0]]:
+        elif list(constraints.keys()) == [self.outputs[0]]:
             assert targets == [self.outputs[1]]
             # Compute probabilities for z | x,y
             p_z0 = self.logpdf(rowid, {self.outputs[1]: 0}, constraints, inputs)
@@ -89,7 +89,7 @@ class PieceWise(CGpm):
 
     def logpdf(self, rowid, targets, constraints=None, inputs=None):
         assert targets
-        assert inputs.keys() == self.inputs
+        assert list(inputs.keys()) == self.inputs
         y = inputs[self.inputs[0]]
         # Case 1: No evidence on outputs.
         if not constraints:
@@ -125,8 +125,8 @@ class PieceWise(CGpm):
                 raise ValueError('Invalid query pattern: %s %s %s'
                     % (targets, constraints, inputs))
         # Case 2: logpdf of x given the z.
-        elif constraints.keys() == [self.outputs[1]]:
-            assert targets.keys() == [self.outputs[0]]
+        elif list(constraints.keys()) == [self.outputs[1]]:
+            assert list(targets.keys()) == [self.outputs[0]]
             z = constraints[self.outputs[1]]
             x = targets[self.outputs[0]]
             logp_xz = self.logpdf(
@@ -143,8 +143,8 @@ class PieceWise(CGpm):
             )
             logp = logp_xz - logp_z
         # Case 2: logpdf of z given the x.
-        elif constraints.keys() == [self.outputs[0]]:
-            assert targets.keys() == [self.outputs[1]]
+        elif list(constraints.keys()) == [self.outputs[0]]:
+            assert list(targets.keys()) == [self.outputs[1]]
             z = targets[self.outputs[1]]
             x = constraints[self.outputs[0]]
             logp_xz = self.logpdf(

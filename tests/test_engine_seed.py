@@ -23,7 +23,7 @@ def test_engine_simulate_no_repeat():
     engine = Engine(X=[[1]], cctypes=['normal'], num_states=2, rng=rng)
     samples_list = [
         [sample[0] for sample in engine.simulate(None, [0], N=3)[0]]
-        for _i in xrange(10)
+        for _i in range(10)
     ]
     samples_set = set([frozenset(s) for s in samples_list])
     assert len(samples_set) == len(samples_list)

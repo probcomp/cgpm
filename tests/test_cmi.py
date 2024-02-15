@@ -22,7 +22,7 @@ from cgpm.crosscat.engine import Engine
 from cgpm.crosscat.state import State
 from cgpm.utils.general import gen_rng
 
-from markers import integration
+from .markers import integration
 
 
 def test_entropy_bernoulli_univariate__ci_():

@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import base64
-import cPickle
+import pickle
 import math
 
 from collections import OrderedDict
@@ -114,10 +114,12 @@ class OrdinaryLeastSquares(CGpm):
     def transition(self, N=None):
         # Transition forest.
         if len(self.data.Y) > 0:
-            self.regressor.fit(self.data.Y.values(), self.data.x.values())
-            predictions = self.regressor.predict(self.data.Y.values())
+            self.regressor.fit(
+                    list(self.data.Y.values()), list(self.data.x.values()))
+            predictions = self.regressor.predict(list(self.data.Y.values()))
             self.noise = \
-                np.linalg.norm(self.data.x.values() - predictions)\
+                np.linalg.norm(
+                        np.array(list(self.data.x.values())) - predictions)\
                 / np.sqrt(self.N)
 
     def transition_params(self):
@@ -224,7 +226,7 @@ class OrdinaryLeastSquares(CGpm):
 
         # Pickle the sklearn regressor.
         regressor = metadata['params']['regressor']
-        regressor_binary = base64.b64encode(cPickle.dumps(regressor))
+        regressor_binary = base64.b64encode(pickle.dumps(regressor))
         metadata['params']['regressor_binary'] = regressor_binary
         del metadata['params']['regressor']
 
@@ -234,7 +236,7 @@ class OrdinaryLeastSquares(CGpm):
     def from_metadata(cls, metadata, rng=None):
         if rng is None: rng = gu.gen_rng(0)
         # Unpickle the sklearn ols.
-        skl_ols = cPickle.loads(
+        skl_ols = pickle.loads(
             base64.b64decode(metadata['params']['regressor_binary']))
         metadata['params']['regressor'] = skl_ols
         ols = cls(
@@ -244,8 +246,8 @@ class OrdinaryLeastSquares(CGpm):
             distargs=metadata['distargs'],
             rng=rng)
         # json keys are strings -- convert back to integers.
-        x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
-        Y = ((int(k), v) for k, v in metadata['data']['Y'].iteritems())
+        x = ((int(k), v) for k, v in metadata['data']['x'].items())
+        Y = ((int(k), v) for k, v in metadata['data']['Y'].items())
         ols.data = Data(x=OrderedDict(x), Y=OrderedDict(Y))
         ols.N = metadata['N']
         return ols

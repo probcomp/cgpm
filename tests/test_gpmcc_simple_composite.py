@@ -33,10 +33,11 @@ from cgpm.utils import test as tu
 
 
 def generate_quadrants(rows, rng):
-    Q0 = rng.multivariate_normal([2,2], cov=[[.5,0],[0,.5]], size=rows/4)
-    Q1 = rng.multivariate_normal([-2,2], cov=[[.5,0],[0,.5]], size=rows/4)
-    Q2 = rng.multivariate_normal([-2,-2], cov=[[.5,0],[0,.5]], size=rows/4)
-    Q3 = rng.multivariate_normal([2,-2], cov=[[.5,0],[0,.5]], size=rows/4)
+    size = rows // 4
+    Q0 = rng.multivariate_normal([2,2], cov=[[.5,0],[0,.5]], size=size)
+    Q1 = rng.multivariate_normal([-2,2], cov=[[.5,0],[0,.5]], size=size)
+    Q2 = rng.multivariate_normal([-2,-2], cov=[[.5,0],[0,.5]], size=size)
+    Q3 = rng.multivariate_normal([2,-2], cov=[[.5,0],[0,.5]], size=size)
     colors = iter(cm.gist_rainbow(np.linspace(0, 1, 4)))
     for q in [Q0, Q1, Q2, Q3]:
         plt.scatter(q[:,0], q[:,1], color=next(colors))

@@ -155,7 +155,7 @@ class MultivariateKnn(CGpm):
             targets = targets[1:]
         dataset = self._dataset(targets_dummy)
         indices = self.rng.choice(len(dataset), size=N)
-        constraints = [zip(targets_dummy, dataset[i]) for i in indices]
+        constraints = [list(zip(targets_dummy, dataset[i])) for i in indices]
         results = [self.simulate(rowid, targets, dict(e)) for e in constraints]
         # Make sure to add back the resampled first target variable to results.
         if merged:
@@ -191,7 +191,7 @@ class MultivariateKnn(CGpm):
         D_code = np.column_stack((D_qr_code, D_ev_code))
         # Run nearest neighbor search on the constraints only.
         constraints_code = self._dummy_code(
-            [constraints.values()], constraints.keys())
+            [list(constraints.values())], list(constraints.keys()))
         dist, neighbors = KDTree(D_ev_code).query(constraints_code, k=len(D))
         # Check for equidistant neighbors and possibly extend the search.
         valid = [i for i, d in enumerate(dist[0]) if d <= dist[0][self.K-1]]
@@ -217,7 +217,7 @@ class MultivariateKnn(CGpm):
             q: lookup[self.stattypes[self.outputs.index(q)]](q, dataset[:,i])
             for i, q in enumerate(targets)}
         simulate = lambda q, N=None: {c: models[c].simulate(N) for c in q}
-        logpdf = lambda q: sum(models[c].logpdf(x) for c,x in q.iteritems())
+        logpdf = lambda q: sum(models[c].logpdf(x) for c,x in q.items())
         return LocalGpm(simulate, logpdf)
 
     def _create_local_model_numerical(self, q, locality):
@@ -244,7 +244,7 @@ class MultivariateKnn(CGpm):
 
     def _dataset(self, outputs):
         indexes = [self.outputs.index(q) for q in outputs]
-        X = np.asarray(self.data.values())[:,indexes]
+        X = np.asarray(list(self.data.values()))[:,indexes]
         return X[~np.any(np.isnan(X), axis=1)]
 
     def _stattypes(self, outputs):
@@ -255,7 +255,7 @@ class MultivariateKnn(CGpm):
         if constraints is None:
             constraints = {}
         if rowid in self.data:
-            values = self.data[rowid]
+            values = list(self.data[rowid])
             assert len(values) == len(self.outputs)
             observations = {
                 output : value
@@ -315,7 +315,7 @@ class MultivariateKnn(CGpm):
             raise ValueError('Wrong number of statargs: %s.' % distargs)
         # Ensure number of categories provided as k.
         if any('k' not in distargs['outputs']['statargs'][i]
-                for i in xrange(len(outputs))
+                for i in range(len(outputs))
                 if distargs['outputs']['stattypes'][i] != 'numerical'):
             raise ValueError('Missing number of categories k: %s' % distargs)
 
@@ -343,11 +343,11 @@ class MultivariateKnn(CGpm):
             raise ValueError('Duplicate variable in targets/constraints: %s %s'
                 % (targets, constraints))
         # Check for a nan in constraints.
-        if any(np.isnan(v) for v in constraints.itervalues()):
+        if any(np.isnan(v) for v in constraints.values()):
             raise ValueError('Nan value in constraints: %s.' % constraints)
         # Check for a nan in targets.,
         if isinstance(targets, dict)\
-                and any(np.isnan(v) for v in targets.itervalues()):
+                and any(np.isnan(v) for v in targets.values()):
             raise ValueError('Nan value in targets: %s.' % targets)
 
     def _validate_incorporate(self, rowid, observation, inputs):
@@ -378,7 +378,7 @@ class MultivariateKnn(CGpm):
         metadata['inputs'] = self.inputs
         metadata['distargs'] = self.get_distargs()
         metadata['N'] = self.N
-        metadata['data'] = self.data.items()
+        metadata['data'] = list(self.data.items())
 
         metadata['params'] = dict()
 

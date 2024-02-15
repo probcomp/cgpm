@@ -22,12 +22,12 @@ import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from scipy.stats import multivariate_normal
 import sklearn.datasets
 import sklearn.decomposition
 
 from cgpm.factor.factor import FactorAnalysis
 from cgpm.utils import general as gu
-from cgpm.utils import mvnormal as multivariate_normal
 
 
 def scatter_classes(x, classes, ax=None):

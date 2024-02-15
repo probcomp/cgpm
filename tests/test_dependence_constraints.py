@@ -23,7 +23,7 @@ from cgpm.crosscat.state import State
 from cgpm.utils import general as gu
 from cgpm.utils import validation as vu
 
-from markers import integration
+from .markers import integration
 
 
 def test_naive_bayes_independence():
@@ -115,7 +115,7 @@ def test_independence_inference_quality_lovecat():
     data_view_2 = np.repeat(column_view_2, 4, axis=1)
     data = np.column_stack((data_view_1, data_view_2))
 
-    Zv0 = {i: 0 for i in xrange(8)}
+    Zv0 = {i: 0 for i in range(8)}
     state = State(data, Zv=Zv0, cctypes=['normal']*8, rng=gu.gen_rng(10))
     state.transition_lovecat(N=100, progress=1)
     for col in [0, 1, 2, 3,]:

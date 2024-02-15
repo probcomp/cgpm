@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Venture.  If not, see <http://www.gnu.org/licenses/>.
 
-import cPickle as pickle
+import pickle
 import os
 import struct
 import traceback
@@ -47,7 +47,7 @@ def parallel_map(f, l, parallelism=None):
                 break
             x = l[i]
             try:
-                ok, fx = True, f(x)
+                ok, fx = True, f(*x)
             except Exception as e:
                 ok, fx = False, traceback.format_exc()
             os.write(retq_wr, le32enc(childno))
@@ -65,11 +65,11 @@ def parallel_map(f, l, parallelism=None):
 
     # Create the queues and worker processes.
     retq_rd, retq_wr = os.pipe()
-    inq = [Pipe(duplex=False) for _ in xrange(ncpu)]
-    outq = [Pipe(duplex=False) for _ in xrange(ncpu)]
+    inq = [Pipe(duplex=False) for _ in range(ncpu)]
+    outq = [Pipe(duplex=False) for _ in range(ncpu)]
     process = [
         Process(target=process_input, args=(j, inq[j][0], outq[j][1], retq_wr))
-        for j in xrange(ncpu)
+        for j in range(ncpu)
     ]
 
     # Prepare to bail by terminating all the worker processes.
@@ -85,8 +85,8 @@ def parallel_map(f, l, parallelism=None):
         n = len(l)
         fl = [None] * n
         ctr = [n]
-        iterator = iter(xrange(n))
-        for j, i in zip(xrange(ncpu), iterator):
+        iterator = iter(range(n))
+        for j, i in zip(range(ncpu), iterator):
             inq[j][1].send(i)
         for i in iterator:
             j = le32dec(os.read(retq_rd, 4))

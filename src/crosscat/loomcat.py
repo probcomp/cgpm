@@ -40,7 +40,7 @@ DEFAULT_RESULTS_DIR = 'results'
 
 def _generate_column_names(state):
     """Returns list of dummy names for the outputs of `state`."""
-    return [unicode('c%05d') % (i,) for i in state.outputs]
+    return ['c%05d' % (i,) for i in state.outputs]
 
 
 def _generate_loom_stattypes(state):
@@ -126,13 +126,13 @@ def _retrieve_row_partitions(path, sample):
     assign_in = os.path.join(
         path, 'samples', 'sample.%d' % (sample,), 'assign.pbs.gz')
     assignments = {
-        a.rowid: [a.groupids(k) for k in xrange(num_kinds)]
+        a.rowid: [a.groupids(k) for k in range(num_kinds)]
         for a in assignment_stream_load(assign_in)
     }
     rowids = sorted(assignments)
     return {
         k: [assignments[rowid][k] for rowid in rowids]
-        for k in xrange(num_kinds)
+        for k in range(num_kinds)
     }
 
 
@@ -328,7 +328,7 @@ def transition_engine(
     # Update the engine and save the engine.
     args = [
         (engine.states[i], engine.states[i]._loom_path['results'], i)
-        for i in xrange(engine.num_states())
+        for i in range(engine.num_states())
     ]
     engine.states = parallel_map(_update_state_mp, args)
 

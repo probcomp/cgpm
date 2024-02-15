@@ -16,8 +16,8 @@
 
 import pytest
 
-from stochastic import StochasticError
-from stochastic import stochastic
+from .stochastic import StochasticError
+from .stochastic import stochastic
 
 class Quagga(Exception):
     pass

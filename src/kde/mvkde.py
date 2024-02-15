@@ -69,7 +69,7 @@ class MultivariateKde(CGpm):
             raise ValueError('Wrong number of statargs: %s.' % distargs)
         # Ensure number of categories provided as k.
         if any('k' not in distargs['outputs']['statargs'][i]
-                for i in xrange(len(outputs))
+                for i in range(len(outputs))
                 if distargs['outputs']['stattypes'][i] != 'numerical'):
             raise ValueError('Missing number of categories k: %s' % distargs)
         # Build the object.
@@ -138,9 +138,10 @@ class MultivariateKde(CGpm):
                 self._stattypes(targets),
                 bw=self._bw(targets),
             )
-            pdf = model.pdf(targets.values())
+            pdf = model.pdf(list(targets.values()))
         else:
-            full_members = self._dataset(targets.keys() + constraints.keys())
+            full_members = self._dataset(
+                    list(targets.keys()) + list(constraints.keys()))
             model = kernel_density.KDEMultivariateConditional(
                 full_members[:,:len(targets)],
                 full_members[:,len(targets):],
@@ -148,7 +149,7 @@ class MultivariateKde(CGpm):
                 self._stattypes(constraints),
                 bw=np.concatenate((self._bw(targets), self._bw(constraints))),
             )
-            pdf = model.pdf(targets.values(), constraints.values())
+            pdf = model.pdf(list(targets.values()), list(constraints.values()))
         return np.log(pdf)
 
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -165,11 +166,11 @@ class MultivariateKde(CGpm):
                 % (targets, constraints,))
         constraints = self.populate_constraints(rowid, targets, constraints)
         if constraints:
-            full_members = self._dataset(targets + constraints.keys())
+            full_members = self._dataset(targets + list(constraints.keys()))
             weights = _kernel_base.gpke(
                 self._bw(constraints),
                 full_members[:,len(targets):],
-                constraints.values(),
+                list(constraints.values()),
                 self._stattypes(constraints),
                 tosum=False,
             )
@@ -203,7 +204,7 @@ class MultivariateKde(CGpm):
         c = self.levels[q]
         def _compute_probabilities(s):
             return 1 - self.bw[idx] if s == Xi else self.bw[idx] / (c - 1)
-        probs = map(_compute_probabilities, range(c))
+        probs = list(map(_compute_probabilities, range(c)))
         assert np.allclose(sum(probs), 1)
         return self.rng.choice(range(c), p=probs)
 
@@ -229,7 +230,7 @@ class MultivariateKde(CGpm):
 
     def _dataset(self, outputs):
         indexes = [self.outputs.index(q) for q in outputs]
-        X = np.asarray(self.data.values())[:,indexes]
+        X = np.asarray(list(self.data.values()))[:,indexes]
         return X[~np.any(np.isnan(X), axis=1)]
 
     def _default_bw(self, q):
@@ -291,7 +292,7 @@ class MultivariateKde(CGpm):
         metadata['inputs'] = self.inputs
         metadata['distargs'] = self.get_distargs()
         metadata['N'] = self.N
-        metadata['data'] = self.data.items()
+        metadata['data'] = list(self.data.items())
 
         metadata['params'] = dict()
         metadata['params']['bw'] = self.bw
