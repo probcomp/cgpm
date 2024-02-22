@@ -90,7 +90,7 @@ def logp_crp(N, Nk, alpha):
     customers and K is the number of tables.
     http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
     """
-    return len(Nk)*log(alpha) + np.sum(lgamma(c) for c in Nk) \
+    return len(Nk)*log(alpha) + np.sum([lgamma(c) for c in Nk]) \
         + lgamma(alpha) - lgamma(N+alpha)
 
 def logp_crp_unorm(N, K, alpha):
