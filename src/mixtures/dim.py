@@ -151,7 +151,7 @@ class Dim(CGpm):
 
     def transition_hypers(self):
         """Transitions the hyperparameters of each cluster."""
-        hypers = self.hypers.keys()
+        hypers = list(self.hypers.keys())
         self.rng.shuffle(hypers)
         # For each hyper.
         for hyper in hypers:
@@ -250,6 +250,6 @@ class Dim(CGpm):
         if constraints:
             valid_constraints = not any(np.isnan(constraints.values()))
         if inputs:
-            valid_inputs = not any(np.isnan(inputs2.values()))
+            valid_inputs = not any(np.isnan(list(inputs2.values())))
         assert valid_constraints
         return k, inputs2, valid_targets and valid_inputs

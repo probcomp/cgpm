@@ -30,7 +30,7 @@ def test_all_kernels():
     X = rng.normal(size=(5,5))
     state = State(X, cctypes=['normal']*5)
     state.transition(N=5)
-    for k, n in state.to_metadata()['diagnostics']['iterations'].iteritems():
+    for k, n in state.to_metadata()['diagnostics']['iterations'].items():
         assert n == 5
 
 def test_individual_kernels():
@@ -94,5 +94,5 @@ def test_transition_foreign():
 
 
 def check_expected_counts(actual, expected):
-    for k, n in expected.iteritems():
+    for k, n in expected.items():
         assert n == actual[k]

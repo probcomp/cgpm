@@ -17,6 +17,7 @@
 from collections import OrderedDict
 from math import log
 
+import numpy as np
 from scipy.special import gammaln
 
 from cgpm.primitives.distribution import DistributionGpm
@@ -62,7 +63,7 @@ class Crp(DistributionGpm):
         # Do not call DistributionGpm.logpdf since crp allows observed rowid.
         assert not inputs
         assert not constraints
-        assert targets.keys() == self.outputs
+        assert list(targets.keys()) == self.outputs
         x = int(targets[self.outputs[0]])
         if rowid in self.data:
             return 0 if self.data[rowid] == x else -float('inf')
@@ -184,5 +185,6 @@ class Crp(DistributionGpm):
     @staticmethod
     def calc_logpdf_marginal(N, counts, alpha):
         # http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
-        return len(counts) * log(alpha) + sum(gammaln(counts.values())) \
+        v = np.array(list(counts.values()))
+        return len(counts) * log(alpha) + sum(gammaln(v)) \
             + gammaln(alpha) - gammaln(N + alpha)

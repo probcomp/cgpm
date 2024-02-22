@@ -32,8 +32,8 @@ def _compute_y(x):
 
 rng = gu.gen_rng(1)
 X = rng.uniform(low=0, high=10, size=50)
-Y = map(_compute_y, X)
-D = np.column_stack((X,Y))
+Y = list(map(_compute_y, X))
+D = np.column_stack((X, Y))
 
 
 def replace_key(d, a, b):

@@ -44,7 +44,7 @@ class ImportanceNetwork(object):
             inputs = {}
         samples, weights = zip(*[
             self.weighted_sample(rowid, targets, constraints, inputs)
-            for _i in xrange(self.accuracy)
+            for _i in range(self.accuracy)
         ])
         if all(isinf(l) for l in weights):
             raise ValueError('Zero density constraints: %s' % (constraints,))
@@ -62,13 +62,13 @@ class ImportanceNetwork(object):
         samples_joint, weights_joint = zip(*[
             self.weighted_sample(
                 rowid, [], gu.merged(targets, constraints), inputs)
-            for _i in xrange(self.accuracy)
+            for _i in range(self.accuracy)
         ])
         logp_joint = gu.logmeanexp(weights_joint)
         # Compute marginal probability.
         samples_marginal, weights_marginal = zip(*[
             self.weighted_sample(rowid, [], constraints, inputs)
-            for _i in xrange(self.accuracy)
+            for _i in range(self.accuracy)
         ]) if constraints else ({}, [0.])
         if all(isinf(l) for l in weights_marginal):
             raise ValueError('Zero density constraints: %s' % (constraints,))
@@ -92,11 +92,11 @@ class ImportanceNetwork(object):
     def invoke_cgpm(self, rowid, cgpm, targets, constraints, inputs):
         cgpm_inputs = {
             e : x for e, x in
-                itertools.chain(inputs.iteritems(), constraints.iteritems())
+                itertools.chain(inputs.items(), constraints.items())
             if e in cgpm.inputs
         }
         cgpm_constraints = {
-            e:x for e, x in constraints.iteritems()
+            e:x for e, x in constraints.items()
             if e in cgpm.outputs
         }
         # ev_all = gu.merged(ev_in, ev_out)

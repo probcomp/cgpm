@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cPickle as pickle
 import copy
 import importlib
 import itertools
+import pickle
 import sys
 import time
 
@@ -60,7 +60,7 @@ class State(CGpm):
         # -- Dataset and outputs -----------------------------------------------
         X = np.asarray(X)
         if not outputs:
-            outputs = range(X.shape[1])
+            outputs = list(range(X.shape[1]))
         else:
             assert len(outputs) == X.shape[1]
             assert all(o >= 0 for o in outputs)
@@ -96,7 +96,7 @@ class State(CGpm):
             if self.Ci or self.Cd:
                 # Require outputs are zero-based for now, rather than worry
                 # about maintaining a zero-based map.
-                if self.outputs != range(self.n_cols()):
+                if self.outputs != list(range(self.n_cols())):
                     raise ValueError('Use zero-based outputs with constraints.')
                 if self.Ci:
                     # Independence constraints are specified; simulate
@@ -119,7 +119,7 @@ class State(CGpm):
                     self.crp.incorporate(c, z, {-1:0})
         # Load the provided Zv without simulation.
         else:
-            for c, z in Zv.iteritems():
+            for c, z in Zv.items():
                 self.crp.incorporate(c, {self.crp_id: z}, {-1:0})
 
         assert len(self.Zv()) == len(self.outputs)
@@ -307,15 +307,15 @@ class State(CGpm):
 
     # XXX Major hack to force values of NaN cells in incorporated rowids.
     def force_cell(self, rowid, observation):
-        if not 0 <= rowid < self.n_rows():
+        if rowid is None or not 0 <= rowid < self.n_rows():
             raise ValueError('Force observation requires existing rowid.')
         if not all(np.isnan(self.X[c][rowid]) for c in observation):
             raise ValueError('Force observations requires NaN cells.')
-        for col, value in observation.iteritems():
+        for col, value in observation.items():
             self.X[col][rowid] = value
         queries = vu.partition_list(
             {c: self.Zv(c) for c in observation}, observation)
-        for view_id, view_variables in queries.iteritems():
+        for view_id, view_variables in queries.items():
             observation_v = {c: observation[c] for c in view_variables}
             self.views[view_id].force_cell(rowid, observation_v)
 
@@ -378,12 +378,12 @@ class State(CGpm):
         return gu.logp_crp_constrained_dependent(Zv, alpha, self.Cd)
 
     def logpdf_likelihood(self):
-        logp_views = sum(v.logpdf_likelihood() for v in self.views.itervalues())
+        logp_views = sum(v.logpdf_likelihood() for v in self.views.values())
         return logp_views
 
     def logpdf_score(self):
         logp_crp = self.logpdf_score_crp()
-        logp_views = sum(v.logpdf_score() for v in self.views.itervalues())
+        logp_views = sum(v.logpdf_score() for v in self.views.values())
         return logp_crp + logp_views
 
     # --------------------------------------------------------------------------
@@ -424,7 +424,8 @@ class State(CGpm):
         return ImportanceNetwork(self.build_cgpms(), accuracy, rng=self.rng)
 
     def build_cgpms(self):
-        return [self.views[v] for v in self.views] + self.hooked_cgpms.values()
+        return [self.views[v] for v in self.views] + list(
+                self.hooked_cgpms.values())
 
     def _populate_constraints(self, rowid, targets, constraints):
         """Loads constraints from the dataset."""
@@ -482,11 +483,11 @@ class State(CGpm):
             inputs_list=None, Ns=None):
         """Evaluate multiple queries at once, used by Engine."""
         if constraints_list is None:
-            constraints_list = [{} for i in xrange(len(rowids))]
+            constraints_list = [{} for i in range(len(rowids))]
         if inputs_list is None:
-            inputs_list = [{} for i in xrange(len(rowids))]
+            inputs_list = [{} for i in range(len(rowids))]
         if Ns is None:
-            Ns = [1 for i in xrange(len(rowids))]
+            Ns = [1 for i in range(len(rowids))]
         assert len(rowids) == len(targets_list)
         assert len(rowids) == len(constraints_list)
         assert len(rowids) == len(inputs_list)
@@ -506,9 +507,9 @@ class State(CGpm):
             inputs_list=None):
         """Evaluate multiple queries at once, used by Engine."""
         if constraints_list is None:
-            constraints_list = [{} for i in xrange(len(rowids))]
+            constraints_list = [{} for i in range(len(rowids))]
         if inputs_list is None:
-            inputs_list = [{} for i in xrange(len(rowids))]
+            inputs_list = [{} for i in range(len(rowids))]
         assert len(rowids) == len(targets_list)
         assert len(rowids) == len(constraints_list)
         assert len(rowids) == len(inputs_list)
@@ -586,7 +587,7 @@ class State(CGpm):
     def row_similarity_pairwise(self, cols=None):
         if cols is None:
             cols = self.outputs
-        rowids = range(self.n_rows())
+        rowids = list(range(self.n_rows()))
         S = np.eye(len(rowids))
         for row0, row1 in itertools.combinations(rowids, 2):
             s = self.row_similarity(row0, row1, cols=cols)
@@ -603,13 +604,13 @@ class State(CGpm):
         # Retrieve the relevant view.
         view = self.view_for(col)
         # Select the hypothetical rows which are compatible with the view.
-        hypotheticals = filter(
-            lambda r: not all(np.isnan(r.values())),
-            [{d: h.get(d, np.nan) for d in view.dims} for h in hypotheticals]
+        hypotheticals = list(filter(
+            lambda r: not all(np.isnan(list(r.values()))),
+            [{d: h.get(d, np.nan) for d in view.dims} for h in hypotheticals])
         ) if hypotheticals else []
         # Produce hypothetical rowids.
-        rowid_hypothetical = range(
-            self.n_rows(), self.n_rows() + len(hypotheticals))
+        rowid_hypothetical = list(range(
+            self.n_rows(), self.n_rows() + len(hypotheticals)))
         # Incorporate hypothetical rows.
         for rowid, query in zip(rowid_hypothetical, hypotheticals):
             for d in view.dims:
@@ -655,8 +656,8 @@ class State(CGpm):
         N = N or 100
         T = T or 100
         # Partition constraints into equality (e) and marginalization (m) forms.
-        e_constraints = {e:x for e,x in constraints.iteritems() if x is not None}
-        m_constraints = [e for e,x in constraints.iteritems() if x is None]
+        e_constraints = {e:x for e,x in constraints.items() if x is not None}
+        m_constraints = [e for e,x in constraints.items() if x is None]
         # Determine the estimator to use.
         estimator = self._compute_mi if set(col0) != set(col1) \
             else self._compute_entropy
@@ -719,7 +720,7 @@ class State(CGpm):
         for variable in constraints:
             component = connected_components[var_to_cgpm[variable]]
             blocks[component][2][variable] = constraints[variable]
-        return blocks.values()
+        return list(blocks.values())
 
     # --------------------------------------------------------------------------
     # Inference
@@ -901,8 +902,8 @@ class State(CGpm):
             break
 
         if progress:
-            print '\rCompleted: %d iterations in %f seconds.' % \
-                (iters, time.time()-start)
+            print('\rCompleted: %d iterations in %f seconds.'
+                  % (iters, time.time()-start))
 
     def _increment_iterations(self, kernel, N=1):
         previous = self.diagnostics['iterations'].get(kernel, 0)
@@ -911,7 +912,7 @@ class State(CGpm):
     def _increment_diagnostics(self):
         self.diagnostics['logscore'].append(self.logpdf_score())
         self.diagnostics['column_crp_alpha'].append(self.alpha())
-        self.diagnostics['column_partition'].append(self.Zv().items())
+        self.diagnostics['column_partition'].append(list(self.Zv().items()))
 
     def _progress(self, percentage):
         tu.progress(percentage, sys.stdout)
@@ -922,7 +923,7 @@ class State(CGpm):
 
     def data_array(self):
         """Return dataset as a numpy array."""
-        return np.asarray(self.X.values()).T
+        return np.asarray(list(self.X.values())).T
 
     def n_rows(self):
         """Number of incorporated rows."""
@@ -1098,7 +1099,7 @@ class State(CGpm):
         # Enforce independence constraints.
         avoid = [a for p in self.Ci if col in p for a in p if a != col]
         for a in avoid:
-            index = self.views.keys().index(self.Zv(a))
+            index = list(self.views.keys()).index(self.Zv(a))
             logp_views[index] = float('-inf')
 
         # Draw a new view.
@@ -1154,7 +1155,7 @@ class State(CGpm):
         self.views[identity] = view
 
     def hypothetical(self, rowid):
-        return not 0 <= rowid < self.n_rows()
+        return rowid is None or not 0 <= rowid < self.n_rows()
 
     # --------------------------------------------------------------------------
     # Data structure invariants.
@@ -1195,7 +1196,7 @@ class State(CGpm):
 
         # View partition data.
         metadata['alpha'] = self.alpha()
-        metadata['Zv'] = self.Zv().items()
+        metadata['Zv'] = list(self.Zv().items())
 
         # Column data.
         metadata['cctypes'] = []
@@ -1209,7 +1210,7 @@ class State(CGpm):
             # distargs['inputs']['indexes']; instead create a separate metadata
             # entry for the dimension inputs.
             metadata['distargs'].append(dim.distargs)
-            metadata['suffstats'].append(dim.get_suffstats().items())
+            metadata['suffstats'].append(list(dim.get_suffstats().items()))
 
         # Dependence constraints.
         metadata['Cd'] = self.Cd
@@ -1218,7 +1219,7 @@ class State(CGpm):
         # View data.
         metadata['Zrv'] = []
         metadata['view_alphas'] = []
-        for v, view in self.views.iteritems():
+        for v, view in self.views.items():
             rowids = sorted(view.Zr())
             metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
             metadata['view_alphas'].append((v, view.alpha()))
@@ -1228,7 +1229,7 @@ class State(CGpm):
 
         # Hooked CGPMs.
         metadata['hooked_cgpms'] = dict()
-        for token, cgpm in self.hooked_cgpms.iteritems():
+        for token, cgpm in self.hooked_cgpms.items():
             metadata['hooked_cgpms'][token] = cgpm.to_metadata()
 
         # Path of a Loom project.
@@ -1266,7 +1267,7 @@ class State(CGpm):
             rng=rng,
         )
         # Hook up the composed CGPMs.
-        for token, cgpm_metadata in metadata['hooked_cgpms'].iteritems():
+        for token, cgpm_metadata in metadata['hooked_cgpms'].items():
             builder = getattr(
                 importlib.import_module(cgpm_metadata['factory'][0]),
                 cgpm_metadata['factory'][1])
@@ -1277,7 +1278,7 @@ class State(CGpm):
     @classmethod
     def from_pickle(cls, fileptr, rng=None):
         if isinstance(fileptr, str):
-            with open(fileptr, 'r') as f:
+            with open(fileptr, 'rb') as f:
                 metadata = pickle.load(f)
         else:
             metadata = pickle.load(fileptr)

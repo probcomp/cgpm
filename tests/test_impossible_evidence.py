@@ -43,7 +43,7 @@ def state():
         T,
         cctypes=cctypes,
         distargs=distargs,
-        Zv={i: 0 for i in xrange(len(cctypes))},
+        Zv={i: 0 for i in range(len(cctypes))},
         rng=gu.gen_rng(0)
     )
     return s

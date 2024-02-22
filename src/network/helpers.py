@@ -108,7 +108,8 @@ def topological_sort(graph):
     graph = dict(graph)
     while graph:
         cyclic = True
-        for node, edges in graph.items():
+        graph_copy = graph.copy()
+        for node, edges in graph_copy.items():
             if all(e not in graph for e in edges):
                 cyclic = False
                 del graph[node]

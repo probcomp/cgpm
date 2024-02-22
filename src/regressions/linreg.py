@@ -64,7 +64,7 @@ class LinearRegression(CGpm):
             rng=None):
         # io data.
         self.outputs = outputs
-        self.inputs = inputs
+        self.inputs = list(inputs)
         self.rng = gu.gen_rng() if rng is None else rng
         assert len(self.outputs) == 1
         assert len(self.inputs) >= 1
@@ -114,8 +114,8 @@ class LinearRegression(CGpm):
         assert not constraints
         xt, yt = self.preprocess(targets, inputs)
         return LinearRegression.calc_predictive_logp(
-            xt, yt, self.N, self.data.Y.values(), self.data.x.values(), self.a,
-            self.b, self.mu, self.V)
+            xt, yt, self.N, list(self.data.Y.values()),
+            list(self.data.x.values()), self.a, self.b, self.mu, self.V)
 
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -130,13 +130,13 @@ class LinearRegression(CGpm):
 
     def logpdf_score(self):
         return LinearRegression.calc_logpdf_marginal(
-            self.N, self.data.Y.values(), self.data.x.values(),
+            self.N, list(self.data.Y.values()), list(self.data.x.values()),
             self.a, self.b, self.mu, self.V)
 
     def simulate_params(self):
         an, bn, mun, Vn_inv = LinearRegression.posterior_hypers(
-            self.N, self.data.Y.values(), self.data.x.values(), self.a, self.b,
-            self.mu, self.V)
+            self.N, list(self.data.Y.values()), list(self.data.x.values()),
+            self.a, self.b, self.mu, self.V)
         return LinearRegression.sample_parameters(
             an, bn, mun, np.linalg.inv(Vn_inv), self.rng)
 
@@ -155,8 +155,8 @@ class LinearRegression(CGpm):
             cctype=self.name(), hypers=self.get_hypers(),
             distargs=self.get_distargs(), rng=self.rng)
         dim.clusters[0] = self
-        dim.transition_hyper_grids(X=self.data.x.values())
-        for i in xrange(N):
+        dim.transition_hyper_grids(X=list(self.data.x.values()))
+        for i in range(N):
             dim.transition_hypers()
 
     def transition_params(self):
@@ -357,8 +357,8 @@ class LinearRegression(CGpm):
             distargs=metadata['distargs'],
             rng=rng)
         # json keys are strings -- convert back to integers.
-        x = ((int(k), v) for k, v in metadata['data']['x'].iteritems())
-        Y = ((int(k), v) for k, v in metadata['data']['Y'].iteritems())
+        x = ((int(k), v) for k, v in metadata['data']['x'].items())
+        Y = ((int(k), v) for k, v in metadata['data']['Y'].items())
         linreg.data = Data(x=OrderedDict(x), Y=OrderedDict(Y))
         linreg.N = metadata['N']
         return linreg

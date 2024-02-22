@@ -146,4 +146,4 @@ def partition_dict(Z, L):
             result[k].append(val)
         else:
             result[k] = [val]
-    return {k: dict(v) for k,v in result.iteritems()}
+    return {k: dict(v) for k,v in result.items()}

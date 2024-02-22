@@ -70,7 +70,7 @@ def test_integration():
     with pytest.raises(ValueError):
         ols.unincorporate(20)
     # Unincorporate all rows.
-    for rowid in xrange(20):
+    for rowid in range(20):
         ols.unincorporate(rowid)
     # Unincorporating row 0 should raise.
     with pytest.raises(ValueError):
@@ -89,7 +89,7 @@ def test_integration():
     with pytest.raises(ValueError):
         observation = {0: 100}
         inputs = {i: D[0,i] for i in ols.inputs}
-        inputs[inputs.keys()[0]] = np.nan
+        inputs[list(inputs.keys())[0]] = np.nan
         ols.incorporate(0, observation, inputs)
     # Incorporate some more rows.
     for rowid, row in enumerate(D[:10]):

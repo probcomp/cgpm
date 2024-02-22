@@ -74,7 +74,7 @@ def gen_view_cgpm(get_data):
         rng=gu.gen_rng(1)
     )
 
-    for i in xrange(10):
+    for i in range(10):
         view.transition_dim_hypers()
     return view
 
@@ -91,7 +91,7 @@ def gen_state_cgpm(get_data):
         rng=gu.gen_rng(1)
     )
 
-    for i in xrange(10):
+    for i in range(10):
         state.transition_dim_hypers()
     return state
 
@@ -123,7 +123,7 @@ def test_hypothetical_no_mutation():
     """Ensure using hypothetical rows does not modify state."""
     state = gen_state_cgpm(get_data_separated)
 
-    for i in xrange(10):
+    for i in range(10):
         state.transition_dim_hypers()
 
     # Run a query with two hypothetical rows.

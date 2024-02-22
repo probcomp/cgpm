@@ -23,12 +23,11 @@ class StochasticError(Exception):
         self.exctype = exctype
         self.excvalue = excvalue
     def __str__(self):
-        hexseed = self.seed.encode('hex')
         if hasattr(self.exctype, '__name__'):
             typename = self.exctype.__name__
         else:
             typename = repr(self.exctype)
-        return '[seed %s]\n%s: %s' % (hexseed, typename, self.excvalue)
+        return '[seed %s]\n%s: %s' % (self.seed, typename, self.excvalue)
 
 def stochastic(max_runs, min_passes):
     assert 0 < max_runs
@@ -40,7 +39,7 @@ def stochastic(max_runs, min_passes):
             npasses = 0
             last_seed = None
             last_exc_info = None
-            for i in xrange(max_runs):
+            for i in range(max_runs):
                 seed = os.urandom(32)
                 try:
                     value = f(seed)
@@ -52,6 +51,6 @@ def stochastic(max_runs, min_passes):
                     if min_passes <= npasses:
                         return value
             t, v, tb = last_exc_info
-            raise StochasticError, StochasticError(last_seed, t, v), tb
+            raise StochasticError(last_seed, t, v)
         return f_
     return wrap

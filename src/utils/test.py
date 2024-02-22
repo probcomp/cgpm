@@ -94,7 +94,7 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
 
     T = np.zeros((n_cols, n_rows))
 
-    for col in xrange(n_cols):
+    for col in range(n_cols):
         cctype = cctypes[col]
         args = distargs[col]
         view = Zv[col]
@@ -107,7 +107,7 @@ def gen_data_table(n_rows, view_weights, cluster_weights, cctypes, distargs,
 def gen_dims_from_structure(T, Zv, Zc, cctypes, distargs):
     n_cols = len(Zv)
     dims = []
-    for col in xrange(n_cols):
+    for col in range(n_cols):
         v = Zv[col]
         cctype = cctypes[col]
         dim_c = Dim(cctype, col, distargs=distargs[col])
@@ -123,7 +123,7 @@ def _gen_beta_data(Z, rng, separation=.9, distargs=None):
     alphas = np.linspace(.5 - .5*separation*.85, .5 + .5*separation*.85, K)
     Tc = np.zeros(n_rows)
 
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         alpha = alphas[cluster]
         beta = (1.-alpha) * 20.* (norm.pdf(alpha, .5, .25))
@@ -136,7 +136,7 @@ def _gen_normal_data(Z, rng, separation=.9, distargs=None):
     n_rows = len(Z)
 
     Tc = np.zeros(n_rows)
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         mu = cluster * (5.*separation)
         sigma = 1.0
@@ -153,12 +153,12 @@ def _gen_normal_trunc_data(Z, rng, separation=.9, distargs=None):
     mean = (l+h)/2.
 
     bins = np.linspace(l, h, K+1)
-    bin_centers = [.5*(bins[i-1]+bins[i]) for i in xrange(1, len(bins))]
+    bin_centers = [.5*(bins[i-1]+bins[i]) for i in range(1, len(bins))]
     distances = [mean - bc for bc in bin_centers]
     mus = [bc + (1-separation)*d for bc, d in zip(bin_centers, distances)]
 
     Tc = np.zeros(n_rows)
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         sigma = 1
         i = 0
@@ -179,12 +179,12 @@ def _gen_vonmises_data(Z, rng, separation=.9, distargs=None):
     num_clusters = max(Z)+1
     sep = 2*math.pi / num_clusters
 
-    mus = [c*sep for c in xrange(num_clusters)]
+    mus = [c*sep for c in range(num_clusters)]
     std = sep/(5.*separation**.75)
     k = 1 / (std*std)
 
     Tc = np.zeros(n_rows)
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         mu = mus[cluster]
         Tc[r] = rng.vonmises(mu, k) + math.pi
@@ -195,7 +195,7 @@ def _gen_poisson_data(Z, rng, separation=.9, distargs=None):
     n_rows = len(Z)
     Tc = np.zeros(n_rows)
 
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         lam = cluster * (4.*separation) + 1
         Tc[r] = rng.poisson(lam)
@@ -206,7 +206,7 @@ def _gen_exponential_data(Z, rng, separation=.9, distargs=None):
     n_rows = len(Z)
     Tc = np.zeros(n_rows)
 
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         mu = cluster * (4.*separation) + 1
         Tc[r] = rng.exponential(mu)
@@ -220,7 +220,7 @@ def _gen_geometric_data(Z, rng, separation=.9, distargs=None):
 
     ps = np.linspace(.5 - .5*separation*.85, .5 + .5*separation*.85, K)
     Tc = np.zeros(n_rows)
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         Tc[r] = rng.geometric(ps[cluster]) -1
 
@@ -233,7 +233,7 @@ def _gen_lognormal_data(Z, rng, separation=.9, distargs=None):
         separation = .9
 
     Tc = np.zeros(n_rows)
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         mu = cluster * (.9*separation**2)
         Tc[r] = rng.lognormal(mean=mu, sigma=(1.-separation)/(cluster+1.))
@@ -269,7 +269,7 @@ def _gen_categorical_data(Z, rng, separation=.9, distargs=None):
     theta_arrays = [rng.dirichlet(np.ones(k)*(1.-separation), 1)
         for _ in range(C)]
 
-    for r in xrange(n_rows):
+    for r in range(n_rows):
         cluster = Z[r]
         thetas = theta_arrays[cluster][0]
         x = gu.pflip(thetas, rng=rng)
@@ -281,8 +281,8 @@ def gen_partition(N, weights, rng):
     assert np.allclose(sum(weights), 1)
     K = len(weights)
     assert K <= N    # XXX FIXME
-    Z = range(K)
-    Z.extend(int(gu.pflip(weights, rng=rng)) for _ in xrange(N-K))
+    Z = list(range(K))
+    Z.extend(int(gu.pflip(weights, rng=rng)) for _ in range(N-K))
     rng.shuffle(Z)
     return Z
 
@@ -290,7 +290,7 @@ def column_average_ari(Zv, Zc, cc_state_object):
     from sklearn.metrics import adjusted_rand_score
     ari = 0
     n_cols = len(Zv)
-    for col in xrange(n_cols):
+    for col in range(n_cols):
         view_t = Zv[col]
         Zc_true = Zc[view_t]
 
@@ -383,7 +383,7 @@ def change_column_hyperparameters(cgpm, value):
     metadata = cgpm.to_metadata()
 
     # Alter metadata.hypers to extreme values according to data type
-    columns = range(len(metadata['outputs']))
+    columns = list(range(len(metadata['outputs'])))
     if isinstance(cgpm, View):
         columns.pop(-1)  # first output is exposed latent
 
@@ -428,7 +428,7 @@ def change_concentration_hyperparameters(cgpm, value):
 
 def restrict_evidence_to_query(query, evidence):
     """Return subset of evidence whose rows are also present in query."""
-    return {i: j for i, j in evidence.iteritems() if i in query.keys()}
+    return {i: j for i, j in evidence.items() if i in query.keys()}
 
 _gen_data = {
     'bernoulli'         : _gen_bernoulli_data,

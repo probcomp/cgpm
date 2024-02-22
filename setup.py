@@ -48,6 +48,7 @@ def get_version():
     # - verpart     v1.1.2
     # - revpart     2
     # - localpart   gb92bef6[-dirty]
+    # FIXME: This command fails.
     desc = subprocess.check_output([
         'git', 'describe', '--dirty', '--long', '--match', 'v*',
     ])
@@ -83,14 +84,14 @@ pkg_version, full_version = get_version()
 
 def write_version_py(path):
     try:
-        with open(path, 'rb') as f:
+        with open(path, 'rt') as f:
             version_old = f.read()
     except IOError:
         version_old = None
     version_new = '__version__ = %r\n' % (full_version,)
     if version_old != version_new:
-        print 'writing %s' % (path,)
-        with open(path, 'wb') as f:
+        print('writing %s' % (path,))
+        with open(path, 'wt') as f:
             f.write(version_new)
 
 def readme_contents():
@@ -99,7 +100,7 @@ def readme_contents():
         os.path.abspath(os.path.dirname(__file__)),
         'README.md')
     with open(readme_path) as readme_file:
-        return unicode(readme_file.read(), 'UTF-8')
+        return str(readme_file.read())
 
 class local_build_py(build_py):
     def run(self):
