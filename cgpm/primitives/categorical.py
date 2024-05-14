@@ -102,7 +102,7 @@ class Categorical(DistributionGpm):
         return
 
     def set_hypers(self, hypers):
-        set(hypers.keys()) == set([[f'alpha_{i}'] for i in range(self.k)])
+        assert set(hypers.keys()) == set([f'alpha_{i}' for i in range(self.k)])
         for i in range(self.k):
             assert hypers[f'alpha_{i}'] > 0         
         self.alpha = np.array([
