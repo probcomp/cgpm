@@ -152,7 +152,7 @@ class Dim(CGpm):
     def transition_hypers(self):
         """Transitions the hyperparameters of each cluster."""
         if self.model.name() in ['crp']:
-            self.transition_hyper_joint()
+            self.transition_hypers_joint()
         else:
             hypers = list(self.hypers.keys())
             self.rng.shuffle(hypers)
