@@ -155,6 +155,10 @@ class Crp(DistributionGpm):
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
         grids = pitman_yor(alpha_count=n_grid, d_count=n_grid)
+        grids = {
+            'alpha': [g['alpha'] for g in grids],
+            'discount': [g['d'] for g in grids],
+        }
         return grids
 
     @staticmethod

@@ -151,27 +151,46 @@ class Dim(CGpm):
 
     def transition_hypers(self):
         """Transitions the hyperparameters of each cluster."""
-        hypers = list(self.hypers.keys())
-        self.rng.shuffle(hypers)
-        # For each hyper.
-        for hyper in hypers:
-            logps = []
-            # For each grid point.
-            for grid_value in self.hyper_grids[hyper]:
-                # Compute the probability of the grid point.
-                self.hypers[hyper] = grid_value
-                logp_k = 0
-                for k in self.clusters:
-                    self.clusters[k].set_hypers(self.hypers)
-                    logp_k += self.clusters[k].logpdf_score()
-                logps.append(logp_k)
-            # Sample a new hyperparameter from the grid.
-            index = gu.log_pflip(logps, rng=self.rng)
-            self.hypers[hyper] = self.hyper_grids[hyper][index]
+        if self.model.name() in ['crp']:
+            self.transition_hyper_joint()
+        else:
+            hypers = list(self.hypers.keys())
+            self.rng.shuffle(hypers)
+            # For each hyper.
+            for hyper in hypers:
+                logps = []
+                # For each grid point.
+                for grid_value in self.hyper_grids[hyper]:
+                    # Compute the probability of the grid point.
+                    self.hypers[hyper] = grid_value
+                    logp_k = 0
+                    for k in self.clusters:
+                        self.clusters[k].set_hypers(self.hypers)
+                        logp_k += self.clusters[k].logpdf_score()
+                    logps.append(logp_k)
+                # Sample a new hyperparameter from the grid.
+                index = gu.log_pflip(logps, rng=self.rng)
+                self.hypers[hyper] = self.hyper_grids[hyper][index]
         # Set the hyperparameters in each cluster.
         for k in self.clusters:
             self.clusters[k].set_hypers(self.hypers)
         self.aux_model = self.create_aux_model()
+
+    def transition_hypers_joint(self):
+        logps = []
+
+        for values in zip(*self.hyper_grids.values()):
+            for i, hyper in enumerate(self.hyper_grids):
+                self.hypers[hyper] = values[i]
+            logp_k = 0
+            for k in self.clusters:
+                self.clusters[k].set_hypers(self.hypers)
+                logp_k += self.clusters[k].logpdf_score()
+            logps.append(logp_k)
+
+        index = gu.log_pflip(logps, rng=self.rng)
+        for hyper, val in self.hyper_grids.items():
+            self.hypers[hyper] = val[index]
 
     def transition_hyper_grids(self, X, n_grid=30):
         """Transitions hyperparameter grids using empirical Bayes."""
@@ -186,6 +205,10 @@ class Dim(CGpm):
         if not self.hypers:
             for h in hyper_list:
                 self.hypers[h] = self.rng.choice(self.hyper_grids[h])
+        
+        # TODO when creating a pitman-yor model, 
+        # initialize from the list of dicts hyper grid
+            
         self.aux_model = self.create_aux_model()
 
     # --------------------------------------------------------------------------
