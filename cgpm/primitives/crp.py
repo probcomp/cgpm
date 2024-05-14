@@ -23,6 +23,7 @@ from scipy.special import gammaln
 
 from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
+from cgpm.utils.grid import pitman_yor
 
 
 class Crp(DistributionGpm):
@@ -84,7 +85,7 @@ class Crp(DistributionGpm):
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
-        return Crp.calc_logpdf_marginal(self.N, self.counts, self.alpha)
+        return Crp.calc_logpdf_marginal(self.N, self.counts, self.alpha, self.discount)
 
     ##################
     # NON-GPM METHOD #
@@ -153,12 +154,7 @@ class Crp(DistributionGpm):
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        grids['alpha'] = gu.log_linspace(1./len(X), len(X), n_grid)
-        # note: this will lead to invalid alpha, discount pairs
-        # no way around it except to grid directly over the joint,
-        # see https://github.com/probcomp/loom/blob/825188eae76e7106a6959f6a18312b0aa3338f83/loom/gridding.py
-        grids['discount'] = np.linspace(0., .5, n_grid)
+        grids = pitman_yor(alpha_count=n_grid, d_count=n_grid)
         return grids
 
     @staticmethod
@@ -196,9 +192,14 @@ class Crp(DistributionGpm):
         return log(numerator) - log(denominator)
 
     @staticmethod
-    def calc_logpdf_marginal(N, counts, alpha):
-        # TODO change this
-        # http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
-        # return len(counts) * log(alpha) + sum(gammaln(list(counts.values()))) \
-        #     + gammaln(alpha) - gammaln(N + alpha)
-        raise NotImplementedError
+    def calc_logpdf_marginal(N, counts, alpha, discount):
+        # as seen in the PClean implementation:
+        # https://github.com/probcomp/PClean/blob/cef451a17749a14960f6f46dc6c2b92ed846dc05/src/model/trace.jl#L65
+        n_references = 0
+        logprob = 0.
+        for (n_objects, size) in enumerate(counts):
+            logprob += log(n_objects * discount + alpha) - log(n_references + alpha)
+            if size > 1:
+                logprob += sum(log(i - discount) - log(n_references + i + alpha) for i in range(1, size))
+            n_references += size
+        return logprob

@@ -24,6 +24,7 @@ import numpy as np
 
 from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
+from cgpm.utils.grid import DEFAULTS
 
 
 LOG2 = log(2)
@@ -134,15 +135,12 @@ class Normal(DistributionGpm):
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        # Plus 1 for single observation case.
-        N = len(X) + 1.
-        ssqdev = np.var(X) * len(X) + 1.
-        # Data dependent heuristics.
-        grids['m'] = np.linspace(min(X), max(X) + 5, n_grid)
-        grids['r'] = gu.log_linspace(1. / N, N, n_grid)
-        grids['s'] = gu.log_linspace(ssqdev / 100., ssqdev, n_grid)
-        grids['nu'] = gu.log_linspace(1., N, n_grid) # df >= 1
+        loom_grid = DEFAULTS['nich']
+        grids = {}
+        grids['m'] = loom_grid['mu']
+        grids['r'] = loom_grid['kappa']
+        grids['s'] = loom_grid['sigmasq']
+        grids['nu'] = loom_grid['nu']
         return grids
 
     @staticmethod

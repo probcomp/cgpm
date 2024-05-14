@@ -24,6 +24,7 @@ from scipy.special import gammaln
 
 from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
+from cgpm.utils.grid import dd_alpha
 
 
 class Categorical(DistributionGpm):
@@ -125,8 +126,7 @@ class Categorical(DistributionGpm):
         # grid is a static method, so it can't have access to self.k
         # we'll circumvent this by making it a defaultdict
         grids = defaultdict(
-            lambda: gu.log_linspace(1., float(len(X)), n_grid)
-
+            lambda: dd_alpha
         )
         return grids
 
