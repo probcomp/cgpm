@@ -36,7 +36,7 @@ class View(CGpm):
     """CGpm represnting a multivariate Dirichlet process mixture of CGpms."""
 
     def __init__(
-            self, X, outputs=None, inputs=None, alpha=None,
+            self, X, outputs=None, inputs=None, structure_hypers=None,
             cctypes=None, distargs=None, hypers=None, Zr=None, rng=None):
         """View constructor provides a convenience method for bulk incorporate
         and unincorporate by specifying the data and optional row partition.
@@ -53,8 +53,8 @@ class View(CGpm):
             output variables.
         inputs : list<int>
             Currently disabled.
-        alpha : float, optional.
-            Concentration parameter for row CRP.
+        structure_hypers : dict[str, float], optional.
+            Concentration parameters for row pitman-yor.
         cctypes : list<str>, optional.
             A `len(outputs[1:])` list of cctypes, see `utils.config` for names.
         distargs : list<str>, optional.
@@ -95,7 +95,7 @@ class View(CGpm):
             outputs=[self.outputs[0]],
             inputs=[-1],
             cctype='crp',
-            hypers=None if alpha is None else {'alpha': alpha},
+            hypers=structure_hypers,
             rng=self.rng
         )
         n_rows = len(self.X[list(self.X.keys())[0]])
@@ -228,11 +228,10 @@ class View(CGpm):
     def transition(self, N):
         for _ in range(N):
             self.transition_rows()
-            self.transition_crp_alpha()
+            self.transition_crp_hypers()
             self.transition_dim_hypers()
 
-    def transition_crp_alpha(self):
-        self.crp.transition_hypers()
+    def transition_crp_hypers(self):
         self.crp.transition_hypers()
 
     def transition_dim_hypers(self, cols=None):
@@ -434,9 +433,6 @@ class View(CGpm):
     # --------------------------------------------------------------------------
     # Internal crp utils.
 
-    def alpha(self):
-        return self.crp.hypers['alpha']
-
     def Nk(self, k=None):
         Nk = self.crp.clusters[0].counts
         return Nk[k] if k is not None else Nk
@@ -534,7 +530,7 @@ class View(CGpm):
         if not cu.check_env_debug():
             return
         # For debugging only.
-        assert self.alpha() > 0.
+        assert self.crp.hypers['alpha'] > 0.
         # Check that the number of dims actually assigned to the view
         # matches the count in Nv.
         Zr = self.Zr()
@@ -563,8 +559,6 @@ class View(CGpm):
                 data = [[self.X[c][r] for c in cols] for r in rowids_k]
                 rowids_nan = np.any(np.isnan(data), axis=1) if data else []
                 assert (dim.clusters[k].N + np.sum(rowids_nan) == Nk[k])
-
-    # --------------------------------------------------------------------------
     # Metadata
 
     def to_metadata(self):
@@ -577,7 +571,7 @@ class View(CGpm):
         # View partition data.
         rowids = sorted(self.Zr().keys())
         metadata['Zr'] = [self.Zr(i) for i in rowids]
-        metadata['alpha'] = self.alpha()
+        metadata['structure_hypers'] = self.crp.hypers
 
         # Column data.
         metadata['cctypes'] = []
@@ -603,7 +597,7 @@ class View(CGpm):
             metadata.get('X'),
             outputs=metadata.get('outputs', None),
             inputs=metadata.get('inputs', None),
-            alpha=metadata.get('alpha', None),
+            structure_hypers=metadata.get('structure_hypers', None),
             cctypes=metadata.get('cctypes', None),
             distargs=metadata.get('distargs', None),
             hypers=metadata.get('hypers', None),

@@ -54,7 +54,7 @@ class State(CGpm):
 
     def __init__(
             self, X, outputs=None, inputs=None, cctypes=None,
-            distargs=None, Zv=None, Zrv=None, alpha=None, view_alphas=None,
+            distargs=None, Zv=None, Zrv=None, structure_hypers=None, view_structure_hypers=None,
             hypers=None, Cd=None, Ci=None, Rd=None, Ri=None, diagnostics=None,
             loom_path=None, rng=None):
         """ Construct a State.
@@ -136,13 +136,12 @@ class State(CGpm):
         self.Rd = {}
         self.Ri = {}
         # Prepare the GPM for the column crp.
-        crp_alpha = None if alpha is None else {'alpha': alpha}
         self.crp_id = 5**8
         self.crp = Dim(
             outputs=[self.crp_id],
             inputs=[-1],
             cctype='crp',
-            hypers=crp_alpha,
+            hypers=structure_hypers,
             rng=self.rng
         )
         self.crp.transition_hyper_grids([1]*self.n_cols())
@@ -158,13 +157,19 @@ class State(CGpm):
                     # Independence constraints are specified; simulate
                     # the non-exchangeable version of the constrained crp.
                     Zv = gu.simulate_crp_constrained(
-                        self.n_cols(), self.alpha(), self.Cd, self.Ci,
+                        self.n_cols(), 
+                        self.crp.hypers['alpha'], 
+                        self.crp.hypers['discount'],
+                        self.Cd, self.Ci,
                         self.Rd, self.Ri, rng=self.rng)
                 else:
                     # Only dependence constraints are specified; simulate
                     # the exchangeable version of the constrained crp.
                     Zv = gu.simulate_crp_constrained_dependent(
-                        self.n_cols(), self.alpha(), self.Cd, self.rng)
+                        self.n_cols(), 
+                        self.crp.hypers['alpha'], 
+                        self.crp.hypers['discount'],
+                        self.Cd, self.rng)
                 # Incorporate hte the data.
                 for c, z in zip(self.outputs, Zv):
                     self.crp.incorporate(c, {self.crp_id: z}, {-1:0})
@@ -184,7 +189,7 @@ class State(CGpm):
         cctypes = cctypes or [None] * len(self.outputs)
         distargs = distargs or [None] * len(self.outputs)
         hypers = hypers or [None] * len(self.outputs)
-        view_alphas = view_alphas or {}
+        view_structure_hypers = view_structure_hypers or {}
 
         # If the user specifies Zrv, then the keys of Zrv must match the views
         # which are values in Zv.
@@ -206,7 +211,7 @@ class State(CGpm):
                 outputs=[self.crp_id_view+v] + v_outputs,
                 inputs=None,
                 Zr=Zrv.get(v, None),
-                alpha=view_alphas.get(v, None),
+                structure_hypers=view_structure_hypers.get(v, None),
                 cctypes=v_cctypes,
                 distargs=v_distargs,
                 hypers=v_hypers,
@@ -477,8 +482,8 @@ class State(CGpm):
         if not self.Cd:
             return self.crp.logpdf_score()
         # Compute constrained CRP probability.
-        Zv, alpha = self.Zv(), self.alpha()
-        return gu.logp_crp_constrained_dependent(Zv, alpha, self.Cd)
+        Zv, alpha, discount = self.Zv(), self.crp.hypers['alpha'], self.crp.hypers['discount']
+        return gu.logp_crp_constrained_dependent(Zv, alpha, discount, self.Cd)
 
     def logpdf_likelihood(self):
         logp_views = sum(v.logpdf_likelihood() for v in self.views.values())
@@ -903,10 +908,10 @@ class State(CGpm):
 
         # Default order of crosscat kernels is important.
         _kernel_lookup = OrderedDict([
-            ('alpha',
-                lambda : self.transition_crp_alpha()),
-            ('view_alphas',
-                lambda : self.transition_view_alphas(views=views, cols=cols)),
+            ('structure_hypers',
+                lambda : self.transition_structure_hypers()),
+            ('view_structure_hypers',
+                lambda : self.transition_view_structure_hypers(views=views, cols=cols)),
             ('column_params',
                 lambda : self.transition_dim_params(cols=cols)),
             ('column_hypers',
@@ -928,16 +933,16 @@ class State(CGpm):
         self._transition_generic(
             kernel_funcs, N=N, S=S, progress=progress, checkpoint=checkpoint)
 
-    def transition_crp_alpha(self):
+    def transition_structure_hypers(self):
         self.crp.transition_hypers()
-        self._increment_iterations('alpha')
+        self._increment_iterations('structure_hypers')
 
-    def transition_view_alphas(self, views=None, cols=None):
+    def transition_view_structure_hypers(self, views=None, cols=None):
         if views is None:
             views = set(self.Zv(col) for col in cols) if cols else self.views
         for v in views:
-            self.views[v].transition_crp_alpha()
-        self._increment_iterations('view_alphas')
+            self.views[v].transition_crp_hypers()
+        self._increment_iterations('view_structure_hypers')
 
     def transition_dim_params(self, cols=None):
         if cols is None:
@@ -976,40 +981,6 @@ class State(CGpm):
         for c in cols:
             self._gibbs_transition_dim(c, m)
         self._increment_iterations('columns')
-
-    def transition_lovecat(
-            self, N=None, S=None, kernels=None, rowids=None, cols=None,
-            progress=None, checkpoint=None):
-        # This function in its entirely is one major hack.
-        # XXX TODO: Temporarily convert all cctypes into normal/categorical.
-        if any(c not in ['normal','categorical'] for c in self.cctypes()):
-            raise ValueError(
-                'Only normal and categorical cgpms supported by lovecat: %s'
-                % (self.cctypes()))
-        if any(d.is_conditional() for d in self.dims()):
-            raise ValueError('Cannot transition lovecat with conditional dims.')
-        from cgpm.crosscat import lovecat
-        seed = self.rng.randint(1, 2**31-1)
-        lovecat.transition(
-            self, N=N, S=S, kernels=kernels, rowids=rowids, cols=cols,
-            seed=seed, progress=progress, checkpoint=checkpoint)
-        # Transition the non-structural parameters.
-        self.transition_dim_hypers()
-        self.transition_crp_alpha()
-        self.transition_view_alphas()
-
-    def transition_loom(
-            self, N=None, S=None, kernels=None, progress=None,
-            checkpoint=None, seed=None):
-        from cgpm.crosscat import loomcat
-        loomcat.transition(
-            self, N=N, S=S, kernels=kernels, progress=progress,
-            checkpoint=checkpoint, seed=seed)
-        # Transition the non-structural parameters.
-        self.transition(
-            N=1,
-            kernels=['column_hypers', 'column_params', 'alpha', 'view_alphas'
-        ])
 
     def transition_foreign(
             self, N=None, S=None, cols=None, progress=None):
@@ -1078,7 +1049,7 @@ class State(CGpm):
 
     def _increment_diagnostics(self):
         self.diagnostics['logscore'].append(self.logpdf_score())
-        self.diagnostics['column_crp_alpha'].append(self.alpha())
+        self.diagnostics['structure_hypers'].append(self.crp.hypers)
         self.diagnostics['column_partition'].append(list(self.Zv().items()))
 
     def _progress(self, percentage):
@@ -1121,51 +1092,7 @@ class State(CGpm):
         self.outputs_set = set(self.outputs)
 
     # --------------------------------------------------------------------------
-    # Plotting
-
-    def plot(self):
-        """Plots observation histogram and posterior distirbution of Dims."""
-        import matplotlib.pyplot as plt
-        from cgpm.utils import plots as pu
-        layout = pu.get_state_plot_layout(self.n_cols())
-        fig = plt.figure(
-            num=None,
-            figsize=(layout['plot_inches_y'], layout['plot_inches_x']),
-            dpi=75,
-            facecolor='w',
-            edgecolor='k',
-            frameon=False,
-            tight_layout=True
-        )
-        # Do not plot more than 6 by 4.
-        if self.n_cols() > 24:
-            return
-        fig.clear()
-        for i, dim in enumerate(self.dims()):
-            index = dim.index
-            ax = fig.add_subplot(layout['plots_x'], layout['plots_y'], i+1)
-            dim.plot_dist(self.X[dim.index], ax=ax)
-            ax.text(
-                1,1, "K: %i " % len(dim.clusters),
-                transform=ax.transAxes,
-                fontsize=12,
-                weight='bold',
-                color='blue',
-                horizontalalignment='right',
-                verticalalignment='top'
-            )
-            ax.grid()
-        # XXX TODO: Write png to disk rather than slow matplotlib animation.
-        # plt.draw()
-        # plt.ion()
-        # plt.show()
-        return fig
-
-    # --------------------------------------------------------------------------
     # Internal CRP utils.
-
-    def alpha(self):
-        return self.crp.hypers['alpha']
 
     def Nv(self, v=None):
         Nv = self.crp.clusters[0].counts
@@ -1332,7 +1259,7 @@ class State(CGpm):
     def _check_partitions(self):
         if not cu.check_env_debug():
             return
-        assert self.alpha() > 0.
+        assert self.crp.hypers['alpha'] > 0.
         assert all(len(self.views[v].dims) == self.crp.clusters[0].counts[v]
                 for v in self.views)
         # All outputs should be in the dataset keys.
@@ -1352,8 +1279,6 @@ class State(CGpm):
         assert vu.validate_crp_constrained_partition(
             [self.Zv(c) for c in self.outputs], self.Cd, self.Ci,
             self.Rd, self.Ri)
-
-    # --------------------------------------------------------------------------
     # Serialize
 
     def to_metadata(self):
@@ -1364,7 +1289,7 @@ class State(CGpm):
         metadata['outputs'] = self.outputs
 
         # View partition data.
-        metadata['alpha'] = self.alpha()
+        metadata['structure_hypers'] = self.crp.hypers
         metadata['Zv'] = list(self.Zv().items())
 
         # Column data.
@@ -1387,11 +1312,11 @@ class State(CGpm):
 
         # View data.
         metadata['Zrv'] = []
-        metadata['view_alphas'] = []
+        metadata['view_structure_hypers'] = []
         for v, view in self.views.items():
             rowids = sorted(view.Zr())
             metadata['Zrv'].append((v, [view.Zr(i) for i in rowids]))
-            metadata['view_alphas'].append((v, view.alpha()))
+            metadata['view_structure_hypers'].append((v, view.crp.hypers))
 
         # Diagnostic data.
         metadata['diagnostics'] = self.diagnostics
@@ -1424,10 +1349,10 @@ class State(CGpm):
             outputs=metadata.get('outputs', None),
             cctypes=metadata.get('cctypes', None),
             distargs=metadata.get('distargs', None),
-            alpha=metadata.get('alpha', None),
+            structure_hypers=to_dict(metadata.get('structure_hypers', None)),
             Zv=to_dict(metadata.get('Zv', None)),
             Zrv=to_dict(metadata.get('Zrv', None)),
-            view_alphas=to_dict(metadata.get('view_alphas', None)),
+            view_structure_hypers=to_dict(metadata.get('view_structure_hypers', None)),
             hypers=metadata.get('hypers', None),
             Cd=metadata.get('Cd', None),
             Ci=metadata.get('Ci', None),
@@ -1452,4 +1377,3 @@ class State(CGpm):
         else:
             metadata = pickle.load(fileptr)
         return cls.from_metadata(metadata, rng=rng)
-
