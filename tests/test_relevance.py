@@ -70,7 +70,7 @@ def gen_view_cgpm(get_data):
     view = View(
         outputs=[1000]+outputs,
         X={output: data[:, i] for i, output in enumerate(outputs)},
-        alpha=1.5,
+        structure_hypers={'alpha': 1.5, 'disocunt': 1.},
         cctypes=cctypes,
         distargs=distargs,
         Zr=assignments,
@@ -90,7 +90,7 @@ def gen_state_cgpm(get_data):
         distargs=distargs,
         Zv={output: 0 for output in outputs},
         Zrv={0: assignments},
-        view_alphas={0: 1.5},
+        view_structure_hypers={0: {'alpha': 1.5, 'disocunt': 0.}},
         rng=gu.gen_rng(1)
     )
 
@@ -179,7 +179,8 @@ def test_relevance_commutative_single_query_row():
 def test_relevance_large_concentration_hypers():
     """Confirm crp_alpha -> infty, implies rp(target, query) -> 0."""
     view = gen_view_cgpm(get_data_separated)
-    lim_view = tu.change_concentration_hyperparameters(view, 1e5)
+    structure_hypers = {"alpha": 1e5 ,"disocunt": 0}
+    lim_view = tu.change_concentration_hyperparameters(view, structure_hypers)
     rp_view_0 = lim_view.relevance_probability(1, [4, 6, 7], 1)
     rp_view_1 = lim_view.relevance_probability(3, [8], 1)
 
@@ -187,7 +188,7 @@ def test_relevance_large_concentration_hypers():
     assert np.allclose(rp_view_1, 0, atol=1e-5)
 
     state = gen_state_cgpm(get_data_separated)
-    ext_state = tu.change_concentration_hyperparameters(state, 1e5)
+    ext_state = tu.change_concentration_hyperparameters(state, structure_hypers)
     rp_state_0 = ext_state.relevance_probability(1, [4, 6, 7], 1)
     rp_state_1 = ext_state.relevance_probability(3, [8], 1)
 
@@ -227,7 +228,7 @@ def test_relevance_with_itself():
 def test_relevance_analytically():
     view = gen_view_cgpm(get_data_all_ones)
     n = view.n_rows()
-    a = view.alpha()  # crp_alpha
+    a = view.crp.hypers["alpha"]  # crp_alpha
     b1 = view.dims[1].hypers['alpha']  # bernoulli pseudocounts for one
     b0 = view.dims[1].hypers['beta']  # bernoulli pseudocounts for zero
 
@@ -271,7 +272,7 @@ def test_crash_missing():
 def test_missing_analytical():
     view = gen_view_cgpm(get_data_missing)
     n = view.n_rows()
-    a = view.alpha()  # crp_alpha
+    a = view.crp.hypers["alpha"]  # crp_alpha
     b1 = view.dims[1].hypers['alpha']  # bernoulli pseudocounts for one
     b0 = view.dims[1].hypers['beta']  # bernoulli pseudocounts for zero
 

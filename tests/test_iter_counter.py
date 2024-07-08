@@ -37,19 +37,19 @@ def test_individual_kernels():
     rng = gu.gen_rng(0)
     X = rng.normal(size=(5,5))
     state = State(X, cctypes=['normal']*5)
-    state.transition(N=3, kernels=['alpha', 'rows'])
+    state.transition(N=3, kernels=['structure_hypers', 'rows'])
     check_expected_counts(
         state.diagnostics['iterations'],
-        {'alpha':3, 'rows':3})
-    state.transition(N=5, kernels=['view_alphas', 'column_params'])
+        {'structure_hypers':3, 'rows':3})
+    state.transition(N=5, kernels=['view_structure_hypers', 'column_params'])
     check_expected_counts(
         state.to_metadata()['diagnostics']['iterations'],
-        {'alpha':3, 'rows':3, 'view_alphas':5, 'column_params':5})
+        {'structure_hypers':3, 'rows':3, 'view_structure_hypers':5, 'column_params':5})
     state.transition(
-        N=1, kernels=['view_alphas', 'column_params', 'column_hypers'])
+        N=1, kernels=['view_structure_hypers', 'column_params', 'column_hypers'])
     check_expected_counts(
         state.to_metadata()['diagnostics']['iterations'],
-        {'alpha':3, 'rows':3, 'view_alphas':6, 'column_params':6,
+        {'structure_hypers':3, 'rows':3, 'view_structure_hypers':6, 'column_params':6,
         'column_hypers':1})
 
 

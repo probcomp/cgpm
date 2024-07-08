@@ -315,11 +315,11 @@ def gen_simple_engine(multiprocess=1):
         rng=gu.gen_rng(1),
         multiprocess=multiprocess,
         outputs=outputs,
-        alpha=1.,
+        structure_hypers=1.,
         cctypes=['bernoulli']*D,
         distargs={i: {'alpha': 1., 'beta': 1.} for i in outputs},
         Zv={0: 0, 1: 0, 2: 1},
-        view_alphas=[1.]*D,
+        view_structure_hypers=[1.]*D,
         Zrv={0: [0]*R, 1: [0]*R})
     return engine
 
@@ -331,11 +331,11 @@ def gen_simple_state():
     state = State(
         X=data,
         outputs=outputs,
-        alpha=1.,
+        structure_hypers=1.,
         cctypes=['bernoulli']*D,
         hypers=[{'alpha': 1., 'beta': 1.} for i in outputs],
         Zv={0: 0, 1: 0, 2: 1},
-        view_alphas=[1.]*D,
+        view_structure_hypers=[1.]*D,
         Zrv={0: [0]*R, 1: [0]*R})
     return state
 
@@ -349,7 +349,7 @@ def gen_simple_view():
     view = View(
         X,
         outputs=[1000] + outputs,
-        alpha=1.,
+        structure_hypers=1.,
         cctypes=['bernoulli']*D,
         hypers={i: {'alpha': 1., 'beta': 1.} for i in outputs},
         Zr=Zr)
@@ -399,7 +399,7 @@ def change_column_hyperparameters(cgpm, value):
             new_hypers[c] = {'alpha': value, 'beta': value}
 
         elif cctypes[c] == 'categorical':
-            new_hypers[c] = {'alpha': value}
+            new_hypers[c] = {k:value for k,_ in metadata["hypers"][columns.index(c)].items()}
 
         elif cctypes[c] == 'normal':
             new_hypers[c] = {'m': value, 'nu': value, 'r': value, 's': value}
@@ -421,13 +421,13 @@ def change_concentration_hyperparameters(cgpm, value):
     # Retrieve metadata from cgpm
     metadata = cgpm.to_metadata()
 
-    # Alter metadata.alpha to extreme values according to data type
+    # Alter metadata.structure_hypers to extreme values according to data type
     new_metadata = metadata
     if isinstance(cgpm, View):
-        new_metadata['alpha'] = value
+        new_metadata['structure_hypers'] = value
     elif isinstance(cgpm, State):
-        old_view_alphas = metadata['view_alphas']
-        new_metadata['view_alphas'] = [(a[0], value) for a in old_view_alphas]
+        old_view_structure_hypers = metadata['view_structure_hypers']
+        new_metadata['view_structure_hypers'] = [(a[0], value) for a in old_view_structure_hypers]
     return cgpm.from_metadata(new_metadata)
 
 def restrict_evidence_to_query(query, evidence):

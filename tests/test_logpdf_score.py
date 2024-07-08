@@ -30,7 +30,7 @@ def test_logpdf_score_crash():
     assert np.all(logpdf_score_initial < logpdf_likelihood_initial)
     # assert np.all(logpdf_likelihood_initial < logpdf_score_initial)
     engine.transition(N=100)
-    engine.transition(kernels=['column_hypers','view_alphas'], N=10)
+    engine.transition(kernels=['column_hypers','view_structure_hypers'], N=10)
     logpdf_likelihood_final = np.asarray(engine.logpdf_likelihood())
     logpdf_score_final = np.asarray(engine.logpdf_score())
     assert np.all(logpdf_score_final < logpdf_likelihood_final)

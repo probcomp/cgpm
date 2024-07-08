@@ -101,7 +101,7 @@ def test_view_serialize():
     builder = getattr(modname, metadata['factory'][1])
     model2 = builder.from_metadata(metadata)
     # Pick out some data.
-    assert np.allclose(model.alpha(), model.alpha())
+    assert np.allclose(model.crp.hypers["alpha"], model2.crp.hypers["alpha"])
     assert dict(model2.Zr()) == dict(model.Zr())
     assert np.allclose(
         model.logpdf(-1, {0:0, 1:1}, {2:0}),

@@ -27,7 +27,7 @@ from cgpm.utils import general as gu
 
 
 def simulate_crp_gpm(N, alpha, rng):
-    crp = Crp(outputs=[0], inputs=None, hypers={'alpha':alpha}, rng=rng)
+    crp = Crp(outputs=[0], inputs=None, hypers={'alpha':alpha, 'discount':0}, rng=rng)
     for i in range(N):
         s = crp.simulate(i, [0], None)
         crp.incorporate(i, s, None)
@@ -35,6 +35,9 @@ def simulate_crp_gpm(N, alpha, rng):
 
 
 def assert_crp_equality(alpha, Nk, crp):
+    # Because we're assessing CRP probabilities,
+    # we want to set the discount to 0.
+    discount = 0.
     N = sum(Nk)
     Z = list(itertools.chain.from_iterable(
         [i]*n for i, n in enumerate(Nk)))
@@ -48,25 +51,25 @@ def assert_crp_equality(alpha, Nk, crp):
         [crp.logpdf(-1, {0:v}, None) for v in probe_values])
     # Data probability.
     assert np.allclose(
-        gu.logp_crp(N, Nk, alpha),
-        crp.logpdf_score())
+        gu.logp_crp(N, Nk, alpha, discount),
+        crp.logpdf_score()), (gu.logp_crp(N, Nk, alpha, discount), crp.logpdf_score())
     # Gibbs transition probabilities.
     Z = list(crp.data.values())
     for i, rowid in enumerate(crp.data):
         assert np.allclose(
-            gu.logp_crp_gibbs(Nk, Z, i, alpha, 1),
+            gu.logp_crp_gibbs(Nk, Z, i, alpha, discount, 1),
             crp.gibbs_logps(rowid))
 
 
 N = [2**i for i in range(8)]
 alpha = gu.log_linspace(.001, 100, 10)
 seed = [5]
-
+DISCOUNT = 0
 
 @pytest.mark.parametrize('N, alpha, seed', itertools.product(N, alpha, seed))
 def test_crp_simple(N, alpha, seed):
     # Obtain the partitions.
-    A = gu.simulate_crp(N, alpha, rng=gu.gen_rng(seed))
+    A = gu.simulate_crp(N, alpha, DISCOUNT, rng=gu.gen_rng(seed))
     Nk = list(np.bincount(A))
 
     crp = simulate_crp_gpm(N, alpha, rng=gu.gen_rng(seed))
@@ -77,7 +80,7 @@ def test_crp_simple(N, alpha, seed):
 
 @pytest.mark.parametrize('N, alpha, seed', itertools.product(N, alpha, seed))
 def test_crp_decrement(N, alpha, seed):
-    A = gu.simulate_crp(N, alpha, rng=gu.gen_rng(seed))
+    A = gu.simulate_crp(N, alpha, DISCOUNT, rng=gu.gen_rng(seed))
     Nk = list(np.bincount(A))
     # Decrement all counts by 1.
     Nk = [n-1 if n > 1 else n for n in Nk]
@@ -98,7 +101,7 @@ def test_crp_decrement(N, alpha, seed):
 
 @pytest.mark.parametrize('N, alpha, seed', itertools.product(N, alpha, seed))
 def test_crp_increment(N, alpha, seed):
-    A = gu.simulate_crp(N, alpha, rng=gu.gen_rng(seed))
+    A = gu.simulate_crp(N, alpha, DISCOUNT, rng=gu.gen_rng(seed))
     Nk = list(np.bincount(A))
     # Add 3 new classes.
     Nk.extend([2, 3, 1])
@@ -116,9 +119,12 @@ def test_crp_increment(N, alpha, seed):
 
     assert_crp_equality(alpha, Nk, crp)
 
+def norm(l):
+    return np.array(l)/np.sum(l)
+
 def test_gibbs_tables_logps():
     crp = Crp(
-        outputs=[0], inputs=None, hypers={'alpha': 1.5}, rng=gu.gen_rng(1))
+            outputs=[0], inputs=None, hypers={'alpha': 1.5, 'discount':0.}, rng=gu.gen_rng(1))
 
     assignments = [
         (0, {0: 0}),
@@ -136,53 +142,52 @@ def test_gibbs_tables_logps():
     K01 = crp.gibbs_tables(0, m=1)
     assert K01 == [0, 2, 6, 7]
     P01 = crp.gibbs_logps(0, m=1)
-    assert np.allclose(np.exp(P01), [1, 3, 1, 1.5])
+    assert np.allclose(np.exp(P01), norm([1, 3, 1, 1.5]))
 
     K02 = crp.gibbs_tables(0, m=2)
     assert K02 == [0, 2, 6, 7, 8]
     P02 = crp.gibbs_logps(0, m=2)
-    assert np.allclose(np.exp(P02), [1, 3, 1, 1.5/2, 1.5/2])
+    assert np.allclose(np.exp(P02), norm([1, 3, 1, 1.5/2, 1.5/2]))
 
     K03 = crp.gibbs_tables(0, m=3)
     assert K03 == [0, 2, 6, 7, 8, 9]
     P03 = crp.gibbs_logps(0, m=3)
-    assert np.allclose(np.exp(P03), [1, 3, 1, 1.5/3, 1.5/3, 1.5/3])
+    assert np.allclose(np.exp(P03), norm([1, 3, 1, 1.5/3, 1.5/3, 1.5/3]))
 
     K21 = crp.gibbs_tables(2, m=1)
     assert K21 == [0, 2, 6, 7]
     P21 = crp.gibbs_logps(2, m=1)
-    assert np.allclose(np.exp(P21), [2, 2, 1, 1.5])
+    assert np.allclose(np.exp(P21), norm([2, 2, 1, 1.5]))
 
     K22 = crp.gibbs_tables(2, m=2)
     assert K22 == [0, 2, 6, 7, 8]
     P22 = crp.gibbs_logps(2, m=2)
-    assert np.allclose(np.exp(P22), [2, 2, 1, 1.5/2, 1.5/2])
+    assert np.allclose(np.exp(P22), norm([2, 2, 1, 1.5/2, 1.5/2]))
 
     K23 = crp.gibbs_tables(2, m=3)
     P23 = crp.gibbs_logps(2, m=3)
     assert K23 == [0, 2, 6, 7, 8, 9]
-    assert np.allclose(np.exp(P23), [2, 2, 1, 1.5/3, 1.5/3, 1.5/3])
+    assert np.allclose(np.exp(P23), norm([2, 2, 1, 1.5/3, 1.5/3, 1.5/3]))
 
     K51 = crp.gibbs_tables(5, m=1)
     assert K51 == [0, 2, 6]
     P51 = crp.gibbs_logps(5, m=1)
-    assert np.allclose(np.exp(P51), [2, 3, 1.5])
+    assert np.allclose(np.exp(P51), norm([2, 3, 1.5]))
 
     K52 = crp.gibbs_tables(5, m=2)
     assert K52 == [0, 2, 6, 7]
     P52 = crp.gibbs_logps(5, m=2)
-    assert np.allclose(np.exp(P52), [2, 3, 1.5/2, 1.5/2])
+    assert np.allclose(np.exp(P52), norm([2, 3, 1.5/2, 1.5/2]))
 
     K53 = crp.gibbs_tables(5, m=3)
     P53 = crp.gibbs_logps(5, m=3)
     assert K53 == [0, 2, 6, 7, 8]
-    assert np.allclose(np.exp(P53), [2, 3, 1.5/3, 1.5/3, 1.5/3])
+    assert np.allclose(np.exp(P53), norm([2, 3, 1.5/3, 1.5/3, 1.5/3]))
 
 
 def test_crp_logpdf_score():
     """Ensure that logpdf_marginal agrees with sequence of predictives."""
-    crp = Crp(
-        outputs=[0], inputs=None, hypers={'alpha': 1.5}, rng=gu.gen_rng(1))
+    crp = Crp(outputs=[0], inputs=None, hypers={'alpha': 1.5, 'discount': 0.}, rng=gu.gen_rng(1))
 
     assignments = [
         (0, {0: 0}),
@@ -258,7 +263,7 @@ def test_crp_same_table_probability():
         where kQ is list of tables in the CRP plus a fresh singleton.
     """
     crp = Crp(
-        outputs=[0], inputs=None, hypers={'alpha': 1.5}, rng=gu.gen_rng(1))
+            outputs=[0], inputs=None, hypers={'alpha': 1.5, 'discount': 0.}, rng=gu.gen_rng(1))
 
     assignments = [
         (0, {0: 0}),
@@ -393,4 +398,5 @@ def test_crp_same_table_probability():
 
     # Confirm no mutation has occured.
     assert crp.data == crp_data_full
-    assert crp.logpdf_score() == logpdf_score_full
+    # Before, we had equality here, but that now fails on the 15th decimal.
+    assert np.allclose(crp.logpdf_score(), logpdf_score_full)

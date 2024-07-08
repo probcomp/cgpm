@@ -100,20 +100,21 @@ def test_valid_constraints():
     assert vu.validate_crp_constrained_input(7, Cd, Ci, Rd, Ri)
 
 
+# Globallyh set discount parameter.
+DISCOUNT = 0.
+
 # Tests for simulate_crp_constrained and simulate_crp_constrained_dependent.
-
-
 def test_no_constraints():
     N, alpha = 10, .4
     Cd = Ci = []
     Rd = Ri = {}
 
     Z = gu.simulate_crp_constrained(
-        N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
+        N, alpha, DISCOUNT, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
 
     Z = gu.simulate_crp_constrained_dependent(
-        N, alpha, Cd, rng=gu.gen_rng(0))
+        N, alpha, DISCOUNT, Cd, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, [], [], [])
 
 def test_all_friends():
@@ -123,11 +124,11 @@ def test_all_friends():
     Rd = Ri = {}
 
     Z = gu.simulate_crp_constrained(
-        N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
+        N, alpha, DISCOUNT, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
 
     Z = gu.simulate_crp_constrained_dependent(
-        N, alpha, Cd, rng=gu.gen_rng(0))
+        N, alpha, DISCOUNT, Cd, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, [], [], [])
 
 def test_all_enemies():
@@ -136,7 +137,7 @@ def test_all_enemies():
     Ci = list(itertools.combinations(list(range(N)), 2))
     Rd = Ri = {}
     Z = gu.simulate_crp_constrained(
-        N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
+        N, alpha, DISCOUNT, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
 
 def test_all_enemies_rows():
@@ -147,7 +148,7 @@ def test_all_enemies_rows():
     Rd = {0:[[0,1]], 1:[[1,2]], 2:[[2,3]]}
     Ri = {0:[(1,2)], 1:[(2,3)], 2:[(0,1)]}
     Z = gu.simulate_crp_constrained(
-        N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
+        N, alpha, DISCOUNT, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
 
 def test_complex_relationships():
@@ -156,7 +157,7 @@ def test_complex_relationships():
     Ci = [(2,8), (0,3)]
     Rd = Ri = {}
     Z = gu.simulate_crp_constrained(
-        N, alpha, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
+        N, alpha, DISCOUNT, Cd, Ci, Rd, Ri, rng=gu.gen_rng(0))
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
 
 # Tests for simulate_crp_constrained and simulate_crp_constrained_dependent.
@@ -172,42 +173,42 @@ def test_logp_no_dependence_constraints():
     Z = {0:0, 1:0, 2:0, 3:1}
     alpha = 2
     Cd = []
-    lp0 = gu.logp_crp(len(Z), get_partition_counts(Z), alpha)
-    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    lp0 = gu.logp_crp(len(Z), get_partition_counts(Z), alpha, DISCOUNT)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, DISCOUNT, Cd)
     assert np.allclose(lp0, lp1)
 
     Z = {0:1, 1:2, 2:3, 3:4}
     alpha = 2
     Cd = []
-    lp0 = gu.logp_crp(len(Z), get_partition_counts(Z), alpha)
-    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    lp0 = gu.logp_crp(len(Z), get_partition_counts(Z), alpha, DISCOUNT)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, DISCOUNT, Cd)
     assert np.allclose(lp0, lp1)
 
 def test_logp_simple_dependence_constraints():
     Z = {0:0, 1:0, 2:0, 3:1}
     alpha = 2
     Cd = [[0,1]]
-    lp0 = gu.logp_crp(len(Z)-1, [2, 1], alpha)
-    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    lp0 = gu.logp_crp(len(Z)-1, [2, 1], alpha, DISCOUNT)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, DISCOUNT, Cd)
     assert np.allclose(lp0, lp1)
 
     Z = {0:0, 1:1, 2:1, 3:0}
     alpha = 2
     Cd = [[0,3], [1,2]]
-    lp0 = gu.logp_crp(len(Z)-2, [1,1], alpha)
-    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    lp0 = gu.logp_crp(len(Z)-2, [1,1], alpha, DISCOUNT)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, DISCOUNT, Cd)
     assert np.allclose(lp0, lp1)
 
 def test_logp_impossible():
     Z = {0:0, 1:1, 2:0}
     alpha = 2
     Cd = [[0,1]]
-    lp = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    lp = gu.logp_crp_constrained_dependent(Z, alpha, DISCOUNT, Cd)
     assert lp == -float('inf')
 
 def test_logp_deterministic():
     Z = {0:0, 1:0, 2:0, 3:0}
     alpha = 2
     Cd = [[0,1,2,3]]
-    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, Cd)
+    lp1 = gu.logp_crp_constrained_dependent(Z, alpha, DISCOUNT, Cd)
     assert np.allclose(0, lp1)
