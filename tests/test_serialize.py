@@ -111,7 +111,7 @@ def test_view_serialize():
         model2.logpdf(-1, {0:0, 1:1}))
 
 
-def test_serialize_composite_cgpm():
+def test_serialize_composite_cgpm__ci_():
     rng = gu.gen_rng(2)
 
     # Generate the data.
