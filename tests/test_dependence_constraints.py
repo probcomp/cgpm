@@ -59,7 +59,7 @@ def test_simple_dependence_constraint(Ci):
         state.transition(N=10, kernels=['columns'], progress=0)
     state.transition(
         N=10,
-        kernels=['rows', 'alpha', 'column_hypers', 'alpha', 'view_alphas'],
+        kernels=['rows', 'structure_hypers', 'column_hypers', 'structure_hypers', 'view_structure_hypers'],
         progress=False)
     vu.validate_crp_constrained_partition(state.Zv(), Cd, Ci, {}, {})
 

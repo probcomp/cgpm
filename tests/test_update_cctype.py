@@ -170,7 +170,7 @@ def test_linreg_missing_data_ignore():
     # Make sure that missing covariates are handles as missing cell.
     state.update_cctype(2, 'linear_regression', distargs={'inputs': [0,1]})
     assert state.dim_for(2).inputs[1:] == [0,1]
-    state.transition(N=5, kernels=['rows', 'column_hypers', 'view_alphas'])
+    state.transition(N=5, kernels=['rows', 'column_hypers', 'view_structure_hypers'])
     state.update_cctype(2, 'normal', distargs={'inputs': [0,1]})
     # Make sure that specified inputs are set correctly.
     state.update_cctype(2, 'linear_regression', distargs={'inputs': [1]})

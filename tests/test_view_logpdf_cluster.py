@@ -38,7 +38,7 @@ def retrieve_view():
     return View(
         {c: data[:,i].tolist() for i, c in enumerate(outputs)},
         outputs=[1000] + outputs,
-        alpha=2.,
+        structure_hypers={'alpha': 2., 'discount': 0},
         cctypes=['normal'] * len(outputs),
         Zr=[0,0,0,1,1,]
     )
@@ -46,11 +46,11 @@ def retrieve_view():
 
 def test_crp_prior_logpdf():
     view = retrieve_view()
-    crp_normalizer = view.alpha() + 5.
+    crp_normalizer = view.crp.hypers["alpha"] + 5.
     cluster_logps = np.log(np.asarray([
         old_div(3, crp_normalizer),
         old_div(2, crp_normalizer),
-        old_div(view.alpha(), crp_normalizer)
+        old_div(view.crp.hypers["alpha"], crp_normalizer)
     ]))
     # Test the crp probabilities agree for a hypothetical row.
     for k in [0,1,2]:

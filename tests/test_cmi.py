@@ -106,7 +106,7 @@ def test_cmi_different_views__ci_():
         rng=rng
     )
     state.transition(N=30,
-        kernels=['alpha','view_alphas','column_params','column_hypers','rows'])
+        kernels=['structure_hypers','view_structure_hypers','column_params','column_hypers','rows'])
 
     mi01 = state.mutual_information([0], [1])
     mi02 = state.mutual_information([0], [2])

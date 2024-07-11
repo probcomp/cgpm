@@ -17,11 +17,13 @@
 from builtins import range
 from collections import OrderedDict
 from math import log
+import numpy as np
 
 from scipy.special import gammaln
 
 from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
+from cgpm.utils.grid import pitman_yor
 
 
 class Crp(DistributionGpm):
@@ -42,6 +44,7 @@ class Crp(DistributionGpm):
         # Hyperparameters.
         if hypers is None: hypers = {}
         self.alpha = hypers.get('alpha', 1.)
+        self.discount = hypers.get('discount', 0.)
 
     def incorporate(self, rowid, observation, inputs=None):
         DistributionGpm.incorporate(self, rowid, observation, inputs)
@@ -67,7 +70,7 @@ class Crp(DistributionGpm):
         x = int(targets[self.outputs[0]])
         if rowid in self.data:
             return 0 if self.data[rowid] == x else -float('inf')
-        return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha)
+        return Crp.calc_predictive_logp(x, self.N, self.counts, self.alpha, self.discount)
 
     @gu.simulate_many
     def simulate(self, rowid, targets, constraints=None, inputs=None, N=None):
@@ -82,7 +85,7 @@ class Crp(DistributionGpm):
         return {self.outputs[0]: x}
 
     def logpdf_score(self):
-        return Crp.calc_logpdf_marginal(self.N, self.counts, self.alpha)
+        return Crp.calc_logpdf_marginal(self.N, self.counts.values(), self.alpha, self.discount)
 
     ##################
     # NON-GPM METHOD #
@@ -92,11 +95,14 @@ class Crp(DistributionGpm):
         return
 
     def set_hypers(self, hypers):
-        assert hypers['alpha'] > 0
+        assert hypers['discount'] >= 0
+        assert hypers['discount'] < 1
+        assert hypers['alpha'] > -hypers["discount"]
         self.alpha = hypers['alpha']
+        self.discount = hypers['discount']
 
     def get_hypers(self):
-        return {'alpha': self.alpha}
+        return {'alpha': self.alpha, 'discount': self.discount}
 
     def get_params(self):
         return {}
@@ -110,19 +116,20 @@ class Crp(DistributionGpm):
     # Some Gibbs utils.
 
     def gibbs_logps(self, rowid, m=1):
-        """Compute the CRP probabilities for a Gibbs transition of rowid,
-        with table counts Nk, table assignments Z, and m auxiliary tables."""
-        assert rowid in self.data
-        assert 0 < m
-        singleton = self.singleton(rowid)
-        p_aux = self.alpha / float(m)
-        p_rowid = p_aux if singleton else self.counts[self.data[rowid]]-1
-        tables = self.gibbs_tables(rowid, m=m)
-        def p_table(t):
-            if t == self.data[rowid]: return p_rowid    # rowid table.
-            if t not in self.counts: return p_aux       # auxiliary table.
-            return self.counts[t]                       # regular table.
-        return [log(p_table(t)) for t in tables]
+        total_count = sum(self.counts.values()) - 1
+        logdenom = log(total_count + self.alpha)
+        # Get all counts but don't count current rowid.
+        current_table_id = self.data[rowid]
+        counts = {table_id: (count - 1 if table_id == current_table_id else count) for table_id, count in self.counts.items()}
+        new_table_prob = log(len(counts) * self.discount + self.alpha) - logdenom
+        probs = [new_table_prob - log(m) if count==0 else
+                log(count - self.discount) - logdenom
+                for count in counts.values()
+        ]
+        if counts[current_table_id] == 0 :
+            return probs + [new_table_prob - log(m)]*(m-1)
+        return probs + [new_table_prob - log(m)]*m
+
 
     def gibbs_tables(self, rowid, m=1):
         """Retrieve a list of possible tables for rowid.
@@ -148,8 +155,11 @@ class Crp(DistributionGpm):
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        grids['alpha'] = gu.log_linspace(1./len(X), len(X), n_grid)
+        grids = pitman_yor(alpha_count=n_grid, d_count=n_grid)
+        grids = {
+            'alpha': [g['alpha'] for g in grids],
+            'discount': [g['d'] for g in grids],
+        }
         return grids
 
     @staticmethod
@@ -177,13 +187,24 @@ class Crp(DistributionGpm):
     ##################
 
     @staticmethod
-    def calc_predictive_logp(x, N, counts, alpha):
-        numerator = counts.get(x, alpha)
+    def calc_predictive_logp(x, N, counts, alpha, discount):
+        if x in counts.keys():
+            numerator = counts.get(x, alpha) - discount
+        else:
+            numerator = len(counts.keys()) * discount + alpha
+
         denominator = N + alpha
         return log(numerator) - log(denominator)
 
     @staticmethod
-    def calc_logpdf_marginal(N, counts, alpha):
-        # http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
-        return len(counts) * log(alpha) + sum(gammaln(list(counts.values()))) \
-            + gammaln(alpha) - gammaln(N + alpha)
+    def calc_logpdf_marginal(N, counts, alpha, discount):
+        # as seen in the PClean implementation:
+        # https://github.com/probcomp/PClean/blob/cef451a17749a14960f6f46dc6c2b92ed846dc05/src/model/trace.jl#L65
+        n_references = 0
+        logprob = 0.
+        for (n_objects, size) in enumerate(counts):
+            logprob += log(n_objects * discount + alpha) - log(n_references + alpha)
+            if size > 1:
+                logprob += sum(log(i - discount) - log(n_references + i + alpha) for i in range(1, size))
+            n_references += size
+        return logprob

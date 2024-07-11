@@ -16,6 +16,7 @@
 
 from builtins import range
 from math import log
+from collections import defaultdict
 
 import numpy as np
 
@@ -23,6 +24,7 @@ from scipy.special import gammaln
 
 from cgpm.primitives.distribution import DistributionGpm
 from cgpm.utils import general as gu
+from cgpm.utils.grid import dd_alpha
 
 
 class Categorical(DistributionGpm):
@@ -32,7 +34,7 @@ class Categorical(DistributionGpm):
     k := distarg
     v ~ Symmetric-Dirichlet(alpha/k)
     x ~ Categorical(v)
-    http://www.cs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
+    https://web.archive.org/web/20170603230204/https://people.eecs.berkeley.edu/~stephentu/writeups/dirichlet-conjugate-prior.pdf
     """
 
     def __init__(self, outputs, inputs, hypers=None, params=None,
@@ -48,8 +50,13 @@ class Categorical(DistributionGpm):
         self.N = 0
         self.counts = np.zeros(self.k)
         # Hyperparameters.
-        if hypers is None: hypers = {}
-        self.alpha = hypers.get('alpha', 1.)
+        if not hypers:
+            hypers = {}
+            self.alpha = np.ones(self.k)
+        else:
+            self.alpha = np.array([
+                hypers[f"alpha_{i}"]
+                for i in range(self.k)])
 
     def incorporate(self, rowid, observation, inputs=None):
         DistributionGpm.incorporate(self, rowid, observation, inputs)
@@ -79,6 +86,7 @@ class Categorical(DistributionGpm):
         DistributionGpm.simulate(self, rowid, targets, constraints, inputs, N)
         if rowid in self.data:
             return {self.outputs[0]: self.data[rowid]}
+
         x = gu.pflip(self.counts + self.alpha, rng=self.rng)
         return {self.outputs[0]: x}
 
@@ -93,11 +101,15 @@ class Categorical(DistributionGpm):
         return
 
     def set_hypers(self, hypers):
-        assert hypers['alpha'] > 0
-        self.alpha = hypers['alpha']
+        assert set(hypers.keys()) == set([f'alpha_{i}' for i in range(self.k)])
+        for i in range(self.k):
+            assert hypers[f'alpha_{i}'] > 0         
+        self.alpha = np.array([
+            hypers[f"alpha_{i}"]
+            for i in range(self.k)])
 
     def get_hypers(self):
-        return {'alpha': self.alpha}
+        return {f'alpha_{i}': self.alpha[i] for i in range(self.k)}
 
     def get_params(self):
         return {}
@@ -110,8 +122,11 @@ class Categorical(DistributionGpm):
 
     @staticmethod
     def construct_hyper_grids(X, n_grid=30):
-        grids = dict()
-        grids['alpha'] = gu.log_linspace(1., float(len(X)), n_grid)
+        # grid is a static method, so it can't have access to self.k
+        # we'll circumvent this by making it a defaultdict
+        grids = defaultdict(
+            lambda: dd_alpha
+        )
         return grids
 
     @staticmethod
@@ -144,13 +159,13 @@ class Categorical(DistributionGpm):
 
     @staticmethod
     def calc_predictive_logp(x, N, counts, alpha):
-        numer = log(alpha + counts[x])
-        denom = log(np.sum(counts) + alpha * len(counts))
+        numer = log(alpha[x] + counts[x])
+        denom = log(np.sum(counts + alpha))
         return numer - denom
 
     @staticmethod
     def calc_logpdf_marginal(N, counts, alpha):
         K = len(counts)
-        A = K * alpha
-        lg = sum(gammaln(counts[k] + alpha) for k in range(K))
-        return gammaln(A) - gammaln(A+N) + lg - K * gammaln(alpha)
+        A = sum(alpha)
+        lg = sum(gammaln(counts[k] + alpha[k]) for k in range(K))
+        return gammaln(A) - gammaln(A+N) + lg - sum(gammaln(alpha[k]) for k in range(K))

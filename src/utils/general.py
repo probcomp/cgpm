@@ -91,13 +91,16 @@ def normalize(p):
     """Normalizes a np array of probabilites."""
     return old_div(np.asarray(p, dtype=float), sum(p))
 
-def logp_crp(N, Nk, alpha):
-    """Returns the log normalized P(N,K|alpha), where N is the number of
-    customers and K is the number of tables.
-    http://gershmanlab.webfactional.com/pubs/GershmanBlei12.pdf#page=4 (eq 8)
-    """
-    return len(Nk)*log(alpha) + np.sum(lgamma(c) for c in Nk) \
-        + lgamma(alpha) - lgamma(N+alpha)
+def logp_crp(N, Nk, alpha, discount):
+    # XXX: copy pasta from crp.py (see `def calc_logpdf_marginal`).
+    n_references = 0
+    logprob = 0.
+    for (n_objects, size) in enumerate(Nk):
+        logprob += log(n_objects * discount + alpha) - log(n_references + alpha)
+        if size > 1:
+            logprob += sum(log(i - discount) - log(n_references + i + alpha) for i in range(1, size))
+        n_references += size
+    return logprob
 
 def logp_crp_unorm(N, K, alpha):
     """Returns the log unnormalized P(N,K|alpha), where N is the number of
@@ -106,18 +109,32 @@ def logp_crp_unorm(N, K, alpha):
     """
     return K*log(alpha) + lgamma(alpha) - lgamma(N+alpha)
 
-def logp_crp_gibbs(Nk, Z, i, alpha, m):
+
+def aux_table_probs(new_table_prob, m):
+    if m==0:
+        return []
+    return [new_table_prob - log(n)]*m
+
+def logp_crp_gibbs(Nk, Z, i, alpha, discount, m):
     """Compute the CRP probabilities for a Gibbs transition of customer i,
     with table counts Nk, table assignments Z, and m auxiliary tables."""
-    # XXX F ME
-    K = sorted(Nk) if isinstance(Nk, dict) else range(len(Nk))
-    singleton = Nk[Z[i]] == 1
-    m_aux = m-1 if singleton else m
-    p_table_aux = alpha/float(m)
-    p_current = lambda : p_table_aux if singleton else Nk[Z[i]]-1
-    p_other = lambda t : Nk[t]
-    p_table = lambda t: p_current() if t == Z[i] else p_other(t)
-    return [log(p_table(t)) for t in K] + [log(p_table_aux)]*m_aux
+
+    # XXX F ME (edit: found this great comment 8 years after it was made)
+    # XXX: this is kinda copy-pasta from crp.py not sure why we have it.
+
+    total_count = sum(Nk) - 1
+    logdenom = log(total_count + alpha)
+    # Get all counts but don't count current rowid.
+    current_table_id = Z[i]
+    counts = {table_id: (count - 1 if table_id == current_table_id else count) for table_id, count in enumerate(Nk)}
+    new_table_prob = log(len(counts) * discount + alpha) - logdenom
+    probs = [new_table_prob - log(m) if count==0 else
+            log(count - discount) - logdenom
+            for count in counts.values()
+    ]
+    if counts[current_table_id] == 0 :
+        return probs + [new_table_prob - log(m)]*(m-1)
+    return probs + [new_table_prob - log(m)]*m
 
 def logp_crp_fresh(N, Nk, alpha, m=1):
     """Compute the CRP probabilities for a fresh customer i=N+1, with
@@ -216,12 +233,13 @@ def log_nCk(n, k):
         return 0
     return log(n) + lgamma(n) - log(k) - lgamma(k) - log(n-k) - lgamma(n-k)
 
-def simulate_crp(N, alpha, rng=None):
+def simulate_crp(N, alpha, discount, rng=None):
     """Generates random N-length partition from the CRP with parameter alpha."""
     if rng is None:
         rng = gen_rng()
 
     assert N > 0 and alpha > 0.
+    assert 0 <= discount < 1
     alpha = float(alpha)
 
     partition = [0]*N
@@ -231,7 +249,9 @@ def simulate_crp(N, alpha, rng=None):
         ps = np.zeros(K+1)
         for k in range(K):
             ps[k] = float(Nk[k])
-        ps[K] = alpha
+        # XXX - edit by ulli - is this correct?
+        ps[K] = K*discount + alpha
+        # .. and is the denominator still correct?
         ps /= (float(i) - 1 + alpha)
         assignment = pflip(ps, rng=rng)
         if assignment == K:
@@ -251,7 +271,7 @@ def simulate_crp(N, alpha, rng=None):
     #     rng.shuffle(partition)
     return partition
 
-def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
+def simulate_crp_constrained(N, alpha, discount, Cd, Ci, Rd, Ri, rng=None):
     """Simulates a CRP with N customers and concentration alpha. Cd is a list,
     where each entry is a list of friends. Ci is a list of tuples, where each
     tuple is a pair of enemies."""
@@ -286,7 +306,8 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
                         prob_table[t] = 0
                         break
         # Choose from valid tables using CRP.
-        prob_table.append(alpha)
+        # XXX - edit by ulli - is this correct?
+        prob_table.append(len(prob_table)*discount + alpha)
         assignment = pflip(prob_table, rng=rng)
         for f in friends.get(cust, [cust]):
             Z[f] = assignment
@@ -296,7 +317,7 @@ def simulate_crp_constrained(N, alpha, Cd, Ci, Rd, Ri, rng=None):
     assert vu.validate_crp_constrained_partition(Z, Cd, Ci, Rd, Ri)
     return Z
 
-def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
+def simulate_crp_constrained_dependent(N, alpha, discount, Cd, rng=None):
     """Simulates a CRP with N customers and concentration alpha. Cd is a list,
     where each entry is a list of friends. Each clique of friends are
     effectively treated as one customer, since they are assigned to a table
@@ -316,7 +337,7 @@ def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
     num_simulate = get_crp_constrained_num_effective(N, Cd)
 
     # Simulate a CRP based on the block structure.
-    crp_block = simulate_crp(num_simulate, alpha, rng=rng)
+    crp_block = simulate_crp(num_simulate, alpha, discount=discount, rng=rng)
 
     # Prepare the overall partition of length N.
     partition = [-1] * N
@@ -338,13 +359,14 @@ def simulate_crp_constrained_dependent(N, alpha, Cd, rng=None):
     return partition
 
 
-def logp_crp_constrained_dependent(Z, alpha, Cd):
+def logp_crp_constrained_dependent(Z, alpha, discount, Cd):
     """Compute logp of CRP simulated by simulate_crp_constrained_dependent.
 
     Z is a map from each customer to the table assignment. Cd is a list, where
     each entry is a list of friends. Each clique of friends are effectively
     treated as one customer, since they are assigned to a table jointly.
     """
+
     if not vu.validate_crp_constrained_partition(Z, Cd, [], [], []):
         return -float('inf')
 
@@ -358,7 +380,7 @@ def logp_crp_constrained_dependent(Z, alpha, Cd):
     Nk = list(counts.values())
     assert sum(Nk) == num_simulate
 
-    return logp_crp(num_simulate, Nk, alpha)
+    return logp_crp(num_simulate, Nk, alpha, discount)
 
 
 def get_crp_constrained_num_effective(N, Cd):
